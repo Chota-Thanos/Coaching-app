@@ -13,3 +13,7 @@ Thumbs.db
 # Exclude mobile apps from the main web/backend Git repository
 upsc_test_series/
 current_affairs_pro/
+scratch/
+.next/
+build/
+*.tsbuildinfo
