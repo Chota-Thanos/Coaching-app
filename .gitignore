@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.log
+coverage/
+uploads/
+.DS_Store
+Thumbs.db
+
+# Exclude mobile apps from the main web/backend Git repository
+upsc_test_series/
+current_affairs_pro/

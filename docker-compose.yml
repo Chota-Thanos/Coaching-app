@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: coaching-app-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: coaching_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - coaching_app_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d coaching_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: coaching-app-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - coaching_app_redisdata:/data
+
+volumes:
+  coaching_app_pgdata:
+  coaching_app_redisdata:
+
