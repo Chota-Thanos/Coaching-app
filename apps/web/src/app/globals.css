@@ -279,4 +279,181 @@ img {
   height: 0;
 }
 
+/* ========================================
+   MOBILE-FIRST HOMEPAGE REDESIGN TOKENS
+   ======================================== */
+
+/* Ensure all interactive elements meet 44px touch target minimum */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Section showcase utility — white card sections */
+.section-showcase {
+  padding: 4rem 1rem;
+}
+@media (min-width: 640px) {
+  .section-showcase {
+    padding: 5rem 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .section-showcase {
+    padding: 6rem 2rem;
+  }
+}
+
+/* Spotlight band — full-width dark mentorship section */
+.spotlight-band {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  padding: 4rem 1rem;
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .spotlight-band {
+    padding: 5rem 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .spotlight-band {
+    padding: 6rem 2rem;
+  }
+}
+
+/* Free badge — teal accent for "always free" trust signals */
+.badge-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Onboarding step tracker */
+.onboarding-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.onboarding-step-number {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #4f46e5;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.onboarding-step-connector {
+  width: 2px;
+  flex: 1;
+  background: #e2e8f0;
+  margin: 0.25rem auto;
+}
+
+/* Horizontal snap scroll for mobile carousels */
+.snap-scroll-x {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+.snap-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+.snap-scroll-x > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Quiz widget modal */
+.quiz-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Flow step diagram */
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+.flow-step-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.flow-arrow {
+  color: rgba(255,255,255,0.3);
+  font-size: 1.25rem;
+  font-weight: 300;
+  align-self: center;
+}
+
+/* Pulse animation for onboarding CTA hints */
+@keyframes softPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(79,70,229,0); }
+}
+.pulse-ring {
+  animation: softPulse 2s ease-in-out infinite;
+}
+
+/* Smooth section transitions on scroll */
+.section-fade-in {
+  animation: sectionFadeUp 0.4s ease-out both;
+}
+@keyframes sectionFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Lock icon overlay for premium features */
+.premium-lock-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 30%, rgba(15,23,42,0.85) 100%);
+  border-radius: inherit;
+  display: flex;
+  align-items: flex-end;
+  padding: 1rem;
+}
+
 

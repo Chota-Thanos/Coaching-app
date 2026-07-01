@@ -9,10 +9,10 @@ import { CURRENT_AFFAIRS_HUBS } from "../lib/current-affairs";
 
 export const metadata: Metadata = {
   title: {
-    default: "Current Affairs Pro",
-    template: "%s | Current Affairs Pro"
+    default: "WayToIAS — UPSC Preparation Platform",
+    template: "%s | WayToIAS"
   },
-  description: "Mobile-first assessment practice, current affairs, PYQs, and exam-focused study tools.",
+  description: "India's most complete UPSC CSE preparation platform — free current affairs, self-assessment tests, smart notes workspace, and 1:1 mentorship from toppers.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000")
 };
 
@@ -35,8 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <BookOpen aria-hidden="true" className="h-4.5 w-4.5" />
                 </span>
                 <span className="leading-tight">
-                  <span className="block text-base font-black text-ink">Current Affairs</span>
-                  <span className="block text-xs font-semibold text-indigo-650">Pro Edition</span>
+                  <span className="block text-base font-black text-ink">WayToIAS</span>
+                  <span className="block text-xs font-semibold text-indigo-650">UPSC Prep Platform</span>
                 </span>
               </Link>
 
@@ -48,52 +48,56 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
 
-            {/* Mobile nav */}
-            <nav aria-label="Mobile primary sections" className="flex gap-2 overflow-x-auto px-4 pb-2.5 lg:hidden">
+            {/* Mobile nav — ordered by module priority per design spec v2 */}
+            <nav aria-label="Mobile primary sections" className="flex gap-2 overflow-x-auto px-4 pb-2.5 lg:hidden" style={{scrollbarWidth:'none'}}>
+              {/* 1. Self-Preparation */}
               <Link
                 className="shrink-0 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-bold text-white"
                 href="/assessment/gk"
               >
-                GS Practice
+                Self-Prep
               </Link>
+              {/* 2. Current Affairs (always free) */}
               <Link
-                className="shrink-0 rounded-lg border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700"
-                href="/assessment/csat"
+                className="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-700"
+                href="/current-affairs/daily-news"
               >
-                CSAT
+                Current Affairs
               </Link>
-              <Link
-                className="shrink-0 rounded-lg border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700"
-                href="/assessment/mains-hub"
-              >
-                Mains
-              </Link>
-              <Link
-                className="shrink-0 rounded-lg border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700"
-                href="/assessment/dashboard"
-              >
-                Scorecard
-              </Link>
-              <Link
-                className="shrink-0 rounded-lg border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700"
-                href="/study-plans"
-              >
-                Study Plans
-              </Link>
-              {CURRENT_AFFAIRS_HUBS.map((hub) => (
-                <Link
-                  className="shrink-0 rounded-lg border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink/70"
-                  href={`/current-affairs/${hub.path}`}
-                  key={hub.path}
-                >
-                  {hub.shortLabel}
-                </Link>
-              ))}
+              {/* 3. Notes Making */}
               <Link
                 className="shrink-0 rounded-lg border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700"
                 href="/current-affairs/workspace"
               >
-                Notes Space
+                Notes
+              </Link>
+              {/* 4. Mentorship */}
+              <Link
+                className="shrink-0 rounded-lg border border-purple-100 bg-purple-50 px-3.5 py-1.5 text-xs font-bold text-purple-700"
+                href="/mentors"
+              >
+                Mentorship
+              </Link>
+              {/* 5. CSAT */}
+              <Link
+                className="shrink-0 rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-1.5 text-xs font-bold text-amber-700"
+                href="/assessment/csat"
+              >
+                CSAT
+              </Link>
+              {/* 6. Mains */}
+              <Link
+                className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600"
+                href="/assessment/mains-hub"
+              >
+                Mains
+              </Link>
+              {/* 7. Study Plans — low priority, at end */}
+              <Link
+                className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-500"
+                href="/study-plans"
+              >
+                Study Plans
               </Link>
             </nav>
           </header>

@@ -53,7 +53,7 @@ export function HeaderNav() {
 
   return (
     <nav aria-label="Primary sections" className="hidden items-center gap-0.5 lg:flex">
-      {/* Assessment Dropdown */}
+      {/* 1. Self-Preparation Dropdown */}
       <div
         className="relative"
         onMouseEnter={openAssessment}
@@ -67,7 +67,7 @@ export function HeaderNav() {
           }`}
           type="button"
         >
-          Assessment
+          Self-Preparation
           <ChevronDown
             className={`h-3.5 w-3.5 transition-transform duration-200 ${assessmentOpen ? "rotate-180" : ""}`}
           />
@@ -158,15 +158,7 @@ export function HeaderNav() {
         )}
       </div>
 
-      {/* Study Plans */}
-      <Link
-        className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-        href="/study-plans"
-      >
-        Study Plans
-      </Link>
-
-      {/* Current Affairs Dropdown */}
+      {/* 2. Current Affairs Dropdown */}
       <div
         className="relative"
         onMouseEnter={openCa}
@@ -180,7 +172,7 @@ export function HeaderNav() {
           }`}
           type="button"
         >
-          Prelims
+          Current Affairs
           <ChevronDown
             className={`h-3.5 w-3.5 transition-transform duration-200 ${caOpen ? "rotate-180" : ""}`}
           />
@@ -229,7 +221,15 @@ export function HeaderNav() {
         )}
       </div>
 
-      {/* Mains Dropdown */}
+      {/* 3. Notes Space */}
+      <Link
+        className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+        href="/current-affairs/workspace"
+      >
+        Notes
+      </Link>
+
+      {/* 4. Mains Dropdown */}
       <div
         className="relative"
         onMouseEnter={openPyq}
@@ -306,23 +306,15 @@ export function HeaderNav() {
         )}
       </div>
 
-      {/* Notes Space */}
-      <Link
-        className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-        href="/current-affairs/workspace"
-      >
-        Notes Space
-      </Link>
-
-      {/* Mentors marketplace directory */}
+      {/* 5. Mentors */}
       <Link
         className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
         href="/mentors"
       >
-        Mentors
+        Mentorship
       </Link>
 
-      {/* Pricing */}
+      {/* 6. Pricing */}
       <Link
         className="rounded-lg px-3.5 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors flex items-center gap-1"
         href="/pricing"
