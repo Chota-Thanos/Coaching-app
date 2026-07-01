@@ -6,6 +6,7 @@ import { Providers } from "./providers";
 import { SignInPanel } from "../components/auth/sign-in-panel";
 import { HeaderNav } from "../components/app/header-nav";
 import { CURRENT_AFFAIRS_HUBS } from "../lib/current-affairs";
+import { WayToIASLogo } from "../components/app/logo";
 
 export const metadata: Metadata = {
   title: {
@@ -31,9 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3">
               {/* Logo */}
               <Link className="flex items-center gap-2.5 font-extrabold text-ink" href="/">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-sm">
-                  <BookOpen aria-hidden="true" className="h-4.5 w-4.5" />
-                </span>
+                <WayToIASLogo className="h-9 w-auto" />
                 <span className="leading-tight">
                   <span className="block text-base font-black text-ink">WayToIAS</span>
                   <span className="block text-xs font-semibold text-indigo-650">UPSC Prep Platform</span>
