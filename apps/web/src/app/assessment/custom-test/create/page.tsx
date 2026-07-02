@@ -20,6 +20,56 @@ import {
 } from "lucide-react";
 import { useAuth, authenticatedGet, authenticatedPost } from "../../../../components/auth/auth-context";
 import { useSubscription } from "../../../../lib/use-subscription";
+import { GuidedTourEngine } from "../../../../components/app/guided-tour-engine";
+
+const CUSTOM_TEST_TOUR_STEPS = [
+  {
+    selector: "#tour-content-type",
+    badge: "Step 1 of 6: Content Type",
+    title: "Select Content Type",
+    body: "Choose the subject domain for your custom mock test: General Studies (GS), CSAT / Aptitude, or Mains subjective. Click the 'CSAT' or 'GS' button to select it.",
+    actionTrigger: "click" as const,
+    actionText: "Click on one of the content type buttons below (e.g. GS or CSAT) to proceed."
+  },
+  {
+    selector: "#tour-subject-expand",
+    badge: "Step 2 of 6: Browse Subjects",
+    title: "Expand a Subject",
+    body: "The syllabus categories are loaded dynamically. Click on the first subject row name to expand it and reveal its topics.",
+    actionTrigger: "click" as const,
+    actionText: "Click on the subject name above to expand it."
+  },
+  {
+    selector: "#tour-add-topic-btn",
+    badge: "Step 3 of 6: Add Topic",
+    title: "Add Topic to Basket",
+    body: "Inside the expanded subject, you can view the available question counts. Click the 'Add' button next to the topic to add it to your custom test basket.",
+    actionTrigger: "click" as const,
+    actionText: "Click the 'Add' button next to the subtopic above."
+  },
+  {
+    selector: "#tour-basket-card",
+    badge: "Step 4 of 6: Adjust Questions Count",
+    title: "Manage Question Pool",
+    body: "The topic is now in your basket! Here, you can adjust the quantity of questions you want from this category. Click 'Next' when you're done reviewing."
+  },
+  {
+    selector: "#tour-test-name",
+    badge: "Step 5 of 6: Name Your Test",
+    title: "Custom Test Title",
+    body: "Provide a name for this custom mock test so you can easily identify it later in your history.",
+    actionTrigger: "input" as const,
+    actionText: "Type a custom test name in the input box above to proceed."
+  },
+  {
+    selector: "#tour-create-test-btn",
+    badge: "Step 6 of 6: Start Your Exam",
+    title: "Generate & Start Test",
+    body: "You're all set! Click this button to generate the custom test and launch the exam interface. (Note: Guest users will be prompted to log in/register to preserve their progress).",
+    actionTrigger: "click" as const,
+    actionText: "Click the 'Create & Start Custom Test' button below to launch."
+  }
+];
 
 type Exam = {
   id: number;
@@ -75,6 +125,13 @@ function CreateCustomTestInner() {
     : "gk";
   const [contentType, setContentType] = useState<"gk" | "aptitude" | "mains">(defaultContentType as any);
   const [title, setTitle] = useState("");
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    if (isInitialized && searchParams.get("start_tour") === "true") {
+      setShowTour(true);
+    }
+  }, [isInitialized, searchParams]);
 
   // Categories & Question Counts States
   const [allNodes, setAllNodes] = useState<TaxonomyNode[]>([]);
@@ -97,10 +154,10 @@ function CreateCustomTestInner() {
 
   // 1. Fetch Exams
   useEffect(() => {
-    if (!token) return;
+    if (!isInitialized) return;
     const fetchExams = async () => {
       try {
-        const data = await authenticatedGet<Exam[]>("/api/v1/assessment/exams", token);
+        const data = await authenticatedGet<Exam[]>("/api/v1/assessment/exams", token || "");
         setExams(data || []);
         if (data && data.length > 0) {
           setSelectedExamId(data[0]?.id ?? null);
@@ -112,11 +169,11 @@ function CreateCustomTestInner() {
       }
     };
     fetchExams();
-  }, [token]);
+  }, [token, isInitialized]);
 
   // 2. Fetch Taxonomy Nodes (Syllabus Categories)
   useEffect(() => {
-    if (!token || !selectedExamId) return;
+    if (!isInitialized || !selectedExamId) return;
     const fetchCategories = async () => {
       setLoadingCategories(true);
       setError(null);
@@ -124,7 +181,7 @@ function CreateCustomTestInner() {
         const url = contentType === "mains"
           ? `/api/v1/assessment/mains/taxonomy-nodes?exam_id=${selectedExamId}&limit=1000`
           : `/api/v1/assessment/taxonomy-nodes?exam_id=${selectedExamId}&limit=1000`;
-        const data = await authenticatedGet<TaxonomyNode[]>(url, token);
+        const data = await authenticatedGet<TaxonomyNode[]>(url, token || "");
         setAllNodes(data || []);
         setExpandedNodes(new Set()); // Reset expand states
         setAddedCategories([]); // Clear basket on switch
@@ -135,18 +192,18 @@ function CreateCustomTestInner() {
       }
     };
     fetchCategories();
-  }, [token, selectedExamId, contentType]);
+  }, [token, isInitialized, selectedExamId, contentType]);
 
   // 3. Fetch Question Counts per Category
   useEffect(() => {
-    if (!token || !selectedExamId) return;
+    if (!isInitialized || !selectedExamId) return;
     const fetchCounts = async () => {
       setLoadingCounts(true);
       try {
         const family = contentType === "mains" ? "mains_subjective" : "objective";
         const data = await authenticatedGet<any[]>(
           `/api/v1/assessment/question-counts?exam_id=${selectedExamId}&question_family=${family}`,
-          token
+          token || ""
         );
         const countMap: Record<number, number> = {};
         (data || []).forEach((row) => {
@@ -160,7 +217,45 @@ function CreateCustomTestInner() {
       }
     };
     fetchCounts();
-  }, [token, selectedExamId, contentType]);
+  }, [token, isInitialized, selectedExamId, contentType]);
+
+  // Auto-sync/create guest test on login
+  useEffect(() => {
+    if (!token || !isInitialized) return;
+    if (searchParams.get("trigger_create") !== "true") return;
+
+    const autoCreateGuestTest = async () => {
+      const savedConfigStr = localStorage.getItem("waytoias_guest_test_configuration");
+      if (!savedConfigStr) return;
+
+      setSubmitting(true);
+      setError(null);
+      try {
+        const savedConfig = JSON.parse(savedConfigStr);
+        // Create user custom test template
+        const response = await authenticatedPost<{ id: number }>(
+          "/api/v1/assessment/user/custom-tests",
+          token,
+          savedConfig
+        );
+
+        // Automatically start attempt
+        const attemptId = await authenticatedPost<any>(
+          `/api/v1/assessment/test-templates/${response.id}/attempts/start`,
+          token,
+          {}
+        );
+
+        localStorage.removeItem("waytoias_guest_test_configuration");
+        router.push(`/assessment/attempts/${attemptId.id ?? attemptId}`);
+      } catch (err: any) {
+        setError(err.message || "Failed to reconstruct guest custom test.");
+        setSubmitting(false);
+      }
+    };
+
+    void autoCreateGuestTest();
+  }, [token, isInitialized, searchParams, router]);
 
   // Filter nodes by current content type
   const filteredNodes = useMemo(() => {
@@ -250,7 +345,7 @@ function CreateCustomTestInner() {
   // Submit Handler - Fetch random questions and create test
   const handleCreateTest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !selectedExamId) return;
+    if (!selectedExamId) return;
     if (!title.trim()) {
       setError("Please specify a custom test name.");
       return;
@@ -287,7 +382,7 @@ function CreateCustomTestInner() {
           }
         }
 
-        const data = await authenticatedGet<Question[]>(url, token);
+        const data = await authenticatedGet<Question[]>(url, token || "");
         if (data && data.length > 0) {
           // Shuffle list
           const shuffled = [...data].sort(() => Math.random() - 0.5);
@@ -301,6 +396,19 @@ function CreateCustomTestInner() {
 
       if (allPickedQuestionIds.length === 0) {
         throw new Error("No questions were found in the selected categories. Please check other categories.");
+      }
+
+      // Guest progress preservation check
+      if (!token) {
+        localStorage.setItem("waytoias_guest_test_configuration", JSON.stringify({
+          title: title.trim(),
+          exam_id: selectedExamId,
+          exam_level_id: 1, // Fallback exam level
+          question_ids: allPickedQuestionIds,
+          test_type: contentType === "mains" ? "mains_test" : "sectional_test"
+        }));
+        router.push("/login?next=/assessment/custom-test/create?trigger_create=true");
+        return;
       }
 
       // Step 2: Create user custom test template
@@ -404,6 +512,7 @@ function CreateCustomTestInner() {
               <label className="block text-xs font-bold text-slate-655 space-y-1.5">
                 <span>Test Name</span>
                 <input
+                  id="tour-test-name"
                   type="text"
                   placeholder="e.g. My History Focus Test"
                   value={title}
@@ -432,7 +541,7 @@ function CreateCustomTestInner() {
               {!isContentTypeLocked ? (
                 <div className="block text-xs font-bold text-slate-655 space-y-2">
                   <span>Content Type</span>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div id="tour-content-type" className="grid grid-cols-3 gap-2">
                     {([
                       { id: "gk", label: "GS" },
                       { id: "aptitude", label: "CSAT" },
@@ -467,7 +576,7 @@ function CreateCustomTestInner() {
             </div>
 
             {/* Selected Categories Summary basket */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
+            <div id="tour-basket-card" className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
               <h2 className="text-sm font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-indigo-600" />
                 <span>Selected Categories ({addedCategories.length})</span>
@@ -545,7 +654,7 @@ function CreateCustomTestInner() {
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-                  {subjects.map((sub) => {
+                  {subjects.map((sub, idx) => {
                     const subTopics = topicsBySubject[sub.id] || [];
                     const isExpanded = expandedNodes.has(sub.id);
                     const subAvailable = questionCounts[sub.id] ?? 0;
@@ -561,6 +670,7 @@ function CreateCustomTestInner() {
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             {subTopics.length > 0 ? (
                               <button
+                                id={idx === 0 ? "tour-subject-expand" : undefined}
                                 type="button"
                                 onClick={() => toggleExpand(sub.id)}
                                 className="grid h-7 w-7 place-items-center rounded-lg border border-slate-100 hover:bg-slate-50 transition"
@@ -631,7 +741,7 @@ function CreateCustomTestInner() {
                         {/* Child Categories (Topics) inside Expanded Subject */}
                         {isExpanded && subTopics.length > 0 && (
                           <div className="pl-4 border-l border-slate-100 ml-3.5 space-y-3 pt-2">
-                            {subTopics.map((topic) => {
+                            {subTopics.map((topic, topicIdx) => {
                               const topicAvailable = questionCounts[topic.id] ?? 0;
                               const topicAdded = addedCategories.find((item) => item.node.id === topic.id);
 
@@ -671,6 +781,7 @@ function CreateCustomTestInner() {
                                       </div>
 
                                       <button
+                                        id={idx === 0 && topicIdx === 0 ? "tour-add-topic-btn" : undefined}
                                         type="button"
                                         onClick={() => handleAddCategory(topic)}
                                         className={`h-7 px-3 rounded-md text-[11px] font-bold shadow-sm transition ${
@@ -701,6 +812,7 @@ function CreateCustomTestInner() {
               {/* Submit trigger */}
               <div className="pt-4 border-t border-slate-150">
                 <button
+                  id="tour-create-test-btn"
                   type="submit"
                   disabled={submitting || addedCategories.length === 0}
                   className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 hover:bg-slate-850 px-4 text-sm font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
@@ -718,6 +830,12 @@ function CreateCustomTestInner() {
 
         </form>
       </div>
+      {showTour && (
+        <GuidedTourEngine
+          steps={CUSTOM_TEST_TOUR_STEPS}
+          onClose={() => setShowTour(false)}
+        />
+      )}
     </div>
   );
 }

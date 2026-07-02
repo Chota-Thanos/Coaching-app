@@ -24,11 +24,36 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
 
   async function createRepository(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!token) return;
 
     setPending(true);
     setMessage(null);
     try {
+      if (!token) {
+        const guestCollectionsStr = localStorage.getItem("waytoias_guest_collections");
+        const guestCollections = guestCollectionsStr ? JSON.parse(guestCollectionsStr) : [];
+        
+        const newCollection: StudentCollection = {
+          id: -(guestCollections.length + 1),
+          name,
+          slug: workspaceSlug(name),
+          description: description.trim() || null,
+          custom_tags: splitWorkspaceTags(customTags),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        guestCollections.push(newCollection);
+        localStorage.setItem("waytoias_guest_collections", JSON.stringify(guestCollections));
+        
+        setName("");
+        setDescription("");
+        setCustomTags("");
+        setShowCreateForm(false);
+        await onChanged();
+        setMessage("Guest repository created locally.");
+        return;
+      }
+
       await authenticatedPost<StudentCollection>("/api/v1/current-affairs/me/collections", token, {
         name,
         slug: workspaceSlug(name),
@@ -56,6 +81,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
           <h2 className="text-lg font-black text-ink">Repositories</h2>
         </div>
         <button
+          id="tour-create-repo-btn"
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-civic px-3 text-sm font-bold text-white hover:bg-civic/90"
           onClick={() => setShowCreateForm((value) => !value)}
           type="button"

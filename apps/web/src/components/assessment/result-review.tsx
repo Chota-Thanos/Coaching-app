@@ -915,6 +915,83 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 </div>
               )}
 
+              {/* Diagnostic Test Category Accuracy Breakdown */}
+              {review.test_template.test_type === "diagnostic_test" && review.topic_breakdowns && review.topic_breakdowns.length > 0 && (
+                <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                    <span className="text-2xl">🩺</span>
+                    <div>
+                      <h2 className="text-base font-black text-slate-900">Diagnostic Performance Report</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Syllabus-wise accuracy diagnosis. Use this breakdown to focus your study plan.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {review.topic_breakdowns.map((topic) => {
+                      const accuracyVal = Number(topic.accuracy);
+                      const percent = accuracyVal <= 1 ? accuracyVal * 100 : accuracyVal;
+                      const roundedPercent = Math.round(percent);
+                      
+                      let barColor = "bg-rose-500";
+                      let bgColor = "bg-rose-50 border-rose-100";
+                      let diagnosticLabel = "Critical Gap";
+
+                      if (roundedPercent >= 70) {
+                        barColor = "bg-emerald-500";
+                        bgColor = "bg-emerald-50 border-emerald-100";
+                        diagnosticLabel = "Strong Concept";
+                      } else if (roundedPercent >= 40) {
+                        barColor = "bg-amber-500";
+                        bgColor = "bg-amber-50 border-amber-100";
+                        diagnosticLabel = "Moderate Gap";
+                      }
+
+                      return (
+                        <div
+                          key={`${topic.taxonomy_name}-${topic.id}`}
+                          className={`rounded-xl border p-4 flex flex-col justify-between gap-3 ${bgColor}`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-black text-slate-900 truncate">
+                                {topic.taxonomy_name ?? "General Syllabus"}
+                              </span>
+                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                roundedPercent >= 70 ? "bg-emerald-100 text-emerald-800" :
+                                roundedPercent >= 40 ? "bg-amber-100 text-amber-800" :
+                                "bg-rose-100 text-rose-800"
+                              }`}>
+                                {diagnosticLabel}
+                              </span>
+                            </div>
+                            
+                            <div className="mt-3 flex items-baseline gap-1 text-2xl font-black text-slate-900">
+                              <span>{roundedPercent}%</span>
+                              <span className="text-xs font-semibold text-slate-500">accuracy</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            {/* Progress bar */}
+                            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${barColor}`}
+                                style={{ width: `${roundedPercent}%`, transition: "width 1s ease-out" }}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                              <span>{topic.correct_count} Correct / {topic.total_questions} Questions</span>
+                              <span>Avg Time: {Math.round(Number(topic.avg_time_seconds || 0))}s/Q</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Weak topics summary */}
               {weakTopics.length > 0 && (
                 <div className="space-y-3">

@@ -1344,6 +1344,7 @@ export function AdminQuizManager({
                 <option value="full_length_test">Full Length</option>
                 <option value="pyq_test">PYQ Test</option>
                 <option value="mains_test">Mains Test</option>
+                <option value="diagnostic_test">Diagnostic Test</option>
               </select>
             </label>
           ) : (
@@ -2019,6 +2020,7 @@ export function AdminQuizManager({
                     <option value="full_length_test">Full Length</option>
                     <option value="pyq_test">PYQ Test</option>
                     <option value="mains_test">Mains Test</option>
+                    <option value="diagnostic_test">Diagnostic Test</option>
                   </select>
                 </label>
 

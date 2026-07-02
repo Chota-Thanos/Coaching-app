@@ -1,6 +1,6 @@
 export type AssessmentStatus = "draft" | "in_review" | "published" | "archived";
 export type AssessmentAccessType = "free" | "subscription" | "paid" | "private";
-export type AssessmentTestType = "quick_test" | "sectional_test" | "full_length_test" | "pyq_test" | "mains_test";
+export type AssessmentTestType = "quick_test" | "sectional_test" | "full_length_test" | "pyq_test" | "mains_test" | "diagnostic_test";
 export type AttemptStatus = "in_progress" | "submitted" | "expired" | "cancelled";
 export type AttemptResponseStatus = "not_visited" | "answered" | "skipped" | "marked_for_review";
 

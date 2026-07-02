@@ -137,6 +137,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isInitialized, token, refreshForks]);
 
+  // Synchronize guest repositories and forks upon login
+  useEffect(() => {
+    if (!token) return;
+
+    const syncGuestData = async () => {
+      try {
+        const guestCollectionsStr = localStorage.getItem("waytoias_guest_collections");
+        const guestForksStr = localStorage.getItem("waytoias_guest_forks");
+
+        if (!guestCollectionsStr && !guestForksStr) return;
+
+        const guestCollections = guestCollectionsStr ? JSON.parse(guestCollectionsStr) : [];
+        const guestForks = guestForksStr ? JSON.parse(guestForksStr) : [];
+
+        // Map from local negative ID to new server ID
+        const collectionIdMap = new Map<number, number>();
+
+        // 1. Sync guest collections
+        for (const col of guestCollections) {
+          try {
+            const res = await jsonFetch<any>("/api/v1/current-affairs/me/collections", token, {
+              method: "POST",
+              body: JSON.stringify({
+                name: col.name,
+                slug: col.slug,
+                description: col.description,
+                custom_tags: col.custom_tags
+              })
+            });
+            if (res && res.id) {
+              collectionIdMap.set(Number(col.id), Number(res.id));
+            }
+          } catch (err) {
+            console.error("Failed to sync guest collection:", col.name, err);
+          }
+        }
+
+        // 2. Sync guest forks
+        for (const fork of guestForks) {
+          try {
+            const serverCollectionIds = (fork.collection_ids ?? [])
+              .map((localId: number) => collectionIdMap.get(Number(localId)))
+              .filter(Boolean) as number[];
+
+            if (serverCollectionIds.length > 0) {
+              for (const colId of serverCollectionIds) {
+                await jsonFetch<any>(`/api/v1/current-affairs/articles/${fork.master_article_id}/fork`, token, {
+                  method: "POST",
+                  body: JSON.stringify({
+                    collection_id: colId
+                  })
+                });
+              }
+            } else {
+              await jsonFetch<any>(`/api/v1/current-affairs/articles/${fork.master_article_id}/fork`, token, {
+                method: "POST",
+                body: JSON.stringify({})
+              });
+            }
+          } catch (err) {
+            console.error("Failed to sync guest article fork:", fork.master_article_id, err);
+          }
+        }
+
+        localStorage.removeItem("waytoias_guest_collections");
+        localStorage.removeItem("waytoias_guest_forks");
+        void refreshForks();
+      } catch (err) {
+        console.error("Guest data synchronization error:", err);
+      }
+    };
+
+    void syncGuestData();
+  }, [token, refreshForks]);
+
   const login = useCallback(async (email: string, password: string) => {
     const result = await jsonFetch<{ user: AuthUser; access_token: string }>("/api/v1/auth/login", undefined, {
       method: "POST",

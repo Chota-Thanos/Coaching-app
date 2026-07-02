@@ -244,7 +244,7 @@ export const startDynamicAttemptSchema = z.object({
   subtopic_node_id: idSchema.optional().nullable(),
   question_nature_id: idSchema.optional().nullable(),
   question_count: z.coerce.number().int().min(1).max(100),
-  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test"]),
+  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "diagnostic_test"]),
   question_family: z.enum(["objective", "mains_subjective"]).default("objective").optional(),
   include_attempted: z.boolean().optional().default(false)
 });
@@ -261,7 +261,7 @@ export const compiledCategorySchema = z.object({
 export const startCompiledAttemptSchema = z.object({
   exam_id: idSchema,
   exam_level_id: idSchema.optional(),
-  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test"]),
+  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "diagnostic_test"]),
   categories: z.array(compiledCategorySchema).min(1),
   include_attempted: z.boolean().optional().default(false)
 });
@@ -272,7 +272,7 @@ export const createTestTemplateSchema = z.object({
   description: z.string().trim().optional(),
   exam_id: idSchema,
   exam_level_id: idSchema,
-  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "mains_test"]).optional(),
+  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "mains_test", "diagnostic_test"]).optional(),
   duration_minutes: z.number().int().positive(),
   total_marks: z.number().nonnegative().optional(),
   negative_marking_config: z.record(z.unknown()).optional(),
@@ -290,7 +290,7 @@ export const updateTestTemplateSchema = z.object({
   description: z.string().trim().nullable().optional(),
   exam_id: idSchema.optional(),
   exam_level_id: idSchema.optional(),
-  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "mains_test"]).optional(),
+  test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "mains_test", "diagnostic_test"]).optional(),
   duration_minutes: z.number().int().positive().optional(),
   total_marks: z.number().nonnegative().optional(),
   negative_marking_config: z.record(z.unknown()).optional(),

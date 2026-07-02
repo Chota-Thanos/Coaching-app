@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth, authenticatedGet } from "../components/auth/auth-context";
 import { useSubscription } from "../lib/use-subscription";
 import { browserBaseUrl, resolveMediaUrl } from "../lib/api";
-import { OnboardingTour, TourLauncherBanner } from "../components/app/onboarding-tour";
+// Onboarding tours removed from dashboard
 import {
   Target,
   BookOpenCheck,
@@ -106,23 +106,7 @@ export default function HomePage() {
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
 
-  // Tour state (CSR — localStorage persisted per user)
-  const [activeTour, setActiveTour] = useState<"test" | "notes" | null>(null);
-  const [toursDismissed, setToursDismissed] = useState({ test: false, notes: false });
-  useEffect(() => {
-    setToursDismissed({
-      test: localStorage.getItem("waytoias_tour_test_seen") === "1",
-      notes: localStorage.getItem("waytoias_tour_notes_seen") === "1",
-    });
-  }, []);
-  const handleTourClose = () => {
-    if (activeTour) {
-      localStorage.setItem(`waytoias_tour_${activeTour}_seen`, "1");
-      setToursDismissed((prev) => ({ ...prev, [activeTour!]: true }));
-    }
-    setActiveTour(null);
-  };
-  const showTourBanner = !toursDismissed.test || !toursDismissed.notes;
+  // Dashboard tours removed
 
   const coverFallbacks = [
     "https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?q=80&w=600&auto=format&fit=crop",
@@ -1299,8 +1283,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-slate-50/50 pb-20">
 
-      {/* ── Feature tour overlay ── */}
-      {activeTour && <OnboardingTour type={activeTour} onClose={handleTourClose} />}
+      {/* Onboarding tour overlay removed */}
 
       {/* ══════════════════════════════════════════════════════
           DASHBOARD HEADER — greeting + status pills
@@ -1462,159 +1445,7 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Feature Tour launcher (dismissable) */}
-        {showTourBanner && (
-          <TourLauncherBanner onLaunch={(type) => setActiveTour(type)} />
-        )}
 
-        {/* ── Zero-data Onboarding ── */}
-        {totalMCQ === 0 && userNotes.length === 0 && userCollections.length === 0 && (
-          <div className="space-y-5">
-            <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
-                <Sparkles className="h-6 w-6 text-indigo-200" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-black text-white">Welcome to WayToIAS, {username}!</h2>
-                <p className="text-xs text-indigo-200 mt-1">Your prep workspace is ready. Start with the feature tours or jump straight into a test.</p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => setActiveTour("test")}
-                  className="touch-target text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl px-3.5 py-2 transition-colors flex items-center gap-1.5"
-                >
-                  <Target className="h-3.5 w-3.5" /> Test Tour
-                </button>
-                <button
-                  onClick={() => setActiveTour("notes")}
-                  className="touch-target text-xs font-bold text-white bg-indigo-500 hover:bg-indigo-400 rounded-xl px-3.5 py-2 transition-colors flex items-center gap-1.5"
-                >
-                  <NotebookPen className="h-3.5 w-3.5" /> Notes Tour
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Self-Prep steps */}
-              <div className="rounded-2xl border border-blue-100 bg-white p-6 space-y-5">
-                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                  <span className="h-9 w-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                    <Target className="h-5 w-5 text-blue-600" />
-                  </span>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-black text-slate-900">Self-Preparation</h3>
-                    <p className="text-xs text-slate-500">3 steps to your first score</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTour("test")}
-                    className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 hover:bg-blue-100 transition-colors flex items-center gap-1"
-                  >
-                    <Sparkles className="h-3 w-3" /> Full Tour
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="onboarding-step-number">1</div>
-                      <div className="w-0.5 flex-1 bg-slate-100 mt-1 min-h-[2rem]" />
-                    </div>
-                    <div className="pb-4 flex-1 pt-0.5">
-                      <p className="text-sm font-bold text-slate-800">Take a Diagnostic Quiz</p>
-                      <p className="text-xs text-slate-500 mt-0.5">A 10-question GS test to establish your subject baseline.</p>
-                      <Link href="/assessment/gk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors pulse-ring">
-                        <Target className="h-3.5 w-3.5" /> Start Diagnostic →
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="onboarding-step-number">2</div>
-                      <div className="w-0.5 flex-1 bg-slate-100 mt-1 min-h-[2rem]" />
-                    </div>
-                    <div className="pb-4 flex-1 pt-0.5">
-                      <p className="text-sm font-bold text-slate-800">Build a Custom GS Test</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Select topics, set question count, generate in seconds.</p>
-                      <Link href="/assessment/gk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors">
-                        <Layers className="h-3.5 w-3.5" /> Build Custom Test
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="onboarding-step-number">3</div>
-                    </div>
-                    <div className="flex-1 pt-0.5">
-                      <p className="text-sm font-bold text-slate-800">View Your Radar</p>
-                      <p className="text-xs text-slate-500 mt-0.5">After 1+ tests, your radar populates automatically.</p>
-                      <Link href="/assessment/dashboard" className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors">
-                        <BarChart3 className="h-3.5 w-3.5" /> Open Scorecard
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes-Making steps */}
-              <div className="rounded-2xl border border-indigo-100 bg-white p-6 space-y-5">
-                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                  <span className="h-9 w-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                    <NotebookPen className="h-5 w-5 text-indigo-600" />
-                  </span>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-black text-slate-900">Notes-Making</h3>
-                    <p className="text-xs text-slate-500">3 steps to your first repository</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTour("notes")}
-                    className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 hover:bg-indigo-100 transition-colors flex items-center gap-1"
-                  >
-                    <Sparkles className="h-3 w-3" /> Full Tour
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="onboarding-step-number" style={{ background: "#4f46e5" }}>1</div>
-                      <div className="w-0.5 flex-1 bg-slate-100 mt-1 min-h-[2rem]" />
-                    </div>
-                    <div className="pb-4 flex-1 pt-0.5">
-                      <p className="text-sm font-bold text-slate-800">Read Current Affairs (Free)</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Browse today's news. No login wall, no limits.</p>
-                      <Link href="/current-affairs/daily-news" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors">
-                        <Newspaper className="h-3.5 w-3.5" /> Read News →
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="onboarding-step-number" style={{ background: "#4f46e5" }}>2</div>
-                      <div className="w-0.5 flex-1 bg-slate-100 mt-1 min-h-[2rem]" />
-                    </div>
-                    <div className="pb-4 flex-1 pt-0.5">
-                      <p className="text-sm font-bold text-slate-800">Create Your First Repository</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Name it and import up to 10 articles free.</p>
-                      <Link href="/current-affairs/workspace" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors pulse-ring">
-                        <Plus className="h-3.5 w-3.5" /> Create Repository →
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="onboarding-step-number" style={{ background: "#4f46e5" }}>3</div>
-                    </div>
-                    <div className="flex-1 pt-0.5">
-                      <p className="text-sm font-bold text-slate-800">Add Revision Lines</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Write 3–5 bullets per article for exam-day recall.</p>
-                      <Link href="/current-affairs/workspace" className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors">
-                        <NotebookPen className="h-3.5 w-3.5" /> Open Workspace
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ══════════════════════════════════════════════════════
             SECTION 2 — MAIN WORKSPACE
@@ -1635,12 +1466,12 @@ export default function HomePage() {
                   <p className="text-xs text-slate-500">GS tests, CSAT drills, Mains reviews &amp; revision</p>
                 </div>
               </div>
-              <button
-                onClick={() => setActiveTour("test")}
+              <Link
+                href="/assessment/custom-test/create?start_tour=true"
                 className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors flex items-center gap-1.5"
               >
                 <Sparkles className="h-3.5 w-3.5" /> How it works
-              </button>
+              </Link>
             </div>
 
             {/* Quick Action Buttons */}
@@ -1906,15 +1737,14 @@ export default function HomePage() {
                           </div>
                         </div>
                         {/* Import to Notes button */}
-                        <button
-                          onClick={() => setActiveTour("notes")}
-                          id={idx === 0 ? "tour-import-btn" : undefined}
+                        <Link
+                          href={`/current-affairs/workspace?import_article_id=${article.id}`}
                           title="Import to Notes"
                           className="shrink-0 h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 hover:bg-indigo-100 transition-colors mt-0.5"
                           aria-label="Import to Notes"
                         >
                           <Bookmark className="h-3.5 w-3.5" />
-                        </button>
+                        </Link>
                       </div>
                     );
                   })
@@ -1935,12 +1765,12 @@ export default function HomePage() {
                   Notes Workspace
                 </h2>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveTour("notes")}
+                  <Link
+                    href="/current-affairs/workspace?start_tour=true"
                     className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5"
                   >
                     <Sparkles className="h-3 w-3" /> Tour
-                  </button>
+                  </Link>
                   <Link href="/current-affairs/workspace" className="text-xs font-bold text-indigo-600 hover:underline">
                     <PlusCircle className="h-3.5 w-3.5" />
                   </Link>
