@@ -735,7 +735,7 @@ export default function HomePage() {
                   return (
                     <Link
                       key={article.id}
-                      href={`/current-affairs/articles/slug/${article.slug}`}
+                      href={`/current-affairs/articles/${article.slug}`}
                       className="group flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-200"
                     >
                       <div className="h-40 w-full overflow-hidden bg-slate-50 relative">
@@ -1727,7 +1727,7 @@ export default function HomePage() {
                     return (
                       <div key={article.id} className="flex items-start gap-2.5 px-4 py-3 group hover:bg-slate-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <Link href={`/current-affairs/articles/slug/${article.slug}`}>
+                          <Link href={`/current-affairs/articles/${article.slug}`}>
                             <p className="text-xs font-bold text-slate-800 line-clamp-2 group-hover:text-emerald-700 leading-snug">{article.title}</p>
                           </Link>
                           <div className="flex items-center gap-2 mt-1">
