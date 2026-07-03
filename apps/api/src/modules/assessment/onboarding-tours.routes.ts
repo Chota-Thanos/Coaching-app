@@ -171,7 +171,7 @@ export async function registerOnboardingTourRoutes(server: FastifyInstance): Pro
 
       for (let i = 0; i < steps.length; i++) {
         const s = steps[i];
-        if (!s.selector || !s.title || !s.body) continue;
+        if (!s || !s.selector || !s.title || !s.body) continue;
         await one(
           `insert into app.onboarding_tour_steps
            (tour_id, display_order, selector, badge, title, body, action_trigger, action_text)
