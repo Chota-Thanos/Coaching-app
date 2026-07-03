@@ -49,39 +49,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// ─── Sample quiz questions (no backend needed) ───────────────────────────────
-const SAMPLE_QUIZ: { q: string; options: string[]; correct: number }[] = [
-  {
-    q: "Which Article of the Indian Constitution abolishes untouchability?",
-    options: ["Article 14", "Article 17", "Article 21", "Article 25"],
-    correct: 1,
-  },
-  {
-    q: "The Preamble of the Indian Constitution was amended by which Constitutional Amendment?",
-    options: ["42nd", "44th", "52nd", "86th"],
-    correct: 0,
-  },
-  {
-    q: "Which of the following is NOT a Fundamental Duty under Article 51A?",
-    options: [
-      "To protect the environment",
-      "To pay taxes honestly",
-      "To uphold the Constitution",
-      "To develop scientific temper",
-    ],
-    correct: 1,
-  },
-  {
-    q: "The term 'Secular' was inserted into the Preamble by the ____ Amendment.",
-    options: ["40th", "42nd", "44th", "46th"],
-    correct: 1,
-  },
-  {
-    q: "Which Directive Principle relates to the organization of village panchayats?",
-    options: ["Article 40", "Article 44", "Article 45", "Article 48"],
-    correct: 0,
-  },
-];
+
 
 export default function HomePage() {
   const { token, user, isInitialized } = useAuth();
@@ -95,11 +63,7 @@ export default function HomePage() {
   const [userCollections, setUserCollections] = useState<any[]>([]);
   const [mentors, setMentors] = useState<any[]>([]);
 
-  // Quiz widget states
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [quizStep, setQuizStep] = useState(0); // 0 = intro, 1-5 = questions, 6 = result
-  const [selected, setSelected] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<(number | null)[]>([null, null, null, null, null]);
+  // Quiz state removed — 'Start a Free Test' now goes directly to the real custom test builder
   const [showSignupModal, setShowSignupModal] = useState(false);
 
   // Loading
@@ -231,23 +195,6 @@ export default function HomePage() {
     return `${c.x},${c.y}`;
   }).join(" ");
 
-  // Quiz helpers
-  const quizScore = answers.filter((a, i) => a === SAMPLE_QUIZ[i]?.correct).length;
-  const handleQuizAnswer = (idx: number) => {
-    setSelected(idx);
-  };
-  const handleNextQuestion = () => {
-    const newAnswers = [...answers];
-    newAnswers[quizStep - 1] = selected;
-    setAnswers(newAnswers);
-    setSelected(null);
-    if (quizStep < SAMPLE_QUIZ.length) {
-      setQuizStep(quizStep + 1);
-    } else {
-      setQuizStep(6); // result
-    }
-  };
-
   // ─── Loading state ─────────────────────────────────────────────────────────
   if (!isInitialized) {
     return (
@@ -267,130 +214,7 @@ export default function HomePage() {
     return (
       <main className="min-h-screen bg-white">
 
-        {/* ── QUIZ MODAL ───────────────────────────────────────────────────── */}
-        {showQuiz && (
-          <div className="quiz-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowQuiz(false); }}>
-            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden">
-              {/* Close button */}
-              <button
-                onClick={() => setShowQuiz(false)}
-                className="absolute right-4 top-4 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-                aria-label="Close quiz"
-              >
-                <X className="h-4 w-4" />
-              </button>
-
-              {/* Intro screen */}
-              {quizStep === 0 && (
-                <div className="p-8 text-center space-y-6">
-                  <div className="mx-auto h-16 w-16 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                    <Target className="h-8 w-8 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-900">Free GS Diagnostic Quiz</h2>
-                    <p className="mt-2 text-sm text-slate-500">5 questions · 2 minutes · No sign-up required</p>
-                    <p className="mt-3 text-xs text-slate-400">Test your UPSC General Studies knowledge right now. After completing, you'll see your score and can create a free account to track your progress.</p>
-                  </div>
-                  <button
-                    onClick={() => setQuizStep(1)}
-                    className="w-full h-12 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors pulse-ring"
-                  >
-                    Start Free Quiz →
-                  </button>
-                </div>
-              )}
-
-              {/* Question screens */}
-              {quizStep >= 1 && quizStep <= 5 && (
-                <div className="p-6 space-y-5">
-                  {/* Progress */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold text-slate-400">
-                      <span>Question {quizStep} of 5</span>
-                      <span>GS Polity</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-600 rounded-full transition-all duration-300" style={{ width: `${(quizStep / 5) * 100}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Question */}
-                  <h3 className="text-base font-bold text-slate-800 leading-snug">
-                    {SAMPLE_QUIZ[quizStep - 1]?.q}
-                  </h3>
-
-                  {/* Options */}
-                  <div className="space-y-2.5">
-                    {SAMPLE_QUIZ[quizStep - 1]?.options.map((opt, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQuizAnswer(idx)}
-                        className={`w-full text-left rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all duration-150 ${
-                          selected === idx
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-800"
-                            : "border-slate-150 bg-slate-50 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/50"
-                        }`}
-                      >
-                        <span className="font-black mr-2 text-slate-400">{String.fromCharCode(65 + idx)}.</span>
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleNextQuestion}
-                    disabled={selected === null}
-                    className="w-full h-11 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {quizStep < 5 ? "Next Question →" : "See My Score →"}
-                  </button>
-                </div>
-              )}
-
-              {/* Results screen */}
-              {quizStep === 6 && (
-                <div className="p-8 text-center space-y-5">
-                  <div className={`mx-auto h-20 w-20 rounded-full flex items-center justify-center text-2xl font-black ${
-                    quizScore >= 4 ? "bg-emerald-50 text-emerald-700" : quizScore >= 3 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"
-                  }`}>
-                    {quizScore}/5
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-900">
-                      {quizScore >= 4 ? "Excellent!" : quizScore >= 3 ? "Good Attempt!" : "Room to Improve!"}
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-500">
-                      You got <strong>{quizScore} out of 5</strong> correct.
-                      {quizScore < 5 && " Sign up to see the correct answers and start tracking your weak topics."}
-                    </p>
-                  </div>
-                  <div className="bg-indigo-50 rounded-2xl p-4 space-y-2">
-                    <p className="text-xs font-bold text-indigo-700">🎯 Create a free account to:</p>
-                    <ul className="text-xs text-indigo-600 space-y-1 text-left">
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 shrink-0" />See detailed answer explanations</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 shrink-0" />Track your subject-wise accuracy</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 shrink-0" />Claim 3 free custom tests per month</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 shrink-0" />Access unlimited current affairs (free forever)</li>
-                    </ul>
-                  </div>
-                  <Link
-                    href="/register"
-                    className="block w-full h-12 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                    onClick={() => setShowQuiz(false)}
-                  >
-                    Create Free Account → Get Full Results
-                  </Link>
-                  <button
-                    onClick={() => setShowQuiz(false)}
-                    className="text-xs text-slate-400 hover:text-slate-600 underline"
-                  >
-                    Maybe later
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Quiz modal removed — CTA buttons now link directly to real features */}
 
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 1 · HERO
@@ -458,14 +282,14 @@ export default function HomePage() {
 
                 {/* Primary CTAs */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <button
-                    onClick={() => { setQuizStep(0); setAnswers([null,null,null,null,null]); setSelected(null); setShowQuiz(true); }}
+                  <Link
+                    href="/assessment/custom-test/create"
                     className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-white px-7 font-bold text-indigo-900 shadow-lg hover:bg-indigo-50 transition-all duration-200 gap-2 text-sm"
                     id="hero-start-free-test"
                   >
                     <Target className="h-4 w-4" />
                     Start a Free Test
-                  </button>
+                  </Link>
                   <Link
                     href="/register"
                     className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 px-7 font-bold text-white transition-all duration-200 gap-2 text-sm"
@@ -580,7 +404,7 @@ export default function HomePage() {
                   Build custom GS &amp; CSAT tests, track topic-wise accuracy, and identify your weak areas with intelligent analytics.
                 </p>
               </div>
-              <Link href="/register" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
+              <Link href="/assessment/custom-test/create?start_tour=true" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
                 Start Practising Free <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -619,9 +443,12 @@ export default function HomePage() {
                   <p className="text-[10px] text-slate-400">Free tier: up to 10 questions · Upgrade for unlimited</p>
                 </div>
 
-                <button className="w-full h-10 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors">
-                  Generate Test →
-                </button>
+                <Link
+                  href="/assessment/custom-test/create"
+                  className="w-full h-10 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  Build My Custom Test →
+                </Link>
 
                 {/* Tag for revision row */}
                 <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">

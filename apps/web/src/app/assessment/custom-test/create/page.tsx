@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth, authenticatedGet, authenticatedPost } from "../../../../components/auth/auth-context";
 import { useSubscription } from "../../../../lib/use-subscription";
-import { GuidedTourEngine } from "../../../../components/app/guided-tour-engine";
+import { GuidedTourController } from "../../../../components/app/guided-tour-engine";
 
 const CUSTOM_TEST_TOUR_STEPS = [
   {
@@ -125,13 +125,8 @@ function CreateCustomTestInner() {
     : "gk";
   const [contentType, setContentType] = useState<"gk" | "aptitude" | "mains">(defaultContentType as any);
   const [title, setTitle] = useState("");
-  const [showTour, setShowTour] = useState(false);
-
-  useEffect(() => {
-    if (isInitialized && searchParams.get("start_tour") === "true") {
-      setShowTour(true);
-    }
-  }, [isInitialized, searchParams]);
+  // Tour is now handled by GuidedTourController — it checks completion automatically
+  const startTourOnLoad = isInitialized && searchParams.get("start_tour") === "true";
 
   // Categories & Question Counts States
   const [allNodes, setAllNodes] = useState<TaxonomyNode[]>([]);
@@ -830,10 +825,11 @@ function CreateCustomTestInner() {
 
         </form>
       </div>
-      {showTour && (
-        <GuidedTourEngine
-          steps={CUSTOM_TEST_TOUR_STEPS}
-          onClose={() => setShowTour(false)}
+      {startTourOnLoad && (
+        <GuidedTourController
+          tourKey="custom_test_tour"
+          token={token}
+          fallbackSteps={CUSTOM_TEST_TOUR_STEPS}
         />
       )}
     </div>

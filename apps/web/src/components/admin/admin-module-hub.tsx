@@ -1,12 +1,15 @@
 "use client";
 
-import { Newspaper, Target, ShieldCheck, ArrowRight, Brain, BookOpen, BookOpenCheck, ClipboardCheck, FileText, Plus } from "lucide-react";
+import { useState } from "react";
+import { Newspaper, Target, ShieldCheck, ArrowRight, Brain, BookOpen, BookOpenCheck, ClipboardCheck, FileText, Plus, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
+import { AdminOnboardingToursManager } from "../current-affairs/admin/admin-onboarding-tours";
 
 export function AdminModuleHub() {
   const { token, user, isInitialized } = useAuth();
+  const [showToursManager, setShowToursManager] = useState(false);
 
   if (!isInitialized) {
     return (
@@ -201,6 +204,45 @@ export function AdminModuleHub() {
               Enter Study Plans Management
               <ArrowRight className="h-4 w-4" />
             </Link>
+          </div>
+        </div>
+
+        {/* Onboarding Tours Module */}
+        <div className={`bg-white border rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group md:col-span-3 ${showToursManager ? "border-indigo-300" : "border-line"}`}>
+          <div className="h-2 bg-gradient-to-r from-indigo-500 to-violet-500" />
+          <div className="p-8">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-5 flex-1">
+                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 shrink-0">
+                  <Sparkles className="h-7 w-7" />
+                </span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-black text-ink">Onboarding Tours</h2>
+                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full uppercase tracking-wider">New</span>
+                  </div>
+                  <p className="text-sm text-ink/60 leading-relaxed mt-1">
+                    Create and manage step-by-step guided tours for product features. Control which elements are spotlighted, required actions, and when the tour re-appears by bumping its version.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowToursManager(!showToursManager)}
+                className={`shrink-0 ml-4 flex items-center gap-2 h-10 rounded-2xl font-bold text-sm transition-all px-5 shadow-md ${
+                  showToursManager
+                    ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                }`}
+              >
+                {showToursManager ? <><X className="h-4 w-4" /> Close</> : <>Manage Tours <ArrowRight className="h-4 w-4" /></>}
+              </button>
+            </div>
+
+            {showToursManager && token && (
+              <div className="mt-8 border-t border-indigo-100 pt-6">
+                <AdminOnboardingToursManager token={token} />
+              </div>
+            )}
           </div>
         </div>
       </div>
