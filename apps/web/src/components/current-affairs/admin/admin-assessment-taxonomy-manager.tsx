@@ -693,12 +693,12 @@ export function AdminAssessmentTaxonomyManager() {
       let currentDbNodes: TaxonomyNode[] = [];
       if (activeTab === "mains") {
         currentDbNodes = await authenticatedGet<TaxonomyNode[]>(
-          `/api/v1/assessment/mains/taxonomy-nodes?exam_id=${selectedExamId}&limit=2000`,
+          `/api/v1/assessment/mains/taxonomy-nodes?exam_id=${selectedExamId}&limit=1000`,
           token
         );
       } else {
         currentDbNodes = await authenticatedGet<TaxonomyNode[]>(
-          `/api/v1/assessment/taxonomy-nodes?exam_id=${selectedExamId}&content_type=${activeTab}&limit=2000`,
+          `/api/v1/assessment/taxonomy-nodes?exam_id=${selectedExamId}&content_type=${activeTab}&limit=1000`,
           token
         );
       }
