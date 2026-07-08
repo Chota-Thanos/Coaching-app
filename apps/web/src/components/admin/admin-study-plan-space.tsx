@@ -71,7 +71,7 @@ function levelMatchesTestType(level: ExamLevel, type: StudyPlanItemType): boolea
   const isMainsLevel = name.includes("mains");
   if (testType === "csat_test") return isCsatLevel;
   if (testType === "mains_test") return isMainsLevel;
-  return name.includes("prelims") && !isCsatLevel;
+  return !isCsatLevel && !isMainsLevel;
 }
 
 function groupByWeek(items: StudyPlanItem[]) {
@@ -295,7 +295,9 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
         item_type: stepForm.item_type,
         title: stepForm.title,
         description: stepForm.description || undefined,
-        estimated_minutes: stepForm.estimated_minutes ? Number(stepForm.estimated_minutes) : undefined,
+        estimated_minutes: testType
+          ? Number(stepForm.duration_minutes)
+          : (stepForm.estimated_minutes ? Number(stepForm.estimated_minutes) : undefined),
         resource_url: stepForm.resource_url || undefined,
         lecture_url: stepForm.lecture_url || undefined,
         test_template_id: testTemplateId,
@@ -582,9 +584,11 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                       <FieldReference label="Step details" reference="Instructions, reading scope, revision targets, lecture note, or test guidance.">
                         <textarea className="min-h-20 rounded-md border border-line p-3 text-sm" placeholder="Write what the student must do in this step." value={stepForm.description} onChange={(event) => setStepForm({ ...stepForm, description: event.target.value })} />
                       </FieldReference>
-                      <FieldReference label="Estimated time" reference="Approximate effort in minutes shown against this step.">
-                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Estimated minutes" value={stepForm.estimated_minutes} onChange={(event) => setStepForm({ ...stepForm, estimated_minutes: event.target.value })} />
-                      </FieldReference>
+                      {!isTestStep(stepForm.item_type) && (
+                        <FieldReference label="Estimated time" reference="Approximate effort in minutes shown against this step.">
+                          <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Estimated minutes" value={stepForm.estimated_minutes} onChange={(event) => setStepForm({ ...stepForm, estimated_minutes: event.target.value })} />
+                        </FieldReference>
+                      )}
 
                       {!isTestStep(stepForm.item_type) && (
                         <FieldReference
@@ -598,12 +602,14 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                       {isTestStep(stepForm.item_type) && (
                         <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
                           <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
-                          <FieldReference label="Exam level" reference="Maps this test to prelims, CSAT, mains, or another configured exam level.">
-                            <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.exam_level_id} onChange={(event) => setStepForm({ ...stepForm, exam_level_id: event.target.value })}>
-                              <option value="">Exam level</option>
-                              {matchingExamLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}
-                            </select>
-                          </FieldReference>
+                          {matchingExamLevels.length > 1 && (
+                            <FieldReference label="Exam level" reference="Maps this test to prelims, CSAT, mains, or another configured exam level.">
+                              <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.exam_level_id} onChange={(event) => setStepForm({ ...stepForm, exam_level_id: event.target.value })}>
+                                <option value="">Exam level</option>
+                                {matchingExamLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}
+                              </select>
+                            </FieldReference>
+                          )}
                           {matchingExamLevels.length === 0 && (
                             <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
                               No matching exam level is configured for {formatStudyPlanItemType(stepForm.item_type)}.
