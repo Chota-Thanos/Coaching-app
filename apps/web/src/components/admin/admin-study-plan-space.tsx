@@ -29,6 +29,7 @@ import {
   type StudyPlanItem,
   type StudyPlanItemType,
   type StudyPlanQuestion,
+  type StudyPlanStatus,
   type StudyPlanSummary,
   type StudyPlanTestTemplate,
   type StudyPlanTestType
@@ -145,6 +146,21 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
 
   const [editingWeek, setEditingWeek] = useState<{ weekNo: number; title: string; description: string } | null>(null);
   const [isEditingPlanDetails, setIsEditingPlanDetails] = useState(false);
+  const [isEditingItem, setIsEditingItem] = useState(false);
+  const [stepEditForm, setStepEditForm] = useState({
+    week_no: "",
+    day_no: "",
+    item_type: "reading" as StudyPlanItemType,
+    title: "",
+    description: "",
+    estimated_minutes: "",
+    resource_url: "",
+    lecture_url: "",
+    is_preview: false,
+    exam_level_id: "",
+    duration_minutes: "120",
+    test_status: "draft" as StudyPlanStatus
+  });
 
   const saveWeekOverview = async () => {
     if (!token || !selectedPlan || !editingWeek) return;
@@ -187,6 +203,10 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
   const matchingExamLevels = useMemo(
     () => levels.filter((level) => levelMatchesTestType(level, stepForm.item_type)),
     [levels, stepForm.item_type]
+  );
+  const matchingEditExamLevels = useMemo(
+    () => levels.filter((level) => levelMatchesTestType(level, stepEditForm.item_type)),
+    [levels, stepEditForm.item_type]
   );
 
   const loadPlans = async () => {
@@ -356,6 +376,77 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
       setMessage(testTemplateId ? "Test step created. Use the full test content manager link on the selected step." : "Step added to the plan.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not add step.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveStepEdits = async () => {
+    if (!token || !selectedPlan || !selectedItem) return;
+    setBusy("step-edit");
+    setMessage(null);
+    try {
+      const isTest = isTestStep(stepEditForm.item_type);
+      let testTemplateId = selectedItem.test_template_id;
+
+      if (isTest && !selectedItem.test_template_id) {
+        const testType = testTypeFromItem(stepEditForm.item_type);
+        if (testType) {
+          const levelId = stepEditForm.exam_level_id || (matchingEditExamLevels[0] ? String(matchingEditExamLevels[0].id) : "");
+          if (!levelId) throw new Error("Select an exam level for this test step.");
+          const selectedLevel = levels.find((level) => String(level.id) === levelId);
+          if (selectedLevel && !levelMatchesTestType(selectedLevel, stepEditForm.item_type)) {
+            throw new Error(`Select a matching exam level for ${formatStudyPlanItemType(stepEditForm.item_type)}.`);
+          }
+          const test = await authenticatedPost<StudyPlanTestTemplate>("/api/v1/study-plan-tests", token, {
+            title: stepEditForm.title,
+            slug: `${slugify(selectedPlan.slug || selectedPlan.title)}-${slugify(stepEditForm.title)}-${Date.now()}`,
+            description: stepEditForm.description || undefined,
+            exam_id: selectedPlan.exam_id,
+            exam_level_id: Number(levelId),
+            test_type: testType,
+            duration_minutes: Number(stepEditForm.duration_minutes),
+            status: stepEditForm.test_status
+          });
+          testTemplateId = test.id;
+        }
+      }
+
+      const payload: any = {
+        week_no: Number(stepEditForm.week_no),
+        day_no: Number(stepEditForm.day_no),
+        item_type: stepEditForm.item_type,
+        title: stepEditForm.title,
+        description: stepEditForm.description || null,
+        estimated_minutes: isTest
+          ? Number(stepEditForm.duration_minutes)
+          : (stepEditForm.estimated_minutes ? Number(stepEditForm.estimated_minutes) : null),
+        resource_url: stepEditForm.resource_url || null,
+        lecture_url: stepEditForm.item_type === "live_lecture" ? stepEditForm.lecture_url || null : null,
+        test_template_id: testTemplateId,
+        is_preview: stepEditForm.is_preview
+      };
+
+      await authenticatedPatch(`/api/v1/study-plan-items/${selectedItem.id}`, token, payload);
+
+      if (isTest && selectedItem.test_template_id) {
+        const levelId = stepEditForm.exam_level_id || (matchingEditExamLevels[0] ? String(matchingEditExamLevels[0].id) : "");
+        if (levelId) {
+          await authenticatedPatch(`/api/v1/study-plan-tests/${selectedItem.test_template_id}`, token, {
+            title: stepEditForm.title,
+            description: stepEditForm.description || undefined,
+            duration_minutes: Number(stepEditForm.duration_minutes),
+            status: stepEditForm.test_status,
+            exam_level_id: Number(levelId)
+          });
+        }
+      }
+
+      setIsEditingItem(false);
+      await loadSelectedPlan(String(selectedPlan.id));
+      setMessage("Step details updated successfully.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update step details.");
     } finally {
       setBusy(null);
     }
@@ -605,7 +696,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                           <button
                             className={`flex w-full items-start gap-3 p-3 text-left transition-colors ${selectedItemId === item.id ? "bg-emerald-50" : "bg-white hover:bg-paper"}`}
                             key={item.id}
-                            onClick={() => setSelectedItemId(item.id)}
+                            onClick={() => { setSelectedItemId(item.id); setIsEditingItem(false); }}
                             type="button"
                           >
                             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white text-civic ring-1 ring-line">
@@ -708,6 +799,101 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     </button>
                   </div>
                 </div>
+              ) : isEditingItem ? (
+                <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-ink/50">Edit step details</p>
+                  <div className="mt-3 grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldReference label="Week no." reference="Relative week inside the plan.">
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Week" value={stepEditForm.week_no} onChange={(event) => setStepEditForm({ ...stepEditForm, week_no: event.target.value })} />
+                      </FieldReference>
+                      <FieldReference label="Day no." reference="Relative day inside the selected week.">
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Day" value={stepEditForm.day_no} onChange={(event) => setStepEditForm({ ...stepEditForm, day_no: event.target.value })} />
+                      </FieldReference>
+                    </div>
+                    <FieldReference label="Step type" reference="Decides whether this item is reading, revision, live lecture, or a test.">
+                      <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepEditForm.item_type} onChange={(event) => setStepEditForm({ ...stepEditForm, item_type: event.target.value as StudyPlanItemType })}>
+                        {STEP_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                      </select>
+                    </FieldReference>
+                    <FieldReference label="Step title" reference="Visible title for this step.">
+                      <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Example: Read Fundamental Rights" value={stepEditForm.title} onChange={(event) => setStepEditForm({ ...stepEditForm, title: event.target.value })} />
+                    </FieldReference>
+                    <FieldReference label="Step details" reference="Instructions or details.">
+                      <textarea className="min-h-20 rounded-md border border-line p-3 text-sm" placeholder="Write what the student must do in this step." value={stepEditForm.description} onChange={(event) => setStepEditForm({ ...stepEditForm, description: event.target.value })} />
+                    </FieldReference>
+                    {!isTestStep(stepEditForm.item_type) && (
+                      <FieldReference label="Estimated time" reference="Approximate effort in minutes.">
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Estimated minutes" value={stepEditForm.estimated_minutes} onChange={(event) => setStepEditForm({ ...stepEditForm, estimated_minutes: event.target.value })} />
+                      </FieldReference>
+                    )}
+
+                    {!isTestStep(stepEditForm.item_type) && (
+                      <FieldReference
+                        label={stepEditForm.item_type === "live_lecture" ? "Lecture link" : "Resource link"}
+                        reference={stepEditForm.item_type === "live_lecture" ? "Meeting/recording link." : "Reading material or resource link."}
+                      >
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder={stepEditForm.item_type === "live_lecture" ? "Lecture link" : "Resource link"} value={stepEditForm.item_type === "live_lecture" ? stepEditForm.lecture_url : stepEditForm.resource_url} onChange={(event) => stepEditForm.item_type === "live_lecture" ? setStepEditForm({ ...stepEditForm, lecture_url: event.target.value }) : setStepEditForm({ ...stepEditForm, resource_url: event.target.value })} />
+                      </FieldReference>
+                    )}
+
+                    {isTestStep(stepEditForm.item_type) && (
+                      <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
+                        {matchingEditExamLevels.length > 1 && (
+                          <FieldReference label="Exam level" reference="Maps this test to an exam level.">
+                            <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepEditForm.exam_level_id} onChange={(event) => setStepEditForm({ ...stepEditForm, exam_level_id: event.target.value })}>
+                              <option value="">Exam level</option>
+                              {matchingEditExamLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}
+                            </select>
+                          </FieldReference>
+                        )}
+                        {matchingEditExamLevels.length === 0 && (
+                          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+                            No matching exam level is configured for {formatStudyPlanItemType(stepEditForm.item_type)}.
+                          </p>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <FieldReference label="Test duration" reference="Attempt time limit in minutes.">
+                            <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Duration minutes" value={stepEditForm.duration_minutes} onChange={(event) => setStepEditForm({ ...stepEditForm, duration_minutes: event.target.value })} />
+                          </FieldReference>
+                          <FieldReference label="Test status" reference="Draft keeps it unpublished.">
+                            <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepEditForm.test_status} onChange={(event) => setStepEditForm({ ...stepEditForm, test_status: event.target.value as StudyPlanStatus })}>
+                              <option value="draft">Draft</option>
+                              <option value="published">Published</option>
+                            </select>
+                          </FieldReference>
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="grid gap-1.5 text-xs font-bold text-ink/70">
+                      <span className="flex items-center gap-2 text-sm font-bold text-ink/70">
+                        <input checked={stepEditForm.is_preview} onChange={(event) => setStepEditForm({ ...stepEditForm, is_preview: event.target.checked })} type="checkbox" />
+                        Free preview item
+                      </span>
+                      <span className="text-[11px] font-semibold leading-4 text-ink/45">Allows students to open this step before purchase.</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white text-sm font-black text-ink hover:bg-paper"
+                        onClick={() => setIsEditingItem(false)}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 text-sm font-black text-white disabled:opacity-60"
+                        disabled={busy === "step-edit" || !stepEditForm.title}
+                        onClick={saveStepEdits}
+                        type="button"
+                      >
+                        {busy === "step-edit" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                        Save Edits
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="rounded-lg border border-line bg-white p-5 shadow-sm space-y-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -718,6 +904,30 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedItem.is_preview && <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">Free preview</span>}
+                      <button
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 disabled:opacity-50"
+                        onClick={() => {
+                          setStepEditForm({
+                            week_no: String(selectedItem.week_no),
+                            day_no: String(selectedItem.day_no),
+                            item_type: selectedItem.item_type,
+                            title: selectedItem.title,
+                            description: selectedItem.description || "",
+                            estimated_minutes: selectedItem.estimated_minutes ? String(selectedItem.estimated_minutes) : "",
+                            resource_url: selectedItem.resource_url || "",
+                            lecture_url: selectedItem.lecture_url || "",
+                            is_preview: selectedItem.is_preview,
+                            exam_level_id: selectedItem.test_template?.exam_level_id ? String(selectedItem.test_template.exam_level_id) : "",
+                            duration_minutes: selectedItem.test_template?.duration_minutes ? String(selectedItem.test_template.duration_minutes) : "90",
+                            test_status: selectedItem.test_template?.status ?? "draft"
+                          });
+                          setIsEditingItem(true);
+                        }}
+                        type="button"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        Edit step
+                      </button>
                       <button
                         className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2 text-xs font-black text-rose-700 disabled:opacity-50"
                         disabled={busy === `delete-step-${selectedItem.id}`}
