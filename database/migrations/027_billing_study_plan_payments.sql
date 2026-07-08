@@ -2,19 +2,19 @@
 -- Date: 2026-06-21
 
 -- -----------------------------------------------------------------------
--- Add payment tracking columns to study_plans.enrollments (if table exists)
+-- Add payment tracking columns to study_plan.enrollments (if table exists)
 -- -----------------------------------------------------------------------
 do $$
 begin
   if exists (
     select 1 from information_schema.tables
-    where table_schema = 'study_plans' and table_name = 'enrollments'
+    where table_schema = 'study_plan' and table_name = 'enrollments'
   ) then
     if not exists (
       select 1 from information_schema.columns
-      where table_schema = 'study_plans' and table_name = 'enrollments' and column_name = 'payment_status'
+      where table_schema = 'study_plan' and table_name = 'enrollments' and column_name = 'payment_status'
     ) then
-      alter table study_plans.enrollments
+      alter table study_plan.enrollments
         add column payment_status text not null default 'free'
           check (payment_status in ('free', 'pending', 'paid', 'refunded', 'failed')),
         add column payment_amount integer not null default 0,
