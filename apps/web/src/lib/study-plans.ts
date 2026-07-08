@@ -90,6 +90,15 @@ export type StudyPlanDetail = StudyPlanSummary & {
     total_tests: number;
   } | null;
   items: StudyPlanItem[];
+  week_overviews?: {
+    week_no: number;
+    title: string;
+    description: string | null;
+  }[];
+  reviews_summary?: {
+    average_rating: number;
+    total_reviews: number;
+  };
 };
 
 export type StudyPlanQuestion = {

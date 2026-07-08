@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { parse, withValidation } from "../../common/http.js";
 import { requireAdminOrEditor, requireAuth } from "../auth/guards.js";
 import { draftMainsQuestionAI, parseQuizAI } from "../current-affairs/master/ai.service.js";
@@ -25,7 +26,11 @@ import {
   updateStudyPlan,
   updateStudyPlanQuestion,
   updateStudyPlanTest,
-  upsertStudyPlanResponse
+  upsertStudyPlanResponse,
+  upsertStudyPlanWeek,
+  getStudyPlanReviews,
+  upsertStudyPlanReview,
+  checkUserEnrollment
 } from "./service.js";
 import {
   attemptIdParamSchema,
@@ -448,6 +453,50 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
       const body = parse(saveStudyPlanQuestionsDraftSchema, request.body);
       const records = await addStudyPlanQuestions(body.test_template_id, body.questions);
       return reply.status(201).send({ success: true, count: records.length, questions: records });
+    });
+  });
+
+  server.put("/api/v1/study-plans/:id/weeks/:weekNo", async (request, reply) => {
+    await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const params = parse(
+        z.object({ id: z.coerce.number(), weekNo: z.coerce.number() }),
+        request.params
+      );
+      const body = parse(
+        z.object({ title: z.string().min(1), description: z.string().optional() }),
+        request.body
+      );
+      return upsertStudyPlanWeek(params.id, params.weekNo, body);
+    });
+  });
+
+  server.get("/api/v1/study-plans/:id/reviews", async (request, reply) => {
+    return withValidation(reply, async () => {
+      const params = parse(z.object({ id: z.coerce.number() }), request.params);
+      return getStudyPlanReviews(params.id);
+    });
+  });
+
+  server.post("/api/v1/study-plans/:id/reviews", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(z.object({ id: z.coerce.number() }), request.params);
+      const body = parse(
+        z.object({
+          rating: z.number().int().min(1).max(5),
+          comment: z.string().optional()
+        }),
+        request.body
+      );
+      const enrolled = await checkUserEnrollment(params.id, auth.id);
+      if (!enrolled) {
+        return reply.status(403).send({
+          error: "forbidden",
+          message: "You must be enrolled in this study plan to submit a review."
+        });
+      }
+      return upsertStudyPlanReview(params.id, auth.id, body);
     });
   });
 }

@@ -18,7 +18,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SignInPanel } from "../auth/sign-in-panel";
-import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../auth/auth-context";
+import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
 import {
   formatPlanPrice,
   formatStudyPlanItemType,
@@ -139,6 +139,31 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
     price_rupees: "0",
     status: "draft"
   });
+
+  const [editingWeek, setEditingWeek] = useState<{ weekNo: number; title: string; description: string } | null>(null);
+
+  const saveWeekOverview = async () => {
+    if (!token || !selectedPlan || !editingWeek) return;
+    setBusy("week-overview");
+    setMessage(null);
+    try {
+      await authenticatedPut(
+        `/api/v1/study-plans/${selectedPlan.id}/weeks/${editingWeek.weekNo}`,
+        token,
+        {
+          title: editingWeek.title,
+          description: editingWeek.description || undefined
+        }
+      );
+      setEditingWeek(null);
+      await loadSelectedPlan(String(selectedPlan.id));
+      setMessage("Week overview saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save week overview.");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const selectedItem = useMemo(
     () => selectedPlan?.items.find((item) => item.id === selectedItemId) ?? null,
@@ -271,8 +296,9 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
       let testTemplateId: number | null = null;
       const testType = testTypeFromItem(stepForm.item_type);
       if (testType) {
-        if (!stepForm.exam_level_id) throw new Error("Select an exam level for this test step.");
-        const selectedLevel = levels.find((level) => String(level.id) === stepForm.exam_level_id);
+        const levelId = stepForm.exam_level_id || (matchingExamLevels[0] ? String(matchingExamLevels[0].id) : "");
+        if (!levelId) throw new Error("Select an exam level for this test step.");
+        const selectedLevel = levels.find((level) => String(level.id) === levelId);
         if (selectedLevel && !levelMatchesTestType(selectedLevel, stepForm.item_type)) {
           throw new Error(`Select a matching exam level for ${formatStudyPlanItemType(stepForm.item_type)}.`);
         }
@@ -281,7 +307,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
           slug: `${slugify(selectedPlan.slug || selectedPlan.title)}-${slugify(stepForm.title)}-${Date.now()}`,
           description: stepForm.description || undefined,
           exam_id: selectedPlan.exam_id,
-          exam_level_id: Number(stepForm.exam_level_id),
+          exam_level_id: Number(levelId),
           test_type: testType,
           duration_minutes: Number(stepForm.duration_minutes),
           status: stepForm.test_status
@@ -535,9 +561,33 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     ) : (
                       weeks.map(([week, items]) => (
                         <div className="rounded-md border border-line" key={week}>
-                          <div className="border-b border-line bg-paper px-3 py-2">
-                            <p className="text-xs font-black uppercase tracking-wide text-ink/55">Week {week}</p>
-                          </div>
+                          {(() => {
+                            const overview = selectedPlan.week_overviews?.find((wo) => wo.week_no === week);
+                            return (
+                              <div className="border-b border-line bg-paper px-4 py-3 flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-black uppercase tracking-wide text-ink/50">Week {week}</p>
+                                  <button
+                                    className="text-xs font-bold text-civic hover:underline"
+                                    onClick={() => setEditingWeek({
+                                      weekNo: week,
+                                      title: overview?.title ?? "",
+                                      description: overview?.description ?? ""
+                                    })}
+                                    type="button"
+                                  >
+                                    {overview ? "Edit Overview" : "+ Add Week Overview"}
+                                  </button>
+                                </div>
+                                {overview && (
+                                  <div className="rounded border border-civic/10 bg-civic/5 p-2.5">
+                                    <h4 className="text-xs font-black text-ink">{overview.title}</h4>
+                                    {overview.description && <p className="mt-1 text-[11px] font-semibold leading-4 text-ink/65">{overview.description}</p>}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div className="divide-y divide-line">
                             {items.map((item) => (
                               <button
@@ -710,6 +760,51 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
           </div>
         </section>
       </main>
+      {editingWeek && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-line bg-white p-5 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-lg font-black text-ink">Edit Overview for Week {editingWeek.weekNo}</h3>
+            <p className="text-xs font-semibold text-ink/50 mt-1">Provide a high-level title and description for what will be covered this week.</p>
+            <div className="mt-4 space-y-4">
+              <label className="grid gap-1.5 text-xs font-bold text-ink/70">
+                <span>Week Overview Title *</span>
+                <input
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  placeholder="Example: Indian Polity Fundamentals"
+                  value={editingWeek.title}
+                  onChange={(e) => setEditingWeek({ ...editingWeek, title: e.target.value })}
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold text-ink/70">
+                <span>Description (Optional)</span>
+                <textarea
+                  className="min-h-24 rounded-md border border-line p-3 text-sm"
+                  placeholder="Example: This week we will explore the historical background, features, and preamble of the Constitution."
+                  value={editingWeek.description}
+                  onChange={(e) => setEditingWeek({ ...editingWeek, description: e.target.value })}
+                />
+              </label>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  className="h-9 rounded-md border border-line bg-white px-4 text-xs font-black text-ink/70 hover:bg-paper"
+                  onClick={() => setEditingWeek(null)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="h-9 rounded-md bg-civic px-4 text-xs font-black text-white hover:bg-civic/90 disabled:opacity-60"
+                  disabled={busy === "week-overview" || !editingWeek.title}
+                  onClick={saveWeekOverview}
+                  type="button"
+                >
+                  {busy === "week-overview" ? "Saving..." : "Save Overview"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

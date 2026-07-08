@@ -557,6 +557,34 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
     [id, hasAccess, enrollment?.id ?? null]
   );
 
+  const weekOverviews = await query<{
+    week_no: number;
+    title: string;
+    description: string | null;
+  }>(
+    `
+      select week_no, title, description
+      from study_plan.plan_weeks
+      where plan_id = $1
+      order by week_no asc
+    `,
+    [id]
+  );
+
+  const reviewsSummary = await one<{
+    average_rating: number;
+    total_reviews: number;
+  }>(
+    `
+      select
+        coalesce(avg(rating), 0.0)::float as average_rating,
+        coalesce(count(id), 0)::integer as total_reviews
+      from study_plan.reviews
+      where plan_id = $1
+    `,
+    [id]
+  );
+
   return {
     ...plan,
     has_access: hasAccess,
@@ -569,7 +597,9 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
           total_tests: Number(enrollment.total_tests ?? 0)
         }
       : null,
-    items
+    items,
+    week_overviews: weekOverviews,
+    reviews_summary: reviewsSummary ?? { average_rating: 0.0, total_reviews: 0 }
   };
 }
 
@@ -1892,4 +1922,77 @@ export async function getStudyPlanResultReview(resultId: number, user: AuthConte
     ...result,
     questions
   };
+}
+
+export async function upsertStudyPlanWeek(
+  planId: number,
+  weekNo: number,
+  input: { title: string; description?: string }
+): Promise<unknown> {
+  const res = await query(
+    `
+      insert into study_plan.plan_weeks (plan_id, week_no, title, description)
+      values ($1, $2, $3, $4)
+      on conflict (plan_id, week_no) do update set
+        title = excluded.title,
+        description = excluded.description,
+        updated_at = now()
+      returning *
+    `,
+    [planId, weekNo, input.title, input.description ?? null]
+  );
+  return res[0];
+}
+
+export async function getStudyPlanReviews(planId: number): Promise<unknown[]> {
+  return query(
+    `
+      select
+        r.id,
+        r.rating,
+        r.comment,
+        r.created_at,
+        r.updated_at,
+        row_to_json(u.*) as user
+      from study_plan.reviews r
+      join app.users u on u.id = r.user_id
+      where r.plan_id = $1
+      order by r.created_at desc
+    `,
+    [planId]
+  );
+}
+
+export async function upsertStudyPlanReview(
+  planId: number,
+  userId: number,
+  input: { rating: number; comment?: string }
+): Promise<unknown> {
+  const res = await query(
+    `
+      insert into study_plan.reviews (plan_id, user_id, rating, comment)
+      values ($1, $2, $3, $4)
+      on conflict (plan_id, user_id) do update set
+        rating = excluded.rating,
+        comment = excluded.comment,
+        updated_at = now()
+      returning *
+    `,
+    [planId, userId, input.rating, input.comment ?? null]
+  );
+  return res[0];
+}
+
+export async function checkUserEnrollment(planId: number, userId: number): Promise<boolean> {
+  const res = await one(
+    `
+      select 1 from study_plan.enrollments
+      where plan_id = $1
+        and user_id = $2
+        and status in ('active', 'completed')
+      limit 1
+    `,
+    [planId, userId]
+  );
+  return !!res;
 }

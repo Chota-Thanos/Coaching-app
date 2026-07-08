@@ -101,11 +101,48 @@ async function browserJson<T>(path: string, token?: string, init?: RequestInit):
 }
 
 export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProps) {
-  const { token, isInitialized } = useAuth();
+  const { token, user, isInitialized } = useAuth();
   const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [reviewBusy, setReviewBusy] = useState(false);
+
+  const loadReviews = async () => {
+    try {
+      const data = await browserJson<any[]>(`/api/v1/study-plans/${plan.id}/reviews`, token || undefined);
+      setReviews(data);
+      const myReview = data.find((r) => r.user?.id === user?.id);
+      if (myReview) {
+        setReviewForm({ rating: myReview.rating, comment: myReview.comment || "" });
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    void loadReviews();
+  }, [plan.id, user]);
+
+  const submitReview = async () => {
+    if (!token) return;
+    setReviewBusy(true);
+    try {
+      await authenticatedPost(`/api/v1/study-plans/${plan.id}/reviews`, token, {
+        rating: reviewForm.rating,
+        comment: reviewForm.comment || undefined
+      });
+      await loadReviews();
+      const fresh = await authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token);
+      setPlan(fresh);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Could not save review.");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
 
   const weeks = useMemo(() => groupByWeek(plan.items), [plan.items]);
   const completed = plan.progress_summary?.completed_items ?? 0;
@@ -252,10 +289,16 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
               <ArrowLeft aria-hidden="true" className="h-4 w-4" />
               Study plans
             </Link>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap items-center gap-2">
               <span className="rounded-md bg-indigo-500/20 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-indigo-300 border border-indigo-500/30">{plan.duration_weeks} weeks</span>
               <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-white/80">{plan.language}</span>
               {plan.level_label && <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-white/80">{plan.level_label}</span>}
+              {plan.reviews_summary && plan.reviews_summary.total_reviews > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 text-[11px] font-black tracking-wide text-amber-300 border border-amber-500/30">
+                  <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+                  {Number(plan.reviews_summary.average_rating).toFixed(1)} ({plan.reviews_summary.total_reviews} reviews)
+                </span>
+              )}
             </div>
             <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight md:text-5xl">{plan.title}</h1>
             {plan.subtitle && <p className="mt-4 max-w-3xl text-lg font-bold leading-7 text-white/80">{plan.subtitle}</p>}
@@ -325,13 +368,26 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             <div className="divide-y divide-line">
               {weeks.map(([week, items]) => {
                 const weekMinutes = items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
+                const overview = plan.week_overviews?.find((wo) => wo.week_no === week);
                 return (
                   <section key={week}>
-                    <div className="flex flex-col gap-1 bg-paper px-5 py-3 md:flex-row md:items-center md:justify-between">
-                      <h3 className="text-base font-black text-ink">Week {week}</h3>
-                      <p className="text-xs font-bold text-ink/55">
-                        {items.length} items{weekMinutes ? ` - ${Math.round(weekMinutes / 60)} hours` : ""}
-                      </p>
+                    <div className="flex flex-col gap-2 bg-slate-50 border-b border-line px-5 py-4">
+                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-wider text-indigo-600">Week {week}</h3>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
+                        </p>
+                      </div>
+                      {overview && (
+                        <div className="mt-1">
+                          <h4 className="text-base font-black text-slate-900 leading-tight">{overview.title}</h4>
+                          {overview.description && (
+                            <p className="mt-1.5 text-xs font-bold leading-5 text-slate-500 max-w-4xl">
+                              {overview.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="divide-y divide-line">
                       {items.map((item) => (
@@ -356,6 +412,75 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             <div className="mt-3 space-y-2 text-sm font-semibold leading-6 text-ink/70">
               <p>Follow the plan in week/day order and mark non-test tasks complete after studying.</p>
               <p>Attempt linked tests from inside the plan to keep progress and results in sync.</p>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-line bg-white p-5 shadow-card">
+            <h2 className="text-2xl font-black text-ink">Student Reviews</h2>
+            
+            {plan.has_access && token && (
+              <div className="mt-4 rounded-xl border border-indigo-50 bg-indigo-50/30 p-4">
+                <h3 className="text-sm font-black text-ink">
+                  {reviews.some((r) => r.user?.id === user?.id) ? "Update your review" : "Leave a review"}
+                </h3>
+                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Share your experience with other aspirants.</p>
+                <div className="mt-3 flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                      className="transition transform hover:scale-110"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${reviewForm.rating >= star ? "fill-amber-400 text-amber-400" : "text-slate-300"}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  className="mt-3 w-full min-h-20 rounded-lg border border-slate-200 bg-white p-3 text-xs font-semibold leading-5 text-ink focus:border-indigo-500 focus:outline-none"
+                  placeholder="Write your review about the study guide, tests quality, or mentor support..."
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                />
+                <button
+                  type="button"
+                  disabled={reviewBusy}
+                  onClick={submitReview}
+                  className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 px-4 text-xs font-black text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {reviewBusy ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
+            )}
+
+            <div className="mt-5 space-y-4 divide-y divide-line">
+              {reviews.length === 0 ? (
+                <p className="py-2 text-sm font-bold text-ink/50">No reviews yet. Be the first to share your thoughts!</p>
+              ) : (
+                reviews.map((rev) => (
+                  <div key={rev.id} className="pt-4 first:pt-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-ink">{rev.user?.username || rev.user?.email || "Student"}</p>
+                        <div className="mt-1 flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`h-3 w-3 ${rev.rating >= s ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-ink/40">
+                        {new Date(rev.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                    {rev.comment && <p className="mt-2 text-xs font-semibold leading-5 text-ink/75">{rev.comment}</p>}
+                  </div>
+                ))
+              )}
             </div>
           </section>
         </div>
