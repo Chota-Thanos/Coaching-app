@@ -6,6 +6,8 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  Edit3,
+  Eye,
   FileQuestion,
   Link2,
   Loader2,
@@ -19,6 +21,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
+import { RichTextMarkdownEditor } from "../current-affairs/rich-text-editor";
 import {
   formatPlanPrice,
   formatStudyPlanItemType,
@@ -141,6 +144,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
   });
 
   const [editingWeek, setEditingWeek] = useState<{ weekNo: number; title: string; description: string } | null>(null);
+  const [isEditingPlanDetails, setIsEditingPlanDetails] = useState(false);
 
   const saveWeekOverview = async () => {
     if (!token || !selectedPlan || !editingWeek) return;
@@ -169,7 +173,16 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
     () => selectedPlan?.items.find((item) => item.id === selectedItemId) ?? null,
     [selectedItemId, selectedPlan]
   );
-  const weeks = useMemo(() => groupByWeek(selectedPlan?.items ?? []), [selectedPlan]);
+  const weeks = useMemo(() => {
+    if (!selectedPlan) return [];
+    const grouped = groupByWeek(selectedPlan.items);
+    const result: [number, StudyPlanItem[]][] = [];
+    for (let w = 1; w <= selectedPlan.duration_weeks; w++) {
+      const itemsForWeek = grouped.find(([wk]) => wk === w)?.[1] ?? [];
+      result.push([w, itemsForWeek]);
+    }
+    return result;
+  }, [selectedPlan]);
   const selectedExamId = selectedPlan?.exam_id ? String(selectedPlan.exam_id) : "";
   const matchingExamLevels = useMemo(
     () => levels.filter((level) => levelMatchesTestType(level, stepForm.item_type)),
@@ -447,103 +460,104 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
         </button>
       </aside>
 
-      <main className="flex-1 space-y-6 p-6 lg:p-8">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Plan Detail</span>
-          <h2 className="mt-1 text-3xl font-black text-ink">{selectedPlan?.title ?? "Study Plan Detail"}</h2>
-          <p className="mt-1 text-sm text-ink/65">Edit the basic details, add timeline steps, and open test content in a full-page manager.</p>
-          {message && <p className="mt-3 rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-civic">{message}</p>}
+      <main className="flex-1 space-y-6 p-6 lg:p-8 overflow-y-auto">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Plan Detail</span>
+            <h2 className="mt-1 text-3xl font-black text-ink">{selectedPlan?.title ?? "Study Plan Detail"}</h2>
+            <p className="mt-1 text-sm text-ink/65">Edit basic details, configure timeline weeks/steps, and manage test content.</p>
+          </div>
+          {!initialPlanId && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-ink/60">Selected Plan:</span>
+              <select
+                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+                value={selectedPlanId}
+                onChange={(event) => {
+                  setSelectedPlanId(event.target.value);
+                  setSelectedItemId(null);
+                  setSelectedTest(null);
+                }}
+              >
+                <option value="">Create or select a plan</option>
+                {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}</option>)}
+              </select>
+            </div>
+          )}
         </div>
 
-        <section className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-          <div className="space-y-5">
-            <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-md bg-emerald-50 text-emerald-700">
-                  <BookOpenCheck className="h-4 w-4" />
-                </span>
-                <h3 className="text-lg font-black text-ink">Plan details</h3>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {!initialPlanId && (
-                  <FieldReference label="Selected plan" reference="Choose the parent plan before adding timeline steps, tests, lectures, or questions.">
-                    <select
-                      className="h-11 rounded-md border border-line px-3 text-sm"
-                      value={selectedPlanId}
-                      onChange={(event) => {
-                        setSelectedPlanId(event.target.value);
-                        setSelectedItemId(null);
-                        setSelectedTest(null);
-                      }}
-                    >
-                      <option value="">Create or select a plan</option>
-                      {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.title}</option>)}
-                    </select>
-                  </FieldReference>
-                )}
+        {message && <p className="rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-civic">{message}</p>}
 
-                {selectedPlan ? (
-                  <div className="rounded-md border border-line bg-paper p-3">
-                    <p className="text-xs font-black uppercase tracking-wide text-ink/50">Edit basic details</p>
-                    <div className="mt-3 grid gap-3">
-                      <FieldReference label="Plan title" reference="Shown to students on the listing, purchase, and plan detail screens.">
-                        <input className="h-10 rounded-md border border-line px-3 text-sm" value={planEditForm.title} onChange={(event) => setPlanEditForm({ ...planEditForm, title: event.target.value })} />
-                      </FieldReference>
-                      <FieldReference label="Subtitle" reference="Short plan positioning line below the title.">
-                        <input className="h-10 rounded-md border border-line px-3 text-sm" value={planEditForm.subtitle} onChange={(event) => setPlanEditForm({ ...planEditForm, subtitle: event.target.value })} />
-                      </FieldReference>
-                      <FieldReference label="Description" reference="Student-facing plan scope, outcome, and instructions.">
-                        <textarea className="min-h-20 rounded-md border border-line p-3 text-sm" value={planEditForm.description} onChange={(event) => setPlanEditForm({ ...planEditForm, description: event.target.value })} />
-                      </FieldReference>
-                      <FieldReference label="Subject scope" reference="Leave blank for a full-exam plan, or choose a subject-specific scope.">
-                        <select className="h-10 rounded-md border border-line px-3 text-sm" value={planEditForm.subject_node_id} onChange={(event) => setPlanEditForm({ ...planEditForm, subject_node_id: event.target.value })}>
-                          <option value="">Full exam / no subject</option>
-                          {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-                        </select>
-                      </FieldReference>
-                      <div className="grid grid-cols-2 gap-3">
-                        <FieldReference label="Duration" reference="Relative week count for this plan.">
-                          <input className="h-10 rounded-md border border-line px-3 text-sm" value={planEditForm.duration_weeks} onChange={(event) => setPlanEditForm({ ...planEditForm, duration_weeks: event.target.value })} />
-                        </FieldReference>
-                        <FieldReference label="Price" reference="One-time price in rupees.">
-                          <input className="h-10 rounded-md border border-line px-3 text-sm" value={planEditForm.price_rupees} onChange={(event) => setPlanEditForm({ ...planEditForm, price_rupees: event.target.value })} />
-                        </FieldReference>
-                      </div>
-                      <FieldReference label="Plan status" reference="Draft stays hidden; published can be visible to students.">
-                        <select className="h-10 rounded-md border border-line px-3 text-sm" value={planEditForm.status} onChange={(event) => setPlanEditForm({ ...planEditForm, status: event.target.value })}>
-                          <option value="draft">Draft</option>
-                          <option value="published">Published</option>
-                          <option value="archived">Archived</option>
-                        </select>
-                      </FieldReference>
-                      <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 text-sm font-black text-white disabled:opacity-60" disabled={busy === "plan-edit" || !planEditForm.title} onClick={savePlanBasics} type="button">
-                        {busy === "plan-edit" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                        Save basic details
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="rounded-md border border-dashed border-line bg-paper p-4 text-center text-sm font-bold text-ink/50">Open a plan from the management page.</p>
-                )}
+        {/* Top read-only Plan Overview banner */}
+        {selectedPlan && (
+          <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h3 className="text-2xl font-black text-slate-900">{selectedPlan.title}</h3>
+                {selectedPlan.subtitle && <p className="mt-1 text-sm font-bold text-slate-500">{selectedPlan.subtitle}</p>}
+                
+                <div className="mt-4 flex flex-wrap gap-2.5">
+                  <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-xs font-black text-indigo-700">{selectedPlan.duration_weeks} Weeks</span>
+                  <span className="rounded-md bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-black text-slate-600">{selectedPlan.language}</span>
+                  {selectedPlan.level_label && <span className="rounded-md bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-black text-slate-600">{selectedPlan.level_label}</span>}
+                  <span className="rounded-md bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-xs font-black text-emerald-700">{formatPlanPrice(selectedPlan.price_amount_minor, selectedPlan.currency)}</span>
+                  <span className={`rounded-md px-2 py-0.5 text-xs font-black capitalize border ${
+                    selectedPlan.status === "published" ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-amber-50 border-amber-100 text-amber-700"
+                  }`}>{selectedPlan.status}</span>
+                  {selectedPlan.subject?.name && (
+                    <span className="rounded-md bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-black text-slate-600">Subject: {selectedPlan.subject.name}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanEditForm({
+                      title: selectedPlan.title,
+                      subtitle: selectedPlan.subtitle || "",
+                      description: selectedPlan.description || "",
+                      subject_node_id: selectedPlan.subject_node_id ? String(selectedPlan.subject_node_id) : "",
+                      duration_weeks: String(selectedPlan.duration_weeks),
+                      price_rupees: String(Number(selectedPlan.price_amount_minor ?? 0) / 100),
+                      status: selectedPlan.status
+                    });
+                    setIsEditingPlanDetails(true);
+                  }}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:bg-slate-50"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  Edit Plan Details
+                </button>
+                <Link
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-civic bg-white px-3 text-xs font-black text-civic hover:bg-civic/5"
+                  href={`/study-plans/${selectedPlan.id}`}
+                  target="_blank"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Student Preview
+                </Link>
               </div>
             </div>
 
-            {selectedPlan && (
-              <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Selected plan</p>
-                <h3 className="mt-1 text-xl font-black text-ink">{selectedPlan.title}</h3>
-                <p className="mt-1 text-sm font-bold text-ink/55">
-                  {selectedPlan.duration_weeks} weeks - {formatPlanPrice(selectedPlan.price_amount_minor, selectedPlan.currency)} - {selectedPlan.status}
-                </p>
-                <Link className="mt-3 inline-flex h-9 items-center justify-center rounded-md border border-civic px-3 text-xs font-black text-civic" href={`/study-plans/${selectedPlan.id}`}>
-                  Student preview
-                </Link>
+            {selectedPlan.description && (
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-400">Plan Description</p>
+                <div
+                  className="mt-2 text-sm leading-relaxed text-slate-600 prose prose-slate max-w-none"
+                  dangerouslySetInnerHTML={{ __html: selectedPlan.description }}
+                />
               </div>
             )}
           </div>
+        )}
 
-          <div className="space-y-5">
-            <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
+        {/* Side-by-side Timeline and Step Editor */}
+        {selectedPlan ? (
+          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+            {/* Left Column: Timeline */}
+            <div className="rounded-lg border border-line bg-white p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-md bg-civic/10 text-civic">
                   <CalendarDays className="h-4 w-4" />
@@ -551,215 +565,325 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                 <h3 className="text-lg font-black text-ink">Timeline inside this plan</h3>
               </div>
 
-              {!selectedPlan ? (
-                <p className="mt-4 rounded-md border border-dashed border-line bg-paper p-6 text-center text-sm font-bold text-ink/50">Create or select a plan first.</p>
-              ) : (
-                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-                  <div className="space-y-3">
-                    {weeks.length === 0 ? (
-                      <p className="rounded-md border border-dashed border-line bg-paper p-6 text-center text-sm font-bold text-ink/50">No steps yet. Add the first week/day item.</p>
-                    ) : (
-                      weeks.map(([week, items]) => (
-                        <div className="rounded-md border border-line" key={week}>
-                          {(() => {
-                            const overview = selectedPlan.week_overviews?.find((wo) => wo.week_no === week);
-                            return (
-                              <div className="border-b border-line bg-paper px-4 py-3 flex flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-black uppercase tracking-wide text-ink/50">Week {week}</p>
-                                  <button
-                                    className="text-xs font-bold text-civic hover:underline"
-                                    onClick={() => setEditingWeek({
-                                      weekNo: week,
-                                      title: overview?.title ?? "",
-                                      description: overview?.description ?? ""
-                                    })}
-                                    type="button"
-                                  >
-                                    {overview ? "Edit Overview" : "+ Add Week Overview"}
-                                  </button>
-                                </div>
-                                {overview && (
-                                  <div className="rounded border border-civic/10 bg-civic/5 p-2.5">
-                                    <h4 className="text-xs font-black text-ink">{overview.title}</h4>
-                                    {overview.description && <p className="mt-1 text-[11px] font-semibold leading-4 text-ink/65">{overview.description}</p>}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          <div className="divide-y divide-line">
-                            {items.map((item) => (
-                              <button
-                                className={`flex w-full items-start gap-3 p-3 text-left transition-colors ${selectedItemId === item.id ? "bg-emerald-50" : "bg-white hover:bg-paper"}`}
-                                key={item.id}
-                                onClick={() => setSelectedItemId(item.id)}
-                                type="button"
-                              >
-                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white text-civic ring-1 ring-line">
-                                  {itemIcon(item.item_type)}
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="block text-xs font-black uppercase tracking-wide text-civic">Day {item.day_no} - {formatStudyPlanItemType(item.item_type)}</span>
-                                  <span className="mt-1 block truncate text-sm font-black text-ink">{item.title}</span>
-                                  {item.test_template && <span className="mt-1 block text-xs font-bold text-ink/50">{item.test_template.title}</span>}
-                                </span>
-                              </button>
-                            ))}
+              <div className="space-y-3">
+                {weeks.map(([week, items]) => (
+                  <div className="rounded-md border border-line overflow-hidden" key={week}>
+                    {(() => {
+                      const overview = selectedPlan.week_overviews?.find((wo) => wo.week_no === week);
+                      return (
+                        <div className="border-b border-line bg-paper px-4 py-3 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-black uppercase tracking-wide text-ink/50">Week {week}</p>
+                            <button
+                              className="text-xs font-bold text-civic hover:underline"
+                              onClick={() => setEditingWeek({
+                                weekNo: week,
+                                title: overview?.title ?? "",
+                                description: overview?.description ?? ""
+                              })}
+                              type="button"
+                            >
+                              {overview ? "Edit Overview" : "+ Add Week Overview"}
+                            </button>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="rounded-md border border-line bg-paper p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-ink/50">Add step to plan</p>
-                    <div className="mt-3 grid gap-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <FieldReference label="Week no." reference="Relative week inside the plan.">
-                          <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Week" value={stepForm.week_no} onChange={(event) => setStepForm({ ...stepForm, week_no: event.target.value })} />
-                        </FieldReference>
-                        <FieldReference label="Day no." reference="Relative day inside the selected week.">
-                          <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Day" value={stepForm.day_no} onChange={(event) => setStepForm({ ...stepForm, day_no: event.target.value })} />
-                        </FieldReference>
-                      </div>
-                      <FieldReference label="Step type" reference="Decides whether this item is reading, revision, live lecture, or a test with questions.">
-                        <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.item_type} onChange={(event) => setStepForm({ ...stepForm, item_type: event.target.value as StudyPlanItemType })}>
-                          {STEP_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-                        </select>
-                      </FieldReference>
-                      <FieldReference label="Step title" reference="Visible title for this particular day item in the student curriculum.">
-                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Example: Read Fundamental Rights" value={stepForm.title} onChange={(event) => setStepForm({ ...stepForm, title: event.target.value })} />
-                      </FieldReference>
-                      <FieldReference label="Step details" reference="Instructions, reading scope, revision targets, lecture note, or test guidance.">
-                        <textarea className="min-h-20 rounded-md border border-line p-3 text-sm" placeholder="Write what the student must do in this step." value={stepForm.description} onChange={(event) => setStepForm({ ...stepForm, description: event.target.value })} />
-                      </FieldReference>
-                      {!isTestStep(stepForm.item_type) && (
-                        <FieldReference label="Estimated time" reference="Approximate effort in minutes shown against this step.">
-                          <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Estimated minutes" value={stepForm.estimated_minutes} onChange={(event) => setStepForm({ ...stepForm, estimated_minutes: event.target.value })} />
-                        </FieldReference>
-                      )}
-
-                      {!isTestStep(stepForm.item_type) && (
-                        <FieldReference
-                          label={stepForm.item_type === "live_lecture" ? "Lecture link" : "Resource link"}
-                          reference={stepForm.item_type === "live_lecture" ? "Meeting, class, or recording link. Hidden until purchase unless preview is enabled." : "Reading material or external resource link. Hidden until purchase unless preview is enabled."}
-                        >
-                          <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder={stepForm.item_type === "live_lecture" ? "Lecture link" : "Resource link"} value={stepForm.item_type === "live_lecture" ? stepForm.lecture_url : stepForm.resource_url} onChange={(event) => stepForm.item_type === "live_lecture" ? setStepForm({ ...stepForm, lecture_url: event.target.value }) : setStepForm({ ...stepForm, resource_url: event.target.value })} />
-                        </FieldReference>
-                      )}
-
-                      {isTestStep(stepForm.item_type) && (
-                        <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
-                          <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
-                          {matchingExamLevels.length > 1 && (
-                            <FieldReference label="Exam level" reference="Maps this test to prelims, CSAT, mains, or another configured exam level.">
-                              <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.exam_level_id} onChange={(event) => setStepForm({ ...stepForm, exam_level_id: event.target.value })}>
-                                <option value="">Exam level</option>
-                                {matchingExamLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}
-                              </select>
-                            </FieldReference>
+                          {overview && (
+                            <div className="rounded border border-civic/10 bg-civic/5 p-2.5">
+                              <h4 className="text-xs font-black text-ink">{overview.title}</h4>
+                              {overview.description && <p className="mt-1 text-[11px] font-semibold leading-4 text-ink/65">{overview.description}</p>}
+                            </div>
                           )}
-                          {matchingExamLevels.length === 0 && (
-                            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-                              No matching exam level is configured for {formatStudyPlanItemType(stepForm.item_type)}.
-                            </p>
-                          )}
-                          <div className="grid grid-cols-2 gap-3">
-                            <FieldReference label="Test duration" reference="Attempt time limit in minutes.">
-                              <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Duration minutes" value={stepForm.duration_minutes} onChange={(event) => setStepForm({ ...stepForm, duration_minutes: event.target.value })} />
-                            </FieldReference>
-                            <FieldReference label="Test status" reference="Draft keeps the test unpublished while questions are being added.">
-                              <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.test_status} onChange={(event) => setStepForm({ ...stepForm, test_status: event.target.value })}>
-                                <option value="draft">Draft</option>
-                                <option value="published">Published</option>
-                              </select>
-                            </FieldReference>
-                          </div>
                         </div>
+                      );
+                    })()}
+                    <div className="divide-y divide-line">
+                      {items.length === 0 ? (
+                        <p className="p-4 text-center text-xs font-bold text-ink/40 bg-white italic">
+                          No steps added for this week yet. Use the form on the right to add steps.
+                        </p>
+                      ) : (
+                        items.map((item) => (
+                          <button
+                            className={`flex w-full items-start gap-3 p-3 text-left transition-colors ${selectedItemId === item.id ? "bg-emerald-50" : "bg-white hover:bg-paper"}`}
+                            key={item.id}
+                            onClick={() => setSelectedItemId(item.id)}
+                            type="button"
+                          >
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white text-civic ring-1 ring-line">
+                              {itemIcon(item.item_type)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-xs font-black uppercase tracking-wide text-civic">Day {item.day_no} - {formatStudyPlanItemType(item.item_type)}</span>
+                              <span className="mt-1 block truncate text-sm font-black text-ink">{item.title}</span>
+                              {item.test_template && <span className="mt-1 block text-xs font-bold text-ink/50">{item.test_template.title}</span>}
+                            </span>
+                          </button>
+                        ))
                       )}
-
-                      <label className="grid gap-1.5 text-xs font-bold text-ink/70">
-                        <span className="flex items-center gap-2 text-sm font-bold text-ink/70">
-                          <input checked={stepForm.is_preview} onChange={(event) => setStepForm({ ...stepForm, is_preview: event.target.checked })} type="checkbox" />
-                          Free preview item
-                        </span>
-                        <span className="text-[11px] font-semibold leading-4 text-ink/45">Allows students to open this step before purchase.</span>
-                      </label>
-                      <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 text-sm font-black text-white disabled:opacity-60" disabled={busy === "step" || !stepForm.title} onClick={addStep} type="button">
-                        {busy === "step" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                        Add step
-                      </button>
                     </div>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
 
-            {selectedItem && (
-              <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-civic">Selected step</p>
-                    <h3 className="mt-1 text-xl font-black text-ink">{selectedItem.title}</h3>
-                    <p className="mt-1 text-sm font-bold text-ink/55">Week {selectedItem.week_no}, Day {selectedItem.day_no} - {formatStudyPlanItemType(selectedItem.item_type)}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {selectedItem.is_preview && <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">Free preview</span>}
-                    <button
-                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2 text-xs font-black text-rose-700 disabled:opacity-50"
-                      disabled={busy === `delete-step-${selectedItem.id}`}
-                      onClick={() => deleteStep(selectedItem)}
-                      type="button"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete step
+            {/* Right Column: Add Step / Selected Step */}
+            <div className="space-y-5">
+              {!selectedItem ? (
+                <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-ink/50">Add step to plan</p>
+                  <div className="mt-3 grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldReference label="Week no." reference="Relative week inside the plan.">
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Week" value={stepForm.week_no} onChange={(event) => setStepForm({ ...stepForm, week_no: event.target.value })} />
+                      </FieldReference>
+                      <FieldReference label="Day no." reference="Relative day inside the selected week.">
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Day" value={stepForm.day_no} onChange={(event) => setStepForm({ ...stepForm, day_no: event.target.value })} />
+                      </FieldReference>
+                    </div>
+                    <FieldReference label="Step type" reference="Decides whether this item is reading, revision, live lecture, or a test.">
+                      <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.item_type} onChange={(event) => setStepForm({ ...stepForm, item_type: event.target.value as StudyPlanItemType })}>
+                        {STEP_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                      </select>
+                    </FieldReference>
+                    <FieldReference label="Step title" reference="Visible title for this step.">
+                      <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Example: Read Fundamental Rights" value={stepForm.title} onChange={(event) => setStepForm({ ...stepForm, title: event.target.value })} />
+                    </FieldReference>
+                    <FieldReference label="Step details" reference="Instructions or details.">
+                      <textarea className="min-h-20 rounded-md border border-line p-3 text-sm" placeholder="Write what the student must do in this step." value={stepForm.description} onChange={(event) => setStepForm({ ...stepForm, description: event.target.value })} />
+                    </FieldReference>
+                    {!isTestStep(stepForm.item_type) && (
+                      <FieldReference label="Estimated time" reference="Approximate effort in minutes.">
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Estimated minutes" value={stepForm.estimated_minutes} onChange={(event) => setStepForm({ ...stepForm, estimated_minutes: event.target.value })} />
+                      </FieldReference>
+                    )}
+
+                    {!isTestStep(stepForm.item_type) && (
+                      <FieldReference
+                        label={stepForm.item_type === "live_lecture" ? "Lecture link" : "Resource link"}
+                        reference={stepForm.item_type === "live_lecture" ? "Meeting/recording link." : "Reading material or resource link."}
+                      >
+                        <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder={stepForm.item_type === "live_lecture" ? "Lecture link" : "Resource link"} value={stepForm.item_type === "live_lecture" ? stepForm.lecture_url : stepForm.resource_url} onChange={(event) => stepForm.item_type === "live_lecture" ? setStepForm({ ...stepForm, lecture_url: event.target.value }) : setStepForm({ ...stepForm, resource_url: event.target.value })} />
+                      </FieldReference>
+                    )}
+
+                    {isTestStep(stepForm.item_type) && (
+                      <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
+                        {matchingExamLevels.length > 1 && (
+                          <FieldReference label="Exam level" reference="Maps this test to an exam level.">
+                            <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.exam_level_id} onChange={(event) => setStepForm({ ...stepForm, exam_level_id: event.target.value })}>
+                              <option value="">Exam level</option>
+                              {matchingExamLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}
+                            </select>
+                          </FieldReference>
+                        )}
+                        {matchingExamLevels.length === 0 && (
+                          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+                            No matching exam level is configured for {formatStudyPlanItemType(stepForm.item_type)}.
+                          </p>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <FieldReference label="Test duration" reference="Attempt time limit in minutes.">
+                            <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="Duration minutes" value={stepForm.duration_minutes} onChange={(event) => setStepForm({ ...stepForm, duration_minutes: event.target.value })} />
+                          </FieldReference>
+                          <FieldReference label="Test status" reference="Draft keeps it unpublished.">
+                            <select className="h-10 rounded-md border border-line px-3 text-sm" value={stepForm.test_status} onChange={(event) => setStepForm({ ...stepForm, test_status: event.target.value })}>
+                              <option value="draft">Draft</option>
+                              <option value="published">Published</option>
+                            </select>
+                          </FieldReference>
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="grid gap-1.5 text-xs font-bold text-ink/70">
+                      <span className="flex items-center gap-2 text-sm font-bold text-ink/70">
+                        <input checked={stepForm.is_preview} onChange={(event) => setStepForm({ ...stepForm, is_preview: event.target.checked })} type="checkbox" />
+                        Free preview item
+                      </span>
+                      <span className="text-[11px] font-semibold leading-4 text-ink/45">Allows students to open this step before purchase.</span>
+                    </label>
+                    <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 text-sm font-black text-white disabled:opacity-60" disabled={busy === "step" || !stepForm.title} onClick={addStep} type="button">
+                      {busy === "step" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Add step
                     </button>
                   </div>
                 </div>
-
-                {!isTestStep(selectedItem.item_type) && (
-                  <div className="mt-4 rounded-md border border-line bg-paper p-4">
-                    <p className="text-sm font-bold text-ink">Information step</p>
-                    {selectedItem.description && <p className="mt-2 text-sm leading-6 text-ink/65">{selectedItem.description}</p>}
-                    {(selectedItem.resource_url || selectedItem.lecture_url) && (
-                      <p className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-civic">
-                        <Link2 className="h-4 w-4" />
-                        {selectedItem.lecture_url || selectedItem.resource_url}
-                      </p>
-                    )}
+              ) : (
+                <div className="rounded-lg border border-line bg-white p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-civic">Selected step</p>
+                      <h3 className="mt-1 text-xl font-black text-ink">{selectedItem.title}</h3>
+                      <p className="mt-1 text-sm font-bold text-ink/55">Week {selectedItem.week_no}, Day {selectedItem.day_no} - {formatStudyPlanItemType(selectedItem.item_type)}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedItem.is_preview && <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">Free preview</span>}
+                      <button
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2 text-xs font-black text-rose-700 disabled:opacity-50"
+                        disabled={busy === `delete-step-${selectedItem.id}`}
+                        onClick={() => deleteStep(selectedItem)}
+                        type="button"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete step
+                      </button>
+                    </div>
                   </div>
-                )}
 
-                {isTestStep(selectedItem.item_type) && (
-                  <div className="mt-4 rounded-md border border-civic/20 bg-paper p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="text-sm font-black text-ink">Linked test content</p>
-                        <p className="mt-1 text-xs font-bold text-ink/50">{selectedTest?.title ?? "Loading test"} - {selectedTest?.questions?.length ?? 0} questions</p>
-                      </div>
-                      {selectedItem.test_template_id && (
-                        <Link
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-black text-white"
-                          href={`/admin/study-plans/tests/${selectedItem.test_template_id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <ClipboardList className="h-4 w-4" />
-                          Add and manage test content
-                        </Link>
+                  {!isTestStep(selectedItem.item_type) && (
+                    <div className="mt-4 rounded-md border border-line bg-paper p-4">
+                      <p className="text-sm font-bold text-ink">Information step</p>
+                      {selectedItem.description && <p className="mt-2 text-sm leading-6 text-ink/65">{selectedItem.description}</p>}
+                      {(selectedItem.resource_url || selectedItem.lecture_url) && (
+                        <p className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-civic">
+                          <Link2 className="h-4 w-4" />
+                          {selectedItem.lecture_url || selectedItem.resource_url}
+                        </p>
                       )}
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-ink/55">
-                      Question parsing, category tree mapping, edit/delete controls, and saved-question list are managed in the full-page test window.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+                  )}
+
+                  {isTestStep(selectedItem.item_type) && (
+                    <div className="mt-4 rounded-md border border-civic/20 bg-paper p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <p className="text-sm font-black text-ink">Linked test content</p>
+                          <p className="mt-1 text-xs font-bold text-ink/50">{selectedTest?.title ?? "Loading test"} - {selectedTest?.questions?.length ?? 0} questions</p>
+                        </div>
+                        {selectedItem.test_template_id && (
+                          <Link
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-black text-white"
+                            href={`/admin/study-plans/tests/${selectedItem.test_template_id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ClipboardList className="h-4 w-4" />
+                            Add and manage test content
+                          </Link>
+                        )}
+                      </div>
+                      <p className="mt-3 text-xs font-semibold leading-5 text-ink/55">
+                        Question parsing, category tree mapping, edit/delete controls, and saved-question list are managed in the full-page test window.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedItemId(null)}
+                    className="w-full inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 hover:border-slate-400 px-3 text-xs font-black text-slate-600 hover:text-slate-800"
+                  >
+                    + Add Another Step
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : (
+          <p className="rounded-md border border-dashed border-line bg-paper p-8 text-center text-sm font-bold text-ink/50">
+            Select a study plan from the dropdown above to manage it.
+          </p>
+        )}
       </main>
+
+      {/* Edit Plan Basics Modal (including TipTap RichTextMarkdownEditor) */}
+      {isEditingPlanDetails && selectedPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-xl border border-line bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <h3 className="text-xl font-black text-ink">Edit Plan Details</h3>
+            <p className="text-xs font-semibold text-ink/50 mt-1">Update title, subtitle, subject scope, duration, pricing, and status.</p>
+            <div className="mt-4 space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              <div className="grid gap-3 md:grid-cols-2">
+                <FieldReference label="Plan title *" reference="Shown to students on listing and purchase.">
+                  <input
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={planEditForm.title}
+                    onChange={(event) => setPlanEditForm({ ...planEditForm, title: event.target.value })}
+                  />
+                </FieldReference>
+                <FieldReference label="Subtitle" reference="Short positioning line below the title.">
+                  <input
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={planEditForm.subtitle}
+                    onChange={(event) => setPlanEditForm({ ...planEditForm, subtitle: event.target.value })}
+                  />
+                </FieldReference>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <FieldReference label="Subject scope" reference="Choose a subject-specific scope or leave blank.">
+                  <select
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={planEditForm.subject_node_id}
+                    onChange={(event) => setPlanEditForm({ ...planEditForm, subject_node_id: event.target.value })}
+                  >
+                    <option value="">Full exam / no subject</option>
+                    {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                  </select>
+                </FieldReference>
+                <FieldReference label="Duration (weeks)" reference="Relative week count for this plan.">
+                  <input
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={planEditForm.duration_weeks}
+                    onChange={(event) => setPlanEditForm({ ...planEditForm, duration_weeks: event.target.value })}
+                  />
+                </FieldReference>
+                <FieldReference label="Price (INR)" reference="One-time price in rupees.">
+                  <input
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={planEditForm.price_rupees}
+                    onChange={(event) => setPlanEditForm({ ...planEditForm, price_rupees: event.target.value })}
+                  />
+                </FieldReference>
+              </div>
+
+              <FieldReference label="Plan status" reference="Draft stays hidden; published can be visible to students.">
+                <select
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  value={planEditForm.status}
+                  onChange={(event) => setPlanEditForm({ ...planEditForm, status: event.target.value })}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </FieldReference>
+
+              <div className="w-full">
+                <RichTextMarkdownEditor
+                  label="Description"
+                  value={planEditForm.description}
+                  onChange={(val) => setPlanEditForm({ ...planEditForm, description: val })}
+                  placeholder="Enter detailed description of the study plan, topics covered, syllabus scope, etc..."
+                  minHeightClass="min-h-[200px]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  className="h-9 rounded-md border border-line bg-white px-4 text-xs font-black text-ink/70 hover:bg-paper"
+                  onClick={() => setIsEditingPlanDetails(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="h-9 rounded-md bg-emerald-700 px-4 text-xs font-black text-white hover:bg-emerald-800 disabled:opacity-60"
+                  disabled={busy === "plan-edit" || !planEditForm.title}
+                  onClick={async () => {
+                    await savePlanBasics();
+                    setIsEditingPlanDetails(false);
+                  }}
+                  type="button"
+                >
+                  {busy === "plan-edit" ? "Saving..." : "Save Details"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editingWeek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl border border-line bg-white p-5 shadow-xl animate-in fade-in zoom-in-95 duration-150">

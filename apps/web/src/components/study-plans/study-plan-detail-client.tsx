@@ -302,7 +302,12 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             </div>
             <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight md:text-5xl">{plan.title}</h1>
             {plan.subtitle && <p className="mt-4 max-w-3xl text-lg font-bold leading-7 text-white/80">{plan.subtitle}</p>}
-            {plan.description && <p className="mt-4 max-w-3xl text-base leading-7 text-white/70">{plan.description}</p>}
+            {plan.description && (
+              <div
+                className="mt-4 max-w-3xl text-base leading-7 text-white/75 prose prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: plan.description }}
+              />
+            )}
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-white/75">
               <span className="inline-flex items-center gap-1.5 text-indigo-400">
                 <Star className="h-4 w-4 fill-indigo-400 text-indigo-400" />
