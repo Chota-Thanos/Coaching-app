@@ -16,7 +16,8 @@ import {
   Sparkles,
   CheckCircle,
   HelpCircle,
-  ClipboardList
+  ClipboardList,
+  SlidersHorizontal
 } from "lucide-react";
 import { useAuth, authenticatedGet, authenticatedPost } from "../../../../components/auth/auth-context";
 import { useSubscription } from "../../../../lib/use-subscription";
@@ -137,6 +138,13 @@ function CreateCustomTestInner() {
   const [addedCategories, setAddedCategories] = useState<Array<{ node: TaxonomyNode; count: number }>>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
 
+  // Excluded Categories Custom View States
+  const [excludedNodeIds, setExcludedNodeIds] = useState<number[]>([]);
+  const [loadingExclusions, setLoadingExclusions] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempExcludedSet, setTempExcludedSet] = useState<Set<number>>(new Set());
+  const [savingExclusions, setSavingExclusions] = useState(false);
+
   // Status States
   const [loadingExams, setLoadingExams] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -146,6 +154,34 @@ function CreateCustomTestInner() {
 
   // Lock content type if provided as query param
   const isContentTypeLocked = !!contentParam;
+
+  // Fetch user excluded taxonomy nodes
+  useEffect(() => {
+    if (!token || !isInitialized) return;
+    const fetchExclusions = async () => {
+      setLoadingExclusions(true);
+      try {
+        const data = await authenticatedGet<{ objective: number[]; mains: number[] }>(
+          "/api/v1/assessment/taxonomy/excluded",
+          token
+        );
+        const currentTypeExclusions = contentType === "mains" ? data.mains : data.objective;
+        setExcludedNodeIds(currentTypeExclusions || []);
+      } catch (err: any) {
+        console.error("Failed to load exclusions:", err);
+      } finally {
+        setLoadingExclusions(false);
+      }
+    };
+    fetchExclusions();
+  }, [token, isInitialized, contentType]);
+
+  // Sync tempExcludedSet when modal opens
+  useEffect(() => {
+    if (isFilterModalOpen) {
+      setTempExcludedSet(new Set(excludedNodeIds));
+    }
+  }, [isFilterModalOpen, excludedNodeIds]);
 
   // 1. Fetch Exams
   useEffect(() => {
@@ -252,11 +288,192 @@ function CreateCustomTestInner() {
     void autoCreateGuestTest();
   }, [token, isInitialized, searchParams, router]);
 
-  // Filter nodes by current content type
+  // Filter nodes by current content type and user exclusions
   const filteredNodes = useMemo(() => {
-    if (contentType === "mains") return allNodes;
-    return allNodes.filter((node) => node.content_type === contentType);
+    let nodes = allNodes;
+    if (contentType !== "mains") {
+      nodes = allNodes.filter((node) => node.content_type === contentType);
+    }
+
+    if (excludedNodeIds.length > 0) {
+      const excludedSet = new Set<number>(excludedNodeIds);
+      // Recursively find all children of excluded nodes
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const n of allNodes) {
+          if (n.parent_id && excludedSet.has(n.parent_id) && !excludedSet.has(n.id)) {
+            excludedSet.add(n.id);
+            changed = true;
+          }
+        }
+      }
+      nodes = nodes.filter((node) => !excludedSet.has(node.id));
+    }
+    return nodes;
+  }, [allNodes, contentType, excludedNodeIds]);
+
+  // Build the complete full tree for the Customize View checklist modal (including excluded nodes)
+  interface FilterTreeNode {
+    id: number;
+    name: string;
+    node_type: string;
+    parent_id?: number | null;
+    children: FilterTreeNode[];
+  }
+
+  const fullTree = useMemo(() => {
+    const nodeMap: Record<number, FilterTreeNode> = {};
+    const roots: FilterTreeNode[] = [];
+
+    const activeNodes = contentType === "mains"
+      ? allNodes
+      : allNodes.filter(n => n.content_type === contentType);
+
+    activeNodes.forEach(node => {
+      nodeMap[node.id] = {
+        id: node.id,
+        name: node.name,
+        node_type: node.node_type,
+        parent_id: node.parent_id,
+        children: []
+      };
+    });
+
+    activeNodes.forEach(node => {
+      const treeNode = nodeMap[node.id];
+      if (!treeNode) return;
+      const parentNode = node.parent_id ? nodeMap[node.parent_id] : null;
+      if (parentNode) {
+        parentNode.children.push(treeNode);
+      } else {
+        roots.push(treeNode);
+      }
+    });
+
+    const sortNodes = (list: FilterTreeNode[]) => {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      list.forEach(item => sortNodes(item.children));
+    };
+    sortNodes(roots);
+
+    return roots;
   }, [allNodes, contentType]);
+
+  // Toggle checks recursively in the filter tree
+  const handleToggleNode = (nodeId: number, isChecked: boolean) => {
+    setTempExcludedSet(prev => {
+      const next = new Set(prev);
+      const getDescendants = (id: number): number[] => {
+        const list: number[] = [];
+        allNodes.forEach(n => {
+          if (n.parent_id === id) {
+            list.push(n.id, ...getDescendants(n.id));
+          }
+        });
+        return list;
+      };
+
+      const descendants = getDescendants(nodeId);
+
+      if (isChecked) {
+        next.delete(nodeId);
+        descendants.forEach(id => next.delete(id));
+      } else {
+        next.add(nodeId);
+        descendants.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  // Save exclusions to live server
+  const handleSaveExclusions = async () => {
+    if (!token) return;
+    setSavingExclusions(true);
+    try {
+      const excludedArray = Array.from(tempExcludedSet);
+      await authenticatedPost(
+        "/api/v1/assessment/taxonomy/excluded",
+        token,
+        {
+          taxonomy_type: contentType === "mains" ? "mains" : "objective",
+          excluded_node_ids: excludedArray
+        }
+      );
+      setExcludedNodeIds(excludedArray);
+      setIsFilterModalOpen(false);
+    } catch (err: any) {
+      console.error("Failed to save exclusions:", err);
+      alert("Failed to save custom view. Please try again.");
+    } finally {
+      setSavingExclusions(false);
+    }
+  };
+
+  // Reset exclusions to defaults (empty list)
+  const handleResetExclusions = async () => {
+    if (!token) return;
+    setSavingExclusions(true);
+    try {
+      await authenticatedPost(
+        "/api/v1/assessment/taxonomy/excluded",
+        token,
+        {
+          taxonomy_type: contentType === "mains" ? "mains" : "objective",
+          excluded_node_ids: []
+        }
+      );
+      setExcludedNodeIds([]);
+      setTempExcludedSet(new Set());
+      setIsFilterModalOpen(false);
+    } catch (err: any) {
+      console.error("Failed to reset view:", err);
+      alert("Failed to reset view. Please try again.");
+    } finally {
+      setSavingExclusions(false);
+    }
+  };
+
+  // Recursively render filter tree checklist items
+  const renderFilterTreeNode = (node: FilterTreeNode, depth: number = 0) => {
+    const isExcluded = tempExcludedSet.has(node.id);
+    const isChecked = !isExcluded;
+    const hasChildren = node.children.length > 0;
+
+    return (
+      <div key={node.id} className="space-y-1">
+        <div 
+          className="flex items-center gap-2 py-1.5 px-2 hover:bg-slate-50 rounded-lg transition"
+          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+        >
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => handleToggleNode(node.id, e.target.checked)}
+            className="h-4 w-4 rounded border-slate-355 text-indigo-650 focus:ring-indigo-500 transition cursor-pointer"
+          />
+          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wide ${
+            node.node_type === "subject" || node.node_type === "paper"
+              ? "bg-slate-100 text-slate-700"
+              : node.node_type === "source_bucket" || node.node_type === "subject_area"
+              ? "bg-amber-50 text-amber-700 border border-amber-100"
+              : "bg-indigo-50 text-indigo-700"
+          }`}>
+            {node.node_type.replace("_", " ")}
+          </span>
+          <span className={`text-xs font-bold ${isChecked ? "text-slate-800" : "text-slate-400 line-through"}`}>
+            {node.name}
+          </span>
+        </div>
+        {hasChildren && (
+          <div className="space-y-1">
+            {node.children.map(child => renderFilterTreeNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Group nodes into subjects and topics
   const subjects = useMemo(() => {
@@ -631,10 +848,20 @@ function CreateCustomTestInner() {
           {/* Right Panel - Expandable Syllabus Tree with Quantity Selectors */}
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-              <h2 className="text-sm font-black uppercase text-slate-850 tracking-wider flex items-center gap-2">
-                <Filter className="h-4 w-4 text-indigo-650" />
-                <span>Select Categories & Quantity</span>
-              </h2>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2 flex-wrap sm:flex-nowrap animate-fade-in">
+                <h2 className="text-sm font-black uppercase text-slate-850 tracking-wider flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-indigo-650" />
+                  <span>Select Categories & Quantity</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-indigo-655 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition shadow-sm border border-indigo-100"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <span>Customize Syllabus</span>
+                </button>
+              </div>
 
               {loadingCategories || loadingCounts ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -831,6 +1058,71 @@ function CreateCustomTestInner() {
           token={token}
           fallbackSteps={CUSTOM_TEST_TOUR_STEPS}
         />
+      )}
+
+      {/* Customize Syllabus View Modal */}
+      {isFilterModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-base font-black text-slate-850 uppercase tracking-wide flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-indigo-650" />
+                <span>Customize Syllabus View</span>
+              </h3>
+              <p className="text-xs font-semibold text-slate-500 mt-1">
+                Deselect categories, sources, or topics you want to hide from your test creation views. Hidden categories (and their child sub-levels) will stay hidden for your account until reset.
+              </p>
+            </div>
+
+            {/* Tree View */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1 max-h-[50vh]">
+              {loadingCategories ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-indigo-650" />
+                  <p className="text-xs font-bold text-slate-400">Loading taxonomy tree...</p>
+                </div>
+              ) : fullTree.length === 0 ? (
+                <p className="text-center text-xs font-bold text-slate-400 py-10">No categories loaded.</p>
+              ) : (
+                <div className="space-y-3">
+                  {fullTree.map(node => renderFilterTreeNode(node, 0))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3 flex-wrap">
+              <button
+                type="button"
+                disabled={savingExclusions}
+                onClick={handleResetExclusions}
+                className="px-4 py-2 text-xs font-extrabold text-slate-655 hover:text-slate-850 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+              >
+                Reset to Default
+              </button>
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  disabled={savingExclusions}
+                  onClick={() => setIsFilterModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 hover:border-slate-300 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={savingExclusions}
+                  onClick={handleSaveExclusions}
+                  className="px-5 py-2 text-xs font-black text-white bg-indigo-650 hover:bg-indigo-600 rounded-xl transition shadow-md shadow-indigo-650/10 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {savingExclusions && <Loader2 className="h-3 w-3 animate-spin" />}
+                  <span>Save Custom View</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -396,16 +396,18 @@ export async function getDashboardAnalytics(userId: number): Promise<unknown> {
         count(*)::integer as attempts,
         coalesce(avg(score) filter (where status = 'evaluated'), 0)::numeric(10,2) as avg_score,
         coalesce(max(score) filter (where status = 'evaluated'), 0)::numeric(10,2) as max_score,
+        coalesce(sum(score) filter (where status = 'evaluated'), 0)::numeric(10,2) as total_score,
+        coalesce(sum(max_score) filter (where status = 'evaluated'), 0)::numeric(10,2) as total_max_score,
         count(*) filter (where status = 'evaluated')::integer as evaluated_count,
         count(*) filter (where status = 'pending')::integer as pending_count
       from (
-        select score, case when evaluation_status = 'evaluated' then 'evaluated' else 'pending' end as status
+        select score, max_score, case when evaluation_status = 'evaluated' then 'evaluated' else 'pending' end as status
         from assessment.mains_answer_attempts
         where user_id = $1
 
         union all
 
-        select tr.score, case when tr.result_status = 'scored' then 'evaluated' else 'pending' end as status
+        select tr.score, tr.max_score, case when tr.result_status = 'scored' then 'evaluated' else 'pending' end as status
         from study_plan.test_attempts ta
         join study_plan.test_results tr on tr.attempt_id = ta.id
         join study_plan.test_templates tt on tt.id = ta.test_template_id

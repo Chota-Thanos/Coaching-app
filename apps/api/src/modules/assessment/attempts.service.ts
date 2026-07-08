@@ -682,7 +682,7 @@ export async function startCompiledAttempt(
     const hasMains = finalVersions.some(v => v.question_family === "mains_subjective");
     const testType = hasMains ? "mains_test" : input.test_type;
     const totalMarks = finalVersions.reduce((acc, v) => acc + v.marks, 0);
-    const title = `Compiled Test (${finalVersions.length} Qs)`;
+    const title = input.title || `Compiled Test (${finalVersions.length} Qs)`;
     const slug = `compiled-${userId}-${Date.now()}`;
 
     // 3. Create test template

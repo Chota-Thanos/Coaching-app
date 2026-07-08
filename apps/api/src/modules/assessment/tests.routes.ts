@@ -47,7 +47,7 @@ import {
 } from "./test-templates.service.js";
 import { saveQuestionsDraft } from "./questions.service.js";
 import { parseQuizAI, generateQuizzesAI, draftMainsQuestionAI } from "../current-affairs/master/ai.service.js";
-import { one } from "../../db.js";
+import { one, query, transaction } from "../../db.js";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -679,5 +679,60 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
 
       return reply.status(201).send({ success: true });
     });
+  });
+
+  // Get excluded taxonomy nodes for authenticated user
+  server.get("/api/v1/assessment/taxonomy/excluded", async (request, reply) => {
+    const user = await requireAuth(request);
+    const rows = await query<{ taxonomy_type: string; node_id: number }>(
+      "select taxonomy_type, node_id from assessment.student_excluded_taxonomy_nodes where user_id = $1",
+      [user.id]
+    );
+    const objective: number[] = [];
+    const mains: number[] = [];
+    for (const row of rows) {
+      if (row.taxonomy_type === "objective") {
+        objective.push(row.node_id);
+      } else if (row.taxonomy_type === "mains") {
+        mains.push(row.node_id);
+      }
+    }
+    return { objective, mains };
+  });
+
+  // Update excluded taxonomy nodes for authenticated user
+  server.post("/api/v1/assessment/taxonomy/excluded", async (request, reply) => {
+    const user = await requireAuth(request);
+    const bodySchema = z.object({
+      taxonomy_type: z.enum(["objective", "mains"]),
+      excluded_node_ids: z.array(z.number())
+    });
+    const body = parse(bodySchema, request.body);
+
+    await transaction(async (client) => {
+      // 1. Delete all existing exclusions for this user and type
+      await client.query(
+        "delete from assessment.student_excluded_taxonomy_nodes where user_id = $1 and taxonomy_type = $2",
+        [user.id, body.taxonomy_type]
+      );
+      // 2. Insert new ones
+      if (body.excluded_node_ids.length > 0) {
+        const values: string[] = [];
+        const params: unknown[] = [user.id, body.taxonomy_type];
+        
+        body.excluded_node_ids.forEach((nodeId, idx) => {
+          params.push(nodeId);
+          values.push(`($1, $2, $${idx + 3})`);
+        });
+
+        const sql = `
+          insert into assessment.student_excluded_taxonomy_nodes (user_id, taxonomy_type, node_id)
+          values ${values.join(", ")}
+        `;
+        await client.query(sql, params);
+      }
+    });
+
+    return { success: true };
   });
 }

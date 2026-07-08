@@ -133,9 +133,35 @@ export function TestWizardModal({ onClose }: { onClose: () => void }) {
         setLevels(levelsData || []);
 
         const nodesData = await authenticatedGet<any[]>(`/api/v1/assessment/taxonomy-nodes?exam_id=${activeExam.id}&limit=1000`, token || "");
-        setAllTaxonomyNodes(nodesData || []);
+        
+        let filteredNodes = nodesData || [];
+        try {
+          const exclusions = await authenticatedGet<{ objective: number[]; mains: number[] }>(
+            "/api/v1/assessment/taxonomy/excluded",
+            token || ""
+          );
+          const objectiveExclusions = exclusions.objective || [];
+          if (objectiveExclusions.length > 0) {
+            const excludedSet = new Set<number>(objectiveExclusions);
+            let changed = true;
+            while (changed) {
+              changed = false;
+              for (const n of nodesData) {
+                if (n.parent_id && excludedSet.has(n.parent_id) && !excludedSet.has(n.id)) {
+                  excludedSet.add(n.id);
+                  changed = true;
+                }
+              }
+            }
+            filteredNodes = nodesData.filter((node: any) => !excludedSet.has(node.id));
+          }
+        } catch (e) {
+          console.error("Failed to load exclusions in wizard:", e);
+        }
 
-        const subs = nodesData
+        setAllTaxonomyNodes(filteredNodes);
+
+        const subs = filteredNodes
           ?.filter((n: any) => n.node_type === "subject")
           .map((n: any) => ({
             id: n.id,

@@ -21,7 +21,8 @@ import {
   Sparkles,
   Trash2,
   X,
-  LockKeyhole
+  LockKeyhole,
+  SlidersHorizontal
 } from "lucide-react";
 import { authenticatedGet, authenticatedPost, authenticatedDelete, useAuth } from "../auth/auth-context";
 import { resolveMediaUrl } from "../../lib/api";
@@ -122,12 +123,9 @@ function buildTree(nodes: any[]): TreeNodeType[] {
     });
   });
 
-  nodes.forEach((n) => {
-    const current = nodeMap.get(Number(n.id));
-    if (!current) return;
-
-    if (n.parent_id) {
-      const parent = nodeMap.get(Number(n.parent_id));
+  Array.from(nodeMap.values()).forEach((current) => {
+    if (current.parent_id) {
+      const parent = nodeMap.get(current.parent_id);
       if (parent) {
         parent.children.push(current);
         return;
@@ -216,6 +214,13 @@ export function AssessmentHomePage({
   const [counts, setCounts] = useState<Record<number, number>>({});
   const [compiledItems, setCompiledItems] = useState<CompiledItem[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<TestFormat>("sectional_test");
+
+  // Excluded Categories Custom View States
+  const [excludedNodeIds, setExcludedNodeIds] = useState<number[]>([]);
+  const [loadingExclusions, setLoadingExclusions] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempExcludedSet, setTempExcludedSet] = useState<Set<number>>(new Set());
+  const [savingExclusions, setSavingExclusions] = useState(false);
 
   const [startingNodeId, setStartingNodeId] = useState<number | null>(null);
   const [promptNode, setPromptNode] = useState<TreeNodeType | null>(null);
@@ -311,9 +316,196 @@ export function AssessmentHomePage({
     };
   }, [examId, questionFamily, token]);
 
-  const gkTree = useMemo(() => buildTree(objNodes.filter((n) => n.content_type === "gk")), [objNodes]);
-  const aptitudeTree = useMemo(() => buildTree(objNodes.filter((n) => n.content_type === "aptitude")), [objNodes]);
-  const mainsTree = useMemo(() => buildTree(mainsNodes), [mainsNodes]);
+  // Fetch user excluded taxonomy nodes
+  useEffect(() => {
+    if (!token || !examId) return;
+    const fetchExclusions = async () => {
+      setLoadingExclusions(true);
+      try {
+        const data = await authenticatedGet<{ objective: number[]; mains: number[] }>(
+          "/api/v1/assessment/taxonomy/excluded",
+          token
+        );
+        const currentTypeExclusions = activeTab === "mains" ? data.mains : data.objective;
+        setExcludedNodeIds(currentTypeExclusions || []);
+      } catch (err: any) {
+        console.error("Failed to load exclusions:", err);
+      } finally {
+        setLoadingExclusions(false);
+      }
+    };
+    fetchExclusions();
+  }, [token, examId, activeTab]);
+
+  // Sync tempExcludedSet when modal opens
+  useEffect(() => {
+    if (isFilterModalOpen) {
+      setTempExcludedSet(new Set(excludedNodeIds));
+    }
+  }, [isFilterModalOpen, excludedNodeIds]);
+
+  // Filter nodes by user exclusions before building tree
+  const filteredObjNodes = useMemo(() => {
+    let nodes = objNodes;
+    if (excludedNodeIds.length > 0) {
+      const excludedSet = new Set<number>(excludedNodeIds);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const n of objNodes) {
+          if (n.parent_id && excludedSet.has(Number(n.parent_id)) && !excludedSet.has(Number(n.id))) {
+            excludedSet.add(Number(n.id));
+            changed = true;
+          }
+        }
+      }
+      nodes = objNodes.filter((node) => !excludedSet.has(Number(node.id)));
+    }
+    return nodes;
+  }, [objNodes, excludedNodeIds]);
+
+  const filteredMainsNodes = useMemo(() => {
+    let nodes = mainsNodes;
+    if (excludedNodeIds.length > 0) {
+      const excludedSet = new Set<number>(excludedNodeIds);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const n of mainsNodes) {
+          if (n.parent_id && excludedSet.has(Number(n.parent_id)) && !excludedSet.has(Number(n.id))) {
+            excludedSet.add(Number(n.id));
+            changed = true;
+          }
+        }
+      }
+      nodes = mainsNodes.filter((node) => !excludedSet.has(Number(node.id)));
+    }
+    return nodes;
+  }, [mainsNodes, excludedNodeIds]);
+
+  const gkTree = useMemo(() => buildTree(filteredObjNodes.filter((n) => n.content_type === "gk")), [filteredObjNodes]);
+  const aptitudeTree = useMemo(() => buildTree(filteredObjNodes.filter((n) => n.content_type === "aptitude")), [filteredObjNodes]);
+  const mainsTree = useMemo(() => buildTree(filteredMainsNodes), [filteredMainsNodes]);
+
+  // ── CUSTOM SYLLABUS CUSTOMIZATION MODAL HANDLERS ──
+  interface FilterTreeNode {
+    id: number;
+    name: string;
+    node_type: string;
+    parent_id?: number | null;
+    children: FilterTreeNode[];
+  }
+
+  const fullTree = useMemo(() => {
+    const nodeMap: Record<number, FilterTreeNode> = {};
+    const roots: FilterTreeNode[] = [];
+    const activeNodes = activeTab === "mains"
+      ? mainsNodes
+      : objNodes.filter(n => n.content_type === activeTab);
+
+    activeNodes.forEach(node => {
+      nodeMap[node.id] = {
+        id: node.id,
+        name: node.name,
+        node_type: node.node_type,
+        parent_id: node.parent_id,
+        children: []
+      };
+    });
+
+    activeNodes.forEach(node => {
+      const treeNode = nodeMap[node.id];
+      if (!treeNode) return;
+      const parentNode = node.parent_id ? nodeMap[node.parent_id] : null;
+      if (parentNode) {
+        parentNode.children.push(treeNode);
+      } else {
+        roots.push(treeNode);
+      }
+    });
+
+    const sortNodes = (list: FilterTreeNode[]) => {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      list.forEach(item => sortNodes(item.children));
+    };
+    sortNodes(roots);
+    return roots;
+  }, [objNodes, mainsNodes, activeTab]);
+
+  const handleToggleNode = (nodeId: number, isChecked: boolean) => {
+    setTempExcludedSet(prev => {
+      const next = new Set(prev);
+      const activeNodes = activeTab === "mains"
+        ? mainsNodes
+        : objNodes.filter(n => n.content_type === activeTab);
+
+      const getDescendants = (id: number): number[] => {
+        const list: number[] = [];
+        activeNodes.forEach(n => {
+          if (n.parent_id === id) {
+            list.push(n.id, ...getDescendants(n.id));
+          }
+        });
+        return list;
+      };
+
+      const descendants = getDescendants(nodeId);
+      if (isChecked) {
+        next.delete(nodeId);
+        descendants.forEach(id => next.delete(id));
+      } else {
+        next.add(nodeId);
+        descendants.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSaveExclusions = async () => {
+    if (!token) return;
+    setSavingExclusions(true);
+    try {
+      const excludedArray = Array.from(tempExcludedSet);
+      await authenticatedPost(
+        "/api/v1/assessment/taxonomy/excluded",
+        token,
+        {
+          taxonomy_type: activeTab === "mains" ? "mains" : "objective",
+          excluded_node_ids: excludedArray
+        }
+      );
+      setExcludedNodeIds(excludedArray);
+      setIsFilterModalOpen(false);
+    } catch (err: any) {
+      console.error("Failed to save exclusions:", err);
+      alert("Failed to save custom view. Please try again.");
+    } finally {
+      setSavingExclusions(false);
+    }
+  };
+
+  const handleResetExclusions = async () => {
+    if (!token) return;
+    setSavingExclusions(true);
+    try {
+      await authenticatedPost(
+        "/api/v1/assessment/taxonomy/excluded",
+        token,
+        {
+          taxonomy_type: activeTab === "mains" ? "mains" : "objective",
+          excluded_node_ids: []
+        }
+      );
+      setExcludedNodeIds([]);
+      setTempExcludedSet(new Set());
+      setIsFilterModalOpen(false);
+    } catch (err: any) {
+      console.error("Failed to reset view:", err);
+      alert("Failed to reset view. Please try again.");
+    } finally {
+      setSavingExclusions(false);
+    }
+  };
 
   const displayBookmarkedQuestions = useMemo(() => {
     let filtered = bookmarkedQuestions;
@@ -1140,24 +1332,44 @@ export function AssessmentHomePage({
               <p className="mt-1 text-xs text-slate-500">Try another section or search term.</p>
             </div>
           ) : (
-            <div className="mt-4 max-h-[680px] space-y-2 overflow-y-auto pr-1">
-              {filteredTree.map((node) => (
-                <TreeRow
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  expandedNodes={expandedNodes}
-                  toggleExpand={toggleExpand}
-                  getAvailableCount={getAvailableCount}
-                  getSelectedCount={getSelectedCount}
-                  setNodeCount={setNodeCount}
-                  loadingCounts={loadingCounts}
-                  startingNodeId={startingNodeId}
-                  onAddToTest={handleAddToTest}
-                  onStartTest={handleStartTest}
-                  activeTab={activeTab}
-                />
-              ))}
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/20 p-3.5 shadow-sm gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <SlidersHorizontal className="h-4 w-4 text-indigo-650 shrink-0" />
+                  <span className="text-xs font-bold text-slate-700 truncate">
+                    {excludedNodeIds.length > 0
+                      ? `${excludedNodeIds.length} categories hidden from syllabus view`
+                      : "Modify which sources and categories are visible in your view"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-indigo-705 hover:text-indigo-800 bg-white hover:bg-slate-50 rounded-xl transition shadow-sm border border-indigo-150 shrink-0"
+                >
+                  Customize View
+                </button>
+              </div>
+
+              <div className="max-h-[680px] space-y-2 overflow-y-auto pr-1">
+                {filteredTree.map((node) => (
+                  <TreeRow
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    expandedNodes={expandedNodes}
+                    toggleExpand={toggleExpand}
+                    getAvailableCount={getAvailableCount}
+                    getSelectedCount={getSelectedCount}
+                    setNodeCount={setNodeCount}
+                    loadingCounts={loadingCounts}
+                    startingNodeId={startingNodeId}
+                    onAddToTest={handleAddToTest}
+                    onStartTest={handleStartTest}
+                    activeTab={activeTab}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </section>
@@ -1278,6 +1490,106 @@ export function AssessmentHomePage({
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {isFilterModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl flex flex-col max-h-[90vh]">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200 shrink-0">
+            <div>
+              <h3 className="text-base font-black text-slate-900">Customize Syllabus View</h3>
+              <p className="text-xs text-slate-500 mt-1">Uncheck categories/sources to hide them and their children from your syllabus tree views.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFilterModalOpen(false)}
+              className="text-slate-400 hover:text-slate-650"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-4">
+            {fullTree.length === 0 ? (
+              <div className="text-center py-10 text-xs text-slate-500 font-bold">
+                No categories available to customize.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {fullTree.map(node => {
+                  const renderFilterTreeNode = (node: FilterTreeNode, depth: number = 0) => {
+                    const isExcluded = tempExcludedSet.has(node.id);
+                    const isChecked = !isExcluded;
+                    const hasChildren = node.children.length > 0;
+
+                    return (
+                      <div key={node.id} className="space-y-1">
+                        <div 
+                          className="flex items-center gap-2 py-1.5 px-2 hover:bg-slate-50 rounded-lg transition"
+                          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => handleToggleNode(node.id, e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-350 text-indigo-650 focus:ring-indigo-500 transition cursor-pointer"
+                          />
+                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wide ${
+                            node.node_type === "subject" || node.node_type === "paper"
+                              ? "bg-slate-100 text-slate-700"
+                              : node.node_type === "source_bucket" || node.node_type === "subject_area"
+                              ? "bg-amber-50 text-amber-700 border border-amber-100"
+                              : "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                          }`}>
+                            {node.node_type.replaceAll("_", " ")}
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 truncate">{node.name}</span>
+                        </div>
+                        {hasChildren && (
+                          <div className="space-y-1">
+                            {node.children.map(child => renderFilterTreeNode(child, depth + 1))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  };
+
+                  return renderFilterTreeNode(node);
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-200 pt-4 shrink-0 gap-3">
+            <button
+              type="button"
+              disabled={savingExclusions}
+              onClick={handleResetExclusions}
+              className="px-4 h-10 text-xs font-bold rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition"
+            >
+              Reset to Default
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsFilterModalOpen(false)}
+                className="px-4 h-10 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingExclusions}
+                onClick={handleSaveExclusions}
+                className="inline-flex items-center justify-center gap-1.5 px-4 h-10 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition disabled:opacity-60"
+              >
+                {savingExclusions && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       </div>

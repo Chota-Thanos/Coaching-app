@@ -1386,7 +1386,7 @@ export default function HomePage() {
                       const acc = Number(topic.avg_accuracy ?? 0);
                       const pct = acc <= 1 ? Math.round(acc * 100) : Math.round(acc);
                       return (
-                        <div key={topic.taxonomy_name} className="rounded-xl border border-rose-100 bg-rose-50 p-3 space-y-2">
+                        <div key={`${topic.taxonomy_name}-${i}`} className="rounded-xl border border-rose-100 bg-rose-50 p-3 space-y-2">
                           <div className="flex items-center gap-1.5">
                             <span className="h-5 w-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[9px] font-black shrink-0">{i + 1}</span>
                             <p className="text-xs font-bold text-rose-900 leading-snug line-clamp-1">{topic.taxonomy_name}</p>

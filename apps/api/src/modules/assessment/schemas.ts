@@ -263,7 +263,8 @@ export const startCompiledAttemptSchema = z.object({
   exam_level_id: idSchema.optional(),
   test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "diagnostic_test"]),
   categories: z.array(compiledCategorySchema).min(1),
-  include_attempted: z.boolean().optional().default(false)
+  include_attempted: z.boolean().optional().default(false),
+  title: z.string().trim().min(1).optional()
 });
 
 export const createTestTemplateSchema = z.object({
