@@ -70,6 +70,14 @@ All projects are physically stored within the same parent folder on your local m
 *   **Next.js configuration**: Rebuilt the frontend application to bake in `https://waytoias.com` as the API target.
 *   **CORS policy**: Updated the backend configuration to allow incoming API requests originating from `https://waytoias.com` and `https://www.waytoias.com`.
 
+### Production Deployment Workflow (SSH)
+*   **Method**: Execute deployment commands non-interactively using SSH `conn.exec(...)` (via password or SSH keys) rather than `conn.shell` (interactive shell). Shell interactions can hang or buffer, causing the process to exit before PM2 restarts.
+*   **Command Sequence**:
+    ```bash
+    cd /var/www/coaching && git pull origin main && npm run db:migrate && npm run build && pm2 restart all
+    ```
+*   **Environment Configuration Warning**: The VPS `.env` file at `/var/www/coaching/.env` MUST define `NEXT_PUBLIC_API_BASE_URL="https://waytoias.com"`. If this variable is missing during build time, Next.js client-side assets will target localhost (`http://127.0.0.1:4000`), causing browser-side API requests to fail.
+
 ---
 
 ## 3. Remaining Tasks & Next Steps ⏳
