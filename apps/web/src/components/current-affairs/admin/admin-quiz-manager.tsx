@@ -908,7 +908,8 @@ export function AdminQuizManager({
   const bulkSourceBuckets = useMemo(() => {
     if (activeRepo === "mains") return [];
     if (!bulkForm.subject_node_id) return [];
-    return activeBulkNodes.filter(node => node.node_type === "source_bucket" && String(node.parent_id) === bulkForm.subject_node_id);
+    // Allow direct children of the selected subject node
+    return activeBulkNodes.filter(node => String(node.parent_id) === bulkForm.subject_node_id);
   }, [activeBulkNodes, bulkForm.subject_node_id, activeRepo]);
 
   const bulkTopics = useMemo(() => {
@@ -916,15 +917,23 @@ export function AdminQuizManager({
       if (!bulkForm.subject_node_id) return [];
       return activeBulkNodes.filter(node => node.node_type === "subject_area" && String(node.parent_id) === bulkForm.subject_node_id);
     } else {
-      if (!bulkForm.source_node_id) return [];
-      return activeBulkNodes.filter(node => node.node_type === "topic" && String(node.parent_id) === bulkForm.source_node_id);
+      if (bulkForm.source_node_id) {
+        return activeBulkNodes.filter(node => String(node.parent_id) === bulkForm.source_node_id);
+      }
+      if (bulkForm.subject_node_id) {
+        return activeBulkNodes.filter(node => node.node_type === "topic" && String(node.parent_id) === bulkForm.subject_node_id);
+      }
+      return [];
     }
   }, [activeBulkNodes, bulkForm.subject_node_id, bulkForm.source_node_id, activeRepo]);
 
   const bulkSubtopics = useMemo(() => {
     if (!bulkForm.topic_node_id) return [];
-    const nodeType = activeRepo === "mains" ? "theme" : "subtopic";
-    return activeBulkNodes.filter(node => node.node_type === nodeType && String(node.parent_id) === bulkForm.topic_node_id);
+    if (activeRepo === "mains") {
+      return activeBulkNodes.filter(node => node.node_type === "theme" && String(node.parent_id) === bulkForm.topic_node_id);
+    } else {
+      return activeBulkNodes.filter(node => String(node.parent_id) === bulkForm.topic_node_id);
+    }
   }, [activeBulkNodes, bulkForm.topic_node_id, activeRepo]);
 
   // Load mains preview details
@@ -1090,17 +1099,23 @@ export function AdminQuizManager({
 
   const editQuestionSourceBuckets = useMemo(() => {
     if (!editQuestionForm.subject_node_id) return [];
-    return editQuestionNodes.filter((node) => node.node_type === "source_bucket" && String(node.parent_id) === editQuestionForm.subject_node_id);
+    // Allow direct children of the selected subject node
+    return editQuestionNodes.filter((node) => String(node.parent_id) === editQuestionForm.subject_node_id);
   }, [editQuestionNodes, editQuestionForm.subject_node_id]);
 
   const editQuestionTopics = useMemo(() => {
-    if (!editQuestionForm.source_node_id) return [];
-    return editQuestionNodes.filter((node) => node.node_type === "topic" && String(node.parent_id) === editQuestionForm.source_node_id);
-  }, [editQuestionNodes, editQuestionForm.source_node_id]);
+    if (editQuestionForm.source_node_id) {
+      return editQuestionNodes.filter((node) => String(node.parent_id) === editQuestionForm.source_node_id);
+    }
+    if (editQuestionForm.subject_node_id) {
+      return editQuestionNodes.filter((node) => node.node_type === "topic" && String(node.parent_id) === editQuestionForm.subject_node_id);
+    }
+    return [];
+  }, [editQuestionNodes, editQuestionForm.subject_node_id, editQuestionForm.source_node_id]);
 
   const editQuestionSubtopics = useMemo(() => {
     if (!editQuestionForm.topic_node_id) return [];
-    return editQuestionNodes.filter((node) => node.node_type === "subtopic" && String(node.parent_id) === editQuestionForm.topic_node_id);
+    return editQuestionNodes.filter((node) => String(node.parent_id) === editQuestionForm.topic_node_id);
   }, [editQuestionNodes, editQuestionForm.topic_node_id]);
 
   const [editQuestionLevels, setEditQuestionLevels] = useState<ExamLevel[]>([]);

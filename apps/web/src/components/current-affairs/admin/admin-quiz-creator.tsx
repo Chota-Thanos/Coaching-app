@@ -209,17 +209,26 @@ export function AdminQuizCreator({
 
   const activeSourceBuckets = useMemo(() => {
     if (!selectedSubjectId) return [];
-    return examNodes.filter((node) => node.node_type === "source_bucket" && String(node.parent_id) === selectedSubjectId);
+    // Allow direct children of the selected subject, regardless of node type
+    return examNodes.filter((node) => String(node.parent_id) === selectedSubjectId);
   }, [examNodes, selectedSubjectId]);
 
   const activeTopics = useMemo(() => {
-    if (!selectedSourceBucketId) return [];
-    return examNodes.filter((node) => node.node_type === "topic" && String(node.parent_id) === selectedSourceBucketId);
-  }, [examNodes, selectedSourceBucketId]);
+    // If a source bucket is selected, show its children
+    if (selectedSourceBucketId) {
+      return examNodes.filter((node) => String(node.parent_id) === selectedSourceBucketId);
+    }
+    // If NO source bucket is selected, default to direct topic children of the subject
+    if (selectedSubjectId) {
+      return examNodes.filter((node) => node.node_type === "topic" && String(node.parent_id) === selectedSubjectId);
+    }
+    return [];
+  }, [examNodes, selectedSourceBucketId, selectedSubjectId]);
 
   const activeSubtopics = useMemo(() => {
     if (!selectedTopicId) return [];
-    return examNodes.filter((node) => node.node_type === "subtopic" && String(node.parent_id) === selectedTopicId);
+    // Allow any child of the selected topic node
+    return examNodes.filter((node) => String(node.parent_id) === selectedTopicId);
   }, [examNodes, selectedTopicId]);
 
   // Automatically reset dependent selections when parent changes

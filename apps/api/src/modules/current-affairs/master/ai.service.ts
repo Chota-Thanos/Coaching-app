@@ -1141,6 +1141,11 @@ Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. 
 6. **Explanation (explanation)**:
    - Extract the pedagogy explanation explaining why the correct option is right and others are wrong.
    - If no explanation is provided in the raw text, you MUST generate a high-quality, comprehensive educational explanation explaining the concepts, correct statements, and why incorrect ones are wrong.
+   - **Formatting & Structure Rules**:
+     * You MUST automatically format the explanation using Markdown to make it highly readable and structured.
+     * Use **bold text** for key terms, core concepts, article numbers, historical dates, and specific correct/incorrect statement references (e.g. "**Statement 1 is correct** because...", "**Statement 2 is incorrect** because...").
+     * Break large blocks of text into smaller, digestible paragraphs (maximum 2-3 sentences per paragraph) organized logically.
+     * Structure the explanation with clear sections/paragraphs separated by newlines, such as a general concept introduction, a statement-by-statement breakdown, and a concluding summary.
 
  7. **Passage**:
    - If a group of questions are preceded by a shared reading passage or logical puzzle/case, extract the title under "passage_title" and body under "passage_text". Keep individual questions in the "questions" array.
