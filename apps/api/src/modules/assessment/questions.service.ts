@@ -517,7 +517,7 @@ export async function listQuestionCountsByTaxonomy(options: QuestionCountsQuery)
         join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
         join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
         cross join lateral (
-          values (qtl.subject_node_id), (qtl.topic_node_id), (qtl.subtopic_node_id)
+          values (coalesce(qtl.subtopic_node_id, qtl.topic_node_id, qtl.source_node_id, qtl.subject_node_id))
         ) as n(node_id)
         where q.status = 'published'
           and q.question_family = 'objective'
@@ -549,7 +549,7 @@ export async function listQuestionCountsByTaxonomy(options: QuestionCountsQuery)
         join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
         join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = q.id
         cross join lateral (
-          values (mqtl.paper_node_id), (mqtl.subject_area_node_id), (mqtl.theme_node_id), (mqtl.topic_node_id), (mqtl.subtopic_node_id)
+          values (coalesce(mqtl.subtopic_node_id, mqtl.topic_node_id, mqtl.theme_node_id, mqtl.subject_area_node_id, mqtl.paper_node_id))
         ) as n(node_id)
         where q.status = 'published'
           and q.question_family = 'mains_subjective'

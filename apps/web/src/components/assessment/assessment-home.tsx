@@ -682,11 +682,32 @@ export function AssessmentHomePage({
     setExpandedNodes(matchedIds);
   }, [activeTree, filterText]);
 
-  const availableTotal = useMemo(() => {
-    return activeTree.reduce((total, node) => total + (questionCounts[node.id] ?? 0), 0);
-  }, [activeTree, questionCounts]);
+  const aggregatedCounts = useMemo(() => {
+    const map: Record<number, number> = {};
 
-  const getAvailableCount = (nodeId: number) => questionCounts[nodeId] ?? 0;
+    function sumNodeCounts(node: TreeNodeType): number {
+      let sum = questionCounts[node.id] ?? 0;
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+          sum += sumNodeCounts(child);
+        });
+      }
+      map[node.id] = sum;
+      return sum;
+    }
+
+    gkTree.forEach(sumNodeCounts);
+    aptitudeTree.forEach(sumNodeCounts);
+    mainsTree.forEach(sumNodeCounts);
+
+    return map;
+  }, [gkTree, aptitudeTree, mainsTree, questionCounts]);
+
+  const availableTotal = useMemo(() => {
+    return activeTree.reduce((total, node) => total + (aggregatedCounts[node.id] ?? 0), 0);
+  }, [activeTree, aggregatedCounts]);
+
+  const getAvailableCount = (nodeId: number) => aggregatedCounts[nodeId] ?? 0;
   const getSelectedCount = (nodeId: number) => {
     const available = getAvailableCount(nodeId);
     return clampCount(counts[nodeId] ?? Math.min(10, Math.max(available, 1)), available);
@@ -1670,7 +1691,7 @@ function TreeRow({
                         : "border-slate-200 bg-slate-50 text-slate-500"
                     }`}
                   >
-                    {loadingCounts ? "Checking..." : `${availableCount} available`}
+                    {loadingCounts ? "Checking..." : `${availableCount} Quiz`}
                   </span>
                 </div>
               </div>
@@ -1742,7 +1763,7 @@ function TreeRow({
                       : "border-rose-100 bg-rose-50 text-rose-700"
                   }`}
                 >
-                  {loadingCounts ? "Checking..." : `${availableCount} available`}
+                  {loadingCounts ? "Checking..." : `${availableCount} Quiz`}
                 </span>
                 {availableCount > 0 && (
                   <span className="text-[11px] font-semibold text-slate-500">
