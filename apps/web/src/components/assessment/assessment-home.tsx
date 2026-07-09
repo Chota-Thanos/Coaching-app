@@ -708,6 +708,22 @@ export function AssessmentHomePage({
   }, [activeTree, aggregatedCounts]);
 
   const getAvailableCount = (nodeId: number) => aggregatedCounts[nodeId] ?? 0;
+
+  useEffect(() => {
+    if (gkTree.length > 0) {
+      console.log("GK TREE STRUCTURE:", gkTree.map(n => ({
+        id: n.id,
+        name: n.name,
+        children: n.children.map(c => ({
+          id: c.id,
+          name: c.name,
+          children: c.children.map(cc => ({ id: cc.id, name: cc.name }))
+        }))
+      })));
+      console.log("QUESTION COUNTS:", questionCounts);
+      console.log("AGGREGATED COUNTS:", aggregatedCounts);
+    }
+  }, [gkTree, questionCounts, aggregatedCounts]);
   const getSelectedCount = (nodeId: number) => {
     const available = getAvailableCount(nodeId);
     return clampCount(counts[nodeId] ?? Math.min(10, Math.max(available, 1)), available);
