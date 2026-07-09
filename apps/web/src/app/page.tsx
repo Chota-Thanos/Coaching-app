@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useAuth, authenticatedGet } from "../components/auth/auth-context";
+import { useRouter } from "next/navigation";
+import { useAuth, authenticatedGet, authenticatedPost } from "../components/auth/auth-context";
 import { useSubscription } from "../lib/use-subscription";
 import { browserBaseUrl, resolveMediaUrl } from "../lib/api";
 // Onboarding tours removed from dashboard
@@ -44,7 +45,8 @@ import {
   CreditCard,
   Clock,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +54,20 @@ export const dynamic = "force-dynamic";
 
 
 export default function HomePage() {
+  const router = useRouter();
   const { token, user, isInitialized } = useAuth();
   const { hasAnyActive, subscriptions, loading: loadingSub } = useSubscription(token);
+
+  // Dynamic Subjects & Quick Test States
+  const [objectiveSubjects, setObjectiveSubjects] = useState<any[]>([]);
+  const [mainsSubjects, setMainsSubjects] = useState<any[]>([]);
+  
+  const [quickTestType, setQuickTestType] = useState<"gk" | "aptitude" | "mains">("gk");
+  const [quickSelectedSubjects, setQuickSelectedSubjects] = useState<number[]>([]);
+  const [quickNumQuestions, setQuickNumQuestions] = useState<number>(10);
+  const [quickTestName, setQuickTestName] = useState<string>("");
+  const [buildingQuickTest, setBuildingQuickTest] = useState(false);
+  const [quickTestError, setQuickTestError] = useState<string | null>(null);
 
   // Data states
   const [stats, setStats] = useState<any>(null);
@@ -123,6 +137,10 @@ export default function HomePage() {
         setStats(statsData);
         const metricsData = await authenticatedGet<any[]>("/api/v1/assessment/me/topic-metrics", token);
         setTopicMetrics(metricsData || []);
+        const objNodes = await authenticatedGet<any[]>("/api/v1/assessment/taxonomy-nodes?exam_id=1&node_type=subject&limit=100", token);
+        setObjectiveSubjects(objNodes || []);
+        const mainsNodes = await authenticatedGet<any[]>("/api/v1/assessment/mains/taxonomy-nodes?exam_id=1&limit=100", token);
+        setMainsSubjects(mainsNodes || []);
         const notesData = await authenticatedGet<any[]>("/api/v1/current-affairs/me/articles?limit=3", token);
         setUserNotes(notesData || []);
         const collectionsData = await authenticatedGet<any[]>("/api/v1/current-affairs/me/collections", token);
@@ -137,6 +155,91 @@ export default function HomePage() {
     };
     fetchDashboardData();
   }, [token]);
+
+  // Synchronize Quick Test subjects selection and name
+  useEffect(() => {
+    if (quickTestType === "gk") {
+      const gk = objectiveSubjects.filter(n => n.content_type === "gk").map(n => n.id);
+      setQuickSelectedSubjects(gk);
+      setQuickTestName("Quick GS Practice Test");
+    } else if (quickTestType === "aptitude") {
+      const csat = objectiveSubjects.filter(n => n.content_type === "aptitude").map(n => n.id);
+      setQuickSelectedSubjects(csat);
+      setQuickTestName("Quick CSAT Practice Test");
+    } else {
+      const mains = mainsSubjects.filter(n => n.node_type === "paper" || n.node_type === "subject").map(n => n.id);
+      setQuickSelectedSubjects(mains);
+      setQuickTestName("Quick Mains Subjective Test");
+    }
+    setQuickTestError(null);
+  }, [quickTestType, objectiveSubjects, mainsSubjects]);
+
+  const handleCreateQuickTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickSelectedSubjects.length === 0) {
+      setQuickTestError("Select at least one subject to generate test.");
+      return;
+    }
+    setBuildingQuickTest(true);
+    setQuickTestError(null);
+    try {
+      const allPickedQuestionIds: number[] = [];
+
+      // Step 1: Query and compile question pools for each selected subject
+      for (const subjectId of quickSelectedSubjects) {
+        let url = "";
+        if (quickTestType === "mains") {
+          url = `/api/v1/assessment/mains/questions?exam_id=1&topic_node_id=${subjectId}&limit=500`;
+        } else {
+          url = `/api/v1/assessment/questions?exam_id=1&content_type=${quickTestType}&subject_node_ids=${subjectId}&limit=500`;
+        }
+
+        const data = await authenticatedGet<any[]>(url, token || "");
+        if (data && data.length > 0) {
+          const shuffled = [...data].sort(() => Math.random() - 0.5);
+          // Allocate questions proportionally or evenly
+          const perSubjectCount = Math.max(1, Math.round(quickNumQuestions / quickSelectedSubjects.length));
+          const picked = shuffled
+            .slice(0, Math.min(perSubjectCount, shuffled.length))
+            .map((q) => q.id);
+          allPickedQuestionIds.push(...picked);
+        }
+      }
+
+      if (allPickedQuestionIds.length === 0) {
+        throw new Error("No questions were found in the selected categories. Try checking other categories.");
+      }
+
+      // Slice to match the exact target quantity
+      const finalPickedIds = allPickedQuestionIds.slice(0, quickNumQuestions);
+
+      // Step 2: Create custom test
+      const response = await authenticatedPost<{ id: number }>(
+        "/api/v1/assessment/user/custom-tests",
+        token || "",
+        {
+          title: quickTestName.trim() || `Quick ${quickTestType.toUpperCase()} Test`,
+          exam_id: 1,
+          exam_level_id: 1, // Fallback exam level
+          question_ids: finalPickedIds,
+          test_type: quickTestType === "mains" ? "mains_test" : "sectional_test"
+        }
+      );
+
+      // Step 3: Start attempt
+      const attemptId = await authenticatedPost<any>(
+        `/api/v1/assessment/test-templates/${response.id}/attempts/start`,
+        token || "",
+        {}
+      );
+
+      // Step 4: Navigate to attempts page
+      router.push(`/assessment/attempts/${attemptId.id ?? attemptId}`);
+    } catch (err: any) {
+      setQuickTestError(err.message || "Failed to generate custom test.");
+      setBuildingQuickTest(false);
+    }
+  };
 
   // Derived dashboard vars
   const username = user?.username ?? "Student";
@@ -1339,33 +1442,58 @@ export default function HomePage() {
                   <Link href="/assessment/dashboard" className="text-xs font-bold text-indigo-600 hover:underline">Full Report →</Link>
                 </div>
                 <div className="space-y-3">
-                  {[
-                    { label: "Prelims GS1 — Polity & Governance", slug: "polity" },
-                    { label: "Prelims GS1 — Economy", slug: "economy" },
-                    { label: "Prelims GS1 — Environment", slug: "environment" },
-                    { label: "Prelims GS1 — History", slug: "history" },
-                    { label: "Prelims GS1 — Geography", slug: "geography" },
-                  ].map(({ label, slug }) => {
-                    const acc = getSubjectAccuracy(slug);
-                    const bar = acc >= 70 ? "bg-emerald-500" : acc >= 40 ? "bg-amber-500" : "bg-rose-400";
-                    return (
-                      <div key={label} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-600 truncate mr-2">{label}</span>
-                          <span className={`font-black shrink-0 ${
-                            acc === 0 ? "text-slate-300" : acc >= 70 ? "text-emerald-600" : acc >= 40 ? "text-amber-600" : "text-rose-600"
-                          }`}>{acc > 0 ? `${acc}%` : "—"}</span>
+                  {objectiveSubjects.filter(n => n.content_type === "gk").length > 0 ? (
+                    objectiveSubjects.filter(n => n.content_type === "gk").map((subject) => {
+                      const acc = getSubjectAccuracy(subject.name);
+                      const bar = acc >= 70 ? "bg-emerald-500" : acc >= 40 ? "bg-amber-500" : "bg-rose-400";
+                      return (
+                        <div key={subject.id} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-600 truncate mr-2">{subject.name}</span>
+                            <span className={`font-black shrink-0 ${
+                              acc === 0 ? "text-slate-300" : acc >= 70 ? "text-emerald-600" : acc >= 40 ? "text-amber-600" : "text-rose-600"
+                            }`}>{acc > 0 ? `${acc}%` : "—"}</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            {acc > 0 ? (
+                              <div className={`h-full ${bar} rounded-full transition-all duration-500`} style={{ width: `${acc}%` }} />
+                            ) : (
+                              <div className="h-full w-full bg-slate-100 rounded-full" />
+                            )}
+                          </div>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                          {acc > 0 ? (
-                            <div className={`h-full ${bar} rounded-full transition-all duration-500`} style={{ width: `${acc}%` }} />
-                          ) : (
-                            <div className="h-full w-full bg-slate-100 rounded-full" />
-                          )}
+                      );
+                    })
+                  ) : (
+                    // Fallback to static subjects during loading
+                    [
+                      { label: "Polity & Governance", name: "Indian Polity" },
+                      { label: "Economy", name: "Indian Economy" },
+                      { label: "Environment", name: "Environment" },
+                      { label: "History", name: "Modern Indian History" },
+                      { label: "Geography", name: "Geography" },
+                    ].map((subject) => {
+                      const acc = getSubjectAccuracy(subject.name);
+                      const bar = acc >= 70 ? "bg-emerald-500" : acc >= 40 ? "bg-amber-500" : "bg-rose-400";
+                      return (
+                        <div key={subject.label} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-600 truncate mr-2">{subject.label}</span>
+                            <span className={`font-black shrink-0 ${
+                              acc === 0 ? "text-slate-300" : acc >= 70 ? "text-emerald-600" : acc >= 40 ? "text-amber-600" : "text-rose-600"
+                            }`}>{acc > 0 ? `${acc}%` : "—"}</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            {acc > 0 ? (
+                              <div className={`h-full ${bar} rounded-full transition-all duration-500`} style={{ width: `${acc}%` }} />
+                            ) : (
+                              <div className="h-full w-full bg-slate-100 rounded-full" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
                 {totalMCQ === 0 && (
                   <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700 font-semibold text-center">
@@ -1421,24 +1549,194 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* PDF/Photo Upload Zone */}
-            <div id="tour-upload-zone" className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-5 flex flex-col sm:flex-row items-center gap-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all duration-200 group cursor-pointer">
-              <div className="h-12 w-12 rounded-2xl bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center shrink-0 transition-colors">
-                <FileCode className="h-6 w-6 text-slate-400 group-hover:text-blue-600 transition-colors" />
+            {/* Quick Custom Test Builder */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-5">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-indigo-600" />
+                <div>
+                  <h3 className="text-sm font-black text-slate-800">Quick Custom Test Builder</h3>
+                  <p className="text-[10px] text-slate-500 font-medium">Generate and start a custom mock test instantly</p>
+                </div>
               </div>
-              <div className="text-center sm:text-left flex-1">
-                <p className="text-sm font-black text-slate-700 group-hover:text-blue-800">Drag &amp; Drop to Add Questions</p>
-                <p className="text-xs text-slate-400 mt-0.5">Upload a PDF or photo of any question paper — OCR extracts questions automatically</p>
-                <p className="text-[10px] text-slate-400 mt-1">Free: 5 imports / month · Premium: Unlimited</p>
-              </div>
-              <Link
-                href={hasAnyActive ? "/assessment/import" : "/pricing"}
-                onClick={(e) => e.stopPropagation()}
-                className="shrink-0 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 hover:bg-blue-100 transition-colors flex items-center gap-1.5"
-              >
-                <FileCode className="h-3.5 w-3.5" />
-                {hasAnyActive ? "Upload File" : "Upgrade to Import"}
-              </Link>
+
+              <form onSubmit={handleCreateQuickTest} className="space-y-4">
+                {/* 1. Test Type Selection */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Test Type</label>
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                    {[
+                      { value: "gk", label: "GS Prelims" },
+                      { value: "aptitude", label: "CSAT Drill" },
+                      { value: "mains", label: "Mains subjective" }
+                    ].map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => setQuickTestType(tab.value as any)}
+                        className={`text-center py-2 text-xs font-black rounded-lg transition-all ${
+                          quickTestType === tab.value
+                            ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Subjects Selector */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Include Subjects</label>
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1 border border-slate-100 rounded-xl">
+                    {/* Render GK subjects */}
+                    {quickTestType === "gk" && (
+                      objectiveSubjects.filter(n => n.content_type === "gk").length > 0 ? (
+                        objectiveSubjects.filter(n => n.content_type === "gk").map((sub) => {
+                          const isChecked = quickSelectedSubjects.includes(sub.id);
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              onClick={() => {
+                                setQuickSelectedSubjects(prev =>
+                                  prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
+                                );
+                              }}
+                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                isChecked
+                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
+                                  : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {sub.name}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-slate-400 p-2">Loading GK subjects...</p>
+                      )
+                    )}
+
+                    {/* Render CSAT subjects */}
+                    {quickTestType === "aptitude" && (
+                      objectiveSubjects.filter(n => n.content_type === "aptitude").length > 0 ? (
+                        objectiveSubjects.filter(n => n.content_type === "aptitude").map((sub) => {
+                          const isChecked = quickSelectedSubjects.includes(sub.id);
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              onClick={() => {
+                                setQuickSelectedSubjects(prev =>
+                                  prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
+                                );
+                              }}
+                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                isChecked
+                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
+                                  : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {sub.name}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-slate-400 p-2">Loading CSAT subjects...</p>
+                      )
+                    )}
+
+                    {/* Render Mains subjects */}
+                    {quickTestType === "mains" && (
+                      mainsSubjects.filter(n => n.node_type === "paper" || n.node_type === "subject").length > 0 ? (
+                        mainsSubjects.filter(n => n.node_type === "paper" || n.node_type === "subject").map((sub) => {
+                          const isChecked = quickSelectedSubjects.includes(sub.id);
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              onClick={() => {
+                                setQuickSelectedSubjects(prev =>
+                                  prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
+                                );
+                              }}
+                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                isChecked
+                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
+                                  : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {sub.name}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-slate-400 p-2">Loading Mains papers...</p>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Questions Count & Title */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Question Count</label>
+                    <div className="flex gap-2">
+                      {[10, 25, 50, 100].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => setQuickNumQuestions(count)}
+                          className={`flex-1 py-2 rounded-xl border text-xs font-black transition-all ${
+                            quickNumQuestions === count
+                              ? "bg-slate-900 border-slate-900 text-white"
+                              : "bg-white border-slate-150 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Test Name</label>
+                    <input
+                      type="text"
+                      className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-800 focus:outline-indigo-650"
+                      placeholder="My Practice Test"
+                      value={quickTestName}
+                      onChange={(e) => setQuickTestName(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Error log */}
+                {quickTestError && (
+                  <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 leading-relaxed">
+                    ⚠️ {quickTestError}
+                  </p>
+                )}
+
+                {/* Action button */}
+                <button
+                  type="submit"
+                  disabled={buildingQuickTest}
+                  className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-black text-white disabled:opacity-60 transition-colors shadow-sm"
+                >
+                  {buildingQuickTest ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating test and attempt...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Create &amp; Start Custom Test
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
 
             {/* Subject Accuracy Radar */}
