@@ -467,15 +467,16 @@ export async function startCompiledAttempt(
     const selectedVersions: Array<{ question_id: number; version_id: number; marks: number; negative_marks: number; question_family: string }> = [];
     const storedExamLevelId = await resolveStoredExamLevelId(client, input.exam_id, input.exam_level_id);
 
+    const selectedQuestionIds: number[] = [];
+
     // 1. Fetch questions matching each category specs
     for (const cat of input.categories) {
       const isMains = cat.question_family === "mains_subjective";
-      const params: unknown[] = [input.exam_id, cat.subject_node_id];
+      const targetNodeId = cat.subtopic_node_id || cat.topic_node_id || cat.subject_node_id;
+      const params: unknown[] = [input.exam_id, targetNodeId];
       let queryText = "";
 
       if (isMains) {
-        const targetNodeId = cat.subtopic_node_id || cat.topic_node_id || cat.subject_node_id;
-        params[1] = targetNodeId;
         queryText = `
           with recursive category_nodes as (
             select id from assessment.mains_taxonomy_nodes where id = $2
@@ -520,26 +521,29 @@ export async function startCompiledAttempt(
         }
       } else {
         queryText = `
-          select q.id, qv.id as version_id
+          with recursive category_nodes as (
+            select id from assessment.assessment_taxonomy_nodes where id = $2
+            union all
+            select child.id from assessment.assessment_taxonomy_nodes child
+            join category_nodes parent on parent.id = child.parent_id
+          )
+          select distinct q.id, qv.id as version_id
           from assessment.questions q
           join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
-          join assessment.question_taxonomy_links qtl on qtl.question_id = qv.question_id
+          join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
           where q.status = 'published'
             and q.question_family = 'objective'
             and qtl.exam_id = $1
-            and qtl.subject_node_id = $2
+            and (
+              qtl.subject_node_id in (select id from category_nodes)
+              or qtl.source_node_id in (select id from category_nodes)
+              or qtl.topic_node_id in (select id from category_nodes)
+              or qtl.subtopic_node_id in (select id from category_nodes)
+            )
         `;
         if (input.exam_level_id) {
           params.push(input.exam_level_id);
           queryText += ` and qtl.exam_level_id = $${params.length}`;
-        }
-        if (cat.topic_node_id) {
-          params.push(cat.topic_node_id);
-          queryText += ` and qtl.topic_node_id = $${params.length}`;
-        }
-        if (cat.subtopic_node_id) {
-          params.push(cat.subtopic_node_id);
-          queryText += ` and qtl.subtopic_node_id = $${params.length}`;
         }
         if (cat.question_nature_id) {
           params.push(cat.question_nature_id);
@@ -559,6 +563,11 @@ export async function startCompiledAttempt(
         }
       }
 
+      if (selectedQuestionIds.length > 0) {
+        params.push(selectedQuestionIds);
+        queryText += ` and q.id != all($${params.length})`;
+      }
+
       params.push(cat.question_count);
       queryText += `
         order by random()
@@ -566,12 +575,11 @@ export async function startCompiledAttempt(
       `;
 
       const res = await client.query<{ id: number; version_id: number; marks?: number }>(queryText, params);
-      if (res.rows.length === 0) {
-        noMatchingQuestions("No published questions found for one of the selected compiled-test categories. Try a different syllabus node or generate questions first.");
-      }
       for (const row of res.rows) {
+        const qid = Number(row.id);
+        selectedQuestionIds.push(qid);
         selectedVersions.push({
-          question_id: Number(row.id),
+          question_id: qid,
           version_id: Number(row.version_id),
           marks: isMains ? Number(row.marks ?? 10.0) : 2.0,
           negative_marks: isMains ? 0.0 : 0.66,
@@ -585,14 +593,14 @@ export async function startCompiledAttempt(
     }
 
     // Resolve passages and package passage-linked questions
-    const selectedQuestionIds = selectedVersions.map(v => v.question_id);
-    const passageLinksRes = selectedQuestionIds.length > 0 ? await client.query<{ question_id: string; passage_id: string }>(
+    const allSelectedQuestionIds = selectedVersions.map(v => v.question_id);
+    const passageLinksRes = allSelectedQuestionIds.length > 0 ? await client.query<{ question_id: string; passage_id: string }>(
       `
         select question_id, passage_id
         from assessment.passage_questions
         where question_id = any($1)
       `,
-      [selectedQuestionIds]
+      [allSelectedQuestionIds]
     ) : { rows: [] };
 
     const passageIdMap = new Map<number, number>();

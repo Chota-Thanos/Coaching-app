@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -703,27 +703,46 @@ export function AssessmentHomePage({
     return map;
   }, [gkTree, aptitudeTree, mainsTree, questionCounts]);
 
-  const availableTotal = useMemo(() => {
-    return activeTree.reduce((total, node) => total + (aggregatedCounts[node.id] ?? 0), 0);
-  }, [activeTree, aggregatedCounts]);
-
-  const getAvailableCount = (nodeId: number) => aggregatedCounts[nodeId] ?? 0;
-
-  useEffect(() => {
-    if (gkTree.length > 0) {
-      console.log("GK TREE STRUCTURE:", gkTree.map(n => ({
-        id: n.id,
-        name: n.name,
-        children: n.children.map(c => ({
-          id: c.id,
-          name: c.name,
-          children: c.children.map(cc => ({ id: cc.id, name: cc.name }))
-        }))
-      })));
-      console.log("QUESTION COUNTS:", questionCounts);
-      console.log("AGGREGATED COUNTS:", aggregatedCounts);
+  const parentMap = useMemo(() => {
+    const map: Record<number, number | null> = {};
+    function buildMap(node: TreeNodeType) {
+      node.children.forEach(child => {
+        map[child.id] = node.id;
+        buildMap(child);
+      });
     }
-  }, [gkTree, questionCounts, aggregatedCounts]);
+    gkTree.forEach(buildMap);
+    aptitudeTree.forEach(buildMap);
+    mainsTree.forEach(buildMap);
+    return map;
+  }, [gkTree, aptitudeTree, mainsTree]);
+
+  const isNodeDescendantOf = useCallback((childId: number, parentId: number): boolean => {
+    let current: number | null | undefined = childId;
+    while (current) {
+      const parent: number | null | undefined = parentMap[current];
+      if (parent === parentId) return true;
+      current = parent;
+    }
+    return false;
+  }, [parentMap]);
+
+  const getAvailableCount = useCallback((nodeId: number) => {
+    const rawAvailable = aggregatedCounts[nodeId] ?? 0;
+    let selectedOverlap = 0;
+    compiledItems.forEach(item => {
+      const isDescendant = isNodeDescendantOf(item.node.id, nodeId);
+      const isAncestor = isNodeDescendantOf(nodeId, item.node.id);
+      if (isDescendant || isAncestor || item.node.id === nodeId) {
+        selectedOverlap += item.count;
+      }
+    });
+    return Math.max(0, rawAvailable - selectedOverlap);
+  }, [aggregatedCounts, compiledItems, isNodeDescendantOf]);
+
+  const availableTotal = useMemo(() => {
+    return activeTree.reduce((total, node) => total + getAvailableCount(node.id), 0);
+  }, [activeTree, getAvailableCount]);
   const getSelectedCount = (nodeId: number) => {
     const available = getAvailableCount(nodeId);
     return clampCount(counts[nodeId] ?? Math.min(10, Math.max(available, 1)), available);
