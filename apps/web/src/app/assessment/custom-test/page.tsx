@@ -14,20 +14,25 @@ import {
   Calendar,
   Layers,
   Award,
-  Globe,
-  BookOpenCheck
+  BookOpenCheck,
+  PlusCircle,
+  X
 } from "lucide-react";
 import { useAuth, authenticatedGet, authenticatedDelete, authenticatedPost } from "../../../components/auth/auth-context";
 
 type CustomTest = {
   id: number;
   title: string;
+  description?: string;
   slug: string;
   test_type: string;
   duration_minutes: number;
   total_marks: number;
   question_count?: number;
   created_at: string;
+  latest_attempt_id?: number | null;
+  latest_attempt_status?: string | null;
+  latest_result_id?: number | null;
 };
 
 export default function CustomTestsListPage() {
@@ -54,16 +59,21 @@ function CustomTestsListInner() {
   const [startingId, setStartingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+
   const fetchCustomTests = async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      // access_type=private retrieves the user's custom tests
-      const data = await authenticatedGet<CustomTest[]>("/api/v1/assessment/test-templates?access_type=private&limit=100", token);
-      
-      // Filter client-side by content_type if needed, or show all
-      // The API lists all. Let's list all and categorize them or show them with tags.
+      const data = await authenticatedGet<CustomTest[]>(
+        `/api/v1/assessment/test-templates?access_type=private&content_type=${contentParam}&limit=100`,
+        token
+      );
       setTests(data || []);
     } catch (err: any) {
       setError(err.message || "Failed to load custom tests.");
@@ -76,7 +86,7 @@ function CustomTestsListInner() {
     if (isInitialized && token) {
       fetchCustomTests();
     }
-  }, [token, isInitialized]);
+  }, [token, isInitialized, contentParam]);
 
   const handleStartAttempt = async (testId: number) => {
     if (!token) return;
@@ -95,7 +105,9 @@ function CustomTestsListInner() {
     }
   };
 
-  const handleDeleteTest = async (testId: number) => {
+  const handleDeleteTest = async (testId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!token || !window.confirm("Are you sure you want to delete this custom test template?")) return;
     setDeletingId(testId);
     setError(null);
@@ -106,6 +118,43 @@ function CustomTestsListInner() {
       setError(err.message || "Failed to delete custom test.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleCreateTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !newTitle.trim()) return;
+    setCreating(true);
+    setError(null);
+
+    // Map content type to exam levels
+    let examLevelId = 7; // GS default
+    let testType = "sectional_test";
+
+    if (contentParam === "aptitude") {
+      examLevelId = 1; // CSAT
+    } else if (contentParam === "mains") {
+      examLevelId = 3; // Mains
+      testType = "mains_test";
+    }
+
+    try {
+      await authenticatedPost("/api/v1/assessment/user/custom-tests", token, {
+        title: newTitle.trim(),
+        description: newDescription.trim() || undefined,
+        exam_id: 1,
+        exam_level_id: examLevelId,
+        test_type: testType,
+        question_ids: []
+      });
+      setNewTitle("");
+      setNewDescription("");
+      setIsModalOpen(false);
+      await fetchCustomTests();
+    } catch (err: any) {
+      setError(err.message || "Failed to create test.");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -136,13 +185,22 @@ function CustomTestsListInner() {
               <p className="text-xs text-slate-500">View and practice with tests you constructed</p>
             </div>
           </div>
-          <Link
-            href={`/assessment/custom-test/create?content_type=${contentParam}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create Custom Test</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Empty Test</span>
+            </button>
+            <Link
+              href={`/assessment/custom-test/create?content_type=${contentParam}`}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition shrink-0"
+            >
+              <Layers className="h-4 w-4 text-slate-500" />
+              <span>Builder Basket</span>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -158,16 +216,16 @@ function CustomTestsListInner() {
             <BookOpen className="mx-auto h-12 w-12 text-slate-300" />
             <h3 className="mt-4 text-base font-black text-slate-800">No custom tests found</h3>
             <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-              You haven't built any custom tests yet. Build a tailored practice session based on specific syllabus categories and question counts.
+              You haven't built any custom tests yet. Create a blank test template and add questions to it from the syllabus tree or the AI parser.
             </p>
-            <div className="mt-6">
-              <Link
-                href={`/assessment/custom-test/create?content_type=${contentParam}`}
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                onClick={() => setIsModalOpen(true)}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition"
               >
                 <Plus className="h-4 w-4" />
-                <span>Build First Test</span>
-              </Link>
+                <span>Create Blank Test</span>
+              </button>
             </div>
           </div>
         ) : (
@@ -191,7 +249,7 @@ function CustomTestsListInner() {
                   key={test.id}
                   className="group relative flex flex-col justify-between border border-slate-200 rounded-2xl bg-white p-5 hover:shadow-md hover:border-slate-300 transition duration-150"
                 >
-                  <div>
+                  <Link href={`/assessment/custom-test/${test.id}?content_type=${contentParam}`} className="block flex-1">
                     {/* Header: Badge & Date */}
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 border rounded-md ${badgeColor}`}>
@@ -208,15 +266,21 @@ function CustomTestsListInner() {
                     </div>
 
                     {/* Test Title */}
-                    <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition leading-snug">
+                    <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-650 transition leading-snug text-sm sm:text-base">
                       {test.title}
                     </h3>
+                    
+                    {test.description && (
+                      <p className="mt-1.5 text-xs text-slate-500 line-clamp-2">
+                        {test.description}
+                      </p>
+                    )}
 
                     {/* Meta stats */}
                     <div className="flex items-center gap-4 mt-4 text-xs font-semibold text-slate-500 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
                       <span className="flex items-center gap-1.5">
                         <Layers className="h-3.5 w-3.5 text-slate-400" />
-                        <strong>{test.question_count ?? Math.round(test.total_marks)}</strong> Qs
+                        <strong>{test.question_count ?? 0}</strong> Qs
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5 text-slate-400" />
@@ -227,24 +291,65 @@ function CustomTestsListInner() {
                         <strong>{test.total_marks}</strong> Marks
                       </span>
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2.5 mt-5 pt-3 border-t border-slate-100">
+                    {test.latest_attempt_status === "in_progress" ? (
+                      <Link
+                        href={`/assessment/attempts/${test.latest_attempt_id}`}
+                        className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 text-xs font-bold text-white shadow-sm transition"
+                      >
+                        <Play className="h-3.5 w-3.5 fill-current" />
+                        <span>Continue</span>
+                      </Link>
+                    ) : test.latest_attempt_status === "submitted" ? (
+                      <>
+                        <Link
+                          href={`/assessment/results/${test.latest_result_id}`}
+                          className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-150 transition"
+                        >
+                          <BookOpenCheck className="h-3.5 w-3.5" />
+                          <span>View Result</span>
+                        </Link>
+                        <button
+                          onClick={() => handleStartAttempt(test.id)}
+                          disabled={startingId === test.id}
+                          className="h-9.5 inline-flex items-center justify-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-3 text-xs font-bold shadow-sm transition"
+                        >
+                          <Play className="h-3 w-3" />
+                          <span>Re-attempt</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href={`/assessment/${contentParam === "aptitude" ? "csat" : contentParam}?test_template_id=${test.id}`}
+                          className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
+                        >
+                          <PlusCircle className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Add Qs</span>
+                        </Link>
+                        {(test.question_count ?? 0) > 0 ? (
+                          <button
+                            onClick={() => handleStartAttempt(test.id)}
+                            disabled={startingId === test.id}
+                            className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-850 px-4 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                          >
+                            {startingId === test.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Play className="h-3.5 w-3.5" />
+                            )}
+                            <span>Start Test</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-slate-400 italic">No questions</span>
+                        )}
+                      </>
+                    )}
                     <button
-                      onClick={() => handleStartAttempt(test.id)}
-                      disabled={startingId === test.id}
-                      className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-850 px-4 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                    >
-                      {startingId === test.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Play className="h-3.5 w-3.5" />
-                      )}
-                      <span>Attempt</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTest(test.id)}
+                      onClick={(e) => handleDeleteTest(test.id, e)}
                       disabled={deletingId === test.id}
                       className="grid h-9.5 w-9.5 place-items-center rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/30 transition disabled:bg-slate-50 disabled:text-slate-200"
                     >
@@ -261,6 +366,69 @@ function CustomTestsListInner() {
           </div>
         )}
       </div>
+
+      {/* Create Test Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h2 className="text-lg font-bold text-slate-900 pr-8">Create Custom Test</h2>
+            <p className="text-xs text-slate-500 mt-1">Create a private test template. You can add questions from syllabus categories later.</p>
+            
+            <form onSubmit={handleCreateTest} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Test Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Polity Weekly Practice"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Description <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <textarea
+                  placeholder="Describe the purpose of this test"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none transition resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !newTitle.trim()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Save Test</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

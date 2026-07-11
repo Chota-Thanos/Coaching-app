@@ -58,6 +58,12 @@ export async function listTestTemplates(
     `);
   }
 
+  let userIdParamIndex: number | null = null;
+  if (options.user_id) {
+    params.push(options.user_id);
+    userIdParamIndex = params.length;
+  }
+
   params.push(options.limit, options.offset);
   const limitPosition = params.length - 1;
   const offsetPosition = params.length;
@@ -67,6 +73,27 @@ export async function listTestTemplates(
       select
         tt.*,
         coalesce(count(tqi.id), 0)::integer as question_count
+        ${userIdParamIndex ? `,
+          (
+            select ta.id 
+            from assessment.test_attempts ta 
+            where ta.test_template_id = tt.id and ta.user_id = $${userIdParamIndex}
+            order by ta.started_at desc limit 1
+          ) as latest_attempt_id,
+          (
+            select ta.status 
+            from assessment.test_attempts ta 
+            where ta.test_template_id = tt.id and ta.user_id = $${userIdParamIndex}
+            order by ta.started_at desc limit 1
+          ) as latest_attempt_status,
+          (
+            select tr.id 
+            from assessment.test_attempts ta 
+            left join assessment.test_results tr on tr.attempt_id = ta.id
+            where ta.test_template_id = tt.id and ta.user_id = $${userIdParamIndex}
+            order by ta.started_at desc limit 1
+          ) as latest_result_id
+        ` : ""}
       from assessment.test_templates tt
       left join assessment.test_question_items tqi on tqi.test_template_id = tt.id
       ${conditions.length ? `where ${conditions.join(" and ")}` : ""}
@@ -160,46 +187,102 @@ export async function updateTestTemplate(id: number, input: UpdateTestTemplateIn
   );
 }
 
-export async function getTestTemplate(id: number): Promise<unknown | null> {
-  return one(
+export async function getTestTemplate(id: number, userId?: number): Promise<unknown | null> {
+  const params: unknown[] = [id];
+  if (userId) params.push(userId);
+
+  const mainRecord = await one(
     `
       select
         tt.*,
-        coalesce(
-          jsonb_agg(distinct jsonb_build_object(
-            'id', ts.id,
-            'title', ts.title,
-            'display_order', ts.display_order,
-            'duration_minutes', ts.duration_minutes,
-            'instructions', ts.instructions
-          ) order by jsonb_build_object(
-            'id', ts.id,
-            'title', ts.title,
-            'display_order', ts.display_order,
-            'duration_minutes', ts.duration_minutes,
-            'instructions', ts.instructions
-          )) filter (where ts.id is not null),
-          '[]'::jsonb
-        ) as sections,
-        coalesce(
-          jsonb_agg(distinct jsonb_build_object(
-            'id', tqi.id,
-            'test_section_id', tqi.test_section_id,
-            'question_version_id', tqi.question_version_id,
-            'marks', tqi.marks,
-            'negative_marks', tqi.negative_marks,
-            'display_order', tqi.display_order
-          )) filter (where tqi.id is not null),
-          '[]'::jsonb
-        ) as questions
+        coalesce(count(tqi.id), 0)::integer as question_count
+        ${userId ? `,
+          (
+            select ta.id 
+            from assessment.test_attempts ta 
+            where ta.test_template_id = tt.id and ta.user_id = $2
+            order by ta.started_at desc limit 1
+          ) as latest_attempt_id,
+          (
+            select ta.status 
+            from assessment.test_attempts ta 
+            where ta.test_template_id = tt.id and ta.user_id = $2
+            order by ta.started_at desc limit 1
+          ) as latest_attempt_status,
+          (
+            select tr.id 
+            from assessment.test_attempts ta 
+            left join assessment.test_results tr on tr.attempt_id = ta.id
+            where ta.test_template_id = tt.id and ta.user_id = $2
+            order by ta.started_at desc limit 1
+          ) as latest_result_id
+        ` : ""}
       from assessment.test_templates tt
-      left join assessment.test_sections ts on ts.test_template_id = tt.id
       left join assessment.test_question_items tqi on tqi.test_template_id = tt.id
       where tt.id = $1
       group by tt.id
     `,
+    params
+  );
+
+  if (!mainRecord) return null;
+
+  // Load the sections
+  const sections = await query(
+    `
+      select * from assessment.test_sections
+      where test_template_id = $1
+      order by display_order asc
+    `,
     [id]
   );
+
+  // Load the questions with details
+  const questions = await query(
+    `
+      select 
+        tqi.*,
+        qv.question_id,
+        qv.question_statement,
+        qv.supplementary_statement,
+        qv.question_prompt,
+        qv.options,
+        qv.correct_answer,
+        qv.explanation
+      from assessment.test_question_items tqi
+      join assessment.question_versions qv on qv.id = tqi.question_version_id
+      where tqi.test_template_id = $1
+      order by tqi.display_order asc
+    `,
+    [id]
+  );
+
+  // Load the category breakdown
+  const categoryBreakdown = await query(
+    `
+      select
+        coalesce(atn_sub.id, 0) as subject_node_id,
+        coalesce(atn_sub.name, 'Uncategorized') as subject_name,
+        coalesce(atn_top.id, 0) as topic_node_id,
+        coalesce(atn_top.name, '') as topic_name,
+        count(distinct qv.question_id)::integer as question_count
+      from assessment.test_question_items tqi
+      join assessment.question_versions qv on qv.id = tqi.question_version_id
+      left join assessment.question_taxonomy_links qtl on qtl.question_id = qv.question_id
+      left join assessment.assessment_taxonomy_nodes atn_sub on atn_sub.id = qtl.subject_node_id
+      left join assessment.assessment_taxonomy_nodes atn_top on atn_top.id = qtl.topic_node_id
+      where tqi.test_template_id = $1
+      group by atn_sub.id, atn_sub.name, atn_top.id, atn_top.name
+    `,
+    [id]
+  );
+
+  return {
+    ...mainRecord,
+    sections,
+    questions,
+    category_breakdown: categoryBreakdown
+  };
 }
 
 export async function createTestSection(
@@ -686,6 +769,7 @@ export async function createUserCustomTest(
   userId: number,
   input: {
     title: string;
+    description?: string;
     exam_id: number;
     exam_level_id: number;
     question_ids: number[];
@@ -705,13 +789,14 @@ export async function createUserCustomTest(
     const templateResult = await client.query<{ id: number }>(
       `
         insert into assessment.test_templates
-          (title, slug, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
-        values ($1, $2, $3, $4, $5, $6, $7, 'private', 'published', $8)
-        returning id, title, slug, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id
+          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, 'private', 'published', $9)
+        returning id, title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id
       `,
       [
         input.title,
         slug,
+        input.description ?? null,
         input.exam_id,
         input.exam_level_id,
         testType,
@@ -798,5 +883,153 @@ export async function createUserCustomTest(
     };
   });
 }
+
+export async function addQuestionsToUserTest(
+  userId: number,
+  testId: number,
+  questionIds: number[]
+): Promise<any> {
+  if (!questionIds.length) return { success: true, count: 0 };
+
+  return transaction(async (client) => {
+    // 1. Get the template and check ownership and attempts
+    const template = await client.query<{ created_by_user_id: number; access_type: string; test_type: string }>(
+      `
+        select created_by_user_id, access_type, test_type
+        from assessment.test_templates
+        where id = $1
+      `,
+      [testId]
+    );
+
+    if (template.rows.length === 0) {
+      throw new Error("Test template not found.");
+    }
+
+    const row = template.rows[0];
+    if (!row) {
+      throw new Error("Test template not found.");
+    }
+    if (row.access_type !== "private" || row.created_by_user_id !== userId) {
+      throw new Error("You do not have permission to modify this test.");
+    }
+
+    // Check if there are any attempts on this test
+    const attempts = await client.query(
+      `
+        select id from assessment.test_attempts
+        where test_template_id = $1 limit 1
+      `,
+      [testId]
+    );
+
+    if (attempts.rows.length > 0) {
+      throw new Error("Cannot add questions to a test that has already been attempted.");
+    }
+
+    // 2. Get default section
+    let sectionId: number;
+    const sectionResult = await client.query<{ id: number }>(
+      `
+        select id from assessment.test_sections
+        where test_template_id = $1
+        order by display_order asc limit 1
+      `,
+      [testId]
+    );
+
+    if (sectionResult.rows.length > 0 && sectionResult.rows[0]) {
+      sectionId = sectionResult.rows[0].id;
+    } else {
+      // Create default section if it doesn't exist
+      const newSection = await client.query<{ id: number }>(
+        `
+          insert into assessment.test_sections (test_template_id, title, display_order)
+          values ($1, 'Default Section', 1)
+          returning id
+        `,
+        [testId]
+      );
+      const newSectionRow = newSection.rows[0];
+      if (!newSectionRow) throw new Error("Failed to create default section.");
+      sectionId = newSectionRow.id;
+    }
+
+    // 3. Get current display_order offset
+    const maxOrderResult = await client.query<{ max_order: number }>(
+      `
+        select coalesce(max(display_order), 0)::integer as max_order
+        from assessment.test_question_items
+        where test_template_id = $1 and test_section_id = $2
+      `,
+      [testId, sectionId]
+    );
+    const maxOrderRow = maxOrderResult.rows[0];
+    const orderOffset = maxOrderRow ? maxOrderRow.max_order : 0;
+
+    // 4. Resolve current versions of selected question IDs
+    const versionsResult = await client.query<{ id: number; question_id: number }>(
+      `
+        select id, question_id
+        from assessment.question_versions
+        where question_id = any($1) and is_current = true
+      `,
+      [questionIds]
+    );
+
+    // 5. Get marks for Mains questions if applicable
+    const questionMarksMap = new Map<number, number>();
+    if (row.test_type === "mains_test") {
+      const marksResult = await client.query<{ question_id: number; marks: number }>(
+        `
+          select question_id, marks
+          from assessment.mains_question_details
+          where question_id = any($1)
+        `,
+        [questionIds]
+      );
+      marksResult.rows.forEach((r) => {
+        questionMarksMap.set(r.question_id, Number(r.marks) || 10.0);
+      });
+    }
+
+    // 6. Insert new items
+    let addedMarks = 0;
+    for (let i = 0; i < versionsResult.rows.length; i++) {
+      const versionRow = versionsResult.rows[i];
+      if (!versionRow) continue;
+      const qid = versionRow.question_id;
+      const marks = row.test_type === "mains_test" ? (questionMarksMap.get(qid) ?? 10.0) : 1.0;
+      addedMarks += marks;
+
+      await client.query(
+        `
+          insert into assessment.test_question_items
+            (test_template_id, test_section_id, question_version_id, marks, negative_marks, display_order)
+          values ($1, $2, $3, $4, 0.0, $5)
+        `,
+        [testId, sectionId, versionRow.id, marks, orderOffset + i + 1]
+      );
+    }
+
+    // 7. Update total marks
+    await client.query(
+      `
+        update assessment.test_templates
+        set total_marks = total_marks + $1,
+            duration_minutes = duration_minutes + $2
+        where id = $3
+      `,
+      [addedMarks, versionsResult.rows.length * 2, testId]
+    );
+
+    return {
+      success: true,
+      added_count: versionsResult.rows.length,
+      added_marks: addedMarks
+    };
+  });
+}
+
 
 

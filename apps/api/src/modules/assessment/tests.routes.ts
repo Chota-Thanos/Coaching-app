@@ -43,7 +43,8 @@ import {
   updateTestTemplate,
   createTestTemplateDraft,
   bulkUpdateTestTemplatesTaxonomy,
-  createUserCustomTest
+  createUserCustomTest,
+  addQuestionsToUserTest
 } from "./test-templates.service.js";
 import { saveQuestionsDraft } from "./questions.service.js";
 import { parseQuizAI, generateQuizzesAI, draftMainsQuestionAI } from "../current-affairs/master/ai.service.js";
@@ -93,10 +94,26 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   });
 
   server.get("/api/v1/assessment/test-templates/:testTemplateId", async (request, reply) => {
+    let user = null;
+    try {
+      user = await requireAuth(request);
+    } catch {
+      // Allow anonymous for public/subscription tests
+    }
     return withValidation(reply, async () => {
       const params = parse(testTemplateIdParamSchema, request.params);
-      const record = await getTestTemplate(params.testTemplateId);
+      const record = await getTestTemplate(params.testTemplateId, user?.id);
       if (!record) return reply.notFound("Test template not found.");
+      
+      const tt = record as any;
+      if (tt.access_type === "private") {
+        if (!user) {
+          return reply.unauthorized("Authentication required for private tests.");
+        }
+        if (tt.created_by_user_id !== user.id && !["admin", "moderator", "content_editor"].includes(user.role)) {
+          return reply.forbidden("You do not have permission to access this private test.");
+        }
+      }
       return record;
     });
   });
@@ -561,6 +578,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
       const body = parse(
         z.object({
           title: z.string().trim().min(1),
+          description: z.string().trim().optional(),
           exam_id: z.coerce.number().int().positive(),
           exam_level_id: z.coerce.number().int().positive(),
           question_ids: z.array(z.coerce.number().int().positive()).optional().default([]),
@@ -572,6 +590,23 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
       
       const record = await createUserCustomTest(user.id, body);
       return reply.status(201).send(record);
+    });
+  });
+
+  // User custom test add questions
+  server.post("/api/v1/assessment/user/custom-tests/:testTemplateId/add-questions", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(testTemplateIdParamSchema, request.params);
+      const body = parse(
+        z.object({
+          question_ids: z.array(z.coerce.number().int().positive())
+        }),
+        request.body
+      );
+
+      const record = await addQuestionsToUserTest(user.id, params.testTemplateId, body.question_ids);
+      return record;
     });
   });
 

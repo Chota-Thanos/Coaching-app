@@ -920,18 +920,23 @@ export async function saveQuestionsDraft(
       // Link to custom test template if requested
       if (input.test_template_id && sectionId && versionId) {
         maxOrder++;
+        const marks = isMains ? (q.marks || 15.0) : 1.0;
         await client.query(
           `
             insert into assessment.test_question_items
               (test_template_id, test_section_id, question_version_id, marks, negative_marks, display_order)
-            values ($1, $2, $3, 1.0, 0.0, $4)
+            values ($1, $2, $3, $4, 0.0, $5)
           `,
-          [input.test_template_id, sectionId, versionId, maxOrder]
+          [input.test_template_id, sectionId, versionId, marks, maxOrder]
         );
       }
     }
 
     if (input.test_template_id && sectionId) {
+      let totalAddedMarks = 0;
+      for (const q of input.questions) {
+        totalAddedMarks += isMains ? (q.marks || 15.0) : 1.0;
+      }
       await client.query(
         `
           update assessment.test_templates
@@ -940,7 +945,7 @@ export async function saveQuestionsDraft(
               updated_at = now()
           where id = $3
         `,
-        [input.questions.length, input.questions.length * 2, input.test_template_id]
+        [totalAddedMarks, input.questions.length * 2, input.test_template_id]
       );
     }
   });
