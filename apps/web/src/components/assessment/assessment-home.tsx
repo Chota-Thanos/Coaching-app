@@ -22,12 +22,14 @@ import {
   Trash2,
   X,
   LockKeyhole,
-  SlidersHorizontal
+  SlidersHorizontal,
+  User
 } from "lucide-react";
 import { authenticatedGet, authenticatedPost, authenticatedDelete, useAuth } from "../auth/auth-context";
 import { resolveMediaUrl } from "../../lib/api";
 import { useSubscription } from "../../lib/use-subscription";
 import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
+import { UserQuestionForm } from "./user-question-form";
 
 type ActiveTab = "gk" | "aptitude" | "mains" | "bookmarks";
 type QuestionFamily = "objective" | "mains_subjective";
@@ -50,6 +52,8 @@ type TreeNodeType = {
   content_type?: string;
   display_order?: number;
   children: TreeNodeType[];
+  isUserNode?: boolean;
+  user_question_count?: number;
 };
 
 type QuestionCount = {
@@ -139,26 +143,40 @@ function buildTree(nodes: any[]): TreeNodeType[] {
 }
 
 function resolveCategory(node: TreeNodeType, nodesList: any[]) {
-  let subjectNodeId = node.id;
+  const isUserPrivate = node.id < 0;
+  const targetId = isUserPrivate ? -node.id : node.id;
+
+  const actualNode = nodesList.find((n) => Number(n.id) === targetId);
+  if (!actualNode) {
+    return {
+      subject_node_id: targetId,
+      topic_node_id: null,
+      subtopic_node_id: null,
+      is_user_private: isUserPrivate
+    };
+  }
+
+  let subjectNodeId = actualNode.id;
   let topicNodeId: number | null = null;
   let subtopicNodeId: number | null = null;
 
-  if (node.parent_id) {
-    const parentNode = nodesList.find((n) => Number(n.id) === node.parent_id);
+  if (actualNode.parent_id) {
+    const parentNode = nodesList.find((n) => Number(n.id) === actualNode.parent_id);
     if (parentNode && parentNode.parent_id) {
-      subtopicNodeId = node.id;
+      subtopicNodeId = actualNode.id;
       topicNodeId = Number(parentNode.id);
       subjectNodeId = Number(parentNode.parent_id);
     } else {
-      topicNodeId = node.id;
-      subjectNodeId = node.parent_id;
+      topicNodeId = actualNode.id;
+      subjectNodeId = actualNode.parent_id;
     }
   }
 
   return {
-    subject_node_id: subjectNodeId,
-    topic_node_id: topicNodeId,
-    subtopic_node_id: subtopicNodeId
+    subject_node_id: Number(subjectNodeId),
+    topic_node_id: topicNodeId ? Number(topicNodeId) : null,
+    subtopic_node_id: subtopicNodeId ? Number(subtopicNodeId) : null,
+    is_user_private: isUserPrivate
   };
 }
 
@@ -209,6 +227,7 @@ export function AssessmentHomePage({
   const [objNodes, setObjNodes] = useState<any[]>([]);
   const [mainsNodes, setMainsNodes] = useState<any[]>([]);
   const [questionCounts, setQuestionCounts] = useState<Record<number, number>>({});
+  const [userQuestionCounts, setUserQuestionCounts] = useState<Record<number, number>>({});
 
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
   const [counts, setCounts] = useState<Record<number, number>>({});
@@ -226,6 +245,7 @@ export function AssessmentHomePage({
   const [promptNode, setPromptNode] = useState<TreeNodeType | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeFormNode, setActiveFormNode] = useState<TreeNodeType | null>(null);
 
   // Bookmarks revision states
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<any[]>([]);
@@ -294,7 +314,7 @@ export function AssessmentHomePage({
     async function loadCounts() {
       setLoadingCounts(true);
       try {
-        const records = await authenticatedGet<QuestionCount[]>(
+        const records = await authenticatedGet<any[]>(
           `/api/v1/assessment/question-counts?exam_id=${examId}&question_family=${questionFamily}`,
           token || ""
         );
@@ -302,9 +322,15 @@ export function AssessmentHomePage({
         setQuestionCounts(
           Object.fromEntries((records || []).map((record) => [Number(record.node_id), Number(record.question_count)]))
         );
+        setUserQuestionCounts(
+          Object.fromEntries((records || []).map((record) => [Number(record.node_id), Number(record.user_question_count ?? 0)]))
+        );
       } catch (err) {
         console.error("Failed to load question counts:", err);
-        if (!cancelled) setQuestionCounts({});
+        if (!cancelled) {
+          setQuestionCounts({});
+          setUserQuestionCounts({});
+        }
       } finally {
         if (!cancelled) setLoadingCounts(false);
       }
@@ -383,9 +409,36 @@ export function AssessmentHomePage({
     return nodes;
   }, [mainsNodes, excludedNodeIds]);
 
-  const gkTree = useMemo(() => buildTree(filteredObjNodes.filter((n) => n.content_type === "gk")), [filteredObjNodes]);
-  const aptitudeTree = useMemo(() => buildTree(filteredObjNodes.filter((n) => n.content_type === "aptitude")), [filteredObjNodes]);
-  const mainsTree = useMemo(() => buildTree(filteredMainsNodes), [filteredMainsNodes]);
+  const injectVirtualNodes = useCallback((tree: TreeNodeType[]): TreeNodeType[] => {
+    function inject(node: TreeNodeType): TreeNodeType {
+      const children = node.children.map(inject);
+      const userCount = userQuestionCounts[node.id] ?? 0;
+      if (userCount > 0) {
+        children.push({
+          id: -node.id, // negative ID as virtual marker
+          name: "Your Questions",
+          slug: `user-questions-${node.id}`,
+          description: "Syllabus questions uploaded or created by you",
+          image_url: null,
+          node_type: "user_questions",
+          parent_id: node.id,
+          children: [],
+          isUserNode: true,
+          user_question_count: userCount
+        });
+      }
+      return { ...node, children };
+    }
+    return tree.map(inject);
+  }, [userQuestionCounts]);
+
+  const gkTreeRaw = useMemo(() => buildTree(filteredObjNodes.filter((n) => n.content_type === "gk")), [filteredObjNodes]);
+  const aptitudeTreeRaw = useMemo(() => buildTree(filteredObjNodes.filter((n) => n.content_type === "aptitude")), [filteredObjNodes]);
+  const mainsTreeRaw = useMemo(() => buildTree(filteredMainsNodes), [filteredMainsNodes]);
+
+  const gkTree = useMemo(() => injectVirtualNodes(gkTreeRaw), [gkTreeRaw, injectVirtualNodes]);
+  const aptitudeTree = useMemo(() => injectVirtualNodes(aptitudeTreeRaw), [aptitudeTreeRaw, injectVirtualNodes]);
+  const mainsTree = useMemo(() => injectVirtualNodes(mainsTreeRaw), [mainsTreeRaw, injectVirtualNodes]);
 
   // ── CUSTOM SYLLABUS CUSTOMIZATION MODAL HANDLERS ──
   interface FilterTreeNode {
@@ -728,6 +781,19 @@ export function AssessmentHomePage({
   }, [parentMap]);
 
   const getAvailableCount = useCallback((nodeId: number) => {
+    if (nodeId < 0) {
+      // Virtual node representing user questions
+      const actualNodeId = -nodeId;
+      const rawUserAvailable = userQuestionCounts[actualNodeId] ?? 0;
+      let selectedOverlap = 0;
+      compiledItems.forEach(item => {
+        if (item.node.id === nodeId) {
+          selectedOverlap += item.count;
+        }
+      });
+      return Math.max(0, rawUserAvailable - selectedOverlap);
+    }
+
     const rawAvailable = aggregatedCounts[nodeId] ?? 0;
     let selectedOverlap = 0;
     compiledItems.forEach(item => {
@@ -738,7 +804,7 @@ export function AssessmentHomePage({
       }
     });
     return Math.max(0, rawAvailable - selectedOverlap);
-  }, [aggregatedCounts, compiledItems, isNodeDescendantOf]);
+  }, [aggregatedCounts, compiledItems, isNodeDescendantOf, userQuestionCounts]);
 
   const availableTotal = useMemo(() => {
     return activeTree.reduce((total, node) => total + getAvailableCount(node.id), 0);
@@ -1204,13 +1270,7 @@ export function AssessmentHomePage({
             </div>
           )}
 
-          {activeTab === "mains" && !isAssessmentPremium ? (
-            <PremiumLockOverlay
-              title="Unlock Mains Answer Writing"
-              description="GS Mains syllabus topics, detailed question bank, model answers, and AI-powered evaluation of your answers are available in the Assessment Premium plan."
-              planName="Assessment Premium"
-            />
-          ) : activeTab === "bookmarks" ? (
+          {activeTab === "bookmarks" ? (
             loadingBookmarks ? (
               <div className="grid min-h-80 place-items-center">
                 <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
@@ -1423,6 +1483,7 @@ export function AssessmentHomePage({
                     onAddToTest={handleAddToTest}
                     onStartTest={handleStartTest}
                     activeTab={activeTab}
+                    onAddQuestion={setActiveFormNode}
                   />
                 ))}
               </div>
@@ -1650,6 +1711,28 @@ export function AssessmentHomePage({
         </div>
       </div>
     )}
+
+    {activeFormNode && token && (() => {
+      const resolved = resolveCategory(activeFormNode, activeTab === "mains" ? mainsNodes : objNodes);
+      return (
+        <UserQuestionForm
+          isOpen={!!activeFormNode}
+          onClose={() => setActiveFormNode(null)}
+          token={token}
+          examId={examId!}
+          subjectNodeId={resolved.subject_node_id}
+          topicNodeId={resolved.topic_node_id}
+          subtopicNodeId={resolved.subtopic_node_id}
+          questionFamily={activeTab === "mains" ? "mains_subjective" : "objective"}
+          onSuccess={() => {
+            // Reload counts
+            const tempId = examId;
+            setExamId(null);
+            setTimeout(() => setExamId(tempId), 50);
+          }}
+        />
+      );
+    })()}
   </div>
   );
 }
@@ -1666,7 +1749,8 @@ function TreeRow({
   startingNodeId,
   onAddToTest,
   onStartTest,
-  activeTab
+  activeTab,
+  onAddQuestion
 }: {
   node: TreeNodeType;
   depth: number;
@@ -1680,6 +1764,7 @@ function TreeRow({
   onAddToTest: (node: TreeNodeType) => void;
   onStartTest: (node: TreeNodeType) => void;
   activeTab: ActiveTab;
+  onAddQuestion?: (node: TreeNodeType) => void;
 }) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedNodes.has(node.id);
@@ -1757,6 +1842,70 @@ function TreeRow({
             </div>
           </div>
         </div>
+      ) : node.isUserNode ? (
+        <div className="grid gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/20 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amber-250 bg-white text-amber-600">
+              <User className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="min-w-0 truncate text-sm font-black text-amber-900">{node.name}</p>
+              </div>
+              <p className="mt-0.5 text-xs font-semibold text-amber-700">Questions submitted by you</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-amber-200 bg-amber-100/50 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                  {availableCount} Qs
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-[auto_1fr] md:w-[22rem]">
+            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-white p-1">
+              <button
+                type="button"
+                aria-label={`Decrease questions for ${node.name}`}
+                disabled={disabled || selectedCount <= 1}
+                onClick={() => setNodeCount(node.id, selectedCount - 5)}
+                className="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-300"
+              >
+                <Minus className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <span className="w-10 text-center text-sm font-black text-slate-905">{selectedCount || "-"}</span>
+              <button
+                type="button"
+                aria-label={`Increase questions for ${node.name}`}
+                disabled={disabled || selectedCount >= Math.min(availableCount, 50)}
+                onClick={() => setNodeCount(node.id, selectedCount + 5)}
+                className="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-300"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onAddToTest(node)}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add
+              </button>
+              <button
+                type="button"
+                disabled={disabled || isStarting}
+                onClick={() => onStartTest(node)}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                {isStarting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
+                Start
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 transition md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-start gap-3">
@@ -1790,7 +1939,7 @@ function TreeRow({
               {node.description && (
                 <p className="mt-1 line-clamp-1 text-xs font-medium text-slate-500">{node.description}</p>
               )}
-              <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[11px] font-black ${
                     availableCount > 0
@@ -1801,9 +1950,26 @@ function TreeRow({
                   {loadingCounts ? "Checking..." : `${availableCount} Quiz`}
                 </span>
                 {availableCount > 0 && (
-                  <span className="text-[11px] font-semibold text-slate-500">
+                  <span className="text-[11px] font-semibold text-slate-500 mr-2">
                     Up to {Math.min(availableCount, 50)} can be selected
                   </span>
+                )}
+                {onAddQuestion && (
+                  <div className="inline-flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onAddQuestion(node)}
+                      className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-650 hover:text-indigo-850 transition"
+                    >
+                      📝 Add Q
+                    </button>
+                    <Link
+                      href={`/assessment/ai-parser?category_node_id=${node.id}&content_type=${activeTab}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-650 hover:text-indigo-850 transition"
+                    >
+                      🤖 Parse AI
+                    </Link>
+                  </div>
                 )}
               </div>
             </div>
@@ -1873,6 +2039,7 @@ function TreeRow({
               onAddToTest={onAddToTest}
               onStartTest={onStartTest}
               activeTab={activeTab}
+              onAddQuestion={onAddQuestion}
             />
           ))}
         </div>

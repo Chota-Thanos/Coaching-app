@@ -47,7 +47,9 @@ const sanitizedPaperQuestionsSql = `
           'statements_facts', qv.statements_facts,
           'question_prompt', qv.question_prompt,
           'options', qv.options,
-          'content_json', qv.content_json
+          'content_json', qv.content_json,
+          'created_by_user_id', q.created_by_user_id,
+          'is_ai_generated', q.is_ai_generated
         ),
         'taxonomy', coalesce(tax.taxonomy, '[]'::jsonb),
         'passage', passage.passage
@@ -165,7 +167,9 @@ export async function getAttemptPaper(attemptId: number, user: AssessmentUser): 
                   'statements_facts', qv.statements_facts,
                   'question_prompt', qv.question_prompt,
                   'options', qv.options,
-                  'content_json', qv.content_json
+                  'content_json', qv.content_json,
+                  'created_by_user_id', q.created_by_user_id,
+                  'is_ai_generated', q.is_ai_generated
                 ),
                 'passage', passage.passage
               ) as item
@@ -316,7 +320,9 @@ export async function getResultReview(resultId: number, user: AssessmentUser): P
                 'options', qv.options,
                 'correct_answer', qv.correct_answer,
                 'explanation', qv.explanation,
-                'content_json', qv.content_json
+                'content_json', qv.content_json,
+                'created_by_user_id', q.created_by_user_id,
+                'is_ai_generated', q.is_ai_generated
               ),
               'response', case
                 when qf.question_family = 'mains_subjective' then

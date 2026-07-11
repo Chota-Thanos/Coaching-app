@@ -76,9 +76,17 @@ export async function registerAssessmentQuestionRoutes(server: FastifyInstance):
   });
 
   server.get("/api/v1/assessment/question-counts", async (request, reply) => {
+    // Optional auth — anonymous gets public counts only; authenticated users also get their own private counts
+    let userId: number | undefined;
+    try {
+      const user = await requireAuth(request);
+      userId = user.id;
+    } catch {
+      // unauthenticated — user_id remains undefined
+    }
     return withValidation(reply, async () => {
       const query = parse(questionCountsQuerySchema, request.query);
-      return listQuestionCountsByTaxonomy(query);
+      return listQuestionCountsByTaxonomy({ ...query, user_id: userId });
     });
   });
 

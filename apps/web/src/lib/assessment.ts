@@ -66,6 +66,8 @@ export type QuestionVersion = {
   content_json: Record<string, unknown>;
   correct_answer?: unknown;
   explanation?: string | null;
+  created_by_user_id?: number | null;
+  is_ai_generated?: boolean | null;
 };
 
 export type TestQuestionItem = {

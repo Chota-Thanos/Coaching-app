@@ -47,6 +47,8 @@ import {
 } from "./test-templates.service.js";
 import { saveQuestionsDraft } from "./questions.service.js";
 import { parseQuizAI, generateQuizzesAI, draftMainsQuestionAI } from "../current-affairs/master/ai.service.js";
+import { extractTextFromImage, extractTextFromImages } from "./ocr.service.js";
+import { getUserEntitlements } from "../billing/service.js";
 import { one, query, transaction } from "../../db.js";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -573,9 +575,21 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
     });
   });
 
-  // User AI file parser
+  // Helper: check user has assessment.premium_tests entitlement
+  async function requireAssessmentPremium(userId: number, reply: any): Promise<boolean> {
+    const entitlements = await getUserEntitlements(userId);
+    const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
+    if (!hasPremium) {
+      reply.status(403).send({ error: "This feature requires an Assessment Premium subscription." });
+      return false;
+    }
+    return true;
+  }
+
+  // User AI file parser (PDF, Word, Images)
   server.post("/api/v1/assessment/user/ai/parse-file", async (request, reply) => {
     const user = await requireAuth(request);
+    if (!(await requireAssessmentPremium(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = request.body as {
         base64_data: string;
@@ -599,11 +613,16 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
           const data = await pdf(buffer);
           extractedText = data.text;
         } else if (
-          body.mime_type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+          body.mime_type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
           body.mime_type === "application/msword"
         ) {
           const result = await mammoth.extractRawText({ buffer });
           extractedText = result.value;
+        } else if (
+          ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(body.mime_type)
+        ) {
+          // OCR via Google Cloud Vision
+          extractedText = await extractTextFromImage(buffer);
         } else {
           extractedText = buffer.toString("utf-8");
         }
@@ -613,7 +632,51 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
       }
 
       if (!extractedText.trim()) {
-        return reply.badRequest("No text could be extracted from the uploaded document.");
+        return reply.badRequest("No text could be extracted from the uploaded file.");
+      }
+
+      return parseQuizAI({
+        rawText: extractedText,
+        aiProvider: "openai",
+        aiModel: "gpt-4o-mini",
+        instructions: body.instructions,
+        content_type: body.content_type
+      });
+    });
+  });
+
+  // User AI multi-image parser (OCR multiple images in order, then AI parse)
+  server.post("/api/v1/assessment/user/ai/parse-images", async (request, reply) => {
+    const user = await requireAuth(request);
+    if (!(await requireAssessmentPremium(user.id, reply))) return;
+    return withValidation(reply, async () => {
+      const body = request.body as {
+        images: Array<{ base64_data: string; mime_type: string }>;
+        content_type?: "gk" | "aptitude";
+        instructions?: string;
+      };
+
+      if (!body.images || !Array.isArray(body.images) || body.images.length === 0) {
+        return reply.badRequest("images array is required and must not be empty.");
+      }
+      if (body.images.length > 20) {
+        return reply.badRequest("Maximum 20 images allowed per parse session.");
+      }
+
+      let extractedText = "";
+      try {
+        const buffers = body.images.map((img) => {
+          const clean = img.base64_data.replace(/^data:[^;]+;base64,/, "");
+          return Buffer.from(clean, "base64");
+        });
+        extractedText = await extractTextFromImages(buffers);
+      } catch (err: any) {
+        console.error("OCR multi-image error:", err);
+        return reply.badRequest("Failed to extract text from images: " + (err.message || err));
+      }
+
+      if (!extractedText.trim()) {
+        return reply.badRequest("No text could be read from the uploaded images.");
       }
 
       return parseQuizAI({
@@ -629,6 +692,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   // User AI text parser
   server.post("/api/v1/assessment/user/ai/parse-text", async (request, reply) => {
     const user = await requireAuth(request);
+    if (!(await requireAssessmentPremium(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = request.body as {
         raw_text: string;
@@ -651,9 +715,10 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
     });
   });
 
-  // User AI save parsed questions
+  // User AI save parsed questions (also used for manual entry)
   server.post("/api/v1/assessment/user/ai/save-questions", async (request, reply) => {
     const user = await requireAuth(request);
+    if (!(await requireAssessmentPremium(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = request.body as {
         exam_id: number;
@@ -666,18 +731,139 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
         passage_text?: string;
         questions: any[];
         test_template_id?: number;
+        mark_for_revision?: boolean; // If true, bookmarks all saved questions
       };
 
       if (!body.questions || !body.exam_id || !body.exam_level_id || !body.subject_node_id) {
         return reply.badRequest("exam_id, exam_level_id, subject_node_id, and questions are required.");
       }
 
-      await saveQuestionsDraft({
+      const createdItems = await saveQuestionsDraft({
         ...body,
-        status: "published"
+        status: "published",
+        is_user_private: true
       }, user.id);
 
+      // If mark_for_revision is enabled, automatically bookmark each question for the user
+      if (body.mark_for_revision && createdItems && createdItems.length > 0) {
+        for (const item of createdItems) {
+          try {
+            await query(
+              `
+                insert into assessment.student_bookmarks (user_id, question_id, question_version_id, note)
+                values ($1, $2, $3, 'Created and marked for revision')
+                on conflict (user_id, question_id) do nothing
+              `,
+              [user.id, item.question_id, item.version_id]
+            );
+          } catch (e) {
+            console.error("Failed to automatically bookmark user-created question:", e);
+          }
+        }
+      }
+
       return reply.status(201).send({ success: true });
+    });
+  });
+
+  // User: list own submitted questions for a category
+  server.get("/api/v1/assessment/user/my-questions", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const q = request.query as {
+        exam_id?: string;
+        subject_node_id?: string;
+        topic_node_id?: string;
+        subtopic_node_id?: string;
+        limit?: string;
+        offset?: string;
+      };
+
+      const params: unknown[] = [user.id];
+      const conditions: string[] = ["q.created_by_user_id = $1", "q.status = 'published'"];
+
+      if (q.exam_id) {
+        params.push(Number(q.exam_id));
+        conditions.push(`qtl.exam_id = $${params.length}`);
+      }
+      if (q.subject_node_id) {
+        params.push(Number(q.subject_node_id));
+        conditions.push(`qtl.subject_node_id = $${params.length}`);
+      }
+      if (q.topic_node_id) {
+        params.push(Number(q.topic_node_id));
+        conditions.push(`qtl.topic_node_id = $${params.length}`);
+      }
+      if (q.subtopic_node_id) {
+        params.push(Number(q.subtopic_node_id));
+        conditions.push(`qtl.subtopic_node_id = $${params.length}`);
+      }
+
+      const limit = Math.min(Number(q.limit ?? 50), 100);
+      const offset = Number(q.offset ?? 0);
+      params.push(limit, offset);
+
+      const rows = await query<any>(
+        `
+          select
+            q.id as question_id,
+            q.is_ai_generated,
+            q.created_at,
+            qv.id as question_version_id,
+            qv.question_statement,
+            qv.supplementary_statement,
+            qv.options,
+            qv.correct_answer,
+            qv.explanation,
+            qtl.subject_node_id,
+            qtl.topic_node_id,
+            qtl.subtopic_node_id,
+            sn.name as subject_name,
+            tn.name as topic_name,
+            stn.name as subtopic_name,
+            exists (
+              select 1 from assessment.student_bookmarks sb
+              where sb.question_id = q.id and sb.user_id = $1
+            ) as is_bookmarked
+          from assessment.questions q
+          join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
+          join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
+          left join assessment.assessment_taxonomy_nodes sn on sn.id = qtl.subject_node_id
+          left join assessment.assessment_taxonomy_nodes tn on tn.id = qtl.topic_node_id
+          left join assessment.assessment_taxonomy_nodes stn on stn.id = qtl.subtopic_node_id
+          where ${conditions.join(" and ")}
+          order by q.created_at desc
+          limit $${params.length - 1} offset $${params.length}
+        `,
+        params
+      );
+
+      return rows.map((r: any) => ({
+        ...r,
+        options: typeof r.options === "string" ? JSON.parse(r.options) : r.options,
+        correct_answer: typeof r.correct_answer === "string" ? JSON.parse(r.correct_answer) : r.correct_answer
+      }));
+    });
+  });
+
+  // User: archive (soft-delete) own submitted question
+  server.delete("/api/v1/assessment/user/my-questions/:questionId", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const { questionId } = request.params as { questionId: string };
+      const result = await query<{ id: number }>(
+        `
+          update assessment.questions
+          set status = 'archived', updated_at = now()
+          where id = $1 and created_by_user_id = $2 and status = 'published'
+          returning id
+        `,
+        [Number(questionId), user.id]
+      );
+      if (!result.length) {
+        return reply.status(404).send({ error: "Question not found or already deleted." });
+      }
+      return reply.status(200).send({ success: true });
     });
   });
 

@@ -1156,6 +1156,11 @@ export function ResultReview({ resultId }: { resultId: string }) {
                         <span className="text-xs font-semibold text-muted">
                           Q{originalIndex + 1}
                         </span>
+                        {question.question_version.created_by_user_id && (
+                          <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-700" title="This is a private question added by you. WayToIAS does not take responsibility for its correctness.">
+                            ⚠️ Your Question
+                          </span>
+                        )}
                         {timeSpent > 0 && (
                           <span className="flex items-center gap-1 text-[11px] text-muted">
                             <Clock3 className="h-3 w-3" aria-hidden="true" />
@@ -1326,6 +1331,11 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                   <span className="text-xs font-semibold text-muted">
                                     Q{originalIndex + 1}
                                   </span>
+                                  {q.question_version.created_by_user_id && (
+                                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-700" title="This is a private question added by you. WayToIAS does not take responsibility for its correctness.">
+                                      ⚠️ Your Question
+                                    </span>
+                                  )}
                                   {timeSpent > 0 && (
                                     <span className="flex items-center gap-1 text-[10px] text-muted">
                                       <Clock3 className="h-3 w-3" aria-hidden="true" />

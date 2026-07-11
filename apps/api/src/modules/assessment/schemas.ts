@@ -246,7 +246,8 @@ export const startDynamicAttemptSchema = z.object({
   question_count: z.coerce.number().int().min(1).max(100),
   test_type: z.enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "diagnostic_test"]),
   question_family: z.enum(["objective", "mains_subjective"]).default("objective").optional(),
-  include_attempted: z.boolean().optional().default(false)
+  include_attempted: z.boolean().optional().default(false),
+  is_user_private: z.boolean().optional().nullable()
 });
 
 export const compiledCategorySchema = z.object({
@@ -255,7 +256,8 @@ export const compiledCategorySchema = z.object({
   subtopic_node_id: idSchema.optional().nullable(),
   question_nature_id: idSchema.optional().nullable(),
   question_count: z.coerce.number().int().min(1).max(50),
-  question_family: z.enum(["objective", "mains_subjective"]).default("objective").optional()
+  question_family: z.enum(["objective", "mains_subjective"]).default("objective").optional(),
+  is_user_private: z.boolean().optional().nullable()
 });
 
 export const startCompiledAttemptSchema = z.object({

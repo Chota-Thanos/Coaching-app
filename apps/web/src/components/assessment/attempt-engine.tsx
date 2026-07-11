@@ -378,6 +378,11 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
             {Number(activeQuestion.negative_marks) > 0 && (
               <span className="rounded-md bg-rose-50 border border-rose-100 px-2.5 py-1 text-[10px] font-black text-rose-600">-{activeQuestion.negative_marks} Neg</span>
             )}
+            {activeQuestion.question_version.created_by_user_id && (
+              <span className="rounded-md bg-amber-50 border border-amber-200 px-2.5 py-1 text-[10px] font-black text-amber-700" title="This is a private question added by you. WayToIAS does not take responsibility for its correctness.">
+                ⚠️ Your Question
+              </span>
+            )}
           </div>
           {activeQuestion.passage ? (
             <>

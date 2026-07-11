@@ -837,12 +837,15 @@ export async function getStudentCategoryPerformance(
               mqtl.subtopic_node_id,
               subtopic_node.name as subtopic_name,
               qn.name as question_nature_name,
+              q.created_by_user_id,
+              q.is_ai_generated,
               score_item.item
             from assessment.test_attempts ta
             join assessment.test_results tr on tr.attempt_id = ta.id
             join assessment.test_templates tt on tt.id = ta.test_template_id
             join assessment.test_question_items tqi on tqi.test_template_id = tt.id
             join assessment.question_versions qv on qv.id = tqi.question_version_id
+            join assessment.questions q on q.id = qv.question_id
             join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = qv.question_id
             left join assessment.mains_taxonomy_nodes paper_node on paper_node.id = mqtl.paper_node_id
             left join assessment.mains_taxonomy_nodes subject_area_node on subject_area_node.id = mqtl.subject_area_node_id
@@ -857,6 +860,7 @@ export async function getStudentCategoryPerformance(
               limit 1
             ) score_item on true
             where ta.user_id = $1
+
               and (
                 mqtl.paper_node_id in (select id from category_nodes)
                 or mqtl.subject_area_node_id in (select id from category_nodes)
@@ -968,12 +972,15 @@ export async function getStudentCategoryPerformance(
               qtl.subtopic_node_id,
               subtopic_node.name as subtopic_name,
               qn.name as question_nature_name,
+              q.created_by_user_id,
+              q.is_ai_generated,
               score_item.item
             from assessment.test_attempts ta
             join assessment.test_results tr on tr.attempt_id = ta.id
             join assessment.test_templates tt on tt.id = ta.test_template_id
             join assessment.test_question_items tqi on tqi.test_template_id = tt.id
             join assessment.question_versions qv on qv.id = tqi.question_version_id
+            join assessment.questions q on q.id = qv.question_id
             join assessment.question_taxonomy_links qtl on qtl.question_id = qv.question_id
             left join assessment.assessment_taxonomy_nodes subject_node on subject_node.id = qtl.subject_node_id
             left join assessment.assessment_taxonomy_nodes source_node on source_node.id = qtl.source_node_id

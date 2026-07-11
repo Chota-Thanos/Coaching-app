@@ -241,6 +241,13 @@ export async function startDynamicAttempt(
             or mqtl.subtopic_node_id in (select id from category_nodes)
           )
       `;
+      if (input.is_user_private) {
+        params.push(userId);
+        queryText += ` and q.created_by_user_id = $${params.length}`;
+      } else {
+        queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+      }
+
       if (input.exam_level_id) {
         params.push(input.exam_level_id);
         queryText += ` and mqtl.exam_level_id = $${params.length}`;
@@ -271,6 +278,13 @@ export async function startDynamicAttempt(
           and qtl.exam_id = $1
           and qtl.subject_node_id = $2
       `;
+      if (input.is_user_private) {
+        params.push(userId);
+        queryText += ` and q.created_by_user_id = $${params.length}`;
+      } else {
+        queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+      }
+
       if (input.exam_level_id) {
         params.push(input.exam_level_id);
         queryText += ` and qtl.exam_level_id = $${params.length}`;
@@ -500,6 +514,13 @@ export async function startCompiledAttempt(
               or mqtl.subtopic_node_id in (select id from category_nodes)
             )
         `;
+        if (cat.is_user_private) {
+          params.push(userId);
+          queryText += ` and q.created_by_user_id = $${params.length}`;
+        } else {
+          queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+        }
+
         if (input.exam_level_id) {
           params.push(input.exam_level_id);
           queryText += ` and mqtl.exam_level_id = $${params.length}`;
@@ -541,6 +562,13 @@ export async function startCompiledAttempt(
               or qtl.subtopic_node_id in (select id from category_nodes)
             )
         `;
+        if (cat.is_user_private) {
+          params.push(userId);
+          queryText += ` and q.created_by_user_id = $${params.length}`;
+        } else {
+          queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+        }
+
         if (input.exam_level_id) {
           params.push(input.exam_level_id);
           queryText += ` and qtl.exam_level_id = $${params.length}`;

@@ -38,10 +38,13 @@ type TaxonomyNode = {
 type ParsedQuestion = {
   question_statement: string;
   supp_question_statement?: string;
-  options: Array<{ label: string; text: string }>;
-  correct_answer: string;
+  options?: Array<{ label: string; text: string }>;
+  correct_answer?: string;
   explanation?: string;
   question_nature_id?: number | null;
+  word_limit?: number;
+  marks?: number;
+  directive?: string;
 };
 
 type ParsedResult = {
@@ -87,7 +90,7 @@ function AiParserInner() {
   // Input States
   const [parseMode, setParseMode] = useState<"text" | "file">("file");
   const [rawText, setRawText] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [instructions, setInstructions] = useState("");
 
   const contentParam = searchParams.get("content_type");
@@ -185,30 +188,85 @@ function AiParserInner() {
     fetchExamData();
   }, [token, selectedExamId, contentType]);
 
+  const [prefilled, setPrefilled] = useState(false);
+
   // Filter subjects based on content type
   useEffect(() => {
+    const categoryNodeIdParam = searchParams.get("category_node_id");
     if (contentType === "mains") {
       const papers = nodes.filter((n) => n.node_type === "paper");
       setSubjects(papers);
-      setSelectedSubjectId(papers.length > 0 ? (papers[0]?.id ?? null) : null);
+      if (!categoryNodeIdParam) {
+        setSelectedSubjectId(papers.length > 0 ? (papers[0]?.id ?? null) : null);
+      }
     } else {
       const subs = nodes.filter((n) => n.node_type === "subject" && n.content_type === contentType);
       setSubjects(subs);
-      setSelectedSubjectId(subs.length > 0 ? (subs[0]?.id ?? null) : null);
+      if (!categoryNodeIdParam) {
+        setSelectedSubjectId(subs.length > 0 ? (subs[0]?.id ?? null) : null);
+      }
     }
-  }, [nodes, contentType]);
+  }, [nodes, contentType, searchParams]);
 
   // Filter topics based on selected subject
   useEffect(() => {
+    const categoryNodeIdParam = searchParams.get("category_node_id");
     if (selectedSubjectId === null) {
       setTopics([]);
-      setSelectedTopicId(null);
+      if (!categoryNodeIdParam) setSelectedTopicId(null);
       return;
     }
     const tops = nodes.filter((n) => n.parent_id === selectedSubjectId);
     setTopics(tops);
-    setSelectedTopicId(tops.length > 0 ? (tops[0]?.id ?? null) : null);
-  }, [nodes, selectedSubjectId]);
+    if (!categoryNodeIdParam) {
+      setSelectedTopicId(tops.length > 0 ? (tops[0]?.id ?? null) : null);
+    }
+  }, [nodes, selectedSubjectId, searchParams]);
+
+  // Handle Category Node ID Pre-fill URL param
+  useEffect(() => {
+    const categoryNodeIdParam = searchParams.get("category_node_id");
+    if (!categoryNodeIdParam || nodes.length === 0 || prefilled) return;
+    const catId = Number(categoryNodeIdParam);
+    const activeNode = nodes.find((n) => Number(n.id) === catId);
+    if (!activeNode) return;
+
+    if (contentType === "mains") {
+      let paperId = activeNode.id;
+      let current: any = activeNode;
+      while (current && current.parent_id) {
+        const parent = nodes.find((n) => Number(n.id) === current.parent_id);
+        if (!parent) break;
+        current = parent;
+      }
+      paperId = current.id;
+      setSelectedSubjectId(paperId);
+
+      if (activeNode.parent_id === paperId) {
+        setSelectedTopicId(activeNode.id);
+      } else if (activeNode.parent_id) {
+        setSelectedTopicId(activeNode.parent_id);
+      }
+    } else {
+      let subjectId = activeNode.id;
+      let topicId: number | null = null;
+
+      if (activeNode.parent_id) {
+        const parentNode = nodes.find((n) => Number(n.id) === activeNode.parent_id);
+        if (parentNode && parentNode.parent_id) {
+          topicId = Number(parentNode.id);
+          subjectId = Number(parentNode.parent_id);
+        } else {
+          topicId = activeNode.id;
+          subjectId = activeNode.parent_id;
+        }
+      }
+
+      setSelectedSubjectId(subjectId);
+      setSelectedTopicId(topicId);
+    }
+    setPrefilled(true);
+  }, [nodes, contentType, searchParams, prefilled]);
 
   // Convert file to base64 helper
   const fileToBase64 = (file: File): Promise<string> => {
@@ -218,6 +276,22 @@ function AiParserInner() {
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = (error) => reject(error);
     });
+  };
+
+  const moveFile = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= selectedFiles.length) return;
+    setSelectedFiles((prev) => {
+      const copy = [...prev];
+      const temp = copy[index]!;
+      copy[index] = copy[targetIndex]!;
+      copy[targetIndex] = temp;
+      return copy;
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // 5. Handle Parse Request
@@ -232,8 +306,8 @@ function AiParserInner() {
       return;
     }
 
-    if (parseMode === "file" && !selectedFile) {
-      setError("Please upload a PDF or text document.");
+    if (parseMode === "file" && selectedFiles.length === 0) {
+      setError("Please upload a document or one or more images.");
       return;
     }
 
@@ -253,18 +327,43 @@ function AiParserInner() {
           }
         );
       } else {
-        const base64 = await fileToBase64(selectedFile!);
-        data = await authenticatedPost<ParsedResult>(
-          "/api/v1/assessment/user/ai/parse-file",
-          token,
-          {
-            base64_data: base64,
-            filename: selectedFile!.name,
-            mime_type: selectedFile!.type || "application/pdf",
-            content_type: contentType,
-            instructions: instructions.trim() || undefined
-          }
-        );
+        // Check if all files are images
+        const areAllImages = selectedFiles.every((f) => f.type.startsWith("image/"));
+        if (areAllImages) {
+          const imagesPayload = await Promise.all(
+            selectedFiles.map(async (file) => {
+              const base64 = await fileToBase64(file);
+              return {
+                base64_data: base64,
+                mime_type: file.type
+              };
+            })
+          );
+          data = await authenticatedPost<ParsedResult>(
+            "/api/v1/assessment/user/ai/parse-images",
+            token,
+            {
+              images: imagesPayload,
+              content_type: contentType,
+              instructions: instructions.trim() || undefined
+            }
+          );
+        } else {
+          // Process first file as a standard document
+          const firstFile = selectedFiles[0]!;
+          const base64 = await fileToBase64(firstFile);
+          data = await authenticatedPost<ParsedResult>(
+            "/api/v1/assessment/user/ai/parse-file",
+            token,
+            {
+              base64_data: base64,
+              filename: firstFile.name,
+              mime_type: firstFile.type || "application/pdf",
+              content_type: contentType,
+              instructions: instructions.trim() || undefined
+            }
+          );
+        }
       }
 
       if (data && data.questions && data.questions.length > 0) {
@@ -327,7 +426,8 @@ function AiParserInner() {
         passage_title: parsedResult.passage_title || undefined,
         passage_text: parsedResult.passage_text || undefined,
         questions: parsedResult.questions,
-        test_template_id: targetTemplateId || undefined
+        test_template_id: targetTemplateId || undefined,
+        question_family: contentType === "mains" ? "mains_subjective" : "objective"
       });
 
       setSuccessMsg(`Successfully saved ${parsedResult.questions.length} questions to your custom test!`);
@@ -460,21 +560,71 @@ function AiParserInner() {
                 </div>
 
                 {parseMode === "file" ? (
-                  <div className="space-y-1.5">
-                    <span className="block text-xs font-bold text-slate-655">Select Document</span>
+                  <div className="space-y-3">
+                    <span className="block text-xs font-bold text-slate-655">Select Document or Images</span>
                     <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 p-6 text-center cursor-pointer hover:bg-slate-50 transition">
                       <Upload className="h-8 w-8 text-slate-400 mb-2" />
                       <span className="text-xs font-bold text-slate-700">
-                        {selectedFile ? selectedFile.name : "Choose PDF or Word file"}
+                        {selectedFiles.length > 0
+                          ? `${selectedFiles.length} file(s) chosen`
+                          : "Choose PDF, Word, or Image files"}
                       </span>
-                      <span className="text-[10px] text-slate-400 mt-1">Maximum size: 10MB</span>
+                      <span className="text-[10px] text-slate-400 mt-1">Accepts PDF, Word, Text, JPG, PNG, WEBP</span>
                       <input
                         type="file"
-                        accept=".pdf,.docx,.doc,.txt"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        multiple
+                        accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.webp"
+                        onChange={(e) => {
+                          const files = e.target.files ? Array.from(e.target.files) : [];
+                          setSelectedFiles(files);
+                        }}
                         className="hidden"
                       />
                     </label>
+
+                    {/* Files List with Reordering */}
+                    {selectedFiles.length > 0 && (
+                      <div className="space-y-2 border border-slate-150 rounded-xl p-3 bg-slate-50/50 max-h-60 overflow-y-auto">
+                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                          Reorder Pages (top to bottom)
+                        </p>
+                        {selectedFiles.map((file, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2 text-xs font-semibold text-slate-705"
+                          >
+                            <span className="truncate max-w-[12rem]">
+                              {idx + 1}. {file.name}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => moveFile(idx, "up")}
+                                className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === selectedFiles.length - 1}
+                                onClick={() => moveFile(idx, "down")}
+                                className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
+                              >
+                                ▼
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(idx)}
+                                className="p-1 rounded text-rose-500 hover:bg-rose-50"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <label className="block text-xs font-bold text-slate-655 space-y-1.5">
@@ -677,39 +827,67 @@ function AiParserInner() {
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                     {parsedResult.questions.map((q, idx) => (
                       <div key={idx} className="border border-slate-150 rounded-xl p-4 bg-slate-50/30 space-y-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded">
                             Question {idx + 1}
                           </span>
-                          <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 border border-emerald-150 px-2 py-0.5 rounded">
-                            Correct: {q.correct_answer.toUpperCase()}
-                          </span>
+                          {contentType === "mains" ? (
+                            <>
+                              {q.directive && (
+                                <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-50 border border-amber-150 px-2 py-0.5 rounded">
+                                  Directive: {q.directive}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-black uppercase text-slate-800 bg-slate-55 border border-slate-200 px-2 py-0.5 rounded">
+                                Marks: {q.marks || 15}
+                              </span>
+                              <span className="text-[10px] font-black uppercase text-slate-800 bg-slate-55 border border-slate-200 px-2 py-0.5 rounded">
+                                {q.word_limit || 250} Words
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 border border-emerald-150 px-2 py-0.5 rounded">
+                              Correct: {q.correct_answer?.toUpperCase()}
+                            </span>
+                          )}
                         </div>
 
                         <p className="text-sm font-bold text-slate-900 leading-relaxed">
                           {q.question_statement}
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                          {q.options.map((opt) => (
-                            <div
-                              key={opt.label}
-                              className={`flex items-center gap-2 p-2 rounded-lg border font-semibold ${
-                                q.correct_answer.toLowerCase() === opt.label.toLowerCase()
-                                  ? "border-emerald-200 bg-emerald-50/30 text-emerald-800"
-                                  : "border-slate-100 bg-slate-50 text-slate-600"
-                              }`}
-                            >
-                              <span className="font-bold">{opt.label.toUpperCase()}.</span>
-                              <span>{opt.text}</span>
-                            </div>
-                          ))}
-                        </div>
+                        {contentType === "mains" ? (
+                          <>
+                            {q.supp_question_statement && (
+                              <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed italic bg-white p-2.5 rounded-lg border border-slate-100">
+                                {q.supp_question_statement}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                            {q.options?.map((opt) => (
+                              <div
+                                key={opt.label}
+                                className={`flex items-center gap-2 p-2 rounded-lg border font-semibold ${
+                                  q.correct_answer?.toLowerCase() === opt.label.toLowerCase()
+                                    ? "border-emerald-200 bg-emerald-50/30 text-emerald-800"
+                                    : "border-slate-100 bg-slate-50 text-slate-600"
+                                  }`}
+                              >
+                                <span className="font-bold">{opt.label.toUpperCase()}.</span>
+                                <span>{opt.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         {q.explanation && (
                           <div className="text-xs text-slate-500 bg-slate-100/50 rounded-lg p-2.5">
-                            <span className="font-bold text-slate-700">Explanation: </span>
-                            {q.explanation}
+                            <span className="font-bold text-slate-705">
+                              {contentType === "mains" ? "Model Answer Guide: " : "Explanation: "}
+                            </span>
+                            <div className="mt-1 whitespace-pre-line leading-relaxed">{q.explanation}</div>
                           </div>
                         )}
                       </div>

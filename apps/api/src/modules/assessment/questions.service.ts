@@ -496,7 +496,7 @@ export async function listQuestions(
   );
 }
 
-export async function listQuestionCountsByTaxonomy(options: QuestionCountsQuery): Promise<unknown[]> {
+export async function listQuestionCountsByTaxonomy(options: QuestionCountsQuery & { user_id?: number }): Promise<unknown[]> {
   const rows: Array<{ node_id: string | number; question_family: string; question_count: string | number }> = [];
 
   if (!options.question_family || options.question_family === "objective") {
@@ -524,6 +524,11 @@ export async function listQuestionCountsByTaxonomy(options: QuestionCountsQuery)
           and qtl.exam_id = $1
           ${levelFilter}
           and n.node_id is not null
+          and (q.created_by_user_id is null or exists (
+            select 1 from app.users u
+            where u.id = q.created_by_user_id
+              and u.role in ('admin', 'moderator', 'content_editor')
+          ))
         group by n.node_id
       `,
       params
@@ -563,10 +568,47 @@ export async function listQuestionCountsByTaxonomy(options: QuestionCountsQuery)
     rows.push(...mainsRows);
   }
 
+  // Fetch user's own private question counts per node (for "Your Questions" virtual nodes)
+  const userCountMap: Record<number, number> = {};
+  if (options.user_id) {
+    const params: unknown[] = [options.user_id, options.exam_id];
+    let levelFilter = "";
+    if (options.exam_level_id) {
+      params.push(options.exam_level_id);
+      levelFilter = `and qtl.exam_level_id = $${params.length}`;
+    }
+
+    const userRows = await query<{ node_id: string; question_count: string }>(
+      `
+        select
+          n.node_id,
+          count(distinct q.id)::text as question_count
+        from assessment.questions q
+        join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
+        join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
+        cross join lateral (
+          values (coalesce(qtl.subtopic_node_id, qtl.topic_node_id, qtl.source_node_id, qtl.subject_node_id))
+        ) as n(node_id)
+        where q.status = 'published'
+          and q.created_by_user_id = $1
+          and qtl.exam_id = $2
+          ${levelFilter}
+          and n.node_id is not null
+        group by n.node_id
+      `,
+      params
+    );
+
+    for (const r of userRows) {
+      userCountMap[Number(r.node_id)] = Number(r.question_count);
+    }
+  }
+
   return rows.map((row) => ({
     node_id: Number(row.node_id),
     question_family: row.question_family,
-    question_count: Number(row.question_count)
+    question_count: Number(row.question_count),
+    user_question_count: userCountMap[Number(row.node_id)] ?? 0
   }));
 }
 
@@ -674,9 +716,12 @@ export async function saveQuestionsDraft(
     questions: any[];
     status?: string;
     test_template_id?: number;
+    is_user_private?: boolean;
+    question_family?: "objective" | "mains_subjective";
   },
   userId: number
-): Promise<void> {
+): Promise<Array<{ question_id: number; version_id: number }>> {
+  const createdItems: Array<{ question_id: number; version_id: number }> = [];
   await transaction(async (client) => {
     // Resolve custom test template parameters if requested
     let sectionId: number | null = null;
@@ -724,33 +769,43 @@ export async function saveQuestionsDraft(
       passageId = passageRes.rows[0]?.id ?? null;
     }
 
-    // 2. Resolve the format ID for standard_quiz / passage_linked_quiz
-    const formatRow = await client.query<{ id: number }>(
-      `select id from assessment.question_formats where slug = $1 limit 1`,
-      [passageId ? 'passage_linked_quiz' : 'standard_quiz']
-    );
-    const formatId = formatRow.rows[0]?.id || 1; // Fallback to 1
+    // 2. Resolve the format ID for standard_quiz / passage_linked_quiz / mains_answer_writing
+    const isMains = input.question_family === "mains_subjective";
+    let formatId = 1;
+    if (isMains) {
+      const formatRow = await client.query<{ id: number }>(
+        `select id from assessment.question_formats where slug = 'mains_answer_writing' limit 1`
+      );
+      formatId = formatRow.rows[0]?.id || 10;
+    } else {
+      const formatRow = await client.query<{ id: number }>(
+        `select id from assessment.question_formats where slug = $1 limit 1`,
+        [passageId ? 'passage_linked_quiz' : 'standard_quiz']
+      );
+      formatId = formatRow.rows[0]?.id || 1;
+    }
 
     // 3. Create questions and versions
     for (let i = 0; i < input.questions.length; i++) {
       const q = input.questions[i];
       
       // Insert question
+      const qIsAiGenerated = q.is_ai_generated !== undefined ? !!q.is_ai_generated : true;
       const questionRes = await client.query<{ id: number }>(
         `
           insert into assessment.questions
-            (question_family, question_format_id, status, created_by_user_id, is_ai_generated)
-          values ('objective', $1, coalesce($2, 'draft'), $3, true)
+            (question_family, question_format_id, status, created_by_user_id, is_ai_generated, is_user_question)
+          values ($1, $2, coalesce($3, 'draft'), $4, $5, $6)
           returning id
         `,
-        [formatId, (input as any).status ?? null, userId]
+        [input.question_family || 'objective', formatId, input.status ?? null, userId, qIsAiGenerated, input.is_user_private ? true : null]
       );
       const questionId = questionRes.rows[0]?.id;
       if (!questionId) throw new Error("Failed to create question.");
 
       // Insert question version
-      const optionsJson = JSON.stringify(q.options.map((o: any) => ({ key: o.label, text: o.text })));
-      const correctAnswerJson = JSON.stringify({ key: q.correct_answer });
+      const optionsJson = isMains ? '[]' : JSON.stringify((q.options || []).map((o: any) => ({ key: o.label, text: o.text })));
+      const correctAnswerJson = isMains ? null : JSON.stringify({ key: q.correct_answer });
 
       const versionRes = await client.query<{ id: number }>(
         `
@@ -774,7 +829,7 @@ export async function saveQuestionsDraft(
           questionId,
           q.question_statement,
           q.supp_question_statement ?? null,
-          q.question_prompt ?? "Choose the correct option:",
+          q.question_prompt ?? (isMains ? null : "Choose the correct option:"),
           optionsJson,
           correctAnswerJson,
           q.explanation ?? "",
@@ -782,6 +837,8 @@ export async function saveQuestionsDraft(
         ]
       );
       const versionId = versionRes.rows[0]?.id;
+      if (!versionId) throw new Error("Failed to create question version.");
+      createdItems.push({ question_id: Number(questionId), version_id: Number(versionId) });
 
       // Link taxonomy (with question-level overrides if available)
       const qExamId = q.exam_id !== undefined && q.exam_id !== null ? Number(q.exam_id) : input.exam_id;
@@ -792,23 +849,61 @@ export async function saveQuestionsDraft(
       const qSubtopicId = q.subtopic_node_id !== undefined && q.subtopic_node_id !== null ? Number(q.subtopic_node_id) : (input.subtopic_node_id ?? null);
       const natureId = q.question_nature_id ? Number(q.question_nature_id) : null;
 
-      await client.query(
-        `
-          insert into assessment.question_taxonomy_links
-            (question_id, exam_id, exam_level_id, subject_node_id, source_node_id, topic_node_id, subtopic_node_id, question_nature_id)
-          values ($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        [
-          questionId,
-          qExamId,
-          qLevelId,
-          qSubjectId,
-          qSourceId,
-          qTopicId,
-          qSubtopicId,
-          natureId
-        ]
-      );
+      if (isMains) {
+        // Insert into mains question details
+        await client.query(
+          `
+            insert into assessment.mains_question_details
+              (question_id, word_limit, marks, directive, model_answer, answer_framework, key_points, evaluation_rubric)
+            values ($1, $2, coalesce($3, 0), $4, $5, '{}'::jsonb, '[]'::jsonb, '{}'::jsonb)
+          `,
+          [
+            questionId,
+            q.word_limit || 250,
+            q.marks || 15,
+            q.directive || null,
+            q.explanation || null
+          ]
+        );
+
+        // Link mains taxonomy
+        await client.query(
+          `
+            insert into assessment.mains_question_taxonomy_links
+              (question_id, exam_id, exam_level_id, paper_node_id, subject_area_node_id, theme_node_id, topic_node_id, subtopic_node_id, question_nature_id)
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          `,
+          [
+            questionId,
+            qExamId,
+            qLevelId,
+            qSubjectId, // maps to paper_node_id
+            qSourceId,  // maps to subject_area_node_id
+            qTopicId,   // maps to theme_node_id
+            qSubtopicId, // maps to topic_node_id
+            null, // subtopic_node_id
+            null  // question_nature_id
+          ]
+        );
+      } else {
+        await client.query(
+          `
+            insert into assessment.question_taxonomy_links
+              (question_id, exam_id, exam_level_id, subject_node_id, source_node_id, topic_node_id, subtopic_node_id, question_nature_id)
+            values ($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          [
+            questionId,
+            qExamId,
+            qLevelId,
+            qSubjectId,
+            qSourceId,
+            qTopicId,
+            qSubtopicId,
+            natureId
+          ]
+        );
+      }
 
       // Link passage if present
       if (passageId) {
@@ -849,4 +944,5 @@ export async function saveQuestionsDraft(
       );
     }
   });
+  return createdItems;
 }

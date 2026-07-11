@@ -1080,16 +1080,20 @@ export async function parseQuizAI(
     aiProvider: string;
     aiModel: string;
     instructions?: string;
-    content_type?: "gk" | "aptitude";
+    content_type?: "gk" | "aptitude" | "mains";
   }
 ): Promise<any> {
   const openAiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
 
+  const isMains = options.content_type === "mains";
+
   // 1. Fetch active assessment subjects for classification
   const taxonomyNodes = await query<{ id: string; name: string; slug: string }>(
-    `select id, name, slug from assessment.assessment_taxonomy_nodes where node_type = 'subject' and content_type = $1`,
-    [options.content_type || 'gk']
+    isMains
+      ? `select id, name, slug from assessment.mains_taxonomy_nodes where node_type = 'paper' and is_active = true`
+      : `select id, name, slug from assessment.assessment_taxonomy_nodes where node_type = 'subject' and content_type = $1 and is_active = true`,
+    isMains ? [] : [options.content_type || 'gk']
   );
 
   // ── STEP 1: ROUTER AGENT ──
@@ -1112,7 +1116,29 @@ Return ONLY JSON:
   }
 
   // ── STEP 2: GENERATION AGENT (Parser) ──
-  const systemPrompt = `You are a state-of-the-art UPSC assessment parser and structured information extractor. Your goal is to parse raw multiple-choice questions (MCQs) that might be copied from books, worksheets, or OCR dumps, and format them into structured JSON.
+  const systemPrompt = isMains
+    ? `You are a state-of-the-art UPSC assessment parser and structured information extractor. Your goal is to parse raw subjective Mains answer writing questions that might be copied from test series, books, or PDF documents, and format them into structured JSON.
+Crucially, raw inputs are often scrambled or contain metadata like marks, word limits, or directives. You must analyze the text logically to identify the components of each question:
+
+1. **Question Statement (question_statement)**:
+   - The primary theme or question context introduction.
+   - For standard subjective questions, the question_statement is the full question text.
+
+2. **Supplementary Statement (supp_question_statement)**:
+   - Contains any lists of facts, conditions, context or background information.
+
+3. **Word Limit (word_limit)**:
+   - Parse numbers like 150, 250, etc., if mentioned (e.g. "150 words", "250 Words", "in 150 words"). If not mentioned, default to 250.
+
+4. **Marks (marks)**:
+   - Parse numbers like 10, 15, 20 etc. if mentioned (e.g. "10 Marks", "15 marks", "12.5 marks"). If not mentioned, default to 15.
+
+5. **Directive (directive)**:
+   - The command word used in the question instructing how to answer (e.g., "Discuss", "Analyze", "Examine", "Critically Evaluate", "Elucidate", "Comment").
+
+6. **Explanation (explanation)**:
+   - Extract the model answer, structural framework, key points, or pedagogical explanation. If not provided, write a brief skeleton framework.`
+    : `You are a state-of-the-art UPSC assessment parser and structured information extractor. Your goal is to parse raw multiple-choice questions (MCQs) that might be copied from books, worksheets, or OCR dumps, and format them into structured JSON.
 Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. You must analyze the text logically to identify the components of each question:
 
 1. **Question Statement (question_statement)**: 
@@ -1157,39 +1183,61 @@ Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. 
 
 STRICT RULE: The output must strictly conform to the JSON schema. Do not output any introductory or concluding text, only the raw JSON.`;
 
-  const outputSchema = {
-    type: "object",
-    properties: {
-      passage_title: { type: "string", description: "Optional title for a shared passage" },
-      passage_text: { type: "string", description: "Optional text of a shared passage if questions are linked to it" },
-      questions: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            question_statement: { type: "string", description: "Main question statement" },
-            supp_question_statement: { type: "string", description: "Optional list of statements/facts" },
-            question_prompt: { type: "string", description: "Optional question prompt (e.g. 'Which of the statements given above is/are correct?')" },
-            options: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  label: { type: "string", description: "A, B, C, or D" },
-                  text: { type: "string", description: "Text content of option" },
-                  is_correct: { type: "boolean" }
-                }
-              }
-            },
-            correct_answer: { type: "string", description: "A, B, C, or D" },
-            explanation: { type: "string", description: "Detailed pedagogical explanation" }
-          },
-          required: ["question_statement", "options", "correct_answer"]
-        }
+  const outputSchema = isMains
+    ? {
+        type: "object",
+        properties: {
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question_statement: { type: "string", description: "Main question statement" },
+                supp_question_statement: { type: "string", description: "Optional supplementary facts or context" },
+                word_limit: { type: "integer", description: "Word limit of the answer, default 250" },
+                marks: { type: "number", description: "Marks for the question, default 15" },
+                directive: { type: "string", description: "Directive word like Discuss, Examine, Elucidate" },
+                explanation: { type: "string", description: "Detailed model answer or guide" }
+              },
+              required: ["question_statement"]
+            }
+          }
+        },
+        required: ["questions"]
       }
-    },
-    required: ["questions"]
-  };
+    : {
+        type: "object",
+        properties: {
+          passage_title: { type: "string", description: "Optional title for a shared passage" },
+          passage_text: { type: "string", description: "Optional text of a shared passage if questions are linked to it" },
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question_statement: { type: "string", description: "Main question statement" },
+                supp_question_statement: { type: "string", description: "Optional list of statements/facts" },
+                question_prompt: { type: "string", description: "Optional question prompt (e.g. 'Which of the statements given above is/are correct?')" },
+                options: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: { type: "string", description: "A, B, C, or D" },
+                      text: { type: "string", description: "Text content of option" },
+                      is_correct: { type: "boolean" }
+                    }
+                  }
+                },
+                correct_answer: { type: "string", description: "A, B, C, or D" },
+                explanation: { type: "string", description: "Detailed pedagogical explanation" }
+              },
+              required: ["question_statement", "options", "correct_answer"]
+            }
+          }
+        },
+        required: ["questions"]
+      };
 
   const finalSystemPrompt = `${systemPrompt}\n\nOUTPUT SCHEMA:\n${JSON.stringify(outputSchema, null, 2)}`;
   const userPrompt = `RAW TEXT TO PARSE:\n${options.rawText}${options.instructions ? `\n\nAdditional Instructions:\n${options.instructions}` : ""}`;
