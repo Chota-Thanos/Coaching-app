@@ -38,6 +38,7 @@ type TaxonomyNode = {
 type ParsedQuestion = {
   question_statement: string;
   supp_question_statement?: string;
+  question_prompt?: string;
   options?: Array<{ label: string; text: string }>;
   correct_answer?: string;
   explanation?: string;
@@ -109,6 +110,7 @@ function AiParserInner() {
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [parsedResult, setParsedResult] = useState<ParsedResult | null>(null);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -300,6 +302,7 @@ function AiParserInner() {
     if (!token) return;
     setError(null);
     setParsedResult(null);
+    setSelectedAnswers({});
 
     if (parseMode === "text" && !rawText.trim()) {
       setError("Please paste the raw text to parse.");
@@ -314,10 +317,10 @@ function AiParserInner() {
     setParsing(true);
 
     try {
-      let data: ParsedResult;
+      let data: any;
 
       if (parseMode === "text") {
-        data = await authenticatedPost<ParsedResult>(
+        data = await authenticatedPost<any>(
           "/api/v1/assessment/user/ai/parse-text",
           token,
           {
@@ -339,7 +342,7 @@ function AiParserInner() {
               };
             })
           );
-          data = await authenticatedPost<ParsedResult>(
+          data = await authenticatedPost<any>(
             "/api/v1/assessment/user/ai/parse-images",
             token,
             {
@@ -352,7 +355,7 @@ function AiParserInner() {
           // Process first file as a standard document
           const firstFile = selectedFiles[0]!;
           const base64 = await fileToBase64(firstFile);
-          data = await authenticatedPost<ParsedResult>(
+          data = await authenticatedPost<any>(
             "/api/v1/assessment/user/ai/parse-file",
             token,
             {
@@ -366,8 +369,29 @@ function AiParserInner() {
         }
       }
 
-      if (data && data.questions && data.questions.length > 0) {
-        setParsedResult(data);
+      // Robust normalization of parsed result on client side
+      let normalizedData: ParsedResult;
+      if (Array.isArray(data)) {
+        normalizedData = {
+          success: true,
+          questions: data
+        };
+      } else if (data && typeof data === "object") {
+        normalizedData = {
+          success: data.success ?? true,
+          passage_title: data.passage_title,
+          passage_text: data.passage_text,
+          questions: Array.isArray(data.questions) ? data.questions : []
+        };
+      } else {
+        normalizedData = {
+          success: false,
+          questions: []
+        };
+      }
+
+      if (normalizedData && normalizedData.questions && normalizedData.questions.length > 0) {
+        setParsedResult(normalizedData);
       } else {
         setError("AI could not extract any questions. Check document content and formatting.");
       }
@@ -856,38 +880,54 @@ function AiParserInner() {
                           {q.question_statement}
                         </p>
 
-                        {contentType === "mains" ? (
-                          <>
-                            {q.supp_question_statement && (
-                              <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed italic bg-white p-2.5 rounded-lg border border-slate-100">
-                                {q.supp_question_statement}
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                            {q.options?.map((opt) => (
-                              <div
-                                key={opt.label}
-                                className={`flex items-center gap-2 p-2 rounded-lg border font-semibold ${
-                                  q.correct_answer?.toLowerCase() === opt.label.toLowerCase()
-                                    ? "border-emerald-200 bg-emerald-50/30 text-emerald-800"
-                                    : "border-slate-100 bg-slate-50 text-slate-600"
-                                  }`}
-                              >
-                                <span className="font-bold">{opt.label.toUpperCase()}.</span>
-                                <span>{opt.text}</span>
-                              </div>
-                            ))}
-                          </div>
+                        {q.supp_question_statement && (
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-500 bg-slate-50/40 p-3 rounded-xl italic">
+                            {q.supp_question_statement}
+                          </p>
                         )}
 
-                        {q.explanation && (
-                          <div className="text-xs text-slate-500 bg-slate-100/50 rounded-lg p-2.5">
-                            <span className="font-bold text-slate-705">
-                              {contentType === "mains" ? "Model Answer Guide: " : "Explanation: "}
-                            </span>
-                            <div className="mt-1 whitespace-pre-line leading-relaxed">{q.explanation}</div>
+                        {q.question_prompt && (
+                          <p className="text-xs font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-150">
+                            {q.question_prompt}
+                          </p>
+                        )}
+
+                        {contentType !== "mains" && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
+                            {q.options?.map((opt) => {
+                              const selectedKey = selectedAnswers[idx];
+                              const hasSelected = selectedKey !== undefined;
+                              const isSelected = selectedKey === opt.label;
+                              const isCorrect = q.correct_answer?.toLowerCase() === opt.label.toLowerCase();
+
+                              let optionClass = "border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-350 hover:bg-slate-50/50 cursor-pointer";
+                              if (hasSelected) {
+                                if (isCorrect) {
+                                  optionClass = "border-emerald-200 bg-emerald-50 text-emerald-800 font-bold";
+                                } else if (isSelected) {
+                                  optionClass = "border-rose-200 bg-rose-50 text-rose-800 font-bold";
+                                }
+                              }
+
+                              return (
+                                <button
+                                  type="button"
+                                  key={opt.label}
+                                  onClick={() => {
+                                    if (!hasSelected) {
+                                      setSelectedAnswers((prev) => ({
+                                        ...prev,
+                                        [idx]: opt.label
+                                      }));
+                                    }
+                                  }}
+                                  className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all ${optionClass}`}
+                                >
+                                  <span className="font-extrabold">{opt.label.toUpperCase()}.</span>
+                                  <span className="leading-relaxed">{opt.text}</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -895,8 +935,8 @@ function AiParserInner() {
                   </div>
                 </div>
 
-                {/* Save Questions Action */}
-                <div className="pt-4 border-t border-slate-150">
+                {/* Save Questions Action - Sticky Footer */}
+                <div className="sticky bottom-0 bg-white pb-1 pt-4 border-t border-slate-150 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] -mx-5 px-5 z-10">
                   <button
                     type="button"
                     onClick={handleSaveQuestions}

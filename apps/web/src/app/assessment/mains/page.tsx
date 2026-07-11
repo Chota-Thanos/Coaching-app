@@ -179,6 +179,12 @@ export default function StudentMainsPage() {
                       {q.current_version.supplementary_statement}
                     </p>
                   )}
+
+                  {q.current_version.question_prompt && (
+                    <p className="text-xs font-bold text-indigo-900 bg-indigo-50/20 p-2.5 rounded-lg border border-indigo-100 leading-relaxed">
+                      {q.current_version.question_prompt}
+                    </p>
+                  )}
                 </div>
 
                 <div className="shrink-0 flex items-center md:border-l md:border-line md:pl-5">

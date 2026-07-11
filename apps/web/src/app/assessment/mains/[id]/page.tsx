@@ -205,6 +205,12 @@ export default function StudentMainsPracticePage() {
                 {question.current_version.supplementary_statement}
               </div>
             )}
+
+            {question.current_version.question_prompt && (
+              <div className="p-3 bg-indigo-50/20 border border-indigo-100 rounded-lg text-xs font-bold leading-relaxed text-indigo-900">
+                {question.current_version.question_prompt}
+              </div>
+            )}
           </div>
 
           {/* Answering block */}

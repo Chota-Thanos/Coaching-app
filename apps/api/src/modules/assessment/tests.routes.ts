@@ -635,13 +635,18 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
         return reply.badRequest("No text could be extracted from the uploaded file.");
       }
 
-      return parseQuizAI({
+      const parsed = await parseQuizAI({
         rawText: extractedText,
         aiProvider: "openai",
         aiModel: "gpt-4o-mini",
         instructions: body.instructions,
         content_type: body.content_type
       });
+
+      if (Array.isArray(parsed)) {
+        return { success: true, questions: parsed };
+      }
+      return parsed;
     });
   });
 
@@ -679,13 +684,18 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
         return reply.badRequest("No text could be read from the uploaded images.");
       }
 
-      return parseQuizAI({
+      const parsed = await parseQuizAI({
         rawText: extractedText,
         aiProvider: "openai",
         aiModel: "gpt-4o-mini",
         instructions: body.instructions,
         content_type: body.content_type
       });
+
+      if (Array.isArray(parsed)) {
+        return { success: true, questions: parsed };
+      }
+      return parsed;
     });
   });
 
@@ -705,13 +715,18 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
         return reply.badRequest("raw_text is required.");
       }
 
-      return parseQuizAI({
+      const parsed = await parseQuizAI({
         rawText: body.raw_text,
         aiProvider: "openai",
         aiModel: "gpt-4o-mini",
         instructions: body.instructions,
         content_type: body.content_type
       });
+
+      if (Array.isArray(parsed)) {
+        return { success: true, questions: parsed };
+      }
+      return parsed;
     });
   });
 

@@ -1118,28 +1118,28 @@ Return ONLY JSON:
   // ── STEP 2: GENERATION AGENT (Parser) ──
   const systemPrompt = isMains
     ? `You are a state-of-the-art UPSC assessment parser and structured information extractor. Your goal is to parse raw subjective Mains answer writing questions that might be copied from test series, books, or PDF documents, and format them into structured JSON.
-Crucially, raw inputs are often scrambled or contain metadata like marks, word limits, or directives. You must analyze the text logically to identify the components of each question:
+Crucially, raw inputs are often scrambled, out of order, or contain interleaved metadata. You must analyze the entire text logically to identify the components of each question, regardless of where they appear in the input:
 
 1. **Question Statement (question_statement)**:
-   - The primary theme or question context introduction.
+   - The primary theme or question context introduction. Even if the actual question text is in the middle or bottom of the text, identify it.
    - For standard subjective questions, the question_statement is the full question text.
 
 2. **Supplementary Statement (supp_question_statement)**:
-   - Contains any lists of facts, conditions, context or background information.
+   - Contains any lists of facts, conditions, context, quotes, or background information associated with the question.
 
 3. **Word Limit (word_limit)**:
-   - Parse numbers like 150, 250, etc., if mentioned (e.g. "150 words", "250 Words", "in 150 words"). If not mentioned, default to 250.
+   - Extract any word limit mentioned anywhere in the input (e.g., "150 words", "250 Words", "in 150 words"). Look at the beginning, end, or inside headers/parentheses. If not mentioned, default to 250.
 
 4. **Marks (marks)**:
-   - Parse numbers like 10, 15, 20 etc. if mentioned (e.g. "10 Marks", "15 marks", "12.5 marks"). If not mentioned, default to 15.
+   - Extract marks mentioned anywhere in the input (e.g., "10 Marks", "15 marks", "12.5 marks", "Marks: 15"). If not mentioned, default to 15.
 
 5. **Directive (directive)**:
-   - The command word used in the question instructing how to answer (e.g., "Discuss", "Analyze", "Examine", "Critically Evaluate", "Elucidate", "Comment").
+   - The command word instructing how to answer (e.g., "Discuss", "Analyze", "Examine", "Critically Evaluate", "Elucidate", "Comment"). Identify it even if it is embedded deep inside the question text.
 
 6. **Explanation (explanation)**:
-   - Extract the model answer, structural framework, key points, or pedagogical explanation. If not provided, write a brief skeleton framework.`
+   - Extract the model answer, structural framework, key points, or pedagogical explanation. It might be labeled as "Model Answer", "Approach", "Suggested Answer", "Explanation", or just a block of paragraphs. If not provided, generate a brief structured answer framework.`
     : `You are a state-of-the-art UPSC assessment parser and structured information extractor. Your goal is to parse raw multiple-choice questions (MCQs) that might be copied from books, worksheets, or OCR dumps, and format them into structured JSON.
-Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. You must analyze the text logically to identify the components of each question:
+Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. For example, the options may come before the question, or the correct answer/explanation might be placed at the very top or in the middle. You must analyze the text logically to identify the components of each question, regardless of their order:
 
 1. **Question Statement (question_statement)**: 
    - The primary theme or question context introduction (e.g. "With reference to the advent of Europeans in India, the Treaty of Tordesillas...").
@@ -1153,19 +1153,19 @@ Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. 
 
 3. **Question Prompt (question_prompt)**:
    - The specific question or call-to-action that instructs the student what to find (e.g., "Which of the statements given above are correct?", "How many of the above reasons were correct?", "Select the correct answer using the code given below").
-   - This prompt might be pasted at the very top or in the middle. Find it and map it to question_prompt.
+   - This prompt might be pasted at the very top, in the middle, or at the bottom. Find it and map it to question_prompt.
 
 4. **Options (options)**:
    - Must contain exactly 4 options representing choices A, B, C, and D.
-   - Extract option text. Clean and remove any choice labels (such as "a. ", "• b. ", "C) ", "d. ", etc.) from the option text itself.
+   - Locate these options wherever they are placed. Clean and remove any choice labels (such as "a. ", "• b. ", "C) ", "d. ", etc.) from the option text itself.
    - Set the correct "is_correct" boolean flag for each option based on the "correct_answer".
 
 5. **Correct Answer (correct_answer)**:
    - Must be a single uppercase character: "A", "B", "C", or "D".
-   - Extract this from keys like "Correct Answer: b" or "Answer: C" or "Key: A". Always capitalize it.
+   - Locate this key information wherever it appears (e.g., "Correct Answer: b", "Answer: C", "Key: A", or even at the very top of the text). Always capitalize it.
 
 6. **Explanation (explanation)**:
-   - Extract the pedagogy explanation explaining why the correct option is right and others are wrong.
+   - Locate the pedagogical explanation explaining why the correct option is right and others are wrong.
    - If no explanation is provided in the raw text, you MUST generate a high-quality, comprehensive educational explanation explaining the concepts, correct statements, and why incorrect ones are wrong.
    - **Formatting & Structure Rules**:
      * You MUST automatically format the explanation using Markdown to make it highly readable and structured.
@@ -1262,11 +1262,38 @@ Return ONLY the corrected JSON data.`;
 
   // Inject subject ID into output for catalog link convenience
   const matchedSubject = taxonomyNodes.find(t => t.slug === routedSubjectSlug);
-  if (matchedSubject) {
-    parsedQuiz.subject_node_id = Number(matchedSubject.id);
+  
+  // Normalize parsedQuiz to ensure it is always an object with success: true and a questions array
+  let normalizedQuiz: any = { success: true, questions: [] };
+
+  if (parsedQuiz && typeof parsedQuiz === "object") {
+    if (Array.isArray(parsedQuiz)) {
+      normalizedQuiz.questions = parsedQuiz;
+    } else if (Array.isArray(parsedQuiz.questions)) {
+      normalizedQuiz = {
+        success: true,
+        ...parsedQuiz
+      };
+    } else if (parsedQuiz.question_statement) {
+      // Single question object
+      normalizedQuiz = {
+        success: true,
+        questions: [parsedQuiz]
+      };
+    } else {
+      normalizedQuiz = {
+        success: true,
+        ...parsedQuiz,
+        questions: []
+      };
+    }
   }
 
-  return parsedQuiz;
+  if (matchedSubject) {
+    normalizedQuiz.subject_node_id = Number(matchedSubject.id);
+  }
+
+  return normalizedQuiz;
 }
 
 export async function extractStyleAI(sourceText: string): Promise<string> {

@@ -134,13 +134,18 @@ async function main() {
     console.log("📝 TEST RUN 4: AI Question Parsing & Structuring");
     console.log("--------------------------------------------------");
     const rawQuestionsText = `
-Q1. Under the Indian Constitution, the power to issue a writ of Habeas Corpus is vested in:
-A) The Supreme Court only
-B) The High Courts only
-C) Both the Supreme Court and High Courts
-D) District Courts
+Q1. Under the provisions of Article 15 of the Indian Constitution, the State is prohibited from discriminating against citizens. Consider the following statements regarding its scope:
+1. The State cannot discriminate on the ground of 'residence' only.
+2. Citizens cannot be subjected to any disability on the ground of 'religion' only.
+3. Special provisions for socially and educationally backward classes are allowed as an exception.
+4. Discrimination is prohibited under both public and private services.
+How many of the statements given above are correct?
+A) Only one
+B) Only two
+C) Only three
+D) All four
 Correct Answer: C
-Explanation: Under Article 32 of the Constitution, the Supreme Court has the power to issue writs for the enforcement of Fundamental Rights. Under Article 226, the High Courts have similar powers. Therefore, both courts possess this jurisdiction.
+Explanation: Under Article 15, the State is prohibited from discriminating against citizens on grounds only of religion, race, caste, sex, place of birth or any of them. Note that 'residence' is not mentioned in Article 15 (unlike Article 16). Hence statement 1 is correct (the State cannot discriminate on residence under Art 15). Statement 2 is correct. Statement 3 is correct (under Article 15(4)). Statement 4 is incorrect. Therefore, three statements are correct.
     `;
 
     console.log("Input Raw Text:", rawQuestionsText);
