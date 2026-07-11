@@ -693,7 +693,10 @@ export async function createUserCustomTest(
     test_type?: string;
   }
 ): Promise<any> {
-  const duration = input.duration_minutes ?? (input.question_ids.length * 2);
+  let duration = input.duration_minutes ?? (input.question_ids.length * 2);
+  if (duration <= 0) {
+    duration = 60;
+  }
   const slug = `custom-${userId}-${Date.now()}`;
   const testType = input.test_type ?? "sectional_test";
   
