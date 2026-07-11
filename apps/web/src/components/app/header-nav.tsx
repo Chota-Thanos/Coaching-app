@@ -306,6 +306,14 @@ export function HeaderNav() {
         )}
       </div>
 
+      {/* Study Plans */}
+      <Link
+        className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+        href="/study-plans"
+      >
+        Study Plans
+      </Link>
+
       {/* 5. Mentors */}
       <Link
         className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
