@@ -126,14 +126,20 @@ async function generateTextWithVertexAI(
   const location = process.env.VERTEX_AI_LOCATION || "us-central1";
 
   let vertexModelName = model;
-  if (model.includes("gemini-1.5-flash")) {
+  if (model.includes("gemini-3.5-flash")) {
+    vertexModelName = "gemini-3.5-flash";
+  } else if (model.includes("gemini-3.5-pro")) {
+    vertexModelName = "gemini-3.5-pro";
+  } else if (model.includes("gemini-3.1-pro")) {
+    vertexModelName = "gemini-3.1-pro";
+  } else if (model.includes("gemini-2.5-flash")) {
+    vertexModelName = "gemini-2.5-flash";
+  } else if (model.includes("gemini-2.0-flash")) {
+    vertexModelName = "gemini-2.0-flash";
+  } else if (model.includes("gemini-1.5-flash")) {
     vertexModelName = "gemini-1.5-flash";
   } else if (model.includes("gemini-1.5-pro")) {
     vertexModelName = "gemini-1.5-pro";
-  } else if (model.includes("gemini-2.0-flash")) {
-    vertexModelName = "gemini-2.0-flash";
-  } else if (model.includes("gemini-2.5-flash")) {
-    vertexModelName = "gemini-2.5-flash";
   }
 
   let attempts = 0;
@@ -312,7 +318,7 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
     const json = (await response.json()) as any;
     return json.choices?.[0]?.message?.content?.trim() || "";
   } else if (isVertexAi) {
-    const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    const models = ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-3.1-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError: any = null;
     for (const model of models) {
       try {
@@ -324,7 +330,7 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
     }
     throw new Error(`All Vertex AI models failed. Last error: ${lastError?.message || lastError}`);
   } else if (geminiKey) {
-    const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    const models = ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-3.1-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError: any = null;
     for (const model of models) {
       try {
@@ -1562,7 +1568,9 @@ async function performOcrVertexAI(
   const location = process.env.VERTEX_AI_LOCATION || "us-central1";
 
   let vertexModelName = model;
-  if (model.includes("gemini-2.5-flash")) {
+  if (model.includes("gemini-3.5-flash")) {
+    vertexModelName = "gemini-3.5-flash";
+  } else if (model.includes("gemini-2.5-flash")) {
     vertexModelName = "gemini-2.5-flash";
   }
 
@@ -1618,7 +1626,7 @@ export async function performOcrGemini(imagesBase64: string[]): Promise<string> 
   }
 
   const results: string[] = [];
-  const model = "gemini-2.5-flash"; // default vision-capable model
+  const model = "gemini-3.5-flash"; // default vision-capable model
 
   for (const imgB64 of imagesBase64) {
     let mimeType = "image/jpeg";
