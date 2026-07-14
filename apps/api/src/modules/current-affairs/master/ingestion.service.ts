@@ -306,8 +306,13 @@ export async function processIngestionJobAI(jobId: number, userId: number): Prom
     };
 
     const contentType = contentTypeMap[defaultContentKind] || "prelims_ca";
-    const aiProvider = process.env.GEMINI_API_KEY ? "gemini" : "openai";
-    const aiModel = process.env.GEMINI_API_KEY ? "gemini-2.5-flash" : "gpt-4o-mini";
+    const isVertexAi = !!(
+      process.env.GOOGLE_CLOUD_KEY_JSON ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.VERTEX_AI_PROJECT_ID
+    );
+    const aiProvider = isVertexAi ? "vertex" : (process.env.GEMINI_API_KEY ? "gemini" : "openai");
+    const aiModel = isVertexAi ? "gemini-2.5-flash" : (process.env.GEMINI_API_KEY ? "gemini-2.5-flash" : "gpt-4o-mini");
 
     for (const item of items) {
       const payload = item.raw_payload;

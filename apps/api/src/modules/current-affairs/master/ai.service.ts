@@ -1,4 +1,5 @@
 import { one, query } from "../../../db.js";
+import { GoogleAuth } from "google-auth-library";
 
 // Types for AI output
 export interface AIArticleSection {
@@ -80,7 +81,130 @@ export function parseJsonRobust(raw: string): any {
     }
   }
 
+  console.error("[parseJsonRobust] Failed to parse AI response. Raw text:\n", text);
   throw new Error("Could not parse JSON from AI response.");
+}
+
+function hasAiCredentials(): boolean {
+  return !!(
+    process.env.OPENAI_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_CLOUD_KEY_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    process.env.VERTEX_AI_PROJECT_ID
+  );
+}
+
+async function generateTextWithVertexAI(
+  model: string,
+  systemPrompt: string,
+  userPrompt: string
+): Promise<string> {
+  const keyJson = process.env.GOOGLE_CLOUD_KEY_JSON;
+  const auth = new GoogleAuth({
+    ...(keyJson ? { credentials: JSON.parse(keyJson) } : {}),
+    scopes: "https://www.googleapis.com/auth/cloud-platform",
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  const accessToken = tokenResponse.token;
+  if (!accessToken) {
+    throw new Error("Failed to obtain Google OAuth access token for Vertex AI.");
+  }
+
+  let projectId = process.env.VERTEX_AI_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+  if (keyJson) {
+    try {
+      const credentials = JSON.parse(keyJson);
+      projectId = projectId || credentials.project_id;
+    } catch (_) {}
+  }
+  if (!projectId) {
+    throw new Error("GCP Project ID is not defined. Please set VERTEX_AI_PROJECT_ID or GOOGLE_CLOUD_KEY_JSON.");
+  }
+
+  const location = process.env.VERTEX_AI_LOCATION || "us-central1";
+
+  let vertexModelName = model;
+  if (model.includes("gemini-1.5-flash")) {
+    vertexModelName = "gemini-1.5-flash";
+  } else if (model.includes("gemini-1.5-pro")) {
+    vertexModelName = "gemini-1.5-pro";
+  } else if (model.includes("gemini-2.0-flash")) {
+    vertexModelName = "gemini-2.0-flash";
+  } else if (model.includes("gemini-2.5-flash")) {
+    vertexModelName = "gemini-2.5-flash";
+  }
+
+  let attempts = 0;
+  const maxAttempts = 4;
+  let delay = 1500;
+  let lastError: any = null;
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await fetch(
+        `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${vertexModelName}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: `System prompt:\n${systemPrompt}\n\nUser prompt:\n${userPrompt}` }] }],
+            generationConfig: {
+              temperature: 0.7,
+              responseMimeType: "application/json"
+            }
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const status = response.status;
+        const isRetryable = status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+
+        if (isRetryable) {
+          attempts++;
+          lastError = new Error(`Vertex AI API error: ${status} - ${errorText}`);
+          if (attempts < maxAttempts) {
+            console.warn(`[Vertex AI Retry] Model ${vertexModelName} returned status ${status} (attempt ${attempts}/${maxAttempts}). Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+            continue;
+          }
+        }
+        
+        // Fatal non-retryable error (e.g. 404, 403, 400). Throw immediately and mark it.
+        const fatalError = new Error(`Vertex AI API error: ${status} - ${errorText}`);
+        (fatalError as any).isFatal = true;
+        throw fatalError;
+      }
+
+      const json = (await response.json()) as any;
+      const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!responseText) {
+        throw new Error("Vertex AI returned an empty response candidate.");
+      }
+      return responseText;
+    } catch (err: any) {
+      if (err.isFatal) {
+        throw err;
+      }
+      attempts++;
+      lastError = err;
+      if (attempts < maxAttempts) {
+        console.warn(`[Vertex AI Retry] Network or parsing error for ${vertexModelName} (attempt ${attempts}/${maxAttempts}): ${err.message || err}. Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw lastError || new Error(`Vertex AI API request failed for ${vertexModelName} after ${maxAttempts} attempts.`);
 }
 
 async function generateTextWithGemini(
@@ -156,6 +280,11 @@ async function generateTextWithGemini(
 export async function generateText(systemPrompt: string, userPrompt: string): Promise<string> {
   const openAiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
+  const isVertexAi = !!(
+    process.env.GOOGLE_CLOUD_KEY_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    process.env.VERTEX_AI_PROJECT_ID
+  );
 
   if (openAiKey) {
     // OpenAI Chat Completions API
@@ -182,6 +311,18 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
 
     const json = (await response.json()) as any;
     return json.choices?.[0]?.message?.content?.trim() || "";
+  } else if (isVertexAi) {
+    const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    let lastError: any = null;
+    for (const model of models) {
+      try {
+        return await generateTextWithVertexAI(model, systemPrompt, userPrompt);
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Vertex AI Router] Model ${model} failed: ${err.message || err}. Trying next fallback model...`);
+      }
+    }
+    throw new Error(`All Vertex AI models failed. Last error: ${lastError?.message || lastError}`);
   } else if (geminiKey) {
     const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError: any = null;
@@ -509,7 +650,7 @@ export async function generateContentAffairsAI(
   let routedCategorySlug = "";
   let routedContentType: string = options.contentType || "";
 
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const taxonomyContext = categories.map(c => ({ slug: c.slug, name: c.name, family: c.content_family }));
       const routerSystemPrompt = `You are a UPSC classification agent. Analyze the user's topics and determine:
@@ -752,7 +893,7 @@ Rules:
   let parsedDraft = parseJsonRobust(rawResponse);
 
   // ── STEP 3: AUDITOR AGENT (LaTeX & Metadata verification) ──
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const auditorSystemPrompt = `You are a UPSC editorial validation auditor agent.
 Your task is to audit and correct the generated draft content:
@@ -809,7 +950,7 @@ export async function generateQuizzesAI(
 
   // ── STEP 1: ROUTER AGENT ──
   let routedSubjectSlug = "";
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const routerPrompt = `Analyze the quiz topic prompt and classify it to the closest subject from this taxonomy:
 ${JSON.stringify(taxonomyNodes.map(t => ({ slug: t.slug, name: t.name })))}
@@ -970,7 +1111,7 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
   let parsedQuiz = parseJsonRobust(rawResponse);
 
   // ── STEP 3: AUDITOR AGENT (LaTeX equations validation) ──
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const auditorSystemPrompt = `You are a UPSC assessment validation auditor agent.
 Ensure all mathematical formulas, CSAT variables, and probability stats are written in LaTeX format using single $ delimiters (e.g., $x^2 = 9$, $\\frac{a}{b}$).
@@ -1098,7 +1239,7 @@ export async function parseQuizAI(
 
   // ── STEP 1: ROUTER AGENT ──
   let routedSubjectSlug = "";
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const routerPrompt = `Analyze the raw questions text to be parsed and classify it to the closest subject from this taxonomy:
 ${JSON.stringify(taxonomyNodes.map(t => ({ slug: t.slug, name: t.name })))}
@@ -1246,7 +1387,7 @@ STRICT RULE: The output must strictly conform to the JSON schema. Do not output 
   let parsedQuiz = parseJsonRobust(rawResponse);
 
   // ── STEP 3: AUDITOR AGENT (LaTeX equations validation) ──
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const auditorSystemPrompt = `You are a UPSC assessment validation auditor agent.
 Ensure all mathematical formulas, CSAT variables, and probability stats are written in LaTeX format using single $ delimiters (e.g., $x^2 = 9$, $\\frac{a}{b}$).
@@ -1362,7 +1503,7 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
 
   const userPrompt = `Input Text (Topic or Raw Question):\n${options.topic}\n\n${options.instructions ? `Additional Guidelines: ${options.instructions}` : ""}`;
 
-  if (openAiKey || geminiKey) {
+  if (hasAiCredentials()) {
     try {
       const response = await generateText(systemPrompt, userPrompt);
       return parseJsonRobust(response);
@@ -1390,10 +1531,90 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
   };
 }
 
+async function performOcrVertexAI(
+  model: string,
+  mimeType: string,
+  base64Data: string
+): Promise<string> {
+  const keyJson = process.env.GOOGLE_CLOUD_KEY_JSON;
+  const auth = new GoogleAuth({
+    ...(keyJson ? { credentials: JSON.parse(keyJson) } : {}),
+    scopes: "https://www.googleapis.com/auth/cloud-platform",
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  const accessToken = tokenResponse.token;
+  if (!accessToken) {
+    throw new Error("Failed to obtain Google OAuth access token for Vertex AI OCR.");
+  }
+
+  let projectId = process.env.VERTEX_AI_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+  if (keyJson) {
+    try {
+      const credentials = JSON.parse(keyJson);
+      projectId = projectId || credentials.project_id;
+    } catch (_) {}
+  }
+  if (!projectId) {
+    throw new Error("GCP Project ID is not defined. Please set VERTEX_AI_PROJECT_ID or GOOGLE_CLOUD_KEY_JSON.");
+  }
+
+  const location = process.env.VERTEX_AI_LOCATION || "us-central1";
+
+  let vertexModelName = model;
+  if (model.includes("gemini-2.5-flash")) {
+    vertexModelName = "gemini-2.5-flash";
+  }
+
+  const response = await fetch(
+    `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${vertexModelName}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: "Extract all handwritten and printed text from this image as a clear, formatted string." },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data
+                }
+              }
+            ]
+          }
+        ]
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Vertex AI OCR API error: ${response.status} - ${errorText}`);
+  }
+
+  const json = (await response.json()) as any;
+  const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!responseText) {
+    throw new Error("Vertex AI returned an empty response candidate for OCR.");
+  }
+  return responseText;
+}
+
 export async function performOcrGemini(imagesBase64: string[]): Promise<string> {
   const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    throw new Error("GEMINI_API_KEY is not defined in environment variables.");
+  const isVertexAi = !!(
+    process.env.GOOGLE_CLOUD_KEY_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    process.env.VERTEX_AI_PROJECT_ID
+  );
+
+  if (!geminiKey && !isVertexAi) {
+    throw new Error("Neither GEMINI_API_KEY nor Vertex AI credentials are defined in environment variables.");
   }
 
   const results: string[] = [];
@@ -1417,39 +1638,45 @@ export async function performOcrGemini(imagesBase64: string[]): Promise<string> 
       }
     }
 
-    // Call Gemini API via global fetch
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: "Extract all handwritten and printed text from this image as a clear, formatted string." },
-                {
-                  inlineData: {
-                    mimeType: mimeType,
-                    data: base64Data
+    let responseText = "";
+    if (isVertexAi) {
+      responseText = await performOcrVertexAI(model, mimeType, base64Data);
+    } else {
+      // Call Gemini API via global fetch
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: "Extract all handwritten and printed text from this image as a clear, formatted string." },
+                  {
+                    inlineData: {
+                      mimeType: mimeType,
+                      data: base64Data
+                    }
                   }
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
+                ]
+              }
+            ]
+          })
+        }
+      );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini OCR API error: ${response.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini OCR API error: ${response.status} - ${errorText}`);
+      }
+
+      const json = (await response.json()) as any;
+      responseText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
     }
 
-    const json = (await response.json()) as any;
-    const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!responseText) {
       throw new Error("Gemini returned an empty response candidate for OCR.");
     }
