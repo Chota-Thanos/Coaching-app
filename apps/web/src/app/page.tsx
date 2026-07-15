@@ -396,14 +396,20 @@ export default function HomePage() {
                     Take Free Diagnostic Test
                   </Link>
                   <Link
-                    href="/register"
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/15 bg-white/6 px-7 font-bold text-white hover:bg-white/12 transition text-sm"
-                    id="hero-get-started"
+                    href="/assessment/custom-test/create"
+                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/15 bg-white/6 px-6 font-bold text-white hover:bg-white/12 transition gap-2 text-sm"
+                    id="hero-build-custom"
                   >
-                    Get Started Free
-                    <ArrowRight className="h-4 w-4 ml-1.5" />
+                    <BookOpen className="h-4 w-4" />
+                    Build Custom Test
                   </Link>
                 </div>
+                <p className="text-xs text-white/35 pt-1">
+                  No account needed for the diagnostic test ·{" "}
+                  <Link href="/register" className="text-white/55 hover:text-white underline underline-offset-2 transition">
+                    Create free account →
+                  </Link>
+                </p>
 
                 {/* Stats */}
                 <div className="flex items-center gap-6 pt-3 border-t border-white/8">
