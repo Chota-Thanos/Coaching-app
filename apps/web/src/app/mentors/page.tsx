@@ -124,18 +124,17 @@ export default function MentorsPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Editorial Hero Banner */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 py-16 text-white">
-        <div className="absolute left-1/2 top-1/2 h-[450px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[100px]" />
-        <div className="container mx-auto max-w-6xl px-6 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3.5 py-1 text-xs font-bold uppercase tracking-widest text-indigo-300">
-            <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
+      <section className="page-hero">
+        <div className="page-hero-content container mx-auto max-w-6xl px-6 text-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-bold text-white/60">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Empowering Aspirants
           </span>
-          <h1 className="mt-6 font-sans text-4xl font-extrabold tracking-tight sm:text-6xl">
-            Discover <span className="bg-gradient-to-r from-indigo-400 to-sky-300 bg-clip-text text-transparent">UPSC Mentors</span>
+          <h1 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl text-white">
+            Find Your <span className="text-indigo-400">UPSC Mentor</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-            Connect 1-on-1 with verified civil servants and exam experts. Upload subjective copies for copy evaluation or book a guidance session.
+          <p className="mx-auto mt-4 max-w-2xl text-base text-white/55">
+            Connect 1-on-1 with verified civil servants and exam experts. Book guidance sessions or get your Mains answers evaluated.
           </p>
         </div>
       </section>

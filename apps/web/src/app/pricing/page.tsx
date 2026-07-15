@@ -104,36 +104,36 @@ const PLAN_STYLES: Record<string, {
   icon: React.ElementType;
 }> = {
   assessment_premium: {
-    gradient: "from-blue-50 to-white",
+    gradient: "from-paper to-white",
     badge: null,
     badgeClass: "",
-    border: "border-blue-100",
-    headerBg: "bg-gradient-to-br from-blue-600 to-blue-700",
-    buttonClass: "bg-blue-600 hover:bg-blue-700 shadow-blue-200",
-    iconBg: "bg-blue-100",
-    iconText: "text-blue-700",
+    border: "border-line",
+    headerBg: "bg-ink",
+    buttonClass: "bg-civic hover:bg-civic/90 shadow-civic/20",
+    iconBg: "bg-civic/10",
+    iconText: "text-civic",
     icon: Target
   },
   current_affairs_pro: {
-    gradient: "from-teal-50 to-white",
+    gradient: "from-emerald-50 to-white",
     badge: null,
     badgeClass: "",
-    border: "border-teal-100",
-    headerBg: "bg-gradient-to-br from-teal-600 to-teal-700",
-    buttonClass: "bg-teal-600 hover:bg-teal-700 shadow-teal-200",
-    iconBg: "bg-teal-100",
-    iconText: "text-teal-700",
+    border: "border-emerald-100",
+    headerBg: "bg-ink",
+    buttonClass: "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200",
+    iconBg: "bg-emerald-50",
+    iconText: "text-emerald-700",
     icon: Newspaper
   },
   assessment_ca_bundle: {
-    gradient: "from-indigo-50 via-purple-50/40 to-white",
+    gradient: "from-paper to-white",
     badge: "Most Popular",
-    badgeClass: "bg-gradient-to-r from-indigo-500 to-purple-600 text-white",
-    border: "border-indigo-200 ring-2 ring-indigo-200",
-    headerBg: "bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700",
-    buttonClass: "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-indigo-200",
-    iconBg: "bg-indigo-100",
-    iconText: "text-indigo-700",
+    badgeClass: "bg-civic text-white",
+    border: "border-civic/30 ring-2 ring-civic/20",
+    headerBg: "bg-ink",
+    buttonClass: "bg-civic hover:bg-civic/90 shadow-civic/20",
+    iconBg: "bg-civic/10",
+    iconText: "text-civic",
     icon: Sparkles
   }
 };
@@ -218,38 +218,31 @@ export default function PricingPage() {
 
       <main className="min-h-screen bg-white">
         {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-indigo-950 to-indigo-900 text-white">
-          <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.4),rgba(0,0,0,0))]" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-400/30 to-transparent" />
-          </div>
-
-          <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/15 border border-indigo-400/20 px-4 py-1.5 text-xs font-bold text-indigo-300 mb-6">
-              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+        <section className="page-hero">
+          <div className="page-hero-content mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-bold text-white/60 mb-5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               Transparent Pricing · No Hidden Fees
             </div>
 
-            <h1 className="text-4xl font-black md:text-6xl tracking-tight text-white leading-tight mb-4">
-              Invest in Your{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
-                UPSC Success
-              </span>
+            <h1 className="text-4xl font-black md:text-5xl tracking-tight text-white leading-tight mb-4">
+              Plans for Every Stage of Your{" "}
+              <span className="text-indigo-400">UPSC Journey</span>
             </h1>
-            <p className="text-indigo-200/80 text-lg max-w-2xl mx-auto leading-relaxed mb-10">
-              Choose a plan that fits your preparation stage. Start free, upgrade when you're ready.
+            <p className="text-white/55 text-base max-w-2xl mx-auto leading-relaxed mb-8">
+              Start free. Upgrade only what you need. Current affairs is always free for everyone.
             </p>
 
             {/* Interval Toggle */}
-            <div className="inline-flex items-center gap-1 rounded-2xl bg-white/10 border border-white/10 p-1.5 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-1 rounded-2xl bg-white/8 border border-white/10 p-1.5">
               {(["month", "quarter", "year"] as BillingInterval[]).map((iv) => (
                 <button
                   key={iv}
                   onClick={() => setInterval(iv)}
                   className={`relative rounded-xl px-5 py-2 text-sm font-bold transition-all ${
                     interval === iv
-                      ? "bg-white text-indigo-700 shadow-sm"
-                      : "text-indigo-200 hover:text-white"
+                      ? "bg-white text-ink shadow-sm"
+                      : "text-white/55 hover:text-white"
                   }`}
                 >
                   {INTERVAL_LABELS[iv]}

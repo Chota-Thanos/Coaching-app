@@ -309,7 +309,7 @@ img {
 
 /* Spotlight band — full-width dark mentorship section */
 .spotlight-band {
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  background: linear-gradient(160deg, #0f172a 0%, #131e3a 50%, #0f172a 100%);
   padding: 4rem 1rem;
   width: 100%;
 }
@@ -321,6 +321,36 @@ img {
 @media (min-width: 1024px) {
   .spotlight-band {
     padding: 6rem 2rem;
+  }
+}
+
+/* Standard hero for inner pages — use this class on all page header sections */
+.page-hero {
+  background: linear-gradient(160deg, #0f172a 0%, #131e3a 55%, #0f172a 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.page-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 70% at 85% 40%, rgba(79,70,229,0.10) 0%, transparent 65%);
+  pointer-events: none;
+}
+.page-hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 3.5rem 1rem 3rem;
+}
+@media (min-width: 640px) {
+  .page-hero-content {
+    padding: 4rem 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .page-hero-content {
+    padding: 5rem 2rem;
   }
 }
 

@@ -344,147 +344,119 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 1 · HERO
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-indigo-950 text-white">
-          <div className="absolute inset-0 z-0 opacity-20 mix-blend-overlay">
-            <img
-              src="https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop"
-              alt="UPSC Preparation"
-              className="h-full w-full object-cover"
-              loading="eager"
-            />
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/80 via-indigo-950/90 to-indigo-950 z-0" />
+        <section className="relative overflow-hidden bg-ink text-white">
+          {/* Ambient glow — CSS only, no external images */}
+          <div className="absolute -top-32 -right-40 h-[600px] w-[600px] rounded-full bg-civic/10 blur-[140px] pointer-events-none" />
+          <div className="absolute -bottom-20 -left-32 h-[350px] w-[350px] rounded-full bg-brand/8 blur-[100px] pointer-events-none" />
 
-          <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 md:py-20 lg:py-24">
+          <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-22 lg:py-28">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
 
               {/* ── Copy ── */}
-              <div className="lg:col-span-7 space-y-6">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3.5 py-1 text-xs font-bold text-indigo-300 backdrop-blur-sm border border-indigo-500/20">
-                  <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
-                  <span>India's Complete UPSC Preparation Platform</span>
+              <div className="lg:col-span-7 space-y-7">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-bold text-white/60">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  India's Complete UPSC Preparation Platform
                 </div>
 
-                <h1 className="text-3xl font-black sm:text-5xl md:text-6xl tracking-tight text-white leading-tight">
-                  Master GS Papers and Mains with{" "}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
-                    Expert Mentorship
-                  </span>{" "}
-                  &amp; Smart Analytics
+                <h1 className="text-4xl font-black sm:text-5xl md:text-6xl tracking-tight text-white leading-[1.1]">
+                  Prepare Smarter.<br />
+                  <span className="text-indigo-400">Clear UPSC.</span>
                 </h1>
 
-                <p className="text-sm sm:text-base text-indigo-200/90 max-w-xl leading-relaxed">
-                  Free daily current affairs · Custom practice tests · Smart notes workspace · 1:1 mentorship from verified UPSC toppers.
+                <p className="text-sm sm:text-base text-white/55 max-w-xl leading-relaxed">
+                  Free daily current affairs · Custom practice tests by topic · Smart notes workspace · 1:1 mentorship from verified UPSC toppers.
                 </p>
 
                 {/* Trust badges */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center shrink-0">
-                      <Check className="h-3 w-3 text-white" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-md">
+                  {[
+                    "Current Affairs — Always Free",
+                    "3 Free Practice Tests / Month",
+                    "10 Notes Free per Repository",
+                    "Verified Topper Mentorship",
+                  ].map(item => (
+                    <div key={item} className="flex items-center gap-2.5">
+                      <div className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                      <span className="text-xs font-semibold text-white/65">{item}</span>
                     </div>
-                    <span className="text-xs font-semibold text-indigo-200">Current Affairs — Always Free</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center shrink-0">
-                      <Check className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-xs font-semibold text-indigo-200">3 Free Practice Tests / Month</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center shrink-0">
-                      <Check className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-xs font-semibold text-indigo-200">10 Notes Free per Repository</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center shrink-0">
-                      <Check className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-xs font-semibold text-indigo-200">Verified Topper Mentorship</span>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Primary CTAs */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                {/* CTAs */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-1">
                   <Link
                     href={diagnosticTestId ? `/assessment/tests/${diagnosticTestId}` : "/assessment/custom-test/create"}
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-white px-7 font-bold text-indigo-900 shadow-lg hover:bg-indigo-50 transition-all duration-200 gap-2 text-sm"
+                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-civic px-7 font-bold text-white hover:bg-civic/85 transition gap-2 text-sm shadow-lg shadow-civic/20"
                     id="hero-start-free-test"
                   >
                     <Target className="h-4 w-4" />
-                    Take Diagnostic Test
-                  </Link>
-                  <Link
-                    href="/assessment/custom-test/create"
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 px-7 font-bold text-white transition-all duration-200 gap-2 text-sm border border-indigo-500/30"
-                    id="hero-build-custom"
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    Build Custom Test
+                    Take Free Diagnostic Test
                   </Link>
                   <Link
                     href="/register"
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-6 font-bold text-white backdrop-blur-sm hover:bg-white/20 transition-all duration-200 text-sm"
+                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/15 bg-white/6 px-7 font-bold text-white hover:bg-white/12 transition text-sm"
                     id="hero-get-started"
                   >
                     Get Started Free
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-4 w-4 ml-1.5" />
                   </Link>
                 </div>
 
-                {/* Social proof ticker */}
-                <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                {/* Stats */}
+                <div className="flex items-center gap-6 pt-3 border-t border-white/8">
                   <div className="text-center">
                     <p className="text-lg font-black text-white">10,000+</p>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase">Aspirants</p>
+                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Aspirants</p>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
                   <div className="text-center">
                     <p className="text-lg font-black text-white">120+</p>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase">Verified Mentors</p>
+                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Verified Mentors</p>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
                   <div className="text-center">
                     <p className="text-lg font-black text-white">50,000+</p>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase">Tests Taken</p>
+                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Tests Taken</p>
                   </div>
                 </div>
               </div>
 
-              {/* ── Hero Graphic Panel ── */}
+              {/* ── App Preview Panel ── */}
               <div className="lg:col-span-5 relative hidden lg:block">
-                <div className="absolute -inset-2 rounded-3xl bg-indigo-500/20 blur-2xl z-0" />
-                <div className="relative rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md shadow-2xl z-10 space-y-4">
+                <div className="absolute -inset-4 rounded-3xl bg-civic/12 blur-2xl z-0" />
+                <div className="relative rounded-2xl border border-white/8 bg-white/4 p-5 backdrop-blur-md shadow-2xl z-10 space-y-4">
                   {/* Window chrome */}
                   <div className="flex items-center gap-1.5 border-b border-white/10 pb-3">
                     <div className="h-2.5 w-2.5 rounded-full bg-rose-500" />
                     <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    <span className="ml-auto text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-md uppercase tracking-wider">Live Dashboard</span>
+                    <span className="ml-auto text-[10px] font-bold text-white/45 bg-white/8 px-2.5 py-0.5 rounded-md uppercase tracking-wider">Live Dashboard</span>
                   </div>
 
                   {/* Radar mock */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-indigo-200">UPSC Subject Radar</span>
+                    <span className="text-xs font-bold text-white/60">UPSC Subject Radar</span>
                     <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">88% Avg</span>
                   </div>
                   <div className="flex justify-center">
                     <svg width="110" height="110" viewBox="0 0 110 110" className="overflow-visible">
-                      <polygon points="55,8 92,30 92,80 55,102 18,80 18,30" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1"/>
-                      <polygon points="55,22 78,37 78,73 55,88 32,73 32,37" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
-                      <polygon points="55,14 86,38 80,78 55,96 30,76 24,38" fill="rgba(99,102,241,0.35)" stroke="#818cf8" strokeWidth="2"/>
+                      <polygon points="55,8 92,30 92,80 55,102 18,80 18,30" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1"/>
+                      <polygon points="55,22 78,37 78,73 55,88 32,73 32,37" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+                      <polygon points="55,14 86,38 80,78 55,96 30,76 24,38" fill="rgba(79,70,229,0.28)" stroke="rgba(129,140,248,0.75)" strokeWidth="2"/>
                       {[{cx:55,cy:14},{cx:86,cy:38},{cx:80,cy:78},{cx:55,cy:96},{cx:30,cy:76},{cx:24,cy:38}].map((p,i) => (
-                        <circle key={i} cx={p.cx} cy={p.cy} r="3" fill="#818cf8"/>
+                        <circle key={i} cx={p.cx} cy={p.cy} r="3" fill="rgba(129,140,248,0.75)"/>
                       ))}
                     </svg>
                   </div>
 
                   {/* Progress bars */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    {[{label:"Polity",val:85,color:"bg-indigo-500"},{label:"Economy",val:78,color:"bg-emerald-500"},{label:"History",val:72,color:"bg-amber-500"},{label:"Geography",val:90,color:"bg-blue-500"}].map(s => (
+                    {[{label:"Polity",val:85,color:"bg-civic"},{label:"Economy",val:78,color:"bg-emerald-500"},{label:"History",val:72,color:"bg-saffron"},{label:"Geography",val:90,color:"bg-brand"}].map(s => (
                       <div key={s.label} className="rounded-lg bg-white/5 border border-white/5 p-2.5 space-y-1">
-                        <div className="flex justify-between items-center text-[10px] text-indigo-300 font-bold">
+                        <div className="flex justify-between items-center text-[10px] text-white/50 font-bold">
                           <span>{s.label}</span><span>{s.val}%</span>
                         </div>
                         <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
@@ -498,8 +470,8 @@ export default function HomePage() {
                   <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/10">
                     {[{icon:Target,label:"GS Test"},{icon:Newspaper,label:"News"},{icon:NotebookPen,label:"Notes"}].map(({icon:Icon,label}) => (
                       <div key={label} className="flex flex-col items-center gap-1 rounded-xl bg-white/5 p-2 border border-white/5">
-                        <Icon className="h-4 w-4 text-indigo-300" />
-                        <span className="text-[9px] font-bold text-indigo-300">{label}</span>
+                        <Icon className="h-4 w-4 text-white/45" />
+                        <span className="text-[9px] font-bold text-white/45">{label}</span>
                       </div>
                     ))}
                   </div>
@@ -518,10 +490,10 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Target className="h-3.5 w-3.5 text-blue-600" />
+                  <div className="h-6 w-6 rounded-lg bg-civic/10 flex items-center justify-center">
+                    <Target className="h-3.5 w-3.5 text-civic" />
                   </div>
-                  <span className="text-xs font-black text-blue-600 uppercase tracking-widest">Self-Preparation</span>
+                  <span className="text-xs font-black text-civic uppercase tracking-widest">Self-Preparation</span>
                   <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">3 Free Tests / Month</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
@@ -531,7 +503,7 @@ export default function HomePage() {
                   Build custom GS &amp; CSAT tests, track topic-wise accuracy, and identify your weak areas with intelligent analytics.
                 </p>
               </div>
-              <Link href="/assessment/custom-test/create?start_tour=true" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-colors">
+              <Link href="/assessment/custom-test/create?start_tour=true" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-civic px-5 py-2.5 text-sm font-bold text-white hover:bg-civic/90 transition-colors">
                 Start Practising Free <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -596,7 +568,7 @@ export default function HomePage() {
                     { icon: FileCode, title: "Photo/PDF Import", desc: "Add questions from photos or PDFs via OCR (5 imports/month free)", free: false },
                   ].map(({ icon: Icon, title, desc, free }) => (
                     <div key={title} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                      <span className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${free ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"}`}>
+                      <span className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${free ? "bg-civic/10 text-civic" : "bg-slate-100 text-slate-400"}`}>
                         <Icon className="h-4 w-4" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -615,7 +587,7 @@ export default function HomePage() {
 
                 {/* Premium teaser */}
                 <div className="relative rounded-xl overflow-hidden border border-slate-100">
-                  <div className="p-4 bg-gradient-to-br from-slate-900 to-indigo-950 text-white space-y-1">
+                  <div className="p-4 bg-gradient-to-br from-slate-900 to-ink text-white space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-indigo-300 uppercase tracking-widest">Premium Analytics</span>
                       <Lock className="h-3.5 w-3.5 text-indigo-400" />
@@ -694,7 +666,7 @@ export default function HomePage() {
                     >
                       <div className="h-40 w-full overflow-hidden bg-slate-50 relative">
                         <img src={cover} alt={article.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                        <span className="absolute left-3 top-3 rounded-lg bg-slate-900/85 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">{catName}</span>
+                        <span className="absolute left-3 top-3 rounded-lg bg-ink/85 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">{catName}</span>
                         <span className="absolute right-3 top-3 badge-free">Free</span>
                       </div>
                       <div className="flex-1 p-4 flex flex-col justify-between">
@@ -870,7 +842,7 @@ export default function HomePage() {
           <div className="mx-auto max-w-7xl">
             {/* Header */}
             <div className="text-center mb-10 space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3.5 py-1 text-xs font-bold text-purple-300">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3.5 py-1 text-xs font-bold text-white/65">
                 <GraduationCap className="h-3.5 w-3.5" />
                 Mentorship &amp; Evaluations
               </div>
@@ -1063,7 +1035,7 @@ export default function HomePage() {
                 <div className="space-y-1 mb-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-black text-slate-800">Self-Prep Plan</h3>
-                    <Target className="h-4 w-4 text-blue-600" />
+                    <Target className="h-4 w-4 text-civic" />
                   </div>
                   <p className="text-xs text-slate-500">For serious mock practice</p>
                 </div>
@@ -1087,7 +1059,7 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/register" className="mt-6 block w-full py-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-center font-bold text-blue-700 text-xs transition-colors">
+                <Link href="/register" className="mt-6 block w-full py-3 rounded-xl bg-civic/10 hover:bg-blue-100 text-center font-bold text-civic text-xs transition-colors">
                   Get Self-Prep Plan
                 </Link>
               </div>
@@ -1127,7 +1099,7 @@ export default function HomePage() {
               </div>
 
               {/* ALL-ACCESS PREMIUM */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border-2 border-indigo-600 bg-indigo-950 p-6 shadow-xl flex flex-col relative">
+              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border-2 border-indigo-600 bg-ink p-6 shadow-xl flex flex-col relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider whitespace-nowrap">
                   Best Value
                 </div>
@@ -1190,7 +1162,7 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 8 · FINAL CTA
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="bg-slate-900 py-16 px-4 sm:px-6 lg:px-8 text-center">
+        <section className="bg-ink py-16 px-4 sm:px-6 lg:px-8 text-center">
           <div className="mx-auto max-w-2xl space-y-5">
             <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
               Ready to Start Your UPSC Journey?
@@ -1202,7 +1174,7 @@ export default function HomePage() {
               <Link href="/register" className="touch-target inline-flex h-12 w-full sm:w-auto items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 px-8 text-sm font-bold text-white transition-colors">
                 Create Free Account →
               </Link>
-              <Link href="/current-affairs/daily-news" className="touch-target inline-flex h-12 w-full sm:w-auto items-center justify-center rounded-xl border border-slate-700 hover:bg-slate-800 px-8 text-sm font-bold text-slate-300 transition-colors">
+              <Link href="/current-affairs/daily-news" className="touch-target inline-flex h-12 w-full sm:w-auto items-center justify-center rounded-xl border border-white/15 hover:bg-white/8 px-8 text-sm font-bold text-slate-300 transition-colors">
                 Read Today's News (Free)
               </Link>
             </div>
@@ -1212,7 +1184,7 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             STUDY PLANS — single line, footer placement only
         ───────────────────────────────────────────────────────────────────── */}
-        <div className="bg-slate-900 border-t border-slate-800 pb-6 text-center">
+        <div className="bg-ink border-t border-slate-800 pb-6 text-center">
           <p className="text-xs text-slate-500 italic">
             Prefer a guided path?{" "}
             <Link href="/study-plans" className="text-indigo-400 hover:underline font-semibold">
@@ -1242,7 +1214,7 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════
           DASHBOARD HEADER — greeting + status pills
       ══════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden bg-indigo-950 text-white">
+      <section className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 z-0 opacity-20 mix-blend-overlay">
           <img
             src="https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop"
@@ -1250,7 +1222,7 @@ export default function HomePage() {
             className="h-full w-full object-cover"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-950 via-indigo-900/95 to-indigo-900/80 z-0" />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink via-indigo-900/95 to-indigo-900/80 z-0" />
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div className="space-y-2">
@@ -1280,7 +1252,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 backdrop-blur-md">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-civic flex items-center justify-center text-white shrink-0">
                   <Target className="h-4 w-4" />
                 </div>
                 <div>
@@ -1307,17 +1279,17 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════
           SECTION 1 — MENTORSHIP & EVALUATIONS (always top ribbon)
       ══════════════════════════════════════════════════════ */}
-      <section className="bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 border-b border-purple-900/60">
+      <section className="bg-gradient-to-r from-slate-900 via-purple-950 to-ink border-b border-purple-900/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-purple-800/60 border border-purple-700/40 flex items-center justify-center shrink-0">
-                <GraduationCap className="h-5 w-5 text-purple-300" />
+                <GraduationCap className="h-5 w-5 text-white/65" />
               </div>
               <div>
                 <p className="text-sm font-black text-white">Mentorship &amp; Evaluations</p>
                 {hasAnyActive ? (
-                  <p className="text-[10px] text-purple-300">You have active sessions — check pending evaluations &amp; upcoming calls</p>
+                  <p className="text-[10px] text-white/65">You have active sessions — check pending evaluations &amp; upcoming calls</p>
                 ) : (
                   <p className="text-[10px] text-purple-400">Connect with a topper · Book answer evaluation · Track your agenda</p>
                 )}
@@ -1341,7 +1313,7 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/mentorship/sample-evaluation"
-                className="touch-target inline-flex items-center gap-1.5 rounded-xl border border-purple-700/40 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-bold text-purple-300 transition-colors"
+                className="touch-target inline-flex items-center gap-1.5 rounded-xl border border-purple-700/40 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-bold text-white/65 transition-colors"
               >
                 <FileText className="h-3.5 w-3.5" />
                 Sample Eval
@@ -1364,7 +1336,7 @@ export default function HomePage() {
               </div>
               <Link
                 href="/mentorship"
-                className="shrink-0 text-xs font-black text-purple-300 hover:text-white flex items-center gap-1"
+                className="shrink-0 text-xs font-black text-white/65 hover:text-white flex items-center gap-1"
               >
                 View all sessions <ChevronRight className="h-3.5 w-3.5" />
               </Link>
@@ -1412,7 +1384,7 @@ export default function HomePage() {
             {/* Section header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <span className="h-9 w-9 rounded-xl bg-civic/10 text-civic flex items-center justify-center">
                   <Target className="h-5 w-5" />
                 </span>
                 <div>
@@ -1422,7 +1394,7 @@ export default function HomePage() {
               </div>
               <Link
                 href="/assessment/custom-test/create?start_tour=true"
-                className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors flex items-center gap-1.5"
+                className="text-xs font-bold text-civic bg-civic/10 border border-blue-100 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors flex items-center gap-1.5"
               >
                 <Sparkles className="h-3.5 w-3.5" /> How it works
               </Link>
@@ -1520,7 +1492,7 @@ export default function HomePage() {
                   )}
                 </div>
                 {totalMCQ === 0 && (
-                  <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700 font-semibold text-center">
+                  <div className="rounded-xl bg-civic/10 border border-blue-100 px-3 py-2 text-xs text-civic font-semibold text-center">
                     Take your first test to start tracking accuracy here
                   </div>
                 )}
@@ -1565,7 +1537,7 @@ export default function HomePage() {
                     <BrainCircuit className="h-8 w-8 text-slate-200" />
                     <p className="text-xs font-bold text-slate-600">No weak areas identified</p>
                     <p className="text-[10px] text-slate-400">Take 1+ tests to detect problem topics</p>
-                    <Link href="/assessment/gk" className="text-xs font-bold text-blue-600 bg-blue-50 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors">
+                    <Link href="/assessment/gk" className="text-xs font-bold text-civic bg-civic/10 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors">
                       Take a Test
                     </Link>
                   </div>
@@ -1714,7 +1686,7 @@ export default function HomePage() {
                           onClick={() => setQuickNumQuestions(count)}
                           className={`flex-1 py-2 rounded-xl border text-xs font-black transition-all ${
                             quickNumQuestions === count
-                              ? "bg-slate-900 border-slate-900 text-white"
+                              ? "bg-ink border-slate-900 text-white"
                               : "bg-white border-slate-150 text-slate-600 hover:bg-slate-50"
                           }`}
                         >
