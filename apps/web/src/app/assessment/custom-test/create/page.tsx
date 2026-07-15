@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpen,
   ChevronDown,
   ChevronRight,
@@ -17,7 +18,8 @@ import {
   CheckCircle,
   HelpCircle,
   ClipboardList,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Pencil
 } from "lucide-react";
 import { useAuth, authenticatedGet, authenticatedPost, guestAwarePost } from "../../../../components/auth/auth-context";
 import { getOrCreateGuestToken } from "../../../../lib/guest";
@@ -86,6 +88,7 @@ type TaxonomyNode = {
   node_type: string;
   parent_id: number | null;
   content_type?: string;
+  image_url?: string | null;
 };
 
 type Question = {
@@ -127,6 +130,8 @@ function CreateCustomTestInner() {
     : "gk";
   const [contentType, setContentType] = useState<"gk" | "aptitude" | "mains">(defaultContentType as any);
   const [title, setTitle] = useState("");
+  // 'name' = step 1 (enter test name); 'build' = step 2 (pick topics)
+  const [step, setStep] = useState<'name' | 'build'>('name');
   // Tour is now handled by GuidedTourController — it checks completion automatically
   const startTourOnLoad = isInitialized && searchParams.get("start_tour") === "true";
 
@@ -214,8 +219,11 @@ function CreateCustomTestInner() {
           ? `/api/v1/assessment/mains/taxonomy-nodes?exam_id=${selectedExamId}&limit=1000`
           : `/api/v1/assessment/taxonomy-nodes?exam_id=${selectedExamId}&limit=1000`;
         const data = await authenticatedGet<TaxonomyNode[]>(url, token || "");
-        setAllNodes(data || []);
-        setExpandedNodes(new Set()); // Reset expand states
+        const fetchedNodes = data || [];
+        setAllNodes(fetchedNodes);
+        // Auto-expand all root (first-level) nodes so the syllabus is open by default
+        const rootIds = fetchedNodes.filter((n: TaxonomyNode) => !n.parent_id).map((n: TaxonomyNode) => n.id);
+        setExpandedNodes(new Set(rootIds));
         setAddedCategories([]); // Clear basket on switch
       } catch (err: any) {
         setError(err.message || "Failed to load syllabus categories.");
@@ -613,6 +621,54 @@ function CreateCustomTestInner() {
     );
   }
 
+  // ── Step 1: Name entry ───────────────────────────────────────────────────────
+  if (step === 'name') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 space-y-7">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-50 mx-auto mb-1">
+                <BookOpen className="h-7 w-7 text-indigo-600" />
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Name your test</h1>
+              <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
+                Give your custom practice test a name — you'll pick topics on the next step.
+              </p>
+            </div>
+            <div className="space-y-2.5">
+              <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Test Name</label>
+              <input
+                autoFocus
+                type="text"
+                placeholder="e.g. Ancient History Focus Test"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && title.trim()) setStep('build'); }}
+                className="h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 text-[15px] font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={!title.trim()}
+              onClick={() => setStep('build')}
+              className="w-full h-14 rounded-2xl bg-slate-950 text-white font-bold text-sm hover:bg-slate-800 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
+            >
+              Start Building My Test
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <p className="text-xs text-slate-400 text-center">You can rename it later</p>
+          </div>
+          <div className="mt-5 text-center">
+            <Link href="/assessment/custom-test" className="text-xs font-semibold text-indigo-300 hover:text-white transition">
+              ← Back to Custom Tests
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const backUrl = `/assessment/${contentType === "aptitude" ? "csat" : contentType}`;
 
   return (
@@ -644,6 +700,27 @@ function CreateCustomTestInner() {
         </div>
       </div>
 
+      {/* Active test name banner */}
+      <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-white px-4 py-2.5">
+        <div className="mx-auto max-w-7xl flex items-center gap-3">
+          <div className="h-7 w-7 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0">
+            <BookOpen className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest shrink-0">Building:</span>
+            <span className="text-sm font-black text-indigo-900 truncate">{title}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStep('name')}
+            className="flex items-center gap-1 text-xs font-bold text-indigo-500 hover:text-indigo-700 transition shrink-0"
+          >
+            <Pencil className="h-3 w-3" />
+            Rename
+          </button>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 mt-8">
         {!isAssessmentPremium && token && (
           <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 text-sm font-semibold text-indigo-800">
@@ -671,29 +748,16 @@ function CreateCustomTestInner() {
             {/* Configuration Card */}
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
               <h2 className="text-sm font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-indigo-650" />
+                <BookOpen className="h-4 w-4 text-indigo-600" />
                 <span>Test Config</span>
               </h2>
 
-              <label className="block text-xs font-bold text-slate-655 space-y-1.5">
-                <span>Test Name</span>
-                <input
-                  id="tour-test-name"
-                  type="text"
-                  placeholder="e.g. My History Focus Test"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
-                  required
-                />
-              </label>
-
-              <label className="block text-xs font-bold text-slate-655 space-y-1.5">
+              <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest space-y-2">
                 <span>Exam Profile</span>
                 <select
                   value={selectedExamId ?? ""}
                   onChange={(e) => setSelectedExamId(Number(e.target.value))}
-                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-905 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 normal-case"
                 >
                   {exams.map((exam) => (
                     <option key={exam.id} value={exam.id}>
@@ -702,49 +766,16 @@ function CreateCustomTestInner() {
                   ))}
                 </select>
               </label>
-
-              {/* Hide content type picker if locked, or render as read-only */}
-              {!isContentTypeLocked ? (
-                <div className="block text-xs font-bold text-slate-655 space-y-2">
-                  <span>Content Type</span>
-                  <div id="tour-content-type" className="grid grid-cols-3 gap-2">
-                    {([
-                      { id: "gk", label: "GS" },
-                      { id: "aptitude", label: "CSAT" },
-                      { id: "mains", label: "Mains" }
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          setContentType(opt.id);
-                        }}
-                        className={`h-11 rounded-xl border text-[11px] font-bold transition ${
-                          contentType === opt.id
-                            ? "border-indigo-650 bg-indigo-50 text-indigo-755"
-                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="block text-xs font-bold text-slate-655 space-y-1">
-                  <span>Content Type</span>
-                  <div className="h-10 flex items-center justify-between rounded-xl bg-slate-100/70 border border-slate-200 px-3 text-sm font-bold text-slate-700">
-                    <span className="capitalize">{contentType === "aptitude" ? "CSAT / Aptitude" : contentType === "gk" ? "General Studies (GS)" : "Mains Syllabus"}</span>
-                    <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded uppercase font-black tracking-wider text-slate-500">Locked</span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Selected Categories Summary basket */}
             <div id="tour-basket-card" className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-              <h2 className="text-sm font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-indigo-600" />
+              <div>
+                <p className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest mb-0.5">Questions for</p>
+                <p className="text-base font-black text-slate-900 leading-tight truncate">{title}</p>
+              </div>
+              <h2 className="text-xs font-extrabold uppercase text-slate-500 tracking-widest flex items-center gap-2 border-t border-slate-100 pt-3">
+                <CheckCircle className="h-3.5 w-3.5 text-indigo-600" />
                 <span>Selected Categories ({addedCategories.length})</span>
               </h2>
 
@@ -802,7 +833,43 @@ function CreateCustomTestInner() {
           {/* Right Panel - Expandable Syllabus Tree with Quantity Selectors */}
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2 flex-wrap sm:flex-nowrap animate-fade-in">
+
+              {/* Content Type selector — sits above the categories list */}
+              {!isContentTypeLocked ? (
+                <div id="tour-content-type" className="space-y-2">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Content Type</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: "gk", label: "GS", sub: "General Studies" },
+                      { id: "aptitude", label: "CSAT", sub: "Aptitude" },
+                      { id: "mains", label: "Mains", sub: "Subjective" }
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setContentType(opt.id)}
+                        className={`h-14 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 text-xs font-black transition ${
+                          contentType === opt.id
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
+                        }`}
+                      >
+                        <span className="text-[13px]">{opt.label}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${contentType === opt.id ? "text-indigo-400" : "text-slate-400"}`}>{opt.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100/70 border border-slate-200">
+                  <span className="text-sm font-bold text-slate-700 capitalize">
+                    {contentType === "aptitude" ? "CSAT / Aptitude" : contentType === "gk" ? "General Studies (GS)" : "Mains Syllabus"}
+                  </span>
+                  <span className="ml-auto text-[10px] bg-slate-200 px-2 py-0.5 rounded font-black uppercase tracking-wider text-slate-500">Locked</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-t border-slate-100 pt-4 gap-2 flex-wrap sm:flex-nowrap animate-fade-in">
                 <h2 className="text-sm font-black uppercase text-slate-850 tracking-wider flex items-center gap-2">
                   <Filter className="h-4 w-4 text-indigo-650" />
                   <span>Select Categories & Quantity</span>
@@ -849,7 +916,7 @@ function CreateCustomTestInner() {
                                 id={idx === 0 ? "tour-subject-expand" : undefined}
                                 type="button"
                                 onClick={() => toggleExpand(sub.id)}
-                                className="grid h-7 w-7 place-items-center rounded-lg border border-slate-100 hover:bg-slate-50 transition"
+                                className="grid h-7 w-7 place-items-center rounded-lg border border-slate-100 hover:bg-slate-50 transition shrink-0"
                               >
                                 {isExpanded ? (
                                   <ChevronDown className="h-4 w-4 text-slate-500" />
@@ -858,10 +925,17 @@ function CreateCustomTestInner() {
                                 )}
                               </button>
                             ) : (
-                              <div className="w-7 h-7" />
+                              <div className="w-7 h-7 shrink-0" />
+                            )}
+                            {sub.image_url && (
+                              <img
+                                src={sub.image_url}
+                                alt=""
+                                className="h-8 w-8 rounded-lg object-cover border border-slate-100 shrink-0"
+                              />
                             )}
                             <div className="min-w-0">
-                              <p className="text-sm font-bold text-slate-900 truncate">{sub.name}</p>
+                              <p className="text-sm font-black text-slate-900 truncate">{sub.name}</p>
                               <p className="text-[10px] text-slate-455 mt-0.5 font-bold uppercase tracking-wider">
                                 {subTopics.length > 0 ? `${subTopics.length} Sub-Levels` : "Parent Category"}
                               </p>

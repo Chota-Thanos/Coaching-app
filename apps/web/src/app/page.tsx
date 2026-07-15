@@ -408,27 +408,29 @@ export default function HomePage() {
                 {/* Primary CTAs */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Link
-                    href={heroTestHref}
+                    href={diagnosticTestId ? `/assessment/tests/${diagnosticTestId}` : "/assessment/custom-test/create"}
                     className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-white px-7 font-bold text-indigo-900 shadow-lg hover:bg-indigo-50 transition-all duration-200 gap-2 text-sm"
                     id="hero-start-free-test"
                   >
                     <Target className="h-4 w-4" />
-                    Take a Free Diagnostic Test
+                    Take Diagnostic Test
+                  </Link>
+                  <Link
+                    href="/assessment/custom-test/create"
+                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 px-7 font-bold text-white transition-all duration-200 gap-2 text-sm border border-indigo-500/30"
+                    id="hero-build-custom"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Build Custom Test
                   </Link>
                   <Link
                     href="/register"
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 px-7 font-bold text-white transition-all duration-200 gap-2 text-sm"
+                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-6 font-bold text-white backdrop-blur-sm hover:bg-white/20 transition-all duration-200 text-sm"
                     id="hero-get-started"
                   >
                     Get Started Free
                     <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <a
-                    href="#pricing"
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-6 font-bold text-white backdrop-blur-sm hover:bg-white/20 transition-all duration-200 text-sm"
-                  >
-                    View Pricing
-                  </a>
                 </div>
 
                 {/* Social proof ticker */}
