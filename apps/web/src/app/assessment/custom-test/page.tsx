@@ -62,8 +62,6 @@ function CustomTestsListInner() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [creating, setCreating] = useState(false);
 
   const fetchCustomTests = async () => {
     if (!token) return;
@@ -121,41 +119,12 @@ function CustomTestsListInner() {
     }
   };
 
-  const handleCreateTest = async (e: React.FormEvent) => {
+  const handleCreateTest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !newTitle.trim()) return;
-    setCreating(true);
-    setError(null);
-
-    // Map content type to exam levels
-    let examLevelId = 7; // GS default
-    let testType = "sectional_test";
-
-    if (contentParam === "aptitude") {
-      examLevelId = 1; // CSAT
-    } else if (contentParam === "mains") {
-      examLevelId = 3; // Mains
-      testType = "mains_test";
-    }
-
-    try {
-      await authenticatedPost("/api/v1/assessment/user/custom-tests", token, {
-        title: newTitle.trim(),
-        description: newDescription.trim() || undefined,
-        exam_id: 1,
-        exam_level_id: examLevelId,
-        test_type: testType,
-        question_ids: []
-      });
-      setNewTitle("");
-      setNewDescription("");
-      setIsModalOpen(false);
-      await fetchCustomTests();
-    } catch (err: any) {
-      setError(err.message || "Failed to create test.");
-    } finally {
-      setCreating(false);
-    }
+    if (!newTitle.trim()) return;
+    // Navigate to the builder with the name pre-filled so the user can add questions
+    const params = new URLSearchParams({ content_type: contentParam, title: newTitle.trim() });
+    router.push(`/assessment/custom-test/create?${params.toString()}`);
   };
 
   if (!isInitialized || (loading && tests.length === 0)) {
@@ -188,17 +157,17 @@ function CustomTestsListInner() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-white hover:bg-paper px-4 py-2.5 text-xs font-bold text-ink/70 shadow-sm transition shrink-0"
             >
-              <Plus className="h-4 w-4" />
-              <span>Create Empty Test</span>
+              <Plus className="h-4 w-4 text-civic" />
+              <span>New Test</span>
             </button>
             <Link
               href={`/assessment/custom-test/create?content_type=${contentParam}`}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-civic hover:bg-civic/90 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition shrink-0"
             >
-              <Layers className="h-4 w-4 text-slate-500" />
-              <span>Builder Basket</span>
+              <Layers className="h-4 w-4" />
+              <span>Build Custom Test</span>
             </Link>
           </div>
         </div>
@@ -221,10 +190,10 @@ function CustomTestsListInner() {
             <div className="mt-6 flex flex-col gap-2">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-civic hover:bg-civic/90 px-4 py-2 text-xs font-bold text-white shadow-sm transition"
               >
                 <Plus className="h-4 w-4" />
-                <span>Create Blank Test</span>
+                <span>Create Custom Test</span>
               </button>
             </div>
           </div>
@@ -370,59 +339,47 @@ function CustomTestsListInner() {
       {/* Create Test Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-line animate-in fade-in zoom-in-95 duration-150">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+              className="absolute right-4 top-4 text-muted hover:text-ink"
             >
               <X className="h-5 w-5" />
             </button>
-            <h2 className="text-lg font-bold text-slate-900 pr-8">Create Custom Test</h2>
-            <p className="text-xs text-slate-500 mt-1">Create a private test template. You can add questions from syllabus categories later.</p>
-            
+            <h2 className="text-lg font-bold text-ink pr-8">Name Your Test</h2>
+            <p className="text-xs text-muted mt-1">Enter a name, then you&apos;ll pick your topics and question counts.</p>
+
             <form onSubmit={handleCreateTest} className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Test Title
+                <label className="block text-xs font-bold text-ink/70 uppercase tracking-wider mb-1.5">
+                  Test Name
                 </label>
                 <input
+                  autoFocus
                   type="text"
                   required
                   placeholder="e.g. Polity Weekly Practice"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none transition"
+                  onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) handleCreateTest(e as any); }}
+                  className="w-full rounded-xl border border-line px-3.5 py-2.5 text-sm focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/10 transition"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Description <span className="text-slate-400 font-normal">(Optional)</span>
-                </label>
-                <textarea
-                  placeholder="Describe the purpose of this test"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none transition resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2">
+              <div className="flex justify-end gap-2.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 transition"
+                  onClick={() => { setIsModalOpen(false); setNewTitle(""); }}
+                  className="rounded-xl border border-line hover:bg-paper px-4 py-2.5 text-xs font-bold text-muted transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={creating || !newTitle.trim()}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100 disabled:text-slate-400"
+                  disabled={!newTitle.trim()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-civic hover:bg-civic/90 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:bg-line disabled:text-muted"
                 >
-                  {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Save Test</span>
+                  <span>Build My Test →</span>
                 </button>
               </div>
             </form>

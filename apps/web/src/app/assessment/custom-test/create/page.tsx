@@ -25,54 +25,94 @@ import { useAuth, authenticatedGet, authenticatedPost, guestAwarePost } from "..
 import { getOrCreateGuestToken } from "../../../../lib/guest";
 import { useSubscription } from "../../../../lib/use-subscription";
 import { GuidedTourController } from "../../../../components/app/guided-tour-engine";
+import { FullTourSegment } from "../../../../components/app/full-tour-segment";
+import { advanceFullTour, isFullTourActiveForPage, PAGE_TOUR_RANGES } from "../../../../lib/full-tour";
+const PAGE_TOUR_RANGES_ATTEMPT_START = PAGE_TOUR_RANGES.attempt[0];
 
+// Steps shown during the single-page "custom test builder" tour (triggered from the builder itself)
 const CUSTOM_TEST_TOUR_STEPS = [
   {
+    selector: "#tour-test-name-input",
+    badge: "Step 1 of 6: Name Your Test",
+    title: "Name Your Custom Test",
+    body: "Start by giving your test a memorable name. You'll pick the topics and question counts on the next step.",
+    actionTrigger: "input" as const,
+    actionText: "Type a name in the input above to proceed."
+  },
+  {
     selector: "#tour-content-type",
-    badge: "Step 1 of 6: Content Type",
-    title: "Select Content Type",
-    body: "Choose the subject domain for your custom mock test: General Studies (GS), CSAT / Aptitude, or Mains subjective. Click the 'CSAT' or 'GS' button to select it.",
+    badge: "Step 2 of 6: Content Type",
+    title: "Select Subject Domain",
+    body: "Choose the subject for your mock test: General Studies (GS), CSAT / Aptitude, or Mains. Click a button to select.",
     actionTrigger: "click" as const,
-    actionText: "Click on one of the content type buttons below (e.g. GS or CSAT) to proceed."
+    actionText: "Click one of the content type buttons (e.g. GS or CSAT) to proceed."
   },
   {
     selector: "#tour-subject-expand",
-    badge: "Step 2 of 6: Browse Subjects",
+    badge: "Step 3 of 6: Browse Subjects",
     title: "Expand a Subject",
-    body: "The syllabus categories are loaded dynamically. Click on the first subject row name to expand it and reveal its topics.",
+    body: "Syllabus categories are shown as expandable subjects. Click on a subject row to reveal its topics.",
     actionTrigger: "click" as const,
-    actionText: "Click on the subject name above to expand it."
+    actionText: "Click a subject name above to expand it."
   },
   {
     selector: "#tour-add-topic-btn",
-    badge: "Step 3 of 6: Add Topic",
-    title: "Add Topic to Basket",
-    body: "Inside the expanded subject, you can view the available question counts. Click the 'Add' button next to the topic to add it to your custom test basket.",
+    badge: "Step 4 of 6: Add Topic",
+    title: "Add Topic to Your Test",
+    body: "Each topic shows the available question count. Click 'Add' to include it in your test with the default quantity.",
     actionTrigger: "click" as const,
-    actionText: "Click the 'Add' button next to the subtopic above."
+    actionText: "Click the 'Add' button next to a topic above."
   },
   {
     selector: "#tour-basket-card",
-    badge: "Step 4 of 6: Adjust Questions Count",
-    title: "Manage Question Pool",
-    body: "The topic is now in your basket! Here, you can adjust the quantity of questions you want from this category. Click 'Next' when you're done reviewing."
-  },
-  {
-    selector: "#tour-test-name",
-    badge: "Step 5 of 6: Name Your Test",
-    title: "Custom Test Title",
-    body: "Provide a name for this custom mock test so you can easily identify it later in your history.",
-    actionTrigger: "input" as const,
-    actionText: "Type a custom test name in the input box above to proceed."
+    badge: "Step 5 of 6: Review Basket",
+    title: "Adjust Question Counts",
+    body: "Your selected topics appear here. Use the + / − controls to set how many questions you want from each topic. Click 'Next' when ready.",
   },
   {
     selector: "#tour-create-test-btn",
-    badge: "Step 6 of 6: Start Your Exam",
-    title: "Generate & Start Test",
-    body: "You're all set! Click this button to generate the custom test and launch the exam interface. (Note: guests can take the test right away — signing in is only needed afterward to see the result).",
+    badge: "Step 6 of 6: Launch Test",
+    title: "Generate & Start Your Test",
+    body: "Click this button to generate your custom test and enter the exam interface. The test is personalised exactly to the topics you selected.",
     actionTrigger: "click" as const,
-    actionText: "Click the 'Create & Start Custom Test' button below to launch."
+    actionText: "Click 'Create & Start Custom Test' to launch."
   }
+];
+
+// Steps for the full multi-page tour — BUILD phase only (global steps 1-5 out of 12).
+// The tests page navigates here with ?title= pre-filled, so this page starts in
+// 'build' mode and all tour selectors below exist in the DOM.
+const FULL_TOUR_CREATE_STEPS = [
+  {
+    selector: "#tour-content-type",
+    badge: "Tour · Step 2 of 12",
+    title: "Select Your Subject",
+    body: "Your test is named! Now choose the subject domain: GS (General Studies), CSAT / Aptitude, or Mains. Each has its own syllabus tree.",
+  },
+  {
+    selector: "#tour-subject-expand",
+    badge: "Tour · Step 3 of 12",
+    title: "Browse the Syllabus",
+    body: "The syllabus expands by subject → topic. Click on any subject row to reveal its subtopics and question availability.",
+  },
+  {
+    selector: "#tour-add-topic-btn",
+    badge: "Tour · Step 4 of 12",
+    title: "Add a Topic",
+    body: "Click 'Add' next to a topic to include it in your test basket. You can set how many questions you want from each topic.",
+  },
+  {
+    selector: "#tour-basket-card",
+    badge: "Tour · Step 5 of 12",
+    title: "Review Your Basket",
+    body: "Topics you've added appear here with question counts. Use + / − to adjust quantities. The total at the bottom is your test size.",
+  },
+  {
+    selector: "#tour-create-test-btn",
+    badge: "Tour · Step 6 of 12",
+    title: "Generate & Start the Test",
+    body: "Ready! Click this button to create your test and enter the exam interface. The guided tour will continue once you're inside the test.",
+  },
 ];
 
 type Exam = {
@@ -125,15 +165,18 @@ function CreateCustomTestInner() {
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
   
   const contentParam = searchParams.get("content_type");
+  const titleParam = searchParams.get("title") ?? "";
+  // start_tour=true triggers the standalone single-page builder tour
+  const startTourOnLoad = isInitialized && searchParams.get("start_tour") === "true";
+
   const defaultContentType = (contentParam === "aptitude" || contentParam === "mains" || contentParam === "csat")
     ? (contentParam === "csat" ? "aptitude" : contentParam)
     : "gk";
   const [contentType, setContentType] = useState<"gk" | "aptitude" | "mains">(defaultContentType as any);
-  const [title, setTitle] = useState("");
+  // Pre-fill title from URL param; skip name step if title already supplied
+  const [title, setTitle] = useState(titleParam);
   // 'name' = step 1 (enter test name); 'build' = step 2 (pick topics)
-  const [step, setStep] = useState<'name' | 'build'>('name');
-  // Tour is now handled by GuidedTourController — it checks completion automatically
-  const startTourOnLoad = isInitialized && searchParams.get("start_tour") === "true";
+  const [step, setStep] = useState<'name' | 'build'>(titleParam ? 'build' : 'name');
 
   // Categories & Question Counts States
   const [allNodes, setAllNodes] = useState<TaxonomyNode[]>([]);
@@ -605,7 +648,12 @@ function CreateCustomTestInner() {
         {}
       );
 
-      // Step 4: Route to attempts screen
+      // Step 4: If full-page tour is active, advance it to the attempt segment
+      if (isFullTourActiveForPage("create")) {
+        advanceFullTour(PAGE_TOUR_RANGES_ATTEMPT_START);
+      }
+
+      // Step 5: Route to attempts screen
       router.push(`/assessment/attempts/${attemptId.id ?? attemptId}`);
     } catch (err: any) {
       setError(err.message || "Failed to construct custom test.");
@@ -624,48 +672,52 @@ function CreateCustomTestInner() {
   // ── Step 1: Name entry ───────────────────────────────────────────────────────
   if (step === 'name') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 space-y-7">
-            <div className="text-center space-y-2">
-              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-50 mx-auto mb-1">
-                <BookOpen className="h-7 w-7 text-indigo-600" />
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 space-y-7">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-50 mx-auto mb-1">
+                  <BookOpen className="h-7 w-7 text-indigo-600" />
+                </div>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Name your test</h1>
+                <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
+                  Give your custom practice test a name — you&apos;ll pick topics on the next step.
+                </p>
               </div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Name your test</h1>
-              <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
-                Give your custom practice test a name — you'll pick topics on the next step.
-              </p>
+              <div className="space-y-2.5">
+                <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Test Name</label>
+                <input
+                  id="tour-test-name-input"
+                  autoFocus
+                  type="text"
+                  placeholder="e.g. Ancient History Focus Test"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && title.trim()) setStep('build'); }}
+                  className="h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 text-[15px] font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!title.trim()}
+                onClick={() => setStep('build')}
+                className="w-full h-14 rounded-2xl bg-slate-950 text-white font-bold text-sm hover:bg-slate-800 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
+              >
+                Start Building My Test
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <p className="text-xs text-slate-400 text-center">You can rename it later</p>
             </div>
-            <div className="space-y-2.5">
-              <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Test Name</label>
-              <input
-                autoFocus
-                type="text"
-                placeholder="e.g. Ancient History Focus Test"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && title.trim()) setStep('build'); }}
-                className="h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 text-[15px] font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition"
-              />
+            <div className="mt-5 text-center">
+              <Link href="/assessment/custom-test" className="text-xs font-semibold text-indigo-300 hover:text-white transition">
+                ← Back to Custom Tests
+              </Link>
             </div>
-            <button
-              type="button"
-              disabled={!title.trim()}
-              onClick={() => setStep('build')}
-              className="w-full h-14 rounded-2xl bg-slate-950 text-white font-bold text-sm hover:bg-slate-800 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
-            >
-              Start Building My Test
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <p className="text-xs text-slate-400 text-center">You can rename it later</p>
-          </div>
-          <div className="mt-5 text-center">
-            <Link href="/assessment/custom-test" className="text-xs font-semibold text-indigo-300 hover:text-white transition">
-              ← Back to Custom Tests
-            </Link>
           </div>
         </div>
-      </div>
+        {/* (Full multi-page tour starts in build mode — no tour overlay on name step) */}
+      </>
     );
   }
 
@@ -1085,6 +1137,13 @@ function CreateCustomTestInner() {
           tourKey="custom_test_tour"
           token={token}
           fallbackSteps={CUSTOM_TEST_TOUR_STEPS}
+        />
+      )}
+      {/* Full multi-page tour: create page segment (global steps 1–6) */}
+      {isFullTourActiveForPage("create") && (
+        <FullTourSegment
+          pageKey="create"
+          steps={FULL_TOUR_CREATE_STEPS}
         />
       )}
 

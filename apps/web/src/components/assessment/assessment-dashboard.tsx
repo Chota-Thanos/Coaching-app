@@ -24,6 +24,23 @@ import { useCallback, useEffect, useState } from "react";
 import { authenticatedGet, useAuth } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { TrendGraph } from "./trend-graph";
+import { FullTourSegment } from "../app/full-tour-segment";
+import { isFullTourActiveForPage } from "../../lib/full-tour";
+
+const DASHBOARD_TOUR_STEPS = [
+  {
+    selector: "#tour-dashboard-header",
+    badge: "Tour · Step 11 of 12",
+    title: "Your Performance Dashboard",
+    body: "This is your Student Scorecard — it tracks every test you've taken. Subject-wise accuracy, weak topics, recent attempts, and trends all live here.",
+  },
+  {
+    selector: "#tour-dashboard-new-test",
+    badge: "Tour · Step 12 of 12",
+    title: "Tour Complete!",
+    body: "You've seen the full flow: Create a custom test → Take it → Review results → Track progress. Keep practicing daily here. Click 'Finish' to close the tour.",
+  },
+];
 
 // Formatting Helpers
 function formatMarks(value: any): string {
@@ -441,7 +458,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
       <main className="mx-auto max-w-7xl space-y-6 px-4 pt-5">
         {/* ── Top Dashboard Header ── */}
         {!contentTypeFilter && (
-          <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div id="tour-dashboard-header" className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-650">
                 <BarChart3 className="h-4 w-4" aria-hidden="true" />
@@ -461,6 +478,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                 Refresh Data
               </button>
               <Link
+                id="tour-dashboard-new-test"
                 href="/assessment"
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm transition-colors"
               >
@@ -760,6 +778,9 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
         </div>
       )}
       </main>
+      {isFullTourActiveForPage("dashboard") && (
+        <FullTourSegment pageKey="dashboard" steps={DASHBOARD_TOUR_STEPS} />
+      )}
     </div>
   );
 }

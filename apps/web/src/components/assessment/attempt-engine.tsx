@@ -30,6 +30,23 @@ import {
 } from "../../lib/assessment";
 import { authenticatedGet, authenticatedPost, authenticatedPut, guestAwareGet, guestAwarePost, guestAwarePut, useAuth } from "../auth/auth-context";
 import { getOrCreateGuestToken, setPendingGuestClaim } from "../../lib/guest";
+import { FullTourSegment } from "../app/full-tour-segment";
+import { isFullTourActiveForPage } from "../../lib/full-tour";
+
+const ATTEMPT_TOUR_STEPS = [
+  {
+    selector: "#tour-attempt-status",
+    badge: "Tour · Step 7 of 12",
+    title: "Your Personalised Test",
+    body: "You're now inside the exam interface. The status bar shows your progress, answered count, and time remaining. Answer questions using the option buttons.",
+  },
+  {
+    selector: "#tour-attempt-submit",
+    badge: "Tour · Step 8 of 12",
+    title: "Submit When Ready",
+    body: "Once you've answered the questions, click 'Finish & Submit Test'. Your score and a full question-by-question review will appear — the tour continues there!",
+  },
+];
 
 type AttemptEngineProps = {
   attemptId: string;
@@ -348,7 +365,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
   return (
     <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 lg:pb-16 space-y-6">
       {/* ── Status Bar ── */}
-      <section className="sticky top-16 z-20 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-sm">
+      <section id="tour-attempt-status" className="sticky top-16 z-20 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <h1 className="truncate text-base font-extrabold text-slate-800">{paper.test_template.title}</h1>
@@ -842,6 +859,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
           </section>
 
           <button
+            id="tour-attempt-submit"
             className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-md transition-all active:scale-[0.98]"
             onClick={() => void submit()}
             type="button"
@@ -860,6 +878,10 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
           <button className="h-10 rounded-xl bg-slate-900 text-xs font-bold text-white" onClick={() => void submit()} type="button">Submit</button>
         </div>
       </div>
+
+      {isFullTourActiveForPage("attempt") && (
+        <FullTourSegment pageKey="attempt" steps={ATTEMPT_TOUR_STEPS} />
+      )}
     </main>
   );
 }

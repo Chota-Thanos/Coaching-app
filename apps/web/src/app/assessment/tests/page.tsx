@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { ClipboardList, Plus, Map } from "lucide-react";
 import { TestCard } from "../../../components/assessment/test-card";
 import { TestFilters } from "../../../components/assessment/test-filters";
 import { getAssessmentExamLevels, getAssessmentExams, getAssessmentTests } from "../../../lib/assessment-api";
 import { normalizeAssessmentPage } from "../../../lib/assessment";
+import { TestsPageTour } from "../../../components/assessment/tests-page-tour";
 
 export const dynamic = "force-dynamic";
 
@@ -35,14 +37,29 @@ export default async function AssessmentTestsPage({ searchParams }: TestsPagePro
   return (
     <main className="list-page mx-auto max-w-6xl space-y-5 px-4 pb-16 pt-5">
       <section className="border-b border-line pb-5">
-        <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-civic">
-          <ClipboardList aria-hidden="true" className="h-4 w-4" />
-          Tests
-        </p>
-        <h1 className="mt-2 text-3xl font-black leading-tight text-ink md:text-4xl">Find the right test</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">
-          Use filters first, then open a test plan to see sections, time, marks, and the suggested attempt flow.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-civic">
+              <ClipboardList aria-hidden="true" className="h-4 w-4" />
+              Tests
+            </p>
+            <h1 className="mt-2 text-3xl font-black leading-tight text-ink md:text-4xl">Find the right test</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">
+              Use filters to find admin-curated tests, or build your own from any topic.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <TestsPageTour />
+            <Link
+              href="/assessment/custom-test/create"
+              id="tour-create-test-btn"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-civic px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-civic/90 transition"
+            >
+              <Plus className="h-4 w-4" />
+              Create Custom Test
+            </Link>
+          </div>
+        </div>
       </section>
 
       <TestFilters

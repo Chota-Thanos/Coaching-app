@@ -7,6 +7,23 @@ import type { ResultReview as ResultReviewType, TestQuestionItem } from "../../l
 import { assessmentHref, formatMarks, formatPercent, optionKey, optionText, selectedAnswerKey } from "../../lib/assessment";
 import { authenticatedGet, useAuth, authenticatedPost, authenticatedDelete, authenticatedPatch } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
+import { FullTourSegment } from "../app/full-tour-segment";
+import { isFullTourActiveForPage } from "../../lib/full-tour";
+
+const RESULTS_TOUR_STEPS = [
+  {
+    selector: "#tour-result-score",
+    badge: "Tour · Step 9 of 12",
+    title: "Your Score & Breakdown",
+    body: "Here's how you did! The gauge shows your score, and the stat cards below break down your accuracy, correct vs. incorrect counts, and marks. Each test you take builds your performance history.",
+  },
+  {
+    selector: "#tour-result-questions",
+    badge: "Tour · Step 10 of 12",
+    title: "Review Every Question",
+    body: "Click the 'Questions' tab to see each question with the correct answer and an explanation. This is where real learning happens — review every question you got wrong. Click 'Next' to see your overall performance dashboard.",
+  },
+];
 import { TopicHeatmap } from "./topic-heatmap";
 import { TimeChart } from "./time-chart";
 import { ErrorTagger } from "./error-tagger";
@@ -67,16 +84,19 @@ function ScoreGauge({ score, maxScore }: { score: number; maxScore: number }) {
 
 /* ── Tab button ───────────────────────────────────────── */
 function TabButton({
+  id,
   active,
   onClick,
   children
 }: {
+  id?: string;
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
     <button
+      id={id}
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold transition-all border ${
         active
@@ -757,7 +777,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
             <Trophy className="h-4 w-4" aria-hidden="true" />
             Summary
           </TabButton>
-          <TabButton active={tab === "questions"} onClick={() => setTab("questions")}>
+          <TabButton id="tour-result-questions" active={tab === "questions"} onClick={() => setTab("questions")}>
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             Questions ({review.questions.length})
           </TabButton>
@@ -883,7 +903,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
             </div>
           : (
             <>
-              <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
+              <div id="tour-result-score" className="grid gap-5 lg:grid-cols-[auto_1fr]">
                 {/* Score gauge */}
                 <div className="flex items-center justify-center rounded-2xl border border-line bg-surface p-8 shadow-card">
                   <ScoreGauge score={Number(review.score)} maxScore={Number(review.max_score)} />
@@ -1472,6 +1492,13 @@ export function ResultReview({ resultId }: { resultId: string }) {
         </div>
       )}
       </main>
+      {isFullTourActiveForPage("results") && (
+        <FullTourSegment
+          pageKey="results"
+          steps={RESULTS_TOUR_STEPS}
+          nextPageUrl="/assessment/dashboard"
+        />
+      )}
     </div>
   );
 }
