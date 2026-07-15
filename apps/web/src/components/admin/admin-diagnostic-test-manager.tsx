@@ -45,12 +45,12 @@ type QuestionTab = "gk" | "csat" | "mains";
 function statusDot(status: string) {
   const cfg: Record<string, { dot: string; label: string }> = {
     published: { dot: "bg-emerald-500", label: "Published" },
-    draft:     { dot: "bg-amber-400",   label: "Draft" },
-    archived:  { dot: "bg-slate-300",   label: "Archived" },
+    draft:     { dot: "bg-saffron",     label: "Draft" },
+    archived:  { dot: "bg-line",        label: "Archived" },
   };
-  const { dot, label } = cfg[status] ?? { dot: "bg-slate-300", label: status };
+  const { dot, label } = cfg[status] ?? { dot: "bg-line", label: status };
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted">
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       {label}
     </span>
@@ -191,13 +191,13 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onBack}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition shrink-0"
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition shrink-0"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> All Tests
           </button>
           <div className="min-w-0">
             {statusDot(test.status)}
-            <h2 className="text-base font-bold text-slate-800 truncate">{test.title}</h2>
+            <h2 className="text-base font-bold text-ink truncate">{test.title}</h2>
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -210,7 +210,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 onBack();
               } catch (e) { setError(e instanceof Error ? e.message : "Failed to publish"); }
             }}
-              className="rounded-lg border border-slate-800 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition"
+              className="rounded-lg border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink/90 transition"
             >
               Publish
             </button>
@@ -222,7 +222,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 onBack();
               } catch (e) { setError(e instanceof Error ? e.message : "Failed to unpublish"); }
             }}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition"
             >
               Unpublish
             </button>
@@ -231,9 +231,9 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs text-muted">
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)}><X className="h-3.5 w-3.5 text-slate-400" /></button>
+          <button onClick={() => setError(null)}><X className="h-3.5 w-3.5 text-muted/50" /></button>
         </div>
       )}
 
@@ -241,36 +241,36 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
         {/* ── Left: questions in this test ── */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5" />
               In this test · {paperQuestions.length}
             </span>
-            <button onClick={() => void loadPaper()} className="text-slate-300 hover:text-slate-500 transition">
+            <button onClick={() => void loadPaper()} className="text-muted/40 hover:text-muted transition">
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {loadingPaper ? (
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-6 text-center text-xs text-slate-400 animate-pulse">Loading…</div>
+            <div className="rounded-lg border border-line/50 bg-paper p-6 text-center text-xs text-muted animate-pulse">Loading…</div>
           ) : paperQuestions.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center">
-              <p className="text-xs text-slate-400">No questions yet — add from the bank →</p>
+            <div className="rounded-lg border border-dashed border-line p-8 text-center">
+              <p className="text-xs text-muted">No questions yet — add from the bank →</p>
             </div>
           ) : (
             <div className="space-y-1.5 max-h-[580px] overflow-y-auto">
               {paperQuestions.map((q, i) => (
-                <div key={q.id} className="group flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2.5">
-                  <span className="mt-0.5 shrink-0 text-[10px] font-bold text-slate-300 w-4">{i + 1}</span>
-                  <p className="flex-1 text-xs text-slate-600 leading-relaxed line-clamp-2">
+                <div key={q.id} className="group flex items-start gap-2 rounded-lg border border-line/50 bg-white px-3 py-2.5">
+                  <span className="mt-0.5 shrink-0 text-[10px] font-bold text-muted/40 w-4">{i + 1}</span>
+                  <p className="flex-1 text-xs text-ink leading-relaxed line-clamp-2">
                     {stripHtml(q.question_version.question_statement)}
                   </p>
                   <button
                     onClick={() => removeQuestion(q.id)}
                     disabled={removingId === q.id}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-slate-500 disabled:opacity-30 transition"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-muted/40 hover:text-muted disabled:opacity-30 transition"
                   >
                     {removingId === q.id
-                      ? <span className="h-3 w-3 border border-slate-300 border-t-transparent rounded-full animate-spin block" />
+                      ? <span className="h-3 w-3 border border-muted/40 border-t-transparent rounded-full animate-spin block" />
                       : <X className="h-3 w-3" />}
                   </button>
                 </div>
@@ -282,11 +282,11 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
         {/* ── Right: question bank ── */}
         <div className="space-y-3">
           {/* Type tabs */}
-          <div className="flex gap-px rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+          <div className="flex gap-px rounded-lg border border-line bg-paper p-0.5">
             {(["gk", "csat", "mains"] as QuestionTab[]).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition ${
-                  activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  activeTab === tab ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
                 }`}
               >
                 {TAB_LABELS[tab]}
@@ -296,7 +296,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
 
           {/* Subject filter */}
           <select
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none disabled:text-slate-400"
+            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink focus:border-muted focus:outline-none disabled:text-muted/50"
             value={selectedSubject}
             onChange={e => setSelectedSubject(e.target.value)}
             disabled={loadingSubjects || subjects.length === 0}
@@ -311,32 +311,32 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
 
           {/* Keyword filter */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted/40 pointer-events-none" />
             <input
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-8 text-xs text-slate-700 placeholder:text-slate-300 focus:border-slate-400 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-white py-2 pl-8 pr-8 text-xs text-ink placeholder:text-muted/40 focus:border-muted focus:outline-none"
               placeholder="Filter by keyword…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
               <button className="absolute right-2.5 top-1/2 -translate-y-1/2" onClick={() => setSearch("")}>
-                <X className="h-3.5 w-3.5 text-slate-300 hover:text-slate-500" />
+                <X className="h-3.5 w-3.5 text-muted/40 hover:text-muted" />
               </button>
             )}
           </div>
 
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-muted">
             {loadingBank ? "Loading…" : `${filtered.length}${filtered.length !== bankQuestions.length ? ` of ${bankQuestions.length}` : ""} questions`}
             {search && ` matching "${search}"`}
           </p>
 
           {/* List */}
           {loadingBank ? (
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-6 text-center text-xs text-slate-400 animate-pulse">
+            <div className="rounded-lg border border-line/50 bg-paper p-6 text-center text-xs text-muted animate-pulse">
               Loading {TAB_LABELS[activeTab]} questions…
             </div>
           ) : filtered.length === 0 ? (
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-6 text-center text-xs text-slate-400">
+            <div className="rounded-lg border border-line/50 bg-paper p-6 text-center text-xs text-muted">
               {search ? `No matches for "${search}"` : `No ${TAB_LABELS[activeTab]} questions found`}
             </div>
           ) : (
@@ -347,22 +347,22 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 const isAdding = addingId === versionId;
                 return (
                   <div key={q.id}
-                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 transition ${added ? "border-slate-100 bg-slate-50" : "border-slate-100 bg-white"}`}
+                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 transition ${added ? "border-line/50 bg-paper" : "border-line/50 bg-white"}`}
                   >
-                    <p className={`flex-1 text-xs leading-relaxed line-clamp-2 ${added ? "text-slate-400" : "text-slate-600"}`}>
-                      {stripHtml(q.current_version?.question_statement ?? "") || <em className="text-slate-300">No statement</em>}
+                    <p className={`flex-1 text-xs leading-relaxed line-clamp-2 ${added ? "text-muted/60" : "text-ink"}`}>
+                      {stripHtml(q.current_version?.question_statement ?? "") || <em className="text-muted/40">No statement</em>}
                     </p>
                     <button
                       onClick={() => !added && versionId && void addQuestion(versionId)}
                       disabled={added || isAdding || !versionId}
                       className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition ${
                         added
-                          ? "text-slate-400 cursor-default"
-                          : "border border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800 disabled:opacity-40"
+                          ? "text-muted/50 cursor-default"
+                          : "border border-line bg-white text-muted hover:border-muted hover:text-ink disabled:opacity-40"
                       }`}
                     >
                       {added ? <Check className="h-3 w-3" /> : isAdding
-                        ? <span className="h-3 w-3 border border-slate-400 border-t-transparent rounded-full animate-spin block" />
+                        ? <span className="h-3 w-3 border border-muted border-t-transparent rounded-full animate-spin block" />
                         : <Plus className="h-3 w-3" />}
                     </button>
                   </div>
@@ -462,28 +462,28 @@ export function AdminDiagnosticTestManager() {
     );
   }
 
-  if (loading) return <div className="p-12 text-center text-xs text-slate-400">Loading…</div>;
+  if (loading) return <div className="p-12 text-center text-xs text-muted">Loading…</div>;
 
   return (
     <div className="space-y-5">
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-600">
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-xs text-muted">
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-slate-300 hover:text-slate-500"><X className="h-3.5 w-3.5" /></button>
+          <button onClick={() => setError(null)} className="text-muted/50 hover:text-muted"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-slate-800">Diagnostic Tests</h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h2 className="text-base font-bold text-ink">Diagnostic Tests</h2>
+          <p className="text-xs text-muted mt-0.5">
             Premade tests shown to new users on the homepage. Only one should be published at a time.
           </p>
         </div>
         <button
           onClick={() => setShowCreate(v => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition shrink-0"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-ink bg-ink px-3 py-2 text-xs font-semibold text-white hover:bg-ink/90 transition shrink-0"
         >
           <Plus className="h-3.5 w-3.5" /> New Test
         </button>
@@ -491,22 +491,22 @@ export function AdminDiagnosticTestManager() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
-          <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">New Diagnostic Test</h3>
+        <div className="rounded-xl border border-line bg-white p-5 space-y-4">
+          <h3 className="text-xs font-semibold text-ink uppercase tracking-wide">New Diagnostic Test</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Title *</label>
+              <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Title *</label>
               <input
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:bg-white focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
                 placeholder="e.g. UPSC Prelims Diagnostic Test 2025"
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Exam *</label>
+              <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Exam *</label>
               <select
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:bg-white focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-white focus:border-muted focus:outline-none"
                 value={form.exam_id}
                 onChange={e => setForm(f => ({ ...f, exam_id: e.target.value, exam_level_id: "" }))}
               >
@@ -515,9 +515,9 @@ export function AdminDiagnosticTestManager() {
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Level *</label>
+              <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Level *</label>
               <select
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:bg-white focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-white focus:border-muted focus:outline-none"
                 value={form.exam_level_id}
                 onChange={e => setForm(f => ({ ...f, exam_level_id: e.target.value }))}
                 disabled={!form.exam_id}
@@ -527,18 +527,18 @@ export function AdminDiagnosticTestManager() {
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Duration (min) *</label>
+              <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Duration (min) *</label>
               <input
                 type="number" min={5} max={180}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:bg-white focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-white focus:border-muted focus:outline-none"
                 value={form.duration_minutes}
                 onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Description</label>
+              <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Description</label>
               <input
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:bg-white focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
                 placeholder="Short description (optional)"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -549,13 +549,13 @@ export function AdminDiagnosticTestManager() {
             <button
               onClick={handleCreate}
               disabled={saving || !form.title.trim() || !form.exam_id || !form.exam_level_id}
-              className="rounded-lg border border-slate-800 bg-slate-800 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-40 transition"
+              className="rounded-lg border border-ink bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-ink/90 disabled:opacity-40 transition"
             >
               {saving ? "Creating…" : "Create & Add Questions →"}
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition"
+              className="rounded-lg border border-line bg-white px-4 py-2 text-xs font-semibold text-muted hover:bg-paper transition"
             >
               Cancel
             </button>
@@ -565,54 +565,54 @@ export function AdminDiagnosticTestManager() {
 
       {/* Test list */}
       {tests.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-14 text-center">
-          <BookOpen className="h-8 w-8 text-slate-200 mb-3" />
-          <p className="text-xs font-semibold text-slate-400">No diagnostic tests yet</p>
-          <p className="text-[11px] text-slate-300 mt-1">Create one above — it will appear on the homepage for new users.</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-line py-14 text-center">
+          <BookOpen className="h-8 w-8 text-line mb-3" />
+          <p className="text-xs font-semibold text-muted">No diagnostic tests yet</p>
+          <p className="text-[11px] text-muted/60 mt-1">Create one above — it will appear on the homepage for new users.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {tests.map(t => (
-            <div key={t.id} className="rounded-xl border border-slate-200 bg-white px-5 py-4">
+            <div key={t.id} className="rounded-xl border border-line bg-white px-5 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     {statusDot(t.status)}
-                    <span className="text-[11px] text-slate-300">#{t.id}</span>
-                    <span className="text-[11px] text-slate-400">{t.question_count} questions · {t.duration_minutes} min</span>
+                    <span className="text-[11px] text-muted/40">#{t.id}</span>
+                    <span className="text-[11px] text-muted">{t.question_count} questions · {t.duration_minutes} min</span>
                   </div>
-                  <h3 className="mt-1 text-sm font-semibold text-slate-800">{t.title}</h3>
-                  {t.description && <p className="text-[11px] text-slate-400 mt-0.5">{t.description}</p>}
+                  <h3 className="mt-1 text-sm font-semibold text-ink">{t.title}</h3>
+                  {t.description && <p className="text-[11px] text-muted mt-0.5">{t.description}</p>}
                   {t.question_count === 0 && (
-                    <p className="mt-1.5 text-[11px] text-amber-600">No questions added yet — click Manage Questions before publishing.</p>
+                    <p className="mt-1.5 text-[11px] text-saffron">No questions added yet — click Manage before publishing.</p>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                   <button
                     onClick={() => setManagingTest(t)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-800 transition"
+                    className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-muted hover:text-ink transition"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
                     Manage
-                    <ChevronRight className="h-3 w-3 text-slate-300" />
+                    <ChevronRight className="h-3 w-3 text-muted/40" />
                   </button>
                   {t.status === "draft" && (
                     <button onClick={() => void setStatus(t.id, "published")}
-                      className="rounded-lg border border-slate-800 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition"
+                      className="rounded-lg border border-ink bg-ink px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-ink/90 transition"
                     >Publish</button>
                   )}
                   {t.status === "published" && (
                     <button onClick={() => void setStatus(t.id, "draft")}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                      className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition"
                     >Unpublish</button>
                   )}
                   {t.status !== "archived" && (
                     <button onClick={() => void setStatus(t.id, "archived")}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-400 hover:bg-slate-50 transition"
+                      className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted/60 hover:bg-paper transition"
                     >Archive</button>
                   )}
                   <button onClick={() => void handleDelete(t.id)}
-                    className="rounded-lg border border-slate-100 bg-white p-1.5 text-slate-300 hover:text-slate-500 hover:border-slate-200 transition"
+                    className="rounded-lg border border-line/50 bg-white p-1.5 text-muted/40 hover:text-berry hover:border-berry/30 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
