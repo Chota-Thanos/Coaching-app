@@ -20,6 +20,7 @@ export async function listTestTemplates(
   if (options.exam_level_id) addCondition(conditions, params, "tt.exam_level_id = ?", options.exam_level_id);
   if (options.status) addCondition(conditions, params, "tt.status = ?", options.status);
   if (options.access_type) addCondition(conditions, params, "tt.access_type = ?", options.access_type);
+  if (options.test_type) addCondition(conditions, params, "tt.test_type = ?", options.test_type);
 
   if (options.user_id && !["admin", "moderator", "content_editor"].includes(options.user_role ?? "")) {
     addCondition(conditions, params, "(tt.access_type <> 'private' or tt.created_by_user_id = ?)", options.user_id);
@@ -765,8 +766,10 @@ export async function bulkUpdateTestTemplatesTaxonomy(
   });
 }
 
+const GUEST_CUSTOM_TEST_QUESTION_CAP = 10;
+
 export async function createUserCustomTest(
-  userId: number,
+  userId: number | null,
   input: {
     title: string;
     description?: string;
@@ -777,20 +780,31 @@ export async function createUserCustomTest(
     test_type?: string;
   }
 ): Promise<any> {
+  if (!userId && input.question_ids.length > GUEST_CUSTOM_TEST_QUESTION_CAP) {
+    const error = new Error(
+      `Guest tests are limited to ${GUEST_CUSTOM_TEST_QUESTION_CAP} questions — sign in for unlimited custom tests.`
+    ) as Error & { statusCode?: number };
+    error.statusCode = 403;
+    throw error;
+  }
+
   let duration = input.duration_minutes ?? (input.question_ids.length * 2);
   if (duration <= 0) {
     duration = 60;
   }
-  const slug = `custom-${userId}-${Date.now()}`;
+  const slug = `custom-${userId ?? "guest"}-${Date.now()}`;
   const testType = input.test_type ?? "sectional_test";
-  
+  // Guest-created tests can't use 'private' access (there's no owner to check against),
+  // so they're 'free' instead — still only reachable via their own slug/id.
+  const accessType = userId ? "private" : "free";
+
   return transaction(async (client) => {
     // 1. Create the test template
     const templateResult = await client.query<{ id: number }>(
       `
         insert into assessment.test_templates
           (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
-        values ($1, $2, $3, $4, $5, $6, $7, $8, 'private', 'published', $9)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'published', $10)
         returning id, title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id
       `,
       [
@@ -802,6 +816,7 @@ export async function createUserCustomTest(
         testType,
         duration,
         input.question_ids.length, // initial fallback for total_marks
+        accessType,
         userId
       ]
     );

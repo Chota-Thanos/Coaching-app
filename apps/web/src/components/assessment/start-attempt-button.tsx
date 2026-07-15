@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, PlayCircle, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { authenticatedPost, useAuth } from "../auth/auth-context";
-import { SignInPanel } from "../auth/sign-in-panel";
+import { guestAwarePost, useAuth } from "../auth/auth-context";
+import { getOrCreateGuestToken } from "../../lib/guest";
 
 type StartAttemptButtonProps = {
   testTemplateId: number;
@@ -18,33 +18,20 @@ export function StartAttemptButton({ testTemplateId, createdByUserId }: StartAtt
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  if (!token) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-card">
-        <h2 className="text-base font-black text-ink">Ready to attempt?</h2>
-        <p className="mt-1.5 text-sm leading-6 text-muted">
-          Sign in to start, autosave answers, and get a detailed result report.
-        </p>
-        <div className="mt-4">
-          <SignInPanel />
-        </div>
-      </div>
-    );
-  }
-
   async function start(): Promise<void> {
-    if (!token) return;
     setPending(true);
     setMessage(null);
     try {
-      const attempt = await authenticatedPost<{ id: number }>(
+      const guestToken = token ? null : getOrCreateGuestToken();
+      const attempt = await guestAwarePost<{ id: number }>(
         `/api/v1/assessment/test-templates/${testTemplateId}/attempts/start`,
         token,
+        guestToken,
         {}
       );
       router.push(`/assessment/attempts/${attempt.id}`);
     } catch {
-      setMessage("Could not start this test. Check access or try again.");
+      setMessage("Could not start this test. Sign in if it needs a subscription, or try again.");
       setPending(false);
     }
   }

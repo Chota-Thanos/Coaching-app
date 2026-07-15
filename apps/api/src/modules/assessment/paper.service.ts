@@ -1,5 +1,6 @@
 import { one, query } from "../../db.js";
 import type { UserRole } from "../auth/schemas.js";
+import type { AttemptIdentity } from "./attempts.service.js";
 
 type AssessmentUser = { id: number; role: UserRole };
 
@@ -114,9 +115,21 @@ export async function getTestPaper(testTemplateId: number, includeUnpublished = 
   );
 }
 
-export async function getAttemptPaper(attemptId: number, user: AssessmentUser): Promise<unknown | null> {
-  const userFilter = canInspectAttempts(user.role) ? "" : "and ta.user_id = $2";
-  const params: unknown[] = userFilter ? [attemptId, user.id] : [attemptId];
+export async function getAttemptPaper(attemptId: number, identity: AttemptIdentity): Promise<unknown | null> {
+  const isPrivileged = !!identity.user && canInspectAttempts(identity.user.role);
+  let userFilter = "";
+  const params: unknown[] = [attemptId];
+  if (!isPrivileged) {
+    if (identity.user) {
+      userFilter = "and ta.user_id = $2";
+      params.push(identity.user.id);
+    } else if (identity.guestToken) {
+      userFilter = "and ta.guest_token = $2";
+      params.push(identity.guestToken);
+    } else {
+      userFilter = "and false";
+    }
+  }
 
   return one(
     `

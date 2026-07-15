@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { browserBaseUrl, type StudentFork } from "../../lib/api";
+import { clearPendingGuestClaim, clearGuestToken, getPendingGuestClaim } from "../../lib/guest";
 
 type AuthUser = {
   id: number;
@@ -212,6 +213,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void syncGuestData();
   }, [token, refreshForks]);
 
+  // Claim a guest-taken test attempt into the account that just logged in/registered,
+  // so the result they just earned as a guest becomes visible under their new account.
+  useEffect(() => {
+    if (!token) return;
+
+    const claimPendingGuestAttempt = async () => {
+      const pending = getPendingGuestClaim();
+      if (!pending) return;
+
+      try {
+        await jsonFetch(`/api/v1/assessment/attempts/${pending.attemptId}/claim`, token, {
+          method: "POST",
+          body: JSON.stringify({ guest_token: pending.guestToken })
+        });
+      } catch (err) {
+        console.error("Failed to claim guest test attempt:", err);
+      } finally {
+        clearPendingGuestClaim();
+        clearGuestToken();
+      }
+    };
+
+    void claimPendingGuestAttempt();
+  }, [token]);
+
   const login = useCallback(async (email: string, password: string) => {
     const result = await jsonFetch<{ user: AuthUser; access_token: string }>("/api/v1/auth/login", undefined, {
       method: "POST",
@@ -318,5 +344,42 @@ export async function authenticatedPatch<T>(path: string, token: string, payload
 export async function authenticatedDelete<T>(path: string, token: string): Promise<T> {
   return jsonFetch<T>(path, token, {
     method: "DELETE"
+  });
+}
+
+/** Guest-aware variants for the assessment attempt flow: send X-Guest-Token instead of
+ * an Authorization header when there's no real session yet. Behave exactly like the
+ * authenticated* helpers above once a real token is present. */
+function guestHeaders(token: string | null, guestToken: string | null): HeadersInit | undefined {
+  return !token && guestToken ? { "x-guest-token": guestToken } : undefined;
+}
+
+export async function guestAwareGet<T>(path: string, token: string | null, guestToken: string | null): Promise<T> {
+  return jsonFetch<T>(path, token ?? undefined, { headers: guestHeaders(token, guestToken) });
+}
+
+export async function guestAwarePost<T>(
+  path: string,
+  token: string | null,
+  guestToken: string | null,
+  payload: unknown
+): Promise<T> {
+  return jsonFetch<T>(path, token ?? undefined, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: guestHeaders(token, guestToken)
+  });
+}
+
+export async function guestAwarePut<T>(
+  path: string,
+  token: string | null,
+  guestToken: string | null,
+  payload: unknown
+): Promise<T> {
+  return jsonFetch<T>(path, token ?? undefined, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    headers: guestHeaders(token, guestToken)
   });
 }

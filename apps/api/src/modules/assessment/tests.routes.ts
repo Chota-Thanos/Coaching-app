@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { idParamSchema, parse, withValidation } from "../../common/http.js";
-import { requireAdminOrEditor, requireAuth } from "../auth/guards.js";
+import { requireAdminOrEditor, requireAuth, getOptionalAuth, getGuestToken } from "../auth/guards.js";
 import {
   addTestQuestionItemSchema,
   attemptIdParamSchema,
+  claimAttemptSchema,
   createTestSectionSchema,
   createTestTemplateSchema,
   leaderboardQuerySchema,
@@ -27,7 +28,9 @@ import {
   upsertAttemptResponse,
   startDynamicAttempt,
   startCompiledAttempt,
-  startSingleMainsQuestionAttempt
+  startSingleMainsQuestionAttempt,
+  claimGuestAttempt,
+  type AttemptIdentity
 } from "./attempts.service.js";
 import { z } from "zod";
 import {
@@ -65,15 +68,17 @@ import {
 } from "./paper.service.js";
 import { getResultDetail } from "./results.service.js";
 import { submitAttempt } from "./scoring.service.js";
+import type { FastifyRequest } from "fastify";
+
+async function resolveAttemptIdentity(request: FastifyRequest): Promise<AttemptIdentity> {
+  const user = await getOptionalAuth(request);
+  const guestToken = user ? null : getGuestToken(request);
+  return { user, guestToken };
+}
 
 export async function registerAssessmentTestRoutes(server: FastifyInstance): Promise<void> {
   server.get("/api/v1/assessment/test-templates", async (request, reply) => {
-    let user = null;
-    try {
-      user = await requireAuth(request);
-    } catch {
-      // Allow anonymous
-    }
+    const user = await getOptionalAuth(request);
     return withValidation(reply, async () => {
       const query = parse(listTestTemplatesQuerySchema, request.query);
       return listTestTemplates({
@@ -94,12 +99,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   });
 
   server.get("/api/v1/assessment/test-templates/:testTemplateId", async (request, reply) => {
-    let user = null;
-    try {
-      user = await requireAuth(request);
-    } catch {
-      // Allow anonymous for public/subscription tests
-    }
+    const user = await getOptionalAuth(request);
     return withValidation(reply, async () => {
       const params = parse(testTemplateIdParamSchema, request.params);
       const record = await getTestTemplate(params.testTemplateId, user?.id);
@@ -208,11 +208,11 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   });
 
   server.post("/api/v1/assessment/test-templates/:testTemplateId/attempts/start", async (request, reply) => {
-    const user = await requireAuth(request);
+    const identity = await resolveAttemptIdentity(request);
     return withValidation(reply, async () => {
       const params = parse(testTemplateIdParamSchema, request.params);
       const body = parse(startAttemptSchema, request.body ?? {});
-      const record = await startAttempt(params.testTemplateId, body, user);
+      const record = await startAttempt(params.testTemplateId, body, identity);
       if (!record) return reply.notFound("Test template not found.");
       return reply.status(201).send(record);
     });
@@ -317,20 +317,20 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   });
 
   server.get("/api/v1/assessment/attempts/:attemptId", async (request, reply) => {
-    const user = await requireAuth(request);
+    const identity = await resolveAttemptIdentity(request);
     return withValidation(reply, async () => {
       const params = parse(attemptIdParamSchema, request.params);
-      const record = await getAttempt(params.attemptId, user);
+      const record = await getAttempt(params.attemptId, identity);
       if (!record) return reply.notFound("Attempt not found.");
       return record;
     });
   });
 
   server.get("/api/v1/assessment/attempts/:attemptId/paper", async (request, reply) => {
-    const user = await requireAuth(request);
+    const identity = await resolveAttemptIdentity(request);
     return withValidation(reply, async () => {
       const params = parse(attemptIdParamSchema, request.params);
-      const record = await getAttemptPaper(params.attemptId, user);
+      const record = await getAttemptPaper(params.attemptId, identity);
       if (!record) return reply.notFound("Attempt paper not found.");
       return record;
     });
@@ -345,20 +345,29 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   });
 
   server.put("/api/v1/assessment/attempts/:attemptId/responses", async (request, reply) => {
-    const user = await requireAuth(request);
+    const identity = await resolveAttemptIdentity(request);
     return withValidation(reply, async () => {
       const params = parse(attemptIdParamSchema, request.params);
       const body = parse(upsertAttemptResponseSchema, request.body);
-      return upsertAttemptResponse(params.attemptId, body, user);
+      return upsertAttemptResponse(params.attemptId, body, identity);
     });
   });
 
   server.post("/api/v1/assessment/attempts/:attemptId/submit", async (request, reply) => {
-    const user = await requireAuth(request);
+    const identity = await resolveAttemptIdentity(request);
     return withValidation(reply, async () => {
       const params = parse(attemptIdParamSchema, request.params);
       const body = parse(submitAttemptSchema, request.body);
-      return submitAttempt(params.attemptId, body, user);
+      return submitAttempt(params.attemptId, body, identity);
+    });
+  });
+
+  server.post("/api/v1/assessment/attempts/:attemptId/claim", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(attemptIdParamSchema, request.params);
+      const body = parse(claimAttemptSchema, request.body);
+      return claimGuestAttempt(params.attemptId, body.guest_token, user.id);
     });
   });
 
@@ -571,9 +580,10 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
     });
   });
 
-  // User custom test creation
+  // User custom test creation — guests may create a small free test too (see
+  // createUserCustomTest's guest question-count cap); logged-in users are unlimited.
   server.post("/api/v1/assessment/user/custom-tests", async (request, reply) => {
-    const user = await requireAuth(request);
+    const user = await getOptionalAuth(request);
     return withValidation(reply, async () => {
       const body = parse(
         z.object({
@@ -587,8 +597,8 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
         }),
         request.body
       );
-      
-      const record = await createUserCustomTest(user.id, body);
+
+      const record = await createUserCustomTest(user?.id ?? null, body);
       return reply.status(201).send(record);
     });
   });

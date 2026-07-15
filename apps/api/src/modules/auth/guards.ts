@@ -26,6 +26,23 @@ export async function requireAuth(request: FastifyRequest): Promise<AuthUser> {
   return user;
 }
 
+/** Same as requireAuth, but returns null instead of throwing when there's no valid session. */
+export async function getOptionalAuth(request: FastifyRequest): Promise<AuthUser | null> {
+  try {
+    return await requireAuth(request);
+  } catch {
+    return null;
+  }
+}
+
+/** Opaque client-generated guest identity, used to let unauthenticated visitors take a
+ * test attempt that gets claimed into their account once they register/log in. */
+export function getGuestToken(request: FastifyRequest): string | null {
+  const header = request.headers["x-guest-token"];
+  const value = Array.isArray(header) ? header[0] : header;
+  return value && value.trim().length > 0 ? value.trim() : null;
+}
+
 export async function requireRole(request: FastifyRequest, allowedRoles: UserRole[]): Promise<AuthUser> {
   const user = await requireAuth(request);
   if (!allowedRoles.includes(user.role)) forbidden();

@@ -309,7 +309,14 @@ export const listTestTemplatesQuerySchema = listQuerySchema.extend({
   exam_level_id: optionalIdSchema,
   status: z.enum(["draft", "in_review", "published", "archived"]).optional(),
   access_type: z.enum(["free", "subscription", "paid", "private"]).optional(),
-  content_type: z.enum(["gk", "aptitude", "mains"]).optional()
+  content_type: z.enum(["gk", "aptitude", "mains"]).optional(),
+  test_type: z
+    .enum(["quick_test", "sectional_test", "full_length_test", "pyq_test", "mains_test", "diagnostic_test"])
+    .optional()
+});
+
+export const claimAttemptSchema = z.object({
+  guest_token: z.string().trim().min(1)
 });
 
 export const bulkUpdateTestTemplatesTaxonomySchema = z.object({

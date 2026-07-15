@@ -674,11 +674,19 @@ export function ResultReview({ resultId }: { resultId: string }) {
   if (!token) {
     return (
       <main className="mx-auto max-w-3xl px-4 pb-16 pt-6">
-        <section className="rounded-2xl border border-line bg-surface p-6 shadow-card">
-          <h1 className="text-2xl font-black text-ink">Sign in to review</h1>
-          <p className="mt-2 text-sm leading-6 text-muted">Result reports are private to your account.</p>
-          <div className="mt-5">
-            <SignInPanel />
+        <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+          <div className="h-1.5 bg-gradient-to-r from-civic to-emerald" />
+          <div className="p-6 md:p-8 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-civic/10 text-2xl">
+              🎉
+            </div>
+            <h1 className="text-2xl font-black text-ink">Your result is ready</h1>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">
+              Create a free account (takes 10 seconds) to unlock your score, topic-wise breakdown, and full answer review — and save it to your dashboard for good.
+            </p>
+            <div className="mx-auto mt-6 max-w-sm text-left">
+              <SignInPanel />
+            </div>
           </div>
         </section>
       </main>

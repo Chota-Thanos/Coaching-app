@@ -127,6 +127,28 @@ export default function HomePage() {
     fetchMentors();
   }, [token]);
 
+  // Look for an admin-curated Diagnostic Test to send the hero CTA straight to —
+  // falls back to the custom test builder if none has been published yet.
+  const [diagnosticTestId, setDiagnosticTestId] = useState<number | null>(null);
+  useEffect(() => {
+    const fetchDiagnosticTest = async () => {
+      try {
+        const res = await fetch(
+          `${browserBaseUrl}/api/v1/assessment/test-templates?test_type=diagnostic_test&access_type=free&status=published&limit=1`
+        );
+        if (res.ok) {
+          const list = await res.json();
+          const first = Array.isArray(list) ? list[0] : null;
+          if (first?.id) setDiagnosticTestId(first.id);
+        }
+      } catch (err) {
+        console.error("Failed to check for a published diagnostic test", err);
+      }
+    };
+    fetchDiagnosticTest();
+  }, []);
+  const heroTestHref = diagnosticTestId ? `/assessment/tests/${diagnosticTestId}` : "/assessment/custom-test/create";
+
   // Fetch student dashboard data when logged in
   useEffect(() => {
     if (!token) return;
@@ -386,12 +408,12 @@ export default function HomePage() {
                 {/* Primary CTAs */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Link
-                    href="/assessment/custom-test/create"
+                    href={heroTestHref}
                     className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-white px-7 font-bold text-indigo-900 shadow-lg hover:bg-indigo-50 transition-all duration-200 gap-2 text-sm"
                     id="hero-start-free-test"
                   >
                     <Target className="h-4 w-4" />
-                    Start a Free Test
+                    Take a Free Diagnostic Test
                   </Link>
                   <Link
                     href="/register"

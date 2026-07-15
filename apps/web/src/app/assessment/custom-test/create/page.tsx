@@ -19,7 +19,8 @@ import {
   ClipboardList,
   SlidersHorizontal
 } from "lucide-react";
-import { useAuth, authenticatedGet, authenticatedPost } from "../../../../components/auth/auth-context";
+import { useAuth, authenticatedGet, authenticatedPost, guestAwarePost } from "../../../../components/auth/auth-context";
+import { getOrCreateGuestToken } from "../../../../lib/guest";
 import { useSubscription } from "../../../../lib/use-subscription";
 import { GuidedTourController } from "../../../../components/app/guided-tour-engine";
 
@@ -66,7 +67,7 @@ const CUSTOM_TEST_TOUR_STEPS = [
     selector: "#tour-create-test-btn",
     badge: "Step 6 of 6: Start Your Exam",
     title: "Generate & Start Test",
-    body: "You're all set! Click this button to generate the custom test and launch the exam interface. (Note: Guest users will be prompted to log in/register to preserve their progress).",
+    body: "You're all set! Click this button to generate the custom test and launch the exam interface. (Note: guests can take the test right away — signing in is only needed afterward to see the result).",
     actionTrigger: "click" as const,
     actionText: "Click the 'Create & Start Custom Test' button below to launch."
   }
@@ -249,44 +250,6 @@ function CreateCustomTestInner() {
     };
     fetchCounts();
   }, [token, isInitialized, selectedExamId, contentType]);
-
-  // Auto-sync/create guest test on login
-  useEffect(() => {
-    if (!token || !isInitialized) return;
-    if (searchParams.get("trigger_create") !== "true") return;
-
-    const autoCreateGuestTest = async () => {
-      const savedConfigStr = localStorage.getItem("waytoias_guest_test_configuration");
-      if (!savedConfigStr) return;
-
-      setSubmitting(true);
-      setError(null);
-      try {
-        const savedConfig = JSON.parse(savedConfigStr);
-        // Create user custom test template
-        const response = await authenticatedPost<{ id: number }>(
-          "/api/v1/assessment/user/custom-tests",
-          token,
-          savedConfig
-        );
-
-        // Automatically start attempt
-        const attemptId = await authenticatedPost<any>(
-          `/api/v1/assessment/test-templates/${response.id}/attempts/start`,
-          token,
-          {}
-        );
-
-        localStorage.removeItem("waytoias_guest_test_configuration");
-        router.push(`/assessment/attempts/${attemptId.id ?? attemptId}`);
-      } catch (err: any) {
-        setError(err.message || "Failed to reconstruct guest custom test.");
-        setSubmitting(false);
-      }
-    };
-
-    void autoCreateGuestTest();
-  }, [token, isInitialized, searchParams, router]);
 
   // Filter nodes by current content type and user exclusions
   const filteredNodes = useMemo(() => {
@@ -610,23 +573,13 @@ function CreateCustomTestInner() {
         throw new Error("No questions were found in the selected categories. Please check other categories.");
       }
 
-      // Guest progress preservation check
-      if (!token) {
-        localStorage.setItem("waytoias_guest_test_configuration", JSON.stringify({
-          title: title.trim(),
-          exam_id: selectedExamId,
-          exam_level_id: 1, // Fallback exam level
-          question_ids: allPickedQuestionIds,
-          test_type: contentType === "mains" ? "mains_test" : "sectional_test"
-        }));
-        router.push("/login?next=/assessment/custom-test/create?trigger_create=true");
-        return;
-      }
-
-      // Step 2: Create user custom test template
-      const response = await authenticatedPost<{ id: number }>(
+      // Step 2: Create the custom test template — guests get a real free test too
+      // (server enforces a 10-question cap for them), no sign-in required to start.
+      const guestToken = token ? null : getOrCreateGuestToken();
+      const response = await guestAwarePost<{ id: number }>(
         "/api/v1/assessment/user/custom-tests",
         token,
+        guestToken,
         {
           title: title.trim(),
           exam_id: selectedExamId,
@@ -637,9 +590,10 @@ function CreateCustomTestInner() {
       );
 
       // Step 3: Automatically start attempt
-      const attemptId = await authenticatedPost<any>(
+      const attemptId = await guestAwarePost<any>(
         `/api/v1/assessment/test-templates/${response.id}/attempts/start`,
         token,
+        guestToken,
         {}
       );
 

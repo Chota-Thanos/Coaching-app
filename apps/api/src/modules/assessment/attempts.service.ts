@@ -3,8 +3,34 @@ import { one, transaction } from "../../db.js";
 import type { UserRole } from "../auth/schemas.js";
 import { userHasActivePlan } from "../billing/service.js";
 import type { StartAttemptInput, UpsertAttemptResponseInput, StartDynamicAttemptInput, StartCompiledAttemptInput } from "./schemas.js";
+import { backfillStudentTopicMetricsForResult } from "./scoring.service.js";
+
+/** Either a real authenticated user, or an unauthenticated guest identified by an
+ * opaque client-generated token. Exactly one of the two is expected to be set. */
+export type AttemptIdentity = {
+  user: { id: number; role: UserRole } | null;
+  guestToken: string | null;
+};
 
 function noMatchingQuestions(message: string): never {
+  const error = new Error(message) as Error & { statusCode?: number };
+  error.statusCode = 404;
+  throw error;
+}
+
+function unauthorized(message: string): never {
+  const error = new Error(message) as Error & { statusCode?: number };
+  error.statusCode = 401;
+  throw error;
+}
+
+function forbidden(message: string): never {
+  const error = new Error(message) as Error & { statusCode?: number };
+  error.statusCode = 403;
+  throw error;
+}
+
+function notFound(message: string): never {
   const error = new Error(message) as Error & { statusCode?: number };
   error.statusCode = 404;
   throw error;
@@ -42,9 +68,13 @@ async function resolveStoredExamLevelId(
 export async function startAttempt(
   testTemplateId: number,
   input: StartAttemptInput,
-  user: { id: number; role: UserRole }
+  identity: AttemptIdentity
 ): Promise<unknown | null> {
   void input;
+
+  if (!identity.user && !identity.guestToken) {
+    unauthorized("Sign in or start a guest session to take this test.");
+  }
 
   const test = await one<{
     id: string;
@@ -63,48 +93,63 @@ export async function startAttempt(
 
   if (!test) return null;
 
-  const isPrivileged = ["admin", "moderator", "content_editor"].includes(user.role);
-  if (test.status !== "published" && !isPrivileged) {
-    const error = new Error("This test is not published.") as Error & { statusCode?: number };
-    error.statusCode = 403;
-    throw error;
-  }
+  const user = identity.user;
+  const isPrivileged = !!user && ["admin", "moderator", "content_editor"].includes(user.role);
 
-  if (!isPrivileged && test.access_type === "subscription") {
-    const hasAccess = await userHasActivePlan(user.id, test.subscription_plan_id);
-    if (!hasAccess) {
-      const error = new Error("Active subscription required for this test.") as Error & { statusCode?: number };
-      error.statusCode = 403;
-      throw error;
+  if (!user) {
+    // Guests may only take published, free tests — no subscription/paid/private access.
+    if (test.status !== "published" || test.access_type !== "free") {
+      forbidden("Sign in to access this test.");
     }
-  }
+  } else {
+    if (test.status !== "published" && !isPrivileged) {
+      forbidden("This test is not published.");
+    }
 
-  if (!isPrivileged && ["paid", "private"].includes(test.access_type)) {
-    if (test.access_type === "private" && Number(test.created_by_user_id) === user.id) {
-      // Allow creator
-    } else {
-      const error = new Error("You do not have access to this test.") as Error & { statusCode?: number };
-      error.statusCode = 403;
-      throw error;
+    if (!isPrivileged && test.access_type === "subscription") {
+      const hasAccess = await userHasActivePlan(user.id, test.subscription_plan_id);
+      if (!hasAccess) {
+        forbidden("Active subscription required for this test.");
+      }
+    }
+
+    if (!isPrivileged && ["paid", "private"].includes(test.access_type)) {
+      if (test.access_type === "private" && Number(test.created_by_user_id) === user.id) {
+        // Allow creator
+      } else {
+        forbidden("You do not have access to this test.");
+      }
     }
   }
 
   return one(
     `
       insert into assessment.test_attempts
-        (user_id, test_template_id, expires_at)
-      select $1, tt.id, now() + make_interval(mins => tt.duration_minutes)
+        (user_id, guest_token, test_template_id, expires_at)
+      select $1, $2, tt.id, now() + make_interval(mins => tt.duration_minutes)
       from assessment.test_templates tt
-      where tt.id = $2
+      where tt.id = $3
       returning *
     `,
-    [user.id, testTemplateId]
+    [user?.id ?? null, user ? null : identity.guestToken, testTemplateId]
   );
 }
 
-export async function getAttempt(id: number, user?: { id: number; role: UserRole }): Promise<unknown | null> {
-  const userFilter = user && !["admin", "moderator"].includes(user.role) ? "and ta.user_id = $2" : "";
-  const params: unknown[] = userFilter ? [id, user?.id] : [id];
+export async function getAttempt(id: number, identity?: AttemptIdentity): Promise<unknown | null> {
+  const isPrivileged = !!identity?.user && ["admin", "moderator"].includes(identity.user.role);
+  let userFilter = "";
+  const params: unknown[] = [id];
+  if (!isPrivileged) {
+    if (identity?.user) {
+      userFilter = "and ta.user_id = $2";
+      params.push(identity.user.id);
+    } else if (identity?.guestToken) {
+      userFilter = "and ta.guest_token = $2";
+      params.push(identity.guestToken);
+    } else {
+      userFilter = "and false";
+    }
+  }
   return one(
     `
       select
@@ -138,22 +183,26 @@ export async function getAttempt(id: number, user?: { id: number; role: UserRole
 export async function upsertAttemptResponse(
   attemptId: number,
   input: UpsertAttemptResponseInput,
-  user: { id: number; role: UserRole }
+  identity: AttemptIdentity
 ): Promise<unknown> {
-  if (!["admin", "moderator"].includes(user.role)) {
+  const isPrivileged = !!identity.user && ["admin", "moderator"].includes(identity.user.role);
+  if (!isPrivileged) {
+    if (!identity.user && !identity.guestToken) {
+      unauthorized("Sign in or start a guest session to answer this test.");
+    }
+    const ownerClause = identity.user ? "user_id = $2" : "guest_token = $2";
+    const ownerValue = identity.user ? identity.user.id : identity.guestToken;
     const attempt = await one<{ id: string; status: string }>(
       `
         select id, status
         from assessment.test_attempts
         where id = $1
-          and user_id = $2
+          and ${ownerClause}
       `,
-      [attemptId, user.id]
+      [attemptId, ownerValue]
     );
     if (!attempt) {
-      const error = new Error("Attempt not found.") as Error & { statusCode?: number };
-      error.statusCode = 404;
-      throw error;
+      notFound("Attempt not found.");
     }
     if (attempt.status !== "in_progress") {
       const error = new Error("Cannot update responses after submission.") as Error & { statusCode?: number };
@@ -854,5 +903,61 @@ export async function startSingleMainsQuestionAttempt(
     );
 
     return attemptRes.rows[0];
+  });
+}
+
+/** Reassigns a guest-taken attempt to a real account right after the guest registers/logs
+ * in, so the test they just finished as a guest becomes visible under their new account. */
+export async function claimGuestAttempt(
+  attemptId: number,
+  guestToken: string,
+  userId: number
+): Promise<{ id: number; result_id: number | null }> {
+  return transaction(async (client) => {
+    const attemptRes = await client.query<{
+      id: string;
+      user_id: string | null;
+      guest_token: string | null;
+      status: string;
+    }>(
+      `select id, user_id, guest_token, status from assessment.test_attempts where id = $1 for update`,
+      [attemptId]
+    );
+
+    const attempt = attemptRes.rows[0];
+    if (!attempt) notFound("Attempt not found.");
+
+    if (attempt.user_id !== null) {
+      if (Number(attempt.user_id) === userId) {
+        // Already claimed by this same account — idempotent no-op.
+      } else {
+        forbidden("This attempt already belongs to another account.");
+      }
+    } else {
+      if (!attempt.guest_token || attempt.guest_token !== guestToken) {
+        forbidden("Guest session does not match this attempt.");
+      }
+
+      await client.query(
+        `
+          update assessment.test_attempts
+          set user_id = $2, guest_token = null, claimed_at = now()
+          where id = $1
+        `,
+        [attemptId, userId]
+      );
+    }
+
+    const resultRes = await client.query<{ id: string }>(
+      `select id from assessment.test_results where attempt_id = $1`,
+      [attemptId]
+    );
+    const resultId = resultRes.rows[0]?.id ? Number(resultRes.rows[0].id) : null;
+
+    if (resultId) {
+      await backfillStudentTopicMetricsForResult(client, userId, resultId);
+    }
+
+    return { id: attemptId, result_id: resultId };
   });
 }

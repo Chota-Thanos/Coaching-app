@@ -28,8 +28,8 @@ import {
   optionText,
   selectedAnswerKey
 } from "../../lib/assessment";
-import { authenticatedGet, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
-import { SignInPanel } from "../auth/sign-in-panel";
+import { authenticatedGet, authenticatedPost, authenticatedPut, guestAwareGet, guestAwarePost, guestAwarePut, useAuth } from "../auth/auth-context";
+import { getOrCreateGuestToken, setPendingGuestClaim } from "../../lib/guest";
 
 type AttemptEngineProps = {
   attemptId: string;
@@ -67,7 +67,16 @@ function timeLabel(seconds: number): string {
 
 export function AttemptEngine({ attemptId }: AttemptEngineProps) {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, isInitialized } = useAuth();
+
+  // Guests get the same real attempt-taking screen as logged-in users — only the
+  // result reveal is gated behind sign-in (see submit() and result-review.tsx).
+  const [guestToken, setGuestToken] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isInitialized) return;
+    setGuestToken(token ? null : getOrCreateGuestToken());
+  }, [isInitialized, token]);
+  const hasIdentity = !!token || !!guestToken;
 
   const [paper, setPaper] = useState<AttemptPaper | null>(null);
   const [responses, setResponses] = useState<Map<number, LocalResponse>>(new Map());
@@ -143,38 +152,41 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
   };
 
   const loadPaper = useCallback(async () => {
-    if (!token) return;
+    if (!hasIdentity) return;
     try {
-      const record = await authenticatedGet<AttemptPaper>(`/api/v1/assessment/attempts/${attemptId}/paper`, token);
+      const record = await guestAwareGet<AttemptPaper>(`/api/v1/assessment/attempts/${attemptId}/paper`, token, guestToken);
       setPaper(record);
       setResponses(responseMapFromPaper(record));
       setRemaining(secondsRemaining(record.expires_at));
-      
+
       if (record.result?.id) {
         router.replace(`/assessment/results/${record.result.id}`);
         return;
       }
 
-      // Fetch subjective answers if any exist for this attempt
-      const subjectiveAnswers = await authenticatedGet<any[]>(`/api/v1/assessment/mains/attempts/${attemptId}/answers`, token);
-      const answersMap = new Map<number, any>();
-      subjectiveAnswers.forEach(ans => {
-        answersMap.set(Number(ans.question_version_id), ans);
-      });
-      setMainsAnswers(answersMap);
+      // Subjective mains answers are only fetched for signed-in users — guest
+      // diagnostic attempts are objective-only for now.
+      if (token) {
+        const subjectiveAnswers = await authenticatedGet<any[]>(`/api/v1/assessment/mains/attempts/${attemptId}/answers`, token);
+        const answersMap = new Map<number, any>();
+        subjectiveAnswers.forEach(ans => {
+          answersMap.set(Number(ans.question_version_id), ans);
+        });
+        setMainsAnswers(answersMap);
 
-      // Populate draft text for the active question
-      const firstQ = record.questions[activeIndex];
-      if (firstQ) {
-        const firstAnswer = answersMap.get(Number(firstQ.question_version_id));
-        setMainsDraft(firstAnswer?.student_answer_text || "");
-        setMainsFileUrl(firstAnswer?.answer_file_url || "");
+        // Populate draft text for the active question
+        const firstQ = record.questions[activeIndex];
+        if (firstQ) {
+          const firstAnswer = answersMap.get(Number(firstQ.question_version_id));
+          setMainsDraft(firstAnswer?.student_answer_text || "");
+          setMainsFileUrl(firstAnswer?.answer_file_url || "");
+        }
       }
     } catch (err) {
       console.error("Failed to load attempt paper:", err);
       setMessage("Failed to load attempt details. Please check your network connection.");
     }
-  }, [attemptId, router, token]);
+  }, [attemptId, router, token, guestToken, hasIdentity]);
 
   useEffect(() => {
     void loadPaper();
@@ -224,19 +236,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
     };
   }, [paper?.questions, questionStatus]);
 
-  if (!token) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 pb-16 pt-6">
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-black text-slate-800">Sign in to continue</h1>
-          <p className="mt-2 text-sm text-slate-500">Attempts are saved to your coaching account.</p>
-          <div className="mt-6"><SignInPanel /></div>
-        </section>
-      </main>
-    );
-  }
-
-  if (!paper || !activeQuestion) {
+  if (!hasIdentity || !paper || !activeQuestion) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
@@ -247,7 +247,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
 
   // Save objective response
   async function saveResponse(question: TestQuestionItem, selectedAnswer: unknown, status: AttemptResponse["status"], marked: boolean): Promise<void> {
-    if (!token) return;
+    if (!hasIdentity) return;
     setSavingId(question.question_version_id);
     setMessage(null);
     setResponses((current) => {
@@ -256,7 +256,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
       return next;
     });
     try {
-      await authenticatedPut(`/api/v1/assessment/attempts/${attemptId}/responses`, token, {
+      await guestAwarePut(`/api/v1/assessment/attempts/${attemptId}/responses`, token, guestToken, {
         question_version_id: question.question_version_id,
         selected_answer: selectedAnswer ?? undefined,
         status,
@@ -320,14 +320,19 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
 
   // Submit entire test attempt
   async function submit(): Promise<void> {
-    if (!token || !paper) return;
+    if (!hasIdentity || !paper) return;
     if (!window.confirm("Submit this test now? You cannot change answers after submission.")) return;
     setMessage(null);
     try {
-      const result = await authenticatedPost<{ id: number }>(`/api/v1/assessment/attempts/${attemptId}/submit`, token, {
+      const result = await guestAwarePost<{ id: number }>(`/api/v1/assessment/attempts/${attemptId}/submit`, token, guestToken, {
         submit_idempotency_key: `submit-${attemptId}-${Date.now()}`,
         time_spent_seconds: Math.max(0, paper.test_template.duration_minutes * 60 - remaining)
       });
+      // Guests hit the sign-in wall already built into the result page (result-review.tsx);
+      // once they log in, auth-context claims this attempt so the same result unlocks.
+      if (!token && guestToken) {
+        setPendingGuestClaim({ attemptId: Number(attemptId), guestToken });
+      }
       router.push(`/assessment/results/${result.id}`);
     } catch {
       setMessage("Could not submit attempt. Please try again.");

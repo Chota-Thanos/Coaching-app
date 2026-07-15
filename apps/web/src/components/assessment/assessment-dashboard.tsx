@@ -410,11 +410,19 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
     return (
       <div className="min-h-screen bg-slate-50 py-10">
         <main className="mx-auto max-w-3xl px-4">
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h1 className="text-2xl font-black text-slate-900 leading-tight">Assessment Dashboard</h1>
-            <p className="mt-2 text-sm text-slate-500">Sign in to view your detailed attempts history, score trends, and weakness heatmap.</p>
-            <div className="mt-6">
-              <SignInPanel />
+          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="h-1.5 bg-gradient-to-r from-indigo-600 to-emerald-500" />
+            <div className="p-6 md:p-8 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-2xl">
+                📊
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 leading-tight">Your scorecard is waiting</h1>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
+                Sign in to see your full attempt history, topic-wise accuracy trends, and weak-area heatmap — all saved to your account.
+              </p>
+              <div className="mx-auto mt-6 max-w-sm text-left">
+                <SignInPanel />
+              </div>
             </div>
           </section>
         </main>

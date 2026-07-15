@@ -1,19 +1,22 @@
+import type { PoolClient } from "pg";
 import { one, transaction } from "../../db.js";
 import type { UserRole } from "../auth/schemas.js";
 import type { SubmitAttemptInput } from "./schemas.js";
 import { calculateObjectiveScore } from "./score-calculator.js";
 import type { ScoreItem } from "./scoring.types.js";
+import type { AttemptIdentity } from "./attempts.service.js";
 
 export async function submitAttempt(
   attemptId: number,
   input: SubmitAttemptInput,
-  user: { id: number; role: UserRole }
+  identity: AttemptIdentity
 ): Promise<unknown | null> {
   const resultId = await transaction(async (client) => {
     const attemptResult = await client.query<{
       id: string;
       test_template_id: string;
-      user_id: string;
+      user_id: string | null;
+      guest_token: string | null;
       status: string;
       submit_idempotency_key: string | null;
       cutoff_config: Record<string, unknown>;
@@ -23,6 +26,7 @@ export async function submitAttempt(
           ta.id,
           ta.test_template_id,
           ta.user_id,
+          ta.guest_token,
           ta.status,
           ta.submit_idempotency_key,
           tt.cutoff_config
@@ -39,10 +43,15 @@ export async function submitAttempt(
       throw new Error("Attempt not found.");
     }
 
-    if (!["admin", "moderator"].includes(user.role) && Number(attempt.user_id) !== user.id) {
-      const error = new Error("Attempt not found.") as Error & { statusCode?: number };
-      error.statusCode = 404;
-      throw error;
+    const isPrivileged = !!identity.user && ["admin", "moderator"].includes(identity.user.role);
+    if (!isPrivileged) {
+      const ownedByUser = !!identity.user && Number(attempt.user_id) === identity.user.id;
+      const ownedByGuest = !identity.user && !!attempt.guest_token && attempt.guest_token === identity.guestToken;
+      if (!ownedByUser && !ownedByGuest) {
+        const error = new Error("Attempt not found.") as Error & { statusCode?: number };
+        error.statusCode = 404;
+        throw error;
+      }
     }
 
     const existing = await client.query<{ id: string }>(
@@ -162,60 +171,18 @@ export async function submitAttempt(
         ]
       );
 
-      if (breakdown.taxonomyNodeId) {
-        await client.query(
-          `
-            insert into assessment.student_topic_metrics
-              (
-                user_id,
-                taxonomy_node_id,
-                question_nature_id,
-                attempt_count,
-                question_count,
-                correct_count,
-                incorrect_count,
-                unattempted_count,
-                avg_accuracy,
-                avg_score,
-                last_attempted_at
-              )
-            values ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, now())
-            on conflict (user_id, taxonomy_node_id, question_nature_id)
-            do update set
-              attempt_count = assessment.student_topic_metrics.attempt_count + 1,
-              question_count = assessment.student_topic_metrics.question_count + excluded.question_count,
-              correct_count = assessment.student_topic_metrics.correct_count + excluded.correct_count,
-              incorrect_count = assessment.student_topic_metrics.incorrect_count + excluded.incorrect_count,
-              unattempted_count = assessment.student_topic_metrics.unattempted_count + excluded.unattempted_count,
-              avg_accuracy = (
-                (assessment.student_topic_metrics.correct_count + excluded.correct_count)::numeric /
-                nullif(
-                  assessment.student_topic_metrics.correct_count + assessment.student_topic_metrics.incorrect_count +
-                  excluded.correct_count + excluded.incorrect_count,
-                  0
-                )
-              ),
-              avg_score = (
-                (assessment.student_topic_metrics.avg_score * assessment.student_topic_metrics.attempt_count + excluded.avg_score) /
-                nullif(assessment.student_topic_metrics.attempt_count + 1, 0)
-              ),
-              last_attempted_at = now(),
-              updated_at = now()
-          `,
-          [
-            attempt.user_id,
-            breakdown.taxonomyNodeId,
-            breakdown.questionNatureId,
-            breakdown.total,
-            breakdown.correct,
-            breakdown.incorrect,
-            breakdown.unattempted,
-            breakdown.correct + breakdown.incorrect > 0
-              ? breakdown.correct / (breakdown.correct + breakdown.incorrect)
-              : 0,
-            breakdown.score
-          ]
-        );
+      // Guests have no user_id yet — the per-user dashboard aggregate is backfilled
+      // once the attempt is claimed into a real account (see claimGuestAttempt).
+      if (attempt.user_id) {
+        await upsertStudentTopicMetric(client, Number(attempt.user_id), {
+          taxonomyNodeId: breakdown.taxonomyNodeId,
+          questionNatureId: breakdown.questionNatureId,
+          total: breakdown.total,
+          correct: breakdown.correct,
+          incorrect: breakdown.incorrect,
+          unattempted: breakdown.unattempted,
+          score: breakdown.score
+        });
       }
     }
 
@@ -285,4 +252,112 @@ export async function submitAttempt(
     `,
     [resultId]
   );
+}
+
+type TopicMetricInput = {
+  taxonomyNodeId: string | number | null;
+  questionNatureId: string | number | null;
+  total: number;
+  correct: number;
+  incorrect: number;
+  unattempted: number;
+  score: number;
+};
+
+async function upsertStudentTopicMetric(
+  client: PoolClient,
+  userId: number,
+  breakdown: TopicMetricInput
+): Promise<void> {
+  if (!breakdown.taxonomyNodeId) return;
+
+  await client.query(
+    `
+      insert into assessment.student_topic_metrics
+        (
+          user_id,
+          taxonomy_node_id,
+          question_nature_id,
+          attempt_count,
+          question_count,
+          correct_count,
+          incorrect_count,
+          unattempted_count,
+          avg_accuracy,
+          avg_score,
+          last_attempted_at
+        )
+      values ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, now())
+      on conflict (user_id, taxonomy_node_id, question_nature_id)
+      do update set
+        attempt_count = assessment.student_topic_metrics.attempt_count + 1,
+        question_count = assessment.student_topic_metrics.question_count + excluded.question_count,
+        correct_count = assessment.student_topic_metrics.correct_count + excluded.correct_count,
+        incorrect_count = assessment.student_topic_metrics.incorrect_count + excluded.incorrect_count,
+        unattempted_count = assessment.student_topic_metrics.unattempted_count + excluded.unattempted_count,
+        avg_accuracy = (
+          (assessment.student_topic_metrics.correct_count + excluded.correct_count)::numeric /
+          nullif(
+            assessment.student_topic_metrics.correct_count + assessment.student_topic_metrics.incorrect_count +
+            excluded.correct_count + excluded.incorrect_count,
+            0
+          )
+        ),
+        avg_score = (
+          (assessment.student_topic_metrics.avg_score * assessment.student_topic_metrics.attempt_count + excluded.avg_score) /
+          nullif(assessment.student_topic_metrics.attempt_count + 1, 0)
+        ),
+        last_attempted_at = now(),
+        updated_at = now()
+    `,
+    [
+      userId,
+      breakdown.taxonomyNodeId,
+      breakdown.questionNatureId,
+      breakdown.total,
+      breakdown.correct,
+      breakdown.incorrect,
+      breakdown.unattempted,
+      breakdown.correct + breakdown.incorrect > 0 ? breakdown.correct / (breakdown.correct + breakdown.incorrect) : 0,
+      breakdown.score
+    ]
+  );
+}
+
+/** Replays the topic-metrics upsert for an already-scored result, once a guest attempt
+ * has been claimed into a real account (the metrics couldn't be attributed at submit time
+ * because there was no user_id yet). */
+export async function backfillStudentTopicMetricsForResult(
+  client: PoolClient,
+  userId: number,
+  resultId: number
+): Promise<void> {
+  const breakdowns = await client.query<{
+    taxonomy_node_id: string | number | null;
+    question_nature_id: string | number | null;
+    total_questions: number;
+    correct_count: number;
+    incorrect_count: number;
+    unattempted_count: number;
+    score: string;
+  }>(
+    `
+      select taxonomy_node_id, question_nature_id, total_questions, correct_count, incorrect_count, unattempted_count, score
+      from assessment.result_topic_breakdowns
+      where result_id = $1
+    `,
+    [resultId]
+  );
+
+  for (const row of breakdowns.rows) {
+    await upsertStudentTopicMetric(client, userId, {
+      taxonomyNodeId: row.taxonomy_node_id,
+      questionNatureId: row.question_nature_id,
+      total: row.total_questions,
+      correct: row.correct_count,
+      incorrect: row.incorrect_count,
+      unattempted: row.unattempted_count,
+      score: Number(row.score)
+    });
+  }
 }

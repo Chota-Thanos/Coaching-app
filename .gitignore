@@ -17,3 +17,4 @@ scratch/
 .next/
 build/
 *.tsbuildinfo
+.claude/settings.local.json
