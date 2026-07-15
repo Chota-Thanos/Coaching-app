@@ -1041,7 +1041,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 <div className="mt-4 grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15">
                   {review.questions.map((q, idx) => {
                     const outcome = q.score_item?.outcome;
-                    const isBookmarked = bookmarkedIds.has(q.id);
+                    const isBookmarked = bookmarkedIds.has(q.question_version.question_id);
                     let bgClass = "bg-slate-50 border-slate-205 text-slate-650 hover:bg-slate-100/80";
                     if (outcome === "correct") {
                       bgClass = "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100/70";
@@ -1064,7 +1064,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleBookmark(q.id, q.question_version.id);
+                            toggleBookmark(q.question_version.question_id, q.question_version.id);
                           }}
                           className={`mt-1.5 rounded-md p-1 transition ${
                             isBookmarked ? "text-amber-500 hover:bg-amber-100/50" : "text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
@@ -1178,16 +1178,16 @@ export function ResultReview({ resultId }: { resultId: string }) {
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => toggleBookmark(question.id, question.question_version.id)}
+                          onClick={() => toggleBookmark(question.question_version.question_id, question.question_version.id)}
                           className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
-                            bookmarkedIds.has(question.id)
+                            bookmarkedIds.has(question.question_version.question_id)
                               ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100/50"
                               : "border-slate-200 bg-white text-slate-650 hover:bg-slate-50 hover:text-slate-800"
                           }`}
-                          title={bookmarkedIds.has(question.id) ? "Remove Bookmark" : "Bookmark Question"}
+                          title={bookmarkedIds.has(question.question_version.question_id) ? "Remove Bookmark" : "Bookmark Question"}
                         >
-                          <Bookmark className="h-3.5 w-3.5" fill={bookmarkedIds.has(question.id) ? "currentColor" : "none"} />
-                          <span>{bookmarkedIds.has(question.id) ? "Marked for Revision" : "Mark for Revision"}</span>
+                          <Bookmark className="h-3.5 w-3.5" fill={bookmarkedIds.has(question.question_version.question_id) ? "currentColor" : "none"} />
+                          <span>{bookmarkedIds.has(question.question_version.question_id) ? "Marked for Revision" : "Mark for Revision"}</span>
                         </button>
                         <span className="text-xs font-black text-ink">
                           {formatMarks(question.score_item?.score)} pts
@@ -1353,16 +1353,16 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <button
-                                    onClick={() => toggleBookmark(q.id, q.question_version.id)}
+                                    onClick={() => toggleBookmark(q.question_version.question_id, q.question_version.id)}
                                     className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
-                                      bookmarkedIds.has(q.id)
+                                      bookmarkedIds.has(q.question_version.question_id)
                                         ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100/50"
                                         : "border-slate-200 bg-white text-slate-650 hover:bg-slate-50 hover:text-slate-800"
                                     }`}
-                                    title={bookmarkedIds.has(q.id) ? "Remove Bookmark" : "Bookmark Question"}
+                                    title={bookmarkedIds.has(q.question_version.question_id) ? "Remove Bookmark" : "Bookmark Question"}
                                   >
-                                    <Bookmark className="h-3.5 w-3.5" fill={bookmarkedIds.has(q.id) ? "currentColor" : "none"} />
-                                    <span>{bookmarkedIds.has(q.id) ? "Marked for Revision" : "Mark for Revision"}</span>
+                                    <Bookmark className="h-3.5 w-3.5" fill={bookmarkedIds.has(q.question_version.question_id) ? "currentColor" : "none"} />
+                                    <span>{bookmarkedIds.has(q.question_version.question_id) ? "Marked for Revision" : "Mark for Revision"}</span>
                                   </button>
                                   <span className="text-xs font-black text-ink">
                                     {formatMarks(q.score_item?.score)} pts

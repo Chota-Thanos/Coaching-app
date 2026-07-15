@@ -30,6 +30,7 @@ import { AdminMainsQuestionCreator } from "../current-affairs/admin/admin-mains-
 import { AdminMainsTaxonomyManager } from "../current-affairs/admin/admin-mains-taxonomy-manager";
 import { AdminMainsEvaluationManager } from "../current-affairs/admin/admin-mains-evaluation-manager";
 import { AssessmentAiSettingsManager } from "./assessment-ai-settings-manager";
+import { AdminDiagnosticTestManager } from "./admin-diagnostic-test-manager";
 
 type AssessmentTab =
   | "overview"
@@ -42,7 +43,8 @@ type AssessmentTab =
   | "mains-evaluations"
   | "assessment-categories"
   | "mains-categories"
-  | "ai-settings";
+  | "ai-settings"
+  | "diagnostic-tests";
 
 const ASSESSMENT_NAV: {
   tab: AssessmentTab;
@@ -51,6 +53,7 @@ const ASSESSMENT_NAV: {
   group?: string;
 }[] = [
   { tab: "overview", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" />, group: "Dashboard" },
+  { tab: "diagnostic-tests", label: "Diagnostic Tests", icon: <Target className="h-4 w-4" />, group: "Dashboard" },
   { tab: "objective-questions", label: "GK Questions", icon: <ListChecks className="h-4 w-4" />, group: "Question Banks" },
   { tab: "csat-questions", label: "CSAT Questions", icon: <ListChecks className="h-4 w-4" />, group: "Question Banks" },
   { tab: "mains-questions", label: "Mains Questions", icon: <FileText className="h-4 w-4" />, group: "Question Banks" },
@@ -380,6 +383,13 @@ export function AdminAssessmentSpace() {
               <p className="text-sm text-ink/65 mt-1">Configure Mains syllabus — Papers, Subject Areas, Themes, Topics, and Subtopics.</p>
             </div>
             <AdminMainsTaxonomyManager />
+          </div>
+        )}
+
+        {/* DIAGNOSTIC TESTS */}
+        {activeTab === "diagnostic-tests" && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <AdminDiagnosticTestManager />
           </div>
         )}
 
