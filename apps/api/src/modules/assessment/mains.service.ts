@@ -75,6 +75,7 @@ export async function listMainsTaxonomyNodes(options: ListMainsTaxonomyQuery): P
   if (options.parent_id) addCondition(conditions, params, "parent_id = ?", options.parent_id);
   if (options.root_only) conditions.push("parent_id is null");
   if (options.node_type) addCondition(conditions, params, "node_type = ?", options.node_type);
+  if (options.search) addCondition(conditions, params, "name ilike ?", `%${options.search}%`);
 
   params.push(options.limit, options.offset);
   const limitPosition = params.length - 1;

@@ -32,6 +32,7 @@ import {
   updateSubscription,
   verifyRazorpayPayment
 } from "./service.js";
+import { getFreeTestUsage } from "../assessment/free-test-allowance.js";
 
 export async function registerBillingRoutes(server: FastifyInstance): Promise<void> {
 
@@ -55,7 +56,16 @@ export async function registerBillingRoutes(server: FastifyInstance): Promise<vo
   // -------------------------------------------------------------------------
   server.get("/api/v1/billing/me/entitlements", async (request) => {
     const actor = await requireAuth(request);
-    return getUserEntitlements(actor.id);
+    const entitlements = await getUserEntitlements(actor.id);
+    const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
+    if (!hasPremium) {
+      const usage = await getFreeTestUsage(actor.id);
+      entitlements.push({
+        entitlement_key: "assessment.free_tests_remaining",
+        limit_value: Math.max(0, usage.limit - usage.used)
+      });
+    }
+    return entitlements;
   });
 
   // -------------------------------------------------------------------------

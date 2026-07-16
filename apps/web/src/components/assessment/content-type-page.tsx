@@ -237,15 +237,6 @@ function MyTestsList({ contentType }: { contentType: string }) {
                     </Link>
                     
                     <div className="flex items-center gap-3">
-                      {!hasAttempt && (
-                        <Link
-                          href={`/assessment/category?test_template_id=${test.id}&tab=${contentType}`}
-                          className="text-xs font-bold text-indigo-600 hover:underline"
-                        >
-                          Add Qs
-                        </Link>
-                      )}
-                      
                       <Link
                         href={isCompleted && test.latest_result_id ? `/assessment/results/${test.latest_result_id}` :
                               hasAttempt ? `/assessment/attempts/${test.latest_attempt_id}` :

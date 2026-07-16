@@ -3,6 +3,7 @@ import { z } from "zod";
 import { idParamSchema, parse, withValidation } from "../../common/http.js";
 import { requireAdminOrEditor, requireAuth, requireEvaluator } from "../auth/guards.js";
 import { draftMainsQuestionAI, performOcrGemini } from "../current-affairs/master/ai.service.js";
+import { getUserEntitlements } from "../billing/service.js";
 import { query } from "../../db.js";
 import {
   createMainsQuestionSchema,
@@ -208,6 +209,18 @@ export async function registerMainsAssessmentRoutes(server: FastifyInstance): Pr
 
   server.post("/api/v1/assessment/mains/answers/:id/ai-evaluate", async (request, reply) => {
     const user = await requireAuth(request);
+    // AI-based answer review is a paid feature — free users can create and take
+    // Mains tests, but reviewing answers with AI requires Premium.
+    const entitlements = await getUserEntitlements(user.id);
+    const canAiEvaluate = entitlements.some(
+      (e) => e.entitlement_key === "assessment.ai_evaluation" || e.entitlement_key === "assessment.premium_tests"
+    );
+    if (!canAiEvaluate) {
+      return reply.status(403).send({
+        error: "ai_evaluation_requires_premium",
+        message: "AI-based answer evaluation requires an Assessment Premium subscription."
+      });
+    }
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
       const record = await evaluateMainsAnswerWithAI(params.id, user.id);

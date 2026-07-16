@@ -70,17 +70,19 @@ export async function createBookmark(userId: number, input: CreateBookmarkInput)
 export async function listBookmarks(userId: number, options: ListOptions): Promise<unknown[]> {
   return query(
     `
-      select sb.*, 
-             row_to_json(q.*) as question, 
+      select sb.*,
+             row_to_json(q.*) as question,
              row_to_json(qv.*) as question_version,
              (
                select json_build_object(
                  'subject_node_id', coalesce(qtl.subject_node_id, mqtl.paper_node_id),
                  'topic_node_id', coalesce(qtl.topic_node_id, mqtl.topic_node_id),
-                 'subtopic_node_id', coalesce(qtl.subtopic_node_id, mqtl.subtopic_node_id)
+                 'subtopic_node_id', coalesce(qtl.subtopic_node_id, mqtl.subtopic_node_id),
+                 'content_type', coalesce(atn.content_type, case when mqtl.question_id is not null then 'mains' else null end)
                )
                from assessment.questions q2
                left join assessment.question_taxonomy_links qtl on qtl.question_id = q2.id
+               left join assessment.assessment_taxonomy_nodes atn on atn.id = qtl.subject_node_id
                left join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = q2.id
                where q2.id = sb.question_id
                limit 1

@@ -1,9 +1,73 @@
 import type { PoolClient } from "pg";
 import { one, transaction } from "../../db.js";
 import type { UserRole } from "../auth/schemas.js";
-import { userHasActivePlan } from "../billing/service.js";
+import { userHasActivePlan, getUserEntitlements } from "../billing/service.js";
 import type { StartAttemptInput, UpsertAttemptResponseInput, StartDynamicAttemptInput, StartCompiledAttemptInput } from "./schemas.js";
 import { backfillStudentTopicMetricsForResult } from "./scoring.service.js";
+import { getQuestionCap } from "./question-caps.js";
+
+async function assertWithinQuestionCap(userId: number, questionCount: number, isMains: boolean): Promise<void> {
+  const entitlements = await getUserEntitlements(userId);
+  const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
+  const cap = getQuestionCap(hasPremium, isMains);
+  if (questionCount > cap) {
+    forbidden(
+      `${isMains ? "Mains" : "GK/CSAT"} tests are limited to ${cap} questions${hasPremium ? " on Assessment Premium" : " on the free tier"}.${hasPremium ? "" : " Upgrade to Assessment Premium for a higher limit."}`,
+      "question_cap_exceeded"
+    );
+  }
+}
+
+/**
+ * Wraps a "select ... from ... where ..." query (built without any trailing
+ * order/limit) so the final N rows are drawn as an even spread across each
+ * question's most specific taxonomy group, instead of one flat random draw
+ * across the whole matched pool — which silently over-represents whichever
+ * sub-category happens to have the most published questions. Each group is
+ * capped at ceil(N / groupCount), then the combined, still-oversized pool is
+ * randomly trimmed down to exactly N (or fewer, if the pool itself is
+ * smaller than N), so the final set stays evenly spread rather than biased
+ * toward the largest group.
+ */
+function buildStratifiedSelectionQuery(options: {
+  // Body of an extra CTE (e.g. "category_nodes as (select id from ... union all ...)")
+  // that `fromAndWhere` can reference via "in (select id from category_nodes)".
+  // Kept as a real CTE (not a joined subquery) so it's checked as membership,
+  // not cross-joined — a cross join would duplicate a question's row once
+  // per matching category_nodes row when more than one of its taxonomy
+  // columns matches, throwing off the stratification counts below.
+  recursiveCte?: string;
+  selectColumns: string;
+  outputColumns: string;
+  strataExpr: string;
+  fromAndWhere: string;
+  limitParamPlaceholder: string;
+}): string {
+  const { recursiveCte, selectColumns, outputColumns, strataExpr, fromAndWhere, limitParamPlaceholder } = options;
+  // Note: count(distinct x) over (...) is not valid Postgres (DISTINCT isn't
+  // supported inside window functions), so strata_count is computed as its
+  // own single-row CTE and cross joined in — safe since it's always exactly
+  // one row.
+  return `
+    with ${recursiveCte ? `recursive ${recursiveCte},` : ""} matched as (
+      select ${selectColumns}, ${strataExpr} as strata_id
+      ${fromAndWhere}
+    ),
+    strata_meta as (
+      select count(distinct strata_id) as strata_count from matched
+    ),
+    ranked as (
+      select ${outputColumns}, strata_id,
+             row_number() over (partition by strata_id order by random()) as rn
+      from matched
+    )
+    select ${outputColumns}
+    from ranked, strata_meta
+    where rn <= ceil(${limitParamPlaceholder}::numeric / greatest(strata_meta.strata_count, 1))
+    order by random()
+    limit ${limitParamPlaceholder}
+  `;
+}
 
 /** Either a real authenticated user, or an unauthenticated guest identified by an
  * opaque client-generated token. Exactly one of the two is expected to be set. */
@@ -24,8 +88,9 @@ function unauthorized(message: string): never {
   throw error;
 }
 
-function forbidden(message: string): never {
+function forbidden(message: string, code?: string): never {
   const error = new Error(message) as Error & { statusCode?: number };
+  if (code) error.name = code;
   error.statusCode = 403;
   throw error;
 }
@@ -256,25 +321,36 @@ export async function startDynamicAttempt(
   userId: number,
   input: StartDynamicAttemptInput
 ): Promise<unknown> {
+  const isMainsRequest = input.question_family === "mains_subjective";
+  await assertWithinQuestionCap(userId, input.question_count, isMainsRequest);
+
   return transaction(async (client) => {
-    const isMains = input.question_family === "mains_subjective";
+    const isMains = isMainsRequest;
     const storedExamLevelId = await resolveStoredExamLevelId(client, input.exam_id, input.exam_level_id);
 
     // 1. Fetch questions matching criteria
     const params: unknown[] = [input.exam_id, input.subject_node_id];
-    let queryText = "";
+    let fromAndWhere = "";
+    let selectColumns = "";
+    let outputColumns = "";
+    let strataExpr = "";
+    let recursiveCte: string | undefined;
 
     if (isMains) {
       const targetNodeId = input.subtopic_node_id || input.topic_node_id || input.subject_node_id;
       params[1] = targetNodeId;
-      queryText = `
-        with recursive category_nodes as (
+      selectColumns = "q.id, qv.id as version_id, coalesce(mqd.marks, 10.0) as marks";
+      outputColumns = "id, version_id, marks";
+      strataExpr = "coalesce(mqtl.subtopic_node_id, mqtl.topic_node_id, mqtl.theme_node_id, mqtl.subject_area_node_id, mqtl.paper_node_id)";
+      recursiveCte = `
+        category_nodes as (
           select id from assessment.mains_taxonomy_nodes where id = $2
           union all
           select child.id from assessment.mains_taxonomy_nodes child
           join category_nodes parent on parent.id = child.parent_id
         )
-        select q.id, qv.id as version_id, coalesce(mqd.marks, 10.0) as marks
+      `;
+      fromAndWhere = `
         from assessment.questions q
         join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
         join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = q.id
@@ -292,22 +368,22 @@ export async function startDynamicAttempt(
       `;
       if (input.is_user_private) {
         params.push(userId);
-        queryText += ` and q.created_by_user_id = $${params.length}`;
+        fromAndWhere += ` and q.created_by_user_id = $${params.length}`;
       } else {
-        queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+        fromAndWhere += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
       }
 
       if (input.exam_level_id) {
         params.push(input.exam_level_id);
-        queryText += ` and mqtl.exam_level_id = $${params.length}`;
+        fromAndWhere += ` and mqtl.exam_level_id = $${params.length}`;
       }
       if (input.question_nature_id) {
         params.push(input.question_nature_id);
-        queryText += ` and mqtl.question_nature_id = $${params.length}`;
+        fromAndWhere += ` and mqtl.question_nature_id = $${params.length}`;
       }
       if (!input.include_attempted) {
         params.push(userId);
-        queryText += `
+        fromAndWhere += `
           and q.id not in (
             select distinct maqv.question_id
             from assessment.mains_answers ma
@@ -317,8 +393,10 @@ export async function startDynamicAttempt(
         `;
       }
     } else {
-      queryText = `
-        select q.id, qv.id as version_id
+      selectColumns = "q.id, qv.id as version_id";
+      outputColumns = "id, version_id";
+      strataExpr = "coalesce(qtl.subtopic_node_id, qtl.topic_node_id, qtl.source_node_id, qtl.subject_node_id)";
+      fromAndWhere = `
         from assessment.questions q
         join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
         join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
@@ -329,30 +407,30 @@ export async function startDynamicAttempt(
       `;
       if (input.is_user_private) {
         params.push(userId);
-        queryText += ` and q.created_by_user_id = $${params.length}`;
+        fromAndWhere += ` and q.created_by_user_id = $${params.length}`;
       } else {
-        queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+        fromAndWhere += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
       }
 
       if (input.exam_level_id) {
         params.push(input.exam_level_id);
-        queryText += ` and qtl.exam_level_id = $${params.length}`;
+        fromAndWhere += ` and qtl.exam_level_id = $${params.length}`;
       }
       if (input.topic_node_id) {
         params.push(input.topic_node_id);
-        queryText += ` and qtl.topic_node_id = $${params.length}`;
+        fromAndWhere += ` and qtl.topic_node_id = $${params.length}`;
       }
       if (input.subtopic_node_id) {
         params.push(input.subtopic_node_id);
-        queryText += ` and qtl.subtopic_node_id = $${params.length}`;
+        fromAndWhere += ` and qtl.subtopic_node_id = $${params.length}`;
       }
       if (input.question_nature_id) {
         params.push(input.question_nature_id);
-        queryText += ` and qtl.question_nature_id = $${params.length}`;
+        fromAndWhere += ` and qtl.question_nature_id = $${params.length}`;
       }
       if (!input.include_attempted) {
         params.push(userId);
-        queryText += `
+        fromAndWhere += `
           and q.id not in (
             select distinct arqv.question_id
             from assessment.attempt_responses ar
@@ -365,13 +443,17 @@ export async function startDynamicAttempt(
     }
 
     params.push(input.question_count);
-    queryText += `
-      order by random()
-      limit $${params.length}
-    `;
+    const queryText = buildStratifiedSelectionQuery({
+      recursiveCte,
+      selectColumns,
+      outputColumns,
+      strataExpr,
+      fromAndWhere,
+      limitParamPlaceholder: `$${params.length}`
+    });
 
     const questionsRes = await client.query<{ id: number; version_id: number; marks?: number }>(queryText, params);
-    
+
     if (questionsRes.rows.length === 0) {
       noMatchingQuestions("No published questions found for the selected syllabus criteria. Try a different node or generate questions first.");
     }
@@ -526,6 +608,10 @@ export async function startCompiledAttempt(
   userId: number,
   input: StartCompiledAttemptInput
 ): Promise<unknown> {
+  const totalRequested = input.categories.reduce((sum, c) => sum + c.question_count, 0);
+  const isMainsCart = input.categories.some((c) => c.question_family === "mains_subjective");
+  await assertWithinQuestionCap(userId, totalRequested, isMainsCart);
+
   return transaction(async (client) => {
     const selectedVersions: Array<{ question_id: number; version_id: number; marks: number; negative_marks: number; question_family: string }> = [];
     const storedExamLevelId = await resolveStoredExamLevelId(client, input.exam_id, input.exam_level_id);
@@ -537,17 +623,25 @@ export async function startCompiledAttempt(
       const isMains = cat.question_family === "mains_subjective";
       const targetNodeId = cat.subtopic_node_id || cat.topic_node_id || cat.subject_node_id;
       const params: unknown[] = [input.exam_id, targetNodeId];
-      let queryText = "";
+      let fromAndWhere = "";
+      let selectColumns = "";
+      let outputColumns = "";
+      let strataExpr = "";
+      let recursiveCte: string | undefined;
 
       if (isMains) {
-        queryText = `
-          with recursive category_nodes as (
+        recursiveCte = `
+          category_nodes as (
             select id from assessment.mains_taxonomy_nodes where id = $2
             union all
             select child.id from assessment.mains_taxonomy_nodes child
             join category_nodes parent on parent.id = child.parent_id
           )
-          select q.id, qv.id as version_id, coalesce(mqd.marks, 10.0) as marks
+        `;
+        selectColumns = "q.id, qv.id as version_id, coalesce(mqd.marks, 10.0) as marks";
+        outputColumns = "id, version_id, marks";
+        strataExpr = "coalesce(mqtl.subtopic_node_id, mqtl.topic_node_id, mqtl.theme_node_id, mqtl.subject_area_node_id, mqtl.paper_node_id)";
+        fromAndWhere = `
           from assessment.questions q
           join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
           join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = q.id
@@ -565,22 +659,22 @@ export async function startCompiledAttempt(
         `;
         if (cat.is_user_private) {
           params.push(userId);
-          queryText += ` and q.created_by_user_id = $${params.length}`;
+          fromAndWhere += ` and q.created_by_user_id = $${params.length}`;
         } else {
-          queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+          fromAndWhere += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
         }
 
         if (input.exam_level_id) {
           params.push(input.exam_level_id);
-          queryText += ` and mqtl.exam_level_id = $${params.length}`;
+          fromAndWhere += ` and mqtl.exam_level_id = $${params.length}`;
         }
         if (cat.question_nature_id) {
           params.push(cat.question_nature_id);
-          queryText += ` and mqtl.question_nature_id = $${params.length}`;
+          fromAndWhere += ` and mqtl.question_nature_id = $${params.length}`;
         }
         if (!input.include_attempted) {
           params.push(userId);
-          queryText += `
+          fromAndWhere += `
             and q.id not in (
               select distinct maqv.question_id
               from assessment.mains_answers ma
@@ -590,14 +684,18 @@ export async function startCompiledAttempt(
           `;
         }
       } else {
-        queryText = `
-          with recursive category_nodes as (
+        recursiveCte = `
+          category_nodes as (
             select id from assessment.assessment_taxonomy_nodes where id = $2
             union all
             select child.id from assessment.assessment_taxonomy_nodes child
             join category_nodes parent on parent.id = child.parent_id
           )
-          select distinct q.id, qv.id as version_id
+        `;
+        selectColumns = "distinct q.id, qv.id as version_id";
+        outputColumns = "id, version_id";
+        strataExpr = "coalesce(qtl.subtopic_node_id, qtl.topic_node_id, qtl.source_node_id, qtl.subject_node_id)";
+        fromAndWhere = `
           from assessment.questions q
           join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
           join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
@@ -613,22 +711,22 @@ export async function startCompiledAttempt(
         `;
         if (cat.is_user_private) {
           params.push(userId);
-          queryText += ` and q.created_by_user_id = $${params.length}`;
+          fromAndWhere += ` and q.created_by_user_id = $${params.length}`;
         } else {
-          queryText += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+          fromAndWhere += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
         }
 
         if (input.exam_level_id) {
           params.push(input.exam_level_id);
-          queryText += ` and qtl.exam_level_id = $${params.length}`;
+          fromAndWhere += ` and qtl.exam_level_id = $${params.length}`;
         }
         if (cat.question_nature_id) {
           params.push(cat.question_nature_id);
-          queryText += ` and qtl.question_nature_id = $${params.length}`;
+          fromAndWhere += ` and qtl.question_nature_id = $${params.length}`;
         }
         if (!input.include_attempted) {
           params.push(userId);
-          queryText += `
+          fromAndWhere += `
             and q.id not in (
               select distinct arqv.question_id
               from assessment.attempt_responses ar
@@ -642,14 +740,18 @@ export async function startCompiledAttempt(
 
       if (selectedQuestionIds.length > 0) {
         params.push(selectedQuestionIds);
-        queryText += ` and q.id != all($${params.length})`;
+        fromAndWhere += ` and q.id != all($${params.length})`;
       }
 
       params.push(cat.question_count);
-      queryText += `
-        order by random()
-        limit $${params.length}
-      `;
+      const queryText = buildStratifiedSelectionQuery({
+        recursiveCte,
+        selectColumns,
+        outputColumns,
+        strataExpr,
+        fromAndWhere,
+        limitParamPlaceholder: `$${params.length}`
+      });
 
       const res = await client.query<{ id: number; version_id: number; marks?: number }>(queryText, params);
       for (const row of res.rows) {

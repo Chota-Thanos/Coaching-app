@@ -33,7 +33,8 @@ export const listMainsTaxonomyQuerySchema = listQuerySchema.extend({
   exam_id: idSchema.optional(),
   parent_id: idSchema.optional(),
   root_only: z.coerce.boolean().optional(),
-  node_type: mainsNodeTypeSchema.optional()
+  node_type: mainsNodeTypeSchema.optional(),
+  search: z.string().trim().min(1).optional()
 });
 
 export const mainsDetailsInputSchema = z.object({

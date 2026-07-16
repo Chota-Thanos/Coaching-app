@@ -99,7 +99,8 @@ export const listTaxonomyNodesQuerySchema = listQuerySchema.extend({
   parent_id: z.coerce.number().int().positive().optional(),
   root_only: z.coerce.boolean().optional(),
   node_type: taxonomyNodeTypeSchema.optional(),
-  content_type: z.enum(["gk", "aptitude"]).optional()
+  content_type: z.enum(["gk", "aptitude"]).optional(),
+  search: z.string().trim().min(1).optional()
 });
 
 export const listAttemptsQuerySchema = listQuerySchema.extend({

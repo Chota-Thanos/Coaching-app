@@ -561,6 +561,7 @@ export async function listTaxonomyNodes(
     root_only?: boolean;
     node_type?: string;
     content_type?: string;
+    search?: string;
   }
 ): Promise<unknown[]> {
   const params: unknown[] = [];
@@ -580,6 +581,9 @@ export async function listTaxonomyNodes(
   }
   if (options.content_type) {
     addCondition(conditions, params, "content_type = ?", options.content_type);
+  }
+  if (options.search) {
+    addCondition(conditions, params, "name ilike ?", `%${options.search}%`);
   }
 
   params.push(options.limit, options.offset);

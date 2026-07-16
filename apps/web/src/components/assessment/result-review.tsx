@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BarChart3, CheckCircle2, CircleAlert, Clock3, Filter, Target, Trophy, XCircle, Bookmark, Sparkles, FileCheck2, ExternalLink, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ResultReview as ResultReviewType, TestQuestionItem } from "../../lib/assessment";
 import { assessmentHref, formatMarks, formatPercent, optionKey, optionText, selectedAnswerKey } from "../../lib/assessment";
-import { authenticatedGet, useAuth, authenticatedPost, authenticatedDelete, authenticatedPatch } from "../auth/auth-context";
+import { authenticatedGet, useAuth, authenticatedPost, authenticatedDelete, authenticatedPatch, ApiError } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { FullTourSegment } from "../app/full-tour-segment";
 import { isFullTourActiveForPage } from "../../lib/full-tour";
@@ -111,6 +112,7 @@ function TabButton({
 
 /* ── Main component ───────────────────────────────────── */
 export function ResultReview({ resultId }: { resultId: string }) {
+  const router = useRouter();
   const { token, user } = useAuth();
   const [review, setReview] = useState<ResultReviewType | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -220,7 +222,13 @@ export function ResultReview({ resultId }: { resultId: string }) {
       await loadReview();
     } catch (err) {
       console.error("AI Evaluation failed:", err);
-      alert("Failed to trigger AI evaluation. Please try again.");
+      if (err instanceof ApiError && err.code === "ai_evaluation_requires_premium") {
+        if (confirm(`${err.message}\n\nView upgrade plans now?`)) {
+          router.push("/pricing");
+        }
+      } else {
+        alert("Failed to trigger AI evaluation. Please try again.");
+      }
     } finally {
       setEvaluatingIds((prev) => {
         const next = new Set(prev);

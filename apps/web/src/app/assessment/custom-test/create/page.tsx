@@ -580,8 +580,14 @@ function CreateCustomTestInner() {
       setError("Please add questions from at least one category to create your test.");
       return;
     }
-    if (!isAssessmentPremium && totalAddedQuestions > 10) {
-      setError("⚡ Free tier is limited to 10 questions per custom test. Please reduce the number of questions or upgrade to Assessment Premium for unlimited testing.");
+    const isMains = contentType === "mains";
+    const questionCap = isAssessmentPremium ? (isMains ? 25 : 100) : (isMains ? 10 : 50);
+    if (totalAddedQuestions > questionCap) {
+      setError(
+        isAssessmentPremium
+          ? `⚡ ${isMains ? "Mains" : "GK/CSAT"} tests are limited to ${questionCap} questions, even on Assessment Premium. Please reduce the number of questions.`
+          : `⚡ ${isMains ? "Mains" : "GK/CSAT"} tests on the free tier are limited to ${questionCap} questions. Please reduce the number of questions or upgrade to Assessment Premium for a higher limit.`
+      );
       return;
     }
 
@@ -778,7 +784,10 @@ function CreateCustomTestInner() {
           <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 text-sm font-semibold text-indigo-800">
             <p className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-indigo-650 shrink-0 fill-indigo-200" />
-              <span>Free Tier: Custom tests are limited to a maximum of 10 questions. Upgrade for unlimited questions.</span>
+              <span>
+                Free Tier: {contentType === "mains" ? "Mains" : "GK/CSAT"} tests are limited to a maximum of{" "}
+                {contentType === "mains" ? 10 : 50} questions. Upgrade to Premium for up to {contentType === "mains" ? 25 : 100}.
+              </span>
             </p>
             <Link href="/pricing" className="text-xs font-black text-indigo-700 hover:text-indigo-900 underline uppercase tracking-wider shrink-0">
               Upgrade Now
@@ -866,14 +875,16 @@ function CreateCustomTestInner() {
                 <div className="pt-3 border-t border-slate-100 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-bold text-slate-700">Total Questions</span>
-                    <span className={`font-black text-base ${!isAssessmentPremium && totalAddedQuestions > 10 ? "text-rose-600" : "text-indigo-650"}`}>
+                    <span className={`font-black text-base ${totalAddedQuestions > (isAssessmentPremium ? (contentType === "mains" ? 25 : 100) : (contentType === "mains" ? 10 : 50)) ? "text-rose-600" : "text-indigo-650"}`}>
                       {totalAddedQuestions}
                     </span>
                   </div>
                   <div className="text-[11px] font-semibold flex justify-between items-center">
                     <span className="text-slate-500">Tier Status</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isAssessmentPremium ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"}`}>
-                      {isAssessmentPremium ? "Premium (Unlimited)" : `Free Limit: 10 Qs (${totalAddedQuestions}/10)`}
+                      {isAssessmentPremium
+                        ? `Premium Limit: ${contentType === "mains" ? 25 : 100} Qs (${totalAddedQuestions}/${contentType === "mains" ? 25 : 100})`
+                        : `Free Limit: ${contentType === "mains" ? 10 : 50} Qs (${totalAddedQuestions}/${contentType === "mains" ? 10 : 50})`}
                     </span>
                   </div>
                 </div>

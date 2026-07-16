@@ -53,6 +53,7 @@ import { saveQuestionsDraft } from "./questions.service.js";
 import { parseQuizAI, generateQuizzesAI, draftMainsQuestionAI } from "../current-affairs/master/ai.service.js";
 import { extractTextFromImage, extractTextFromImages } from "./ocr.service.js";
 import { getUserEntitlements } from "../billing/service.js";
+import { getFreeTestUsage } from "./free-test-allowance.js";
 import { one, query, transaction } from "../../db.js";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -220,6 +221,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
 
   server.post("/api/v1/assessment/attempts/dynamic", async (request, reply) => {
     const user = await requireAuth(request);
+    if (!(await requireFreeTestAllowance(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = parse(startDynamicAttemptSchema, request.body ?? {});
       const record = await startDynamicAttempt(user.id, body);
@@ -229,6 +231,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
 
   server.post("/api/v1/assessment/attempts/compiled", async (request, reply) => {
     const user = await requireAuth(request);
+    if (!(await requireFreeTestAllowance(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = parse(startCompiledAttemptSchema, request.body ?? {});
       const record = await startCompiledAttempt(user.id, body);
@@ -238,6 +241,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
 
   server.post("/api/v1/assessment/attempts/mains-question", async (request, reply) => {
     const user = await requireAuth(request);
+    if (!(await requireFreeTestAllowance(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = parse(
         z.object({ question_id: z.coerce.number().int().positive() }),
@@ -584,6 +588,7 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
   // createUserCustomTest's guest question-count cap); logged-in users are unlimited.
   server.post("/api/v1/assessment/user/custom-tests", async (request, reply) => {
     const user = await getOptionalAuth(request);
+    if (user && !(await requireFreeTestAllowance(user.id, reply))) return;
     return withValidation(reply, async () => {
       const body = parse(
         z.object({
@@ -626,6 +631,22 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
     const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
     if (!hasPremium) {
       reply.status(403).send({ error: "This feature requires an Assessment Premium subscription." });
+      return false;
+    }
+    return true;
+  }
+
+  // Helper: check user hasn't exhausted their one-time free self-built test
+  // allowance (standardised across GK/CSAT/Mains — see free-test-allowance.ts).
+  async function requireFreeTestAllowance(userId: number, reply: any): Promise<boolean> {
+    const { used, limit, hasPremium } = await getFreeTestUsage(userId);
+    if (!hasPremium && used >= limit) {
+      reply.status(403).send({
+        error: "free_test_limit_reached",
+        message: `You've used all ${limit} free tests. Upgrade to Assessment Premium for unlimited tests.`,
+        limit,
+        used
+      });
       return false;
     }
     return true;

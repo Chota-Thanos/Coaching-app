@@ -9,6 +9,8 @@ import type {
   UpdateTestTemplateInput
 } from "./schemas.js";
 import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
+import { getUserEntitlements } from "../billing/service.js";
+import { getQuestionCap } from "./question-caps.js";
 
 export async function listTestTemplates(
   options: ListTestTemplatesQuery & { user_id?: number; user_role?: string }
@@ -784,8 +786,24 @@ export async function createUserCustomTest(
     const error = new Error(
       `Guest tests are limited to ${GUEST_CUSTOM_TEST_QUESTION_CAP} questions — sign in for unlimited custom tests.`
     ) as Error & { statusCode?: number };
+    error.name = "guest_question_cap_exceeded";
     error.statusCode = 403;
     throw error;
+  }
+
+  if (userId) {
+    const isMains = (input.test_type ?? "sectional_test") === "mains_test";
+    const entitlements = await getUserEntitlements(userId);
+    const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
+    const cap = getQuestionCap(hasPremium, isMains);
+    if (input.question_ids.length > cap) {
+      const error = new Error(
+        `${isMains ? "Mains" : "GK/CSAT"} tests are limited to ${cap} questions${hasPremium ? " on Assessment Premium" : " on the free tier"}.${hasPremium ? "" : " Upgrade to Assessment Premium for a higher limit."}`
+      ) as Error & { statusCode?: number };
+      error.name = "question_cap_exceeded";
+      error.statusCode = 403;
+      throw error;
+    }
   }
 
   let duration = input.duration_minutes ?? (input.question_ids.length * 2);

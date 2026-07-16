@@ -22,7 +22,6 @@ import {
   Sparkles,
   Trash2,
   X,
-  LockKeyhole,
   SlidersHorizontal,
   User
 } from "lucide-react";
@@ -31,6 +30,7 @@ import { resolveMediaUrl } from "../../lib/api";
 import { useSubscription } from "../../lib/use-subscription";
 import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
 import { UserQuestionForm } from "./user-question-form";
+import { GuidedTourController, type TourStep } from "../app/guided-tour-engine";
 
 type ActiveTab = "gk" | "aptitude" | "mains" | "bookmarks";
 type QuestionFamily = "objective" | "mains_subjective";
@@ -231,6 +231,12 @@ export function AssessmentHomePage({
   const [userQuestionCounts, setUserQuestionCounts] = useState<Record<number, number>>({});
 
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+  // Breadcrumb trail for the one-level-at-a-time category browser — replaces
+  // the old "Open Category" link that navigated to a whole separate route
+  // (and a disconnected copy of this whole builder). Drilling in/out here is
+  // just a state change: no refetch, and the cart below is the same
+  // compiledItems used everywhere else on this page.
+  const [drillPath, setDrillPath] = useState<TreeNodeType[]>([]);
   const [counts, setCounts] = useState<Record<number, number>>({});
   const [compiledItems, setCompiledItems] = useState<CompiledItem[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<TestFormat>("sectional_test");
@@ -576,7 +582,7 @@ export function AssessmentHomePage({
   const displayBookmarkedQuestions = useMemo(() => {
     let filtered = bookmarkedQuestions;
     if (revisionContentTypeFilter) {
-      filtered = filtered.filter(b => b.question_version?.taxonomy_content_type === revisionContentTypeFilter);
+      filtered = filtered.filter(b => b.taxonomy?.content_type === revisionContentTypeFilter);
     }
     if (rootNodeId) {
       filtered = filtered.filter(b => {
@@ -665,7 +671,7 @@ export function AssessmentHomePage({
         return;
       }
       const selectedBookmarks = bookmarkedQuestions.filter(b => qIds.includes(Number(b.question_id)));
-      const hasMains = selectedBookmarks.some(b => b.question_version?.taxonomy_content_type === "mains");
+      const hasMains = selectedBookmarks.some(b => b.taxonomy?.content_type === "mains");
 
       const categoryName = selectedRevisionNodeId 
         ? ([...objNodes, ...mainsNodes].find(n => Number(n.id) === selectedRevisionNodeId)?.name || "Category")
@@ -728,6 +734,20 @@ export function AssessmentHomePage({
 
     return activeTree.map(filterNode).filter((node): node is TreeNodeType => node !== null);
   }, [activeTree, filterText]);
+
+  // drillPath[0] is always the active subject tab; anything after it is how
+  // far the user has drilled in below that tab. Falls back to the first
+  // subject once data/search results load, or if the previously active
+  // subject no longer matches the current search.
+  const effectiveDrillPath = useMemo(() => {
+    const activeSubject = drillPath[0];
+    if (activeSubject && filteredTree.some((n) => n.id === activeSubject.id)) {
+      return drillPath;
+    }
+    return filteredTree[0] ? [filteredTree[0]] : [];
+  }, [drillPath, filteredTree]);
+
+  const currentLevelNodes = effectiveDrillPath[effectiveDrillPath.length - 1]?.children ?? [];
 
   useEffect(() => {
     if (!filterText.trim()) return;
@@ -822,6 +842,15 @@ export function AssessmentHomePage({
   const availableTotal = useMemo(() => {
     return activeTree.reduce((total, node) => total + getAvailableCount(node.id), 0);
   }, [activeTree, getAvailableCount]);
+
+  // First root category worth showcasing in the tour — prefers one with both
+  // sub-categories (so "Browse" is meaningful) and available questions (so
+  // the Add step has something to point at). Mirrors the mobile app's
+  // _findTourAnchorNodeId.
+  const tourAnchorId = useMemo(() => {
+    const withChildren = filteredTree.find((n) => n.children.length > 0 && getAvailableCount(n.id) > 0);
+    return withChildren?.id ?? filteredTree[0]?.id ?? null;
+  }, [filteredTree, getAvailableCount]);
   const getSelectedCount = (nodeId: number) => {
     const available = getAvailableCount(nodeId);
     return clampCount(counts[nodeId] ?? Math.min(10, Math.max(available, 1)), available);
@@ -878,13 +907,10 @@ export function AssessmentHomePage({
     setFilterText("");
     setExpandedNodes(new Set());
     setCompiledItems([]);
+    setDrillPath([]);
   };
 
   const handleStartPromptedTest = async (node: TreeNodeType, formatId: TestFormat, count: number) => {
-    if (!isAssessmentPremium) {
-      setError("⚡ Dynamic category tests are a premium feature. Upgrade to Assessment Premium to access unlimited tests, custom test configurations, and AI evaluations.");
-      return;
-    }
     setPromptNode(null);
     setStartingNodeId(node.id);
     setError(null);
@@ -912,10 +938,6 @@ export function AssessmentHomePage({
   const handleStartTest = async (node: TreeNodeType) => {
     if (!token) {
       setError("Please sign in to take practice assessments.");
-      return;
-    }
-    if (!isAssessmentPremium) {
-      setError("⚡ Dynamic category tests are a premium feature. Upgrade to Assessment Premium to access unlimited tests, custom test configurations, and AI evaluations.");
       return;
     }
     if (!examId) {
@@ -965,7 +987,7 @@ export function AssessmentHomePage({
     try {
       const qIds = Array.from(selectedBookmarkIds);
       const selectedBookmarks = bookmarkedQuestions.filter(b => qIds.includes(Number(b.question_id)));
-      const hasMains = selectedBookmarks.some(b => b.question_version?.taxonomy_content_type === "mains");
+      const hasMains = selectedBookmarks.some(b => b.taxonomy?.content_type === "mains");
 
       const customTest = await authenticatedPost<any>("/api/v1/assessment/user/custom-tests", token, {
         title: `Revision Test - ${new Date().toLocaleDateString()}`,
@@ -1003,7 +1025,7 @@ export function AssessmentHomePage({
         
         let filtered = data || [];
         if (revisionContentTypeFilter) {
-          filtered = filtered.filter(b => b.question_version?.taxonomy_content_type === revisionContentTypeFilter);
+          filtered = filtered.filter(b => b.taxonomy?.content_type === revisionContentTypeFilter);
         }
         if (rootNodeId) {
           filtered = filtered.filter(b => {
@@ -1133,8 +1155,14 @@ export function AssessmentHomePage({
       return;
     }
     const totalQuestions = compiledItems.reduce((acc, item) => acc + item.count, 0);
-    if (!isAssessmentPremium && totalQuestions > 10) {
-      setError("⚡ Free tier is limited to 10 questions per custom test. Please reduce the number of questions or upgrade to Assessment Premium for unlimited testing.");
+    const isMainsCart = compiledItems.some((item) => item.question_family === "mains_subjective");
+    const cap = isAssessmentPremium ? (isMainsCart ? 25 : 100) : (isMainsCart ? 10 : 50);
+    if (totalQuestions > cap) {
+      setError(
+        isAssessmentPremium
+          ? `⚡ ${isMainsCart ? "Mains" : "GK/CSAT"} tests are limited to ${cap} questions, even on Assessment Premium. Please reduce the number of questions.`
+          : `⚡ ${isMainsCart ? "Mains" : "GK/CSAT"} tests on the free tier are limited to ${cap} questions. Please reduce the number of questions or upgrade to Assessment Premium for a higher limit.`
+      );
       return;
     }
     if (!examId || compiledItems.length === 0) return;
@@ -1172,8 +1200,40 @@ export function AssessmentHomePage({
   const canCompile = compiledItems.length > 0 && !compiling && compiledItems.every((item) => getAvailableCount(item.node.id) > 0);
   const activeSection = TABS.find((tab) => tab.id === activeTab);
 
+  const builderTourSteps: TourStep[] = [
+    {
+      selector: "#tour-browse-btn",
+      badge: "Quick Tour",
+      title: "Browse Sub-Categories",
+      body:
+        activeTab === "mains"
+          ? "Papers go several levels deep — Subject Area, Theme, Topic, Subtopic. Click here to step into any of them one level at a time, where you can set quantities and add questions."
+          : "Click here to step into this subject's sources and topics one level at a time. Once inside, you can set how many questions you want and add them to your test.",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
+      {!rootNodeId && activeTab !== "bookmarks" && !loadingTree && tourAnchorId != null && (
+        // !loadingTree matters as much as tourAnchorId != null: the actual
+        // TreeRow/Browse button JSX only mounts once loadingTree is false
+        // (see the loadingTree ? <spinner> : ... branch below), even though
+        // activeTree/tourAnchorId can already have data before that. Without
+        // this the tour fires while its target isn't in the DOM yet and
+        // renders as an unanchored floating tooltip over a dimmed screen.
+        //
+        // No `token` here on purpose: the completion-check API only knows
+        // tours pre-registered in app.onboarding_tours, which this one isn't
+        // (it's defined entirely by fallbackSteps below) — passing token
+        // would make GuidedTourController check a DB record that can never
+        // exist, so it'd report "not completed" and replay every visit.
+        // Omitting it keeps completion tracked in localStorage only, same
+        // as the mobile app's AppTourService.
+        <GuidedTourController
+          tourKey={`assessment_builder_tour_${activeTab}_v1`}
+          fallbackSteps={builderTourSteps}
+        />
+      )}
       <main className="mx-auto max-w-7xl space-y-5 px-4 pt-5">
         {targetCustomTest && (
           <div className="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1290,7 +1350,7 @@ export function AssessmentHomePage({
             </span>
             <div>
               <p className="text-sm font-black text-slate-900">Upgrade to Assessment Premium</p>
-              <p className="text-xs font-semibold text-slate-600">Unlock unlimited practice tests, performance radar, and AI answer evaluation.</p>
+              <p className="text-xs font-semibold text-slate-600">You get 3 free self-built tests total across GK, CSAT &amp; Mains. Upgrade for unlimited tests plus AI answer evaluation.</p>
             </div>
           </div>
           <Link href="/pricing" className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition">
@@ -1323,11 +1383,6 @@ export function AssessmentHomePage({
                           : "bg-indigo-50 border-indigo-100/50 text-indigo-600"
                       }`}
                     >
-                      {tab.id === "mains" && !isAssessmentPremium && (
-                        <span className="absolute -right-1 -top-1 grid h-4.5 w-4.5 place-items-center rounded-full bg-indigo-650 text-white border border-white">
-                          <LockKeyhole className="h-2.5 w-2.5" />
-                        </span>
-                      )}
                       {tab.icon}
                     </span>
                     <span className="min-w-0">
@@ -1348,7 +1403,10 @@ export function AssessmentHomePage({
                   type="search"
                   placeholder="Search categories"
                   value={filterText}
-                  onChange={(event) => setFilterText(event.target.value)}
+                  onChange={(event) => {
+                    setFilterText(event.target.value);
+                    if (event.target.value.trim()) setDrillPath([]);
+                  }}
                   className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
                 />
               </div>
@@ -1511,7 +1569,7 @@ export function AssessmentHomePage({
                             />
                             <div className="flex-1 min-w-0">
                               <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-650">
-                                {q?.taxonomy_content_type === "mains" ? "Mains" : "Objective"}
+                                {bookmark.taxonomy?.content_type === "mains" ? "Mains" : "Objective"}
                               </span>
                               <p className="mt-1.5 line-clamp-3 text-sm font-bold leading-relaxed text-slate-900">
                                 {q?.question_statement || "No statement"}
@@ -1578,26 +1636,72 @@ export function AssessmentHomePage({
                 </button>
               </div>
 
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {filteredTree.map((subject) => {
+                  const isActive = subject.id === effectiveDrillPath[0]?.id;
+                  return (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      id={subject.id === tourAnchorId ? "tour-browse-btn" : undefined}
+                      onClick={() => setDrillPath([subject])}
+                      className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-black transition ${
+                        isActive
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300"
+                      }`}
+                    >
+                      {subject.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {effectiveDrillPath.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">
+                  {effectiveDrillPath.map((crumb, i) => (
+                    <span key={crumb.id} className="flex items-center gap-1.5">
+                      {i > 0 && <ChevronRight className="h-3 w-3 text-slate-400" aria-hidden="true" />}
+                      <button
+                        type="button"
+                        onClick={() => setDrillPath(effectiveDrillPath.slice(0, i + 1))}
+                        disabled={i === effectiveDrillPath.length - 1}
+                        className={i === effectiveDrillPath.length - 1 ? "text-slate-900 font-black" : "text-indigo-650 hover:text-indigo-850 transition"}
+                      >
+                        {crumb.name}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <div className="max-h-[680px] space-y-2 overflow-y-auto pr-1">
-                {filteredTree.map((node) => (
-                  <TreeRow
-                    key={node.id}
-                    node={node}
-                    depth={0}
-                    expandedNodes={expandedNodes}
-                    toggleExpand={toggleExpand}
-                    getAvailableCount={getAvailableCount}
-                    getSelectedCount={getSelectedCount}
-                    setNodeCount={setNodeCount}
-                    loadingCounts={loadingCounts}
-                    startingNodeId={startingNodeId}
-                    onAddToTest={handleAddToTest}
-                    onStartTest={handleStartTest}
-                    activeTab={activeTab}
-                    onAddQuestion={setActiveFormNode}
-                    userQuestionCounts={userQuestionCounts}
-                  />
-                ))}
+                {currentLevelNodes.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 py-10 text-center text-xs text-slate-500">
+                    No sub-categories here.
+                  </div>
+                ) : (
+                  currentLevelNodes.map((node) => (
+                    <TreeRow
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      expandedNodes={expandedNodes}
+                      toggleExpand={toggleExpand}
+                      getAvailableCount={getAvailableCount}
+                      getSelectedCount={getSelectedCount}
+                      setNodeCount={setNodeCount}
+                      loadingCounts={loadingCounts}
+                      startingNodeId={startingNodeId}
+                      onAddToTest={handleAddToTest}
+                      onStartTest={handleStartTest}
+                      activeTab={activeTab}
+                      onAddQuestion={setActiveFormNode}
+                      userQuestionCounts={userQuestionCounts}
+                      onDrillInto={(n) => setDrillPath([...effectiveDrillPath, n])}
+                    />
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -2097,7 +2201,8 @@ function TreeRow({
   onStartTest,
   activeTab,
   onAddQuestion,
-  userQuestionCounts
+  userQuestionCounts,
+  onDrillInto
 }: {
   node: TreeNodeType;
   depth: number;
@@ -2112,6 +2217,7 @@ function TreeRow({
   onStartTest: (node: TreeNodeType) => void;
   activeTab: ActiveTab;
   onAddQuestion?: (node: TreeNodeType) => void;
+  onDrillInto?: (node: TreeNodeType) => void;
   userQuestionCounts?: Record<number, number>;
 }) {
   const hasChildren = node.children.length > 0;
@@ -2120,84 +2226,10 @@ function TreeRow({
   const selectedCount = getSelectedCount(node.id);
   const disabled = loadingCounts || availableCount <= 0;
   const isStarting = startingNodeId === node.id;
-  const isRoot = node.node_type === "subject" || node.node_type === "paper";
-
-  const detailUrl = `/assessment/category/${node.id}${
-    activeTab === "mains" ? "?type=mains" : activeTab === "aptitude" ? "?type=aptitude" : ""
-  }`;
 
   return (
     <div className="space-y-2">
-      {isRoot ? (
-        <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
-          <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-6">
-            <Link href={detailUrl} className="flex shrink-0 items-center justify-center bg-transparent hover:opacity-80 transition">
-              {node.image_url ? (
-                <img alt="" className="h-28 w-28 shrink-0 rounded-full border border-indigo-50 object-cover shadow-sm" src={resolveMediaUrl(node.image_url) ?? undefined} />
-              ) : (
-                <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-500 shadow-sm">
-                  <BookOpen className="h-12 w-12" aria-hidden="true" />
-                </div>
-              )}
-            </Link>
-
-            <div className="flex flex-1 min-w-0 flex-col justify-between gap-4 py-1">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link href={detailUrl} className="hover:text-indigo-650 transition-colors">
-                      <p className="truncate text-lg font-black text-slate-955">{node.name}</p>
-                    </Link>
-                    {node.description && (
-                      <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">{node.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${
-                        availableCount > 0
-                          ? "border-indigo-100 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-slate-50 text-slate-500"
-                      }`}
-                    >
-                      {loadingCounts ? "Checking..." : `${availableCount} Quiz`}
-                    </span>
-                    {userQuestionCounts && (userQuestionCounts[node.id] ?? 0) > 0 && (
-                      <span className="rounded-full border border-amber-150 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-700">
-                        +{userQuestionCounts[node.id]} yours
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs font-bold text-slate-500">
-                  {node.children.length} child categor{node.children.length === 1 ? "y" : "ies"}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={detailUrl}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-indigo-650 hover:text-indigo-650 shadow-sm"
-                  >
-                    Open Category
-                  </Link>
-                  <button
-                    type="button"
-                    disabled={!hasChildren}
-                    aria-label={hasChildren ? `${isExpanded ? "Collapse" : "Expand"} ${node.name}` : undefined}
-                    onClick={() => hasChildren && toggleExpand(node.id)}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-900 px-4 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-100 disabled:text-slate-400"
-                  >
-                    {isExpanded ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
-                    {isExpanded ? "Hide Levels" : "View Levels"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : node.isUserNode ? (
+      {node.isUserNode ? (
         <div className="grid gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/20 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-start gap-3">
             <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amber-250 bg-white text-amber-600">
@@ -2314,6 +2346,15 @@ function TreeRow({
                     Up to {Math.min(availableCount, 50)} can be selected
                   </span>
                 )}
+                {hasChildren && onDrillInto && (
+                  <button
+                    type="button"
+                    onClick={() => onDrillInto(node)}
+                    className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-650 hover:text-indigo-850 transition"
+                  >
+                    Browse sub-categories →
+                  </button>
+                )}
                 {onAddQuestion && (
                   <div className="inline-flex items-center gap-3">
                     <button
@@ -2401,6 +2442,7 @@ function TreeRow({
               activeTab={activeTab}
               onAddQuestion={onAddQuestion}
               userQuestionCounts={userQuestionCounts}
+              onDrillInto={onDrillInto}
             />
           ))}
         </div>

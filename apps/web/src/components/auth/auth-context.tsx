@@ -26,6 +26,14 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+export class ApiError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 async function jsonFetch<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!headers.has("accept")) headers.set("accept", "application/json");
@@ -42,6 +50,7 @@ async function jsonFetch<T>(path: string, token?: string, init?: RequestInit): P
 
   if (!response.ok) {
     let message = `Request failed with ${response.status}`;
+    let code: string | undefined;
     try {
       const text = await response.text();
       const body = text ? JSON.parse(text) : null;
@@ -50,6 +59,9 @@ async function jsonFetch<T>(path: string, token?: string, init?: RequestInit): P
           message = body.message;
         } else if (body.error === "validation_error" && Array.isArray(body.issues)) {
           message = body.issues.map((i: any) => i.message).join(" ");
+        }
+        if (typeof body.error === "string" && body.error !== "validation_error") {
+          code = body.error;
         }
       }
     } catch {
@@ -63,7 +75,7 @@ async function jsonFetch<T>(path: string, token?: string, init?: RequestInit): P
         window.location.reload();
       }
     }
-    throw new Error(message);
+    throw new ApiError(message, code);
   }
 
   const text = await response.text();

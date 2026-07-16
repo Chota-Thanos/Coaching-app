@@ -16,6 +16,7 @@ import {
   FileText,
   ListChecks,
   Target,
+  Layers,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -31,6 +32,7 @@ import { AdminMainsTaxonomyManager } from "../current-affairs/admin/admin-mains-
 import { AdminMainsEvaluationManager } from "../current-affairs/admin/admin-mains-evaluation-manager";
 import { AssessmentAiSettingsManager } from "./assessment-ai-settings-manager";
 import { AdminDiagnosticTestManager } from "./admin-diagnostic-test-manager";
+import { AdminHomeCollectionsManager } from "./admin-home-collections-manager";
 
 type AssessmentTab =
   | "overview"
@@ -44,7 +46,8 @@ type AssessmentTab =
   | "assessment-categories"
   | "mains-categories"
   | "ai-settings"
-  | "diagnostic-tests";
+  | "diagnostic-tests"
+  | "home-collections";
 
 const ASSESSMENT_NAV: {
   tab: AssessmentTab;
@@ -54,6 +57,7 @@ const ASSESSMENT_NAV: {
 }[] = [
   { tab: "overview", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" />, group: "Dashboard" },
   { tab: "diagnostic-tests", label: "Diagnostic Tests", icon: <Target className="h-4 w-4" />, group: "Dashboard" },
+  { tab: "home-collections", label: "Home Collections", icon: <Layers className="h-4 w-4" />, group: "Configuration" },
   { tab: "objective-questions", label: "GK Questions", icon: <ListChecks className="h-4 w-4" />, group: "Question Banks" },
   { tab: "csat-questions", label: "CSAT Questions", icon: <ListChecks className="h-4 w-4" />, group: "Question Banks" },
   { tab: "mains-questions", label: "Mains Questions", icon: <FileText className="h-4 w-4" />, group: "Question Banks" },
@@ -390,6 +394,13 @@ export function AdminAssessmentSpace() {
         {activeTab === "diagnostic-tests" && (
           <div className="space-y-5 animate-in fade-in duration-300">
             <AdminDiagnosticTestManager />
+          </div>
+        )}
+
+        {/* HOME COLLECTIONS */}
+        {activeTab === "home-collections" && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <AdminHomeCollectionsManager />
           </div>
         )}
 
