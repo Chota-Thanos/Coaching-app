@@ -29,7 +29,7 @@ async function assertWithinQuestionCap(userId: number, questionCount: number, is
  * smaller than N), so the final set stays evenly spread rather than biased
  * toward the largest group.
  */
-function buildStratifiedSelectionQuery(options: {
+export function buildStratifiedSelectionQuery(options: {
   // Body of an extra CTE (e.g. "category_nodes as (select id from ... union all ...)")
   // that `fromAndWhere` can reference via "in (select id from category_nodes)".
   // Kept as a real CTE (not a joined subquery) so it's checked as membership,

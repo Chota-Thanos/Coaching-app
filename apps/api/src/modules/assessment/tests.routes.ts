@@ -20,7 +20,8 @@ import {
   listAttemptsQuerySchema,
   bulkUpdateTestTemplatesTaxonomySchema,
   startDynamicAttemptSchema,
-  startCompiledAttemptSchema
+  startCompiledAttemptSchema,
+  compiledCategorySchema
 } from "./schemas.js";
 import {
   getAttempt,
@@ -597,6 +598,10 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
           exam_id: z.coerce.number().int().positive(),
           exam_level_id: z.coerce.number().int().positive(),
           question_ids: z.array(z.coerce.number().int().positive()).optional().default([]),
+          // Alternative to question_ids: any-level category specs, resolved
+          // server-side with the same rollup logic as compiled attempts — lets
+          // a saved test be built from a whole subject, not just leaf categories.
+          categories: z.array(compiledCategorySchema).optional(),
           duration_minutes: z.coerce.number().int().positive().optional(),
           test_type: z.enum(["sectional_test", "mains_test"]).optional()
         }),
@@ -615,12 +620,13 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
       const params = parse(testTemplateIdParamSchema, request.params);
       const body = parse(
         z.object({
-          question_ids: z.array(z.coerce.number().int().positive())
+          question_ids: z.array(z.coerce.number().int().positive()).optional().default([]),
+          categories: z.array(compiledCategorySchema).optional()
         }),
         request.body
       );
 
-      const record = await addQuestionsToUserTest(user.id, params.testTemplateId, body.question_ids);
+      const record = await addQuestionsToUserTest(user.id, params.testTemplateId, body.question_ids, body.categories);
       return record;
     });
   });

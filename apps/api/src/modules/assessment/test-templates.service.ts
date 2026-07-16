@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { one, query, transaction } from "../../db.js";
 import type {
   AddTestQuestionItemInput,
@@ -11,6 +12,141 @@ import type {
 import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
 import { getUserEntitlements } from "../billing/service.js";
 import { getQuestionCap } from "./question-caps.js";
+import { buildStratifiedSelectionQuery } from "./attempts.service.js";
+
+export type CategorySelectionSpec = {
+  subject_node_id?: number | null;
+  topic_node_id?: number | null;
+  subtopic_node_id?: number | null;
+  question_count: number;
+  question_family?: string;
+  question_nature_id?: number | null;
+  is_user_private?: boolean | null;
+};
+
+// Resolves category specs (any taxonomy level, e.g. a whole subject) into a
+// balanced/stratified list of published question versions — the same rollup
+// logic startCompiledAttempt uses for live attempts, reused here so saving a
+// category into a reusable test template (new or existing) works from any
+// level too, not just leaf categories with questions tagged exactly there.
+async function resolveCategoriesToQuestions(
+  client: PoolClient,
+  userId: number | null,
+  examId: number,
+  categories: CategorySelectionSpec[],
+  excludeQuestionIds: number[] = []
+): Promise<Array<{ question_id: number; version_id: number; marks: number; question_family: string }>> {
+  const selectedVersions: Array<{ question_id: number; version_id: number; marks: number; question_family: string }> = [];
+  const selectedQuestionIds: number[] = [...excludeQuestionIds];
+
+  for (const cat of categories) {
+    const isMains = cat.question_family === "mains_subjective";
+    const targetNodeId = cat.subtopic_node_id || cat.topic_node_id || cat.subject_node_id;
+    if (!targetNodeId || cat.question_count <= 0) continue;
+
+    const params: unknown[] = [examId, targetNodeId];
+    let fromAndWhere = "";
+    let selectColumns = "";
+    let outputColumns = "";
+    let strataExpr = "";
+    let recursiveCte: string;
+
+    if (isMains) {
+      recursiveCte = `
+        category_nodes as (
+          select id from assessment.mains_taxonomy_nodes where id = $2
+          union all
+          select child.id from assessment.mains_taxonomy_nodes child
+          join category_nodes parent on parent.id = child.parent_id
+        )
+      `;
+      selectColumns = "q.id, qv.id as version_id, coalesce(mqd.marks, 10.0) as marks";
+      outputColumns = "id, version_id, marks";
+      strataExpr = "coalesce(mqtl.subtopic_node_id, mqtl.topic_node_id, mqtl.theme_node_id, mqtl.subject_area_node_id, mqtl.paper_node_id)";
+      fromAndWhere = `
+        from assessment.questions q
+        join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
+        join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = q.id
+        left join assessment.mains_question_details mqd on mqd.question_id = q.id
+        where q.status = 'published'
+          and q.question_family = 'mains_subjective'
+          and mqtl.exam_id = $1
+          and (
+            mqtl.paper_node_id in (select id from category_nodes)
+            or mqtl.subject_area_node_id in (select id from category_nodes)
+            or mqtl.theme_node_id in (select id from category_nodes)
+            or mqtl.topic_node_id in (select id from category_nodes)
+            or mqtl.subtopic_node_id in (select id from category_nodes)
+          )
+      `;
+    } else {
+      recursiveCte = `
+        category_nodes as (
+          select id from assessment.assessment_taxonomy_nodes where id = $2
+          union all
+          select child.id from assessment.assessment_taxonomy_nodes child
+          join category_nodes parent on parent.id = child.parent_id
+        )
+      `;
+      selectColumns = "distinct q.id, qv.id as version_id";
+      outputColumns = "id, version_id";
+      strataExpr = "coalesce(qtl.subtopic_node_id, qtl.topic_node_id, qtl.source_node_id, qtl.subject_node_id)";
+      fromAndWhere = `
+        from assessment.questions q
+        join assessment.question_versions qv on qv.question_id = q.id and qv.is_current = true
+        join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
+        where q.status = 'published'
+          and q.question_family = 'objective'
+          and qtl.exam_id = $1
+          and (
+            qtl.subject_node_id in (select id from category_nodes)
+            or qtl.source_node_id in (select id from category_nodes)
+            or qtl.topic_node_id in (select id from category_nodes)
+            or qtl.subtopic_node_id in (select id from category_nodes)
+          )
+      `;
+    }
+
+    if (cat.is_user_private) {
+      params.push(userId);
+      fromAndWhere += ` and q.created_by_user_id = $${params.length}`;
+    } else {
+      fromAndWhere += ` and (q.created_by_user_id is null or exists (select 1 from app.users u where u.id = q.created_by_user_id and u.role in ('admin', 'moderator', 'content_editor')))`;
+    }
+    if (cat.question_nature_id) {
+      params.push(cat.question_nature_id);
+      fromAndWhere += ` and ${isMains ? "mqtl" : "qtl"}.question_nature_id = $${params.length}`;
+    }
+    if (selectedQuestionIds.length > 0) {
+      params.push(selectedQuestionIds);
+      fromAndWhere += ` and q.id != all($${params.length})`;
+    }
+
+    params.push(cat.question_count);
+    const queryText = buildStratifiedSelectionQuery({
+      recursiveCte,
+      selectColumns,
+      outputColumns,
+      strataExpr,
+      fromAndWhere,
+      limitParamPlaceholder: `$${params.length}`
+    });
+
+    const res = await client.query<{ id: number; version_id: number; marks?: number }>(queryText, params);
+    for (const row of res.rows) {
+      const qid = Number(row.id);
+      selectedQuestionIds.push(qid);
+      selectedVersions.push({
+        question_id: qid,
+        version_id: Number(row.version_id),
+        marks: isMains ? Number(row.marks ?? 10.0) : 1.0,
+        question_family: cat.question_family ?? "objective"
+      });
+    }
+  }
+
+  return selectedVersions;
+}
 
 export async function listTestTemplates(
   options: ListTestTemplatesQuery & { user_id?: number; user_role?: string }
@@ -777,12 +913,17 @@ export async function createUserCustomTest(
     description?: string;
     exam_id: number;
     exam_level_id: number;
-    question_ids: number[];
+    question_ids?: number[];
+    categories?: CategorySelectionSpec[];
     duration_minutes?: number;
     test_type?: string;
   }
 ): Promise<any> {
-  if (!userId && input.question_ids.length > GUEST_CUSTOM_TEST_QUESTION_CAP) {
+  const requestedCount = input.categories?.length
+    ? input.categories.reduce((sum, c) => sum + c.question_count, 0)
+    : (input.question_ids?.length ?? 0);
+
+  if (!userId && requestedCount > GUEST_CUSTOM_TEST_QUESTION_CAP) {
     const error = new Error(
       `Guest tests are limited to ${GUEST_CUSTOM_TEST_QUESTION_CAP} questions — sign in for unlimited custom tests.`
     ) as Error & { statusCode?: number };
@@ -796,7 +937,7 @@ export async function createUserCustomTest(
     const entitlements = await getUserEntitlements(userId);
     const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
     const cap = getQuestionCap(hasPremium, isMains);
-    if (input.question_ids.length > cap) {
+    if (requestedCount > cap) {
       const error = new Error(
         `${isMains ? "Mains" : "GK/CSAT"} tests are limited to ${cap} questions${hasPremium ? " on Assessment Premium" : " on the free tier"}.${hasPremium ? "" : " Upgrade to Assessment Premium for a higher limit."}`
       ) as Error & { statusCode?: number };
@@ -806,7 +947,7 @@ export async function createUserCustomTest(
     }
   }
 
-  let duration = input.duration_minutes ?? (input.question_ids.length * 2);
+  let duration = input.duration_minutes ?? (requestedCount * 2);
   if (duration <= 0) {
     duration = 60;
   }
@@ -817,6 +958,20 @@ export async function createUserCustomTest(
   const accessType = userId ? "private" : "free";
 
   return transaction(async (client) => {
+    // 0. Resolve category specs (any taxonomy level) into concrete question ids,
+    // using the same rollup logic as live compiled attempts — falls back to
+    // explicit question_ids when no categories were given.
+    const questionIds = input.categories?.length
+      ? (await resolveCategoriesToQuestions(client, userId, input.exam_id, input.categories)).map((v) => v.question_id)
+      : (input.question_ids ?? []);
+
+    if (questionIds.length === 0) {
+      const error = new Error("No published questions found matching the selected categories.") as Error & { statusCode?: number };
+      error.name = "no_matching_questions";
+      error.statusCode = 404;
+      throw error;
+    }
+
     // 1. Create the test template
     const templateResult = await client.query<{ id: number }>(
       `
@@ -833,7 +988,7 @@ export async function createUserCustomTest(
         input.exam_level_id,
         testType,
         duration,
-        input.question_ids.length, // initial fallback for total_marks
+        questionIds.length, // initial fallback for total_marks
         accessType,
         userId
       ]
@@ -863,7 +1018,7 @@ export async function createUserCustomTest(
           from assessment.mains_question_details
           where question_id = any($1)
         `,
-        [input.question_ids]
+        [questionIds]
       );
       marksResult.rows.forEach((row) => {
         questionMarksMap.set(row.question_id, Number(row.marks) || 10.0);
@@ -877,7 +1032,7 @@ export async function createUserCustomTest(
         from assessment.question_versions
         where question_id = any($1) and is_current = true
       `,
-      [input.question_ids]
+      [questionIds]
     );
 
     // 5. Insert question items and calculate actual total marks
@@ -920,15 +1075,16 @@ export async function createUserCustomTest(
 export async function addQuestionsToUserTest(
   userId: number,
   testId: number,
-  questionIds: number[]
+  questionIds: number[],
+  categories?: CategorySelectionSpec[]
 ): Promise<any> {
-  if (!questionIds.length) return { success: true, count: 0 };
+  if (!questionIds.length && !categories?.length) return { success: true, count: 0 };
 
   return transaction(async (client) => {
     // 1. Get the template and check ownership and attempts
-    const template = await client.query<{ created_by_user_id: number; access_type: string; test_type: string }>(
+    const template = await client.query<{ created_by_user_id: number; access_type: string; test_type: string; exam_id: number }>(
       `
-        select created_by_user_id, access_type, test_type
+        select created_by_user_id, access_type, test_type, exam_id
         from assessment.test_templates
         where id = $1
       `,
@@ -959,6 +1115,34 @@ export async function addQuestionsToUserTest(
     if (attempts.rows.length > 0) {
       throw new Error("Cannot add questions to a test that has already been attempted.");
     }
+
+    // Resolve category specs (any taxonomy level) into concrete question ids,
+    // same rollup logic as createUserCustomTest / live compiled attempts.
+    // Excludes questions already in this test so re-adding from a category
+    // that overlaps with what's already there doesn't hit a duplicate-item
+    // constraint.
+    let resolvedQuestionIds = questionIds;
+    if (categories?.length) {
+      const existingRes = await client.query<{ question_id: number }>(
+        `
+          select qv.question_id
+          from assessment.test_question_items tqi
+          join assessment.question_versions qv on qv.id = tqi.question_version_id
+          where tqi.test_template_id = $1
+        `,
+        [testId]
+      );
+      const existingQuestionIds = existingRes.rows.map((r) => Number(r.question_id));
+      const resolved = await resolveCategoriesToQuestions(client, userId, row.exam_id, categories, existingQuestionIds);
+      if (resolved.length === 0) {
+        const error = new Error("No published questions found matching the selected categories.") as Error & { statusCode?: number };
+        error.name = "no_matching_questions";
+        error.statusCode = 404;
+        throw error;
+      }
+      resolvedQuestionIds = resolved.map((v) => v.question_id);
+    }
+    if (resolvedQuestionIds.length === 0) return { success: true, count: 0 };
 
     // 2. Get default section
     let sectionId: number;
@@ -1007,7 +1191,7 @@ export async function addQuestionsToUserTest(
         from assessment.question_versions
         where question_id = any($1) and is_current = true
       `,
-      [questionIds]
+      [resolvedQuestionIds]
     );
 
     // 5. Get marks for Mains questions if applicable
@@ -1019,7 +1203,7 @@ export async function addQuestionsToUserTest(
           from assessment.mains_question_details
           where question_id = any($1)
         `,
-        [questionIds]
+        [resolvedQuestionIds]
       );
       marksResult.rows.forEach((r) => {
         questionMarksMap.set(r.question_id, Number(r.marks) || 10.0);

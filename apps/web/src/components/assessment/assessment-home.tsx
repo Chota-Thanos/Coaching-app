@@ -239,7 +239,6 @@ export function AssessmentHomePage({
   const [drillPath, setDrillPath] = useState<TreeNodeType[]>([]);
   const [counts, setCounts] = useState<Record<number, number>>({});
   const [compiledItems, setCompiledItems] = useState<CompiledItem[]>([]);
-  const [selectedFormat, setSelectedFormat] = useState<TestFormat>("sectional_test");
 
   // Excluded Categories Custom View States
   const [excludedNodeIds, setExcludedNodeIds] = useState<number[]>([]);
@@ -256,12 +255,12 @@ export function AssessmentHomePage({
 
   // Custom test query param and inline options
   const testTemplateId = searchParams ? searchParams.get("test_template_id") : null;
-  const [addingNode, setAddingNode] = useState<TreeNodeType | null>(null);
-  const [addingCount, setAddingCount] = useState(0);
-  const [isAddOptionModalOpen, setIsAddOptionModalOpen] = useState(false);
+  // Cart finalize destination — the whole compiledItems cart is saved as a new
+  // test or added to an existing one, chosen once here rather than per Add tap.
   const [userTests, setUserTests] = useState<any[]>([]);
   const [loadingUserTests, setLoadingUserTests] = useState(false);
   const [addingToTestId, setAddingToTestId] = useState<number | null>(null);
+  const [isAddToExistingModalOpen, setIsAddToExistingModalOpen] = useState(false);
   const [isNewTestModalOpen, setIsNewTestModalOpen] = useState(false);
   const [newTestTitle, setNewTestTitle] = useState("");
   const [targetCustomTest, setTargetCustomTest] = useState<any | null>(null);
@@ -1066,9 +1065,9 @@ export function AssessmentHomePage({
     void fetchTargetTest();
   }, [token, testTemplateId]);
 
-  // Load user unattempted tests when options modal is opened
+  // Load user unattempted tests when the "add to existing" modal is opened
   useEffect(() => {
-    if (!token || !isAddOptionModalOpen) return;
+    if (!token || !isAddToExistingModalOpen) return;
     async function loadUserTests() {
       setLoadingUserTests(true);
       try {
@@ -1085,7 +1084,7 @@ export function AssessmentHomePage({
       }
     }
     void loadUserTests();
-  }, [token, isAddOptionModalOpen, activeTab]);
+  }, [token, isAddToExistingModalOpen, activeTab]);
 
   const handleAddToTest = async (node: TreeNodeType) => {
     const selectedCount = getSelectedCount(node.id);
@@ -1094,45 +1093,33 @@ export function AssessmentHomePage({
       return;
     }
 
-    // 1. If testTemplateId is present in URL, directly add to that specific test
+    // 1. If testTemplateId is present in URL, directly add to that specific test —
+    // resolved server-side (any taxonomy level) instead of a client-side exact-match
+    // lookup, which returned nothing whenever the category's questions were tagged
+    // only on deeper descendant nodes.
     if (testTemplateId) {
       setCompiling(true);
       setError(null);
       try {
         const isMains = activeTab === "mains";
-        const { subject_node_id, topic_node_id, subtopic_node_id } = resolveCategory(
-          node,
-          isMains ? mainsNodes : objNodes
-        );
-        
-        const url = isMains
-          ? `/api/v1/assessment/mains/questions?limit=100&subject_node_id=${subject_node_id}` +
-            (topic_node_id ? `&topic_node_id=${topic_node_id}` : "") +
-            (subtopic_node_id ? `&subtopic_node_id=${subtopic_node_id}` : "")
-          : `/api/v1/assessment/questions?limit=100&subject_node_id=${subject_node_id}` +
-            (topic_node_id ? `&topic_node_id=${topic_node_id}` : "") +
-            (subtopic_node_id ? `&subtopic_node_id=${subtopic_node_id}` : "");
+        const category = resolveCategory(node, isMains ? mainsNodes : objNodes);
 
-        const questions = await authenticatedGet<any[]>(url, token!);
-        if (!questions || questions.length === 0) {
-          setError("No questions found in this category.");
-          return;
-        }
-
-        // Shuffle questions and select IDs
-        const shuffled = [...questions].sort(() => Math.random() - 0.5);
-        const selected = shuffled.slice(0, selectedCount);
-        const questionIds = selected.map((q) => q.id || q.question_id);
-
-        await authenticatedPost(`/api/v1/assessment/user/custom-tests/${testTemplateId}/add-questions`, token!, {
-          question_ids: questionIds
+        const result = await authenticatedPost<any>(`/api/v1/assessment/user/custom-tests/${testTemplateId}/add-questions`, token!, {
+          categories: [
+            {
+              ...category,
+              question_count: selectedCount,
+              question_family: questionFamily
+            }
+          ]
         });
 
-        alert(`Successfully added ${questionIds.length} questions to "${targetCustomTest?.title || 'custom test'}"!`);
+        const addedCount = result?.added_count ?? selectedCount;
+        alert(`Successfully added ${addedCount} questions to "${targetCustomTest?.title || 'custom test'}"!`);
         if (targetCustomTest) {
           setTargetCustomTest({
             ...targetCustomTest,
-            question_count: (targetCustomTest.question_count ?? 0) + questionIds.length
+            question_count: (targetCustomTest.question_count ?? 0) + addedCount
           });
         }
       } catch (err: any) {
@@ -1143,17 +1130,35 @@ export function AssessmentHomePage({
       return;
     }
 
-    // 2. Otherwise, prompt user where they want to add
-    setAddingNode(node);
-    setAddingCount(selectedCount);
-    setIsAddOptionModalOpen(true);
+    // 2. Otherwise, always accumulate into the shared cart — the destination
+    // (new test vs existing) is chosen once, when the cart is finalized, not
+    // on every single Add click.
+    setCompiledItems((prev) => {
+      const existing = prev.find((item) => item.node.id === node.id);
+      const available = getAvailableCount(node.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.node.id === node.id
+            ? { ...item, count: clampCount(item.count + selectedCount, available) }
+            : item
+        );
+      }
+      return [...prev, { node, count: selectedCount, question_family: questionFamily }];
+    });
   };
 
-  const handleCompileAndStart = async () => {
-    if (!token) {
-      setError("Please sign in to take compiled tests.");
-      return;
-    }
+  // Builds category specs (any taxonomy level) from the whole cart, resolved
+  // server-side with the same rollup logic used for live compiled attempts —
+  // so a cart item built from an upper-level category (not just leaves)
+  // resolves correctly instead of the old client-side exact-match lookup.
+  const cartToCategories = () =>
+    compiledItems.map((item) => ({
+      ...resolveCategory(item.node, item.question_family === "mains_subjective" ? mainsNodes : objNodes),
+      question_count: clampCount(item.count, getAvailableCount(item.node.id)),
+      question_family: item.question_family
+    }));
+
+  const checkCartCap = (): boolean => {
     const totalQuestions = compiledItems.reduce((acc, item) => acc + item.count, 0);
     const isMainsCart = compiledItems.some((item) => item.question_family === "mains_subjective");
     const cap = isAssessmentPremium ? (isMainsCart ? 25 : 100) : (isMainsCart ? 10 : 50);
@@ -1163,9 +1168,19 @@ export function AssessmentHomePage({
           ? `⚡ ${isMainsCart ? "Mains" : "GK/CSAT"} tests are limited to ${cap} questions, even on Assessment Premium. Please reduce the number of questions.`
           : `⚡ ${isMainsCart ? "Mains" : "GK/CSAT"} tests on the free tier are limited to ${cap} questions. Please reduce the number of questions or upgrade to Assessment Premium for a higher limit.`
       );
+      return false;
+    }
+    return true;
+  };
+
+  const handleSaveCartAsNewTest = async (title: string) => {
+    if (!token) {
+      setError("Please sign in to save custom tests.");
       return;
     }
+    if (!title.trim()) return;
     if (!examId || compiledItems.length === 0) return;
+    if (!checkCartCap()) return;
 
     const invalidItem = compiledItems.find((item) => getAvailableCount(item.node.id) <= 0);
     if (invalidItem) {
@@ -1173,26 +1188,54 @@ export function AssessmentHomePage({
       return;
     }
 
+    let examLevelId = 7;
+    let testType = "sectional_test";
+    if (activeTab === "aptitude") {
+      examLevelId = 1;
+    } else if (activeTab === "mains") {
+      examLevelId = 3;
+      testType = "mains_test";
+    }
+
     setCompiling(true);
     setError(null);
     try {
-      const categories = compiledItems.map((item) => ({
-        ...resolveCategory(item.node, item.question_family === "mains_subjective" ? mainsNodes : objNodes),
-        question_count: clampCount(item.count, getAvailableCount(item.node.id)),
-        question_family: item.question_family
-      }));
-
-      const attempt = await authenticatedPost<any>("/api/v1/assessment/attempts/compiled", token, {
+      await authenticatedPost<any>("/api/v1/assessment/user/custom-tests", token, {
+        title: title.trim(),
         exam_id: examId,
-        test_type: selectedFormat,
-        categories
+        exam_level_id: examLevelId,
+        test_type: testType,
+        categories: cartToCategories()
       });
-      router.push(`/assessment/attempts/${attempt.id}`);
+      alert(`Saved "${title.trim()}" — find it under My Tests`);
+      setCompiledItems([]);
+      setNewTestTitle("");
+      setIsNewTestModalOpen(false);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || "Failed to compile the custom test.");
+      setError(err?.message || "Failed to save the custom test.");
     } finally {
       setCompiling(false);
+    }
+  };
+
+  const handleAddCartToExistingTest = async (testId: number, testTitle: string) => {
+    if (!token || compiledItems.length === 0) return;
+    if (!checkCartCap()) return;
+
+    setAddingToTestId(testId);
+    setError(null);
+    try {
+      await authenticatedPost(`/api/v1/assessment/user/custom-tests/${testId}/add-questions`, token, {
+        categories: cartToCategories()
+      });
+      alert(`Added to "${testTitle}"`);
+      setCompiledItems([]);
+      setIsAddToExistingModalOpen(false);
+    } catch (err: any) {
+      setError(err?.message || "Failed to add questions to test.");
+    } finally {
+      setAddingToTestId(null);
     }
   };
 
@@ -1753,22 +1796,33 @@ export function AssessmentHomePage({
                   })}
                 </div>
 
-                {/* Test format selection omitted for compiled custom tests */}
-
+                {/* Destination is chosen once, here — not per Add click.
+                    Both paths follow the same shape: name a new test, or
+                    pick from your existing ones. */}
                 <div className="border-t border-slate-200 pt-4">
                   <div className="flex items-center justify-between text-sm font-black text-slate-950 flex-row">
                     <span>Total selected</span>
                     <span>{totalCompiledQuestions} Qs</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleCompileAndStart}
-                    disabled={!canCompile}
-                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-4 text-sm font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                  >
-                    {compiling ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
-                    Compile & Start
-                  </button>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddToExistingModalOpen(true)}
+                      disabled={!canCompile}
+                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-indigo-600 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                    >
+                      Add to Existing
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsNewTestModalOpen(true)}
+                      disabled={!canCompile}
+                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 px-3 text-xs font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      {compiling ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+                      Save as New Test
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1950,135 +2004,52 @@ export function AssessmentHomePage({
       );
     })()}
 
-    {isAddOptionModalOpen && addingNode && (
+    {isAddToExistingModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
         <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
           <button
-            onClick={() => setIsAddOptionModalOpen(false)}
+            onClick={() => setIsAddToExistingModalOpen(false)}
             className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
           >
             <X className="h-5 w-5" />
           </button>
-          <h2 className="text-lg font-bold text-slate-900 pr-8">Add Questions to Test</h2>
+          <h2 className="text-lg font-bold text-slate-900 pr-8">Add to Existing Test</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Add {addingCount} questions from <span className="font-semibold text-slate-800">"{addingNode.name}"</span>. Choose where to send them:
+            Add {totalCompiledQuestions} questions from your cart to an unattempted custom test:
           </p>
 
-          <div className="mt-5 space-y-3">
-            {/* Option 1: Quick Cart */}
-            <button
-              onClick={() => {
-                setCompiledItems((prev) => {
-                  const existing = prev.find((item) => item.node.id === addingNode.id);
-                  const available = getAvailableCount(addingNode.id);
-                  if (existing) {
-                    return prev.map((item) =>
-                      item.node.id === addingNode.id
-                        ? { ...item, count: clampCount(item.count + addingCount, available) }
-                        : item
-                    );
-                  }
-                  return [...prev, { node: addingNode, count: addingCount, question_family: questionFamily }];
-                });
-                setIsAddOptionModalOpen(false);
-              }}
-              className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition text-left"
-            >
-              <div>
-                <div className="text-xs font-bold text-slate-800">Add to Dynamic practice cart</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Keep building a session in your sidebar.</div>
+          <div className="mt-5">
+            {loadingUserTests ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
               </div>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </button>
-
-            {/* Option 2: Create New Test */}
-            <button
-              onClick={() => {
-                setIsNewTestModalOpen(true);
-                setIsAddOptionModalOpen(false);
-              }}
-              className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition text-left"
-            >
-              <div>
-                <div className="text-xs font-bold text-slate-800">Add to New Custom Test</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Create a blank test and insert these questions immediately.</div>
+            ) : userTests.length === 0 ? (
+              <div className="text-center py-3 bg-slate-50 border border-slate-150 rounded-xl text-[10px] text-slate-400 italic">
+                No unattempted custom tests found. Save this cart as a new test first.
               </div>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </button>
-
-            {/* Option 3: Existing Custom Tests */}
-            <div>
-              <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 mt-4">
-                Or add to existing unattempted test:
+            ) : (
+              <div className="max-h-64 overflow-y-auto space-y-2 border border-slate-150 rounded-xl p-2 bg-slate-50/50">
+                {userTests.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleAddCartToExistingTest(t.id, t.title)}
+                    disabled={addingToTestId !== null}
+                    className="w-full text-left p-2.5 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/20 transition flex items-center justify-between text-xs disabled:opacity-50"
+                  >
+                    <span className="font-bold text-slate-800 truncate pr-2">{t.title}</span>
+                    <span className="text-[10px] text-slate-400 font-bold shrink-0">
+                      {addingToTestId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `${t.question_count ?? 0} Qs`}
+                    </span>
+                  </button>
+                ))}
               </div>
-              {loadingUserTests ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
-                </div>
-              ) : userTests.length === 0 ? (
-                <div className="text-center py-3 bg-slate-50 border border-slate-150 rounded-xl text-[10px] text-slate-400 italic">
-                  No unattempted custom tests found.
-                </div>
-              ) : (
-                <div className="max-h-48 overflow-y-auto space-y-2 border border-slate-150 rounded-xl p-2 bg-slate-50/50">
-                  {userTests.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={async () => {
-                        setAddingToTestId(t.id);
-                        try {
-                          const isMains = activeTab === "mains";
-                          const { subject_node_id, topic_node_id, subtopic_node_id } = resolveCategory(
-                            addingNode,
-                            isMains ? mainsNodes : objNodes
-                          );
-                          
-                          const url = isMains
-                            ? `/api/v1/assessment/mains/questions?limit=100&subject_node_id=${subject_node_id}` +
-                              (topic_node_id ? `&topic_node_id=${topic_node_id}` : "") +
-                              (subtopic_node_id ? `&subtopic_node_id=${subtopic_node_id}` : "")
-                            : `/api/v1/assessment/questions?limit=100&subject_node_id=${subject_node_id}` +
-                              (topic_node_id ? `&topic_node_id=${topic_node_id}` : "") +
-                              (subtopic_node_id ? `&subtopic_node_id=${subtopic_node_id}` : "");
-
-                          const questions = await authenticatedGet<any[]>(url, token!);
-                          if (!questions || questions.length === 0) {
-                            alert("No questions found in this category.");
-                            return;
-                          }
-
-                          const shuffled = [...questions].sort(() => Math.random() - 0.5);
-                          const selected = shuffled.slice(0, addingCount);
-                          const questionIds = selected.map((q) => q.id || q.question_id);
-
-                          await authenticatedPost(`/api/v1/assessment/user/custom-tests/${t.id}/add-questions`, token!, {
-                            question_ids: questionIds
-                          });
-
-                          alert(`Successfully added ${questionIds.length} questions to "${t.title}"!`);
-                          setIsAddOptionModalOpen(false);
-                        } catch (err: any) {
-                          alert(err?.message || "Failed to add questions.");
-                        } finally {
-                          setAddingToTestId(null);
-                        }
-                      }}
-                      disabled={addingToTestId !== null}
-                      className="w-full text-left p-2.5 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/20 transition flex items-center justify-between text-xs"
-                    >
-                      <span className="font-bold text-slate-800 truncate pr-2">{t.title}</span>
-                      <span className="text-[10px] text-slate-400 font-bold shrink-0">{t.question_count ?? 0} Qs</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
     )}
 
-    {isNewTestModalOpen && addingNode && (
+    {isNewTestModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
         <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
           <button
@@ -2087,64 +2058,13 @@ export function AssessmentHomePage({
           >
             <X className="h-5 w-5" />
           </button>
-          <h2 className="text-lg font-bold text-slate-900 pr-8">Create Test & Add Questions</h2>
-          <p className="text-xs text-slate-500 mt-1">Create a new private custom test containing these {addingCount} questions.</p>
+          <h2 className="text-lg font-bold text-slate-900 pr-8">Save as New Test</h2>
+          <p className="text-xs text-slate-500 mt-1">Create a new private custom test with these {totalCompiledQuestions} questions.</p>
 
           <form
-            onSubmit={async (e) => {
+            onSubmit={(e) => {
               e.preventDefault();
-              if (!newTestTitle.trim()) return;
-              setCompiling(true);
-              try {
-                const isMains = activeTab === "mains";
-                const { subject_node_id, topic_node_id, subtopic_node_id } = resolveCategory(
-                  addingNode,
-                  isMains ? mainsNodes : objNodes
-                );
-                
-                const url = isMains
-                  ? `/api/v1/assessment/mains/questions?limit=100&subject_node_id=${subject_node_id}` +
-                    (topic_node_id ? `&topic_node_id=${topic_node_id}` : "") +
-                    (subtopic_node_id ? `&subtopic_node_id=${subtopic_node_id}` : "")
-                  : `/api/v1/assessment/questions?limit=100&subject_node_id=${subject_node_id}` +
-                    (topic_node_id ? `&topic_node_id=${topic_node_id}` : "") +
-                    (subtopic_node_id ? `&subtopic_node_id=${subtopic_node_id}` : "");
-
-                const questions = await authenticatedGet<any[]>(url, token!);
-                if (!questions || questions.length === 0) {
-                  alert("No questions found in this category.");
-                  return;
-                }
-
-                const shuffled = [...questions].sort(() => Math.random() - 0.5);
-                const selected = shuffled.slice(0, addingCount);
-                const questionIds = selected.map((q) => q.id || q.question_id);
-
-                let examLevelId = 7;
-                let testType = "sectional_test";
-                if (activeTab === "aptitude") {
-                  examLevelId = 1;
-                } else if (activeTab === "mains") {
-                  examLevelId = 3;
-                  testType = "mains_test";
-                }
-
-                const newTest = await authenticatedPost<any>("/api/v1/assessment/user/custom-tests", token!, {
-                  title: newTestTitle.trim(),
-                  exam_id: examId!,
-                  exam_level_id: examLevelId,
-                  test_type: testType,
-                  question_ids: questionIds
-                });
-
-                alert(`Successfully created "${newTestTitle}" with ${questionIds.length} questions!`);
-                setNewTestTitle("");
-                setIsNewTestModalOpen(false);
-              } catch (err: any) {
-                alert(err?.message || "Failed to create custom test.");
-              } finally {
-                setCompiling(false);
-              }
+              void handleSaveCartAsNewTest(newTestTitle);
             }}
             className="mt-5 space-y-4"
           >
