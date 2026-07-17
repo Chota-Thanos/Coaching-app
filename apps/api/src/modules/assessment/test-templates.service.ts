@@ -906,13 +906,56 @@ export async function bulkUpdateTestTemplatesTaxonomy(
 
 const GUEST_CUSTOM_TEST_QUESTION_CAP = 10;
 
+// exam_levels rows are plain auto-increment ids, and different seed histories
+// (see migration 038_seed_exam_levels.sql, which added a second 'prelims'/
+// 'csat'/'mains' set alongside the original 'prelims-gs'/'prelims-csat'/
+// 'mains-written' rows from migration 001) can leave different environments
+// with different ids — or even different slugs — for "the GK prelims level".
+// Resolving by content_type here, trying every known slug convention, means
+// clients never have to guess a row id or a slug name that might not exist
+// on whichever environment they're actually talking to.
+const EXAM_LEVEL_SLUG_CANDIDATES: Record<"gk" | "aptitude" | "mains", string[]> = {
+  gk: ["prelims-gs", "prelims"],
+  aptitude: ["prelims-csat", "csat"],
+  mains: ["mains-written", "mains"]
+};
+
+async function resolveExamLevelId(
+  client: PoolClient,
+  examId: number,
+  contentType: "gk" | "aptitude" | "mains"
+): Promise<number> {
+  const candidates = EXAM_LEVEL_SLUG_CANDIDATES[contentType];
+  const result = await client.query<{ id: number }>(
+    `
+      select id
+      from assessment.exam_levels
+      where exam_id = $1 and slug = any($2::text[])
+      order by array_position($2::text[], slug)
+      limit 1
+    `,
+    [examId, candidates]
+  );
+  const row = result.rows[0];
+  if (!row) {
+    const error = new Error(
+      `No exam level configured for content type "${contentType}" on exam ${examId}.`
+    ) as Error & { statusCode?: number };
+    error.name = "exam_level_not_found";
+    error.statusCode = 404;
+    throw error;
+  }
+  return Number(row.id);
+}
+
 export async function createUserCustomTest(
   userId: number | null,
   input: {
     title: string;
     description?: string;
     exam_id: number;
-    exam_level_id: number;
+    exam_level_id?: number;
+    content_type?: "gk" | "aptitude" | "mains";
     question_ids?: number[];
     categories?: CategorySelectionSpec[];
     duration_minutes?: number;
@@ -958,6 +1001,8 @@ export async function createUserCustomTest(
   const accessType = userId ? "private" : "free";
 
   return transaction(async (client) => {
+    const examLevelId = input.exam_level_id ?? (await resolveExamLevelId(client, input.exam_id, input.content_type!));
+
     // 0. Resolve category specs (any taxonomy level) into concrete question ids,
     // using the same rollup logic as live compiled attempts — falls back to
     // explicit question_ids when no categories were given.
@@ -985,7 +1030,7 @@ export async function createUserCustomTest(
         slug,
         input.description ?? null,
         input.exam_id,
-        input.exam_level_id,
+        examLevelId,
         testType,
         duration,
         questionIds.length, // initial fallback for total_marks

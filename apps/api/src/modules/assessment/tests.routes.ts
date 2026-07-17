@@ -596,7 +596,13 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
           title: z.string().trim().min(1),
           description: z.string().trim().optional(),
           exam_id: z.coerce.number().int().positive(),
-          exam_level_id: z.coerce.number().int().positive(),
+          // exam_level_id is a raw row id — different environments can have
+          // different ids (or even different slug conventions) for "the GK
+          // prelims level", so clients should prefer content_type instead and
+          // let the server resolve the actual row. exam_level_id is still
+          // accepted for admin/back-office callers that already know the id.
+          exam_level_id: z.coerce.number().int().positive().optional(),
+          content_type: z.enum(["gk", "aptitude", "mains"]).optional(),
           question_ids: z.array(z.coerce.number().int().positive()).optional().default([]),
           // Alternative to question_ids: any-level category specs, resolved
           // server-side with the same rollup logic as compiled attempts — lets
@@ -604,6 +610,8 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
           categories: z.array(compiledCategorySchema).optional(),
           duration_minutes: z.coerce.number().int().positive().optional(),
           test_type: z.enum(["sectional_test", "mains_test"]).optional()
+        }).refine((v) => v.exam_level_id != null || v.content_type != null, {
+          message: "Either exam_level_id or content_type is required."
         }),
         request.body
       );
