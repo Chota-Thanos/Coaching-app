@@ -717,8 +717,8 @@ export function AdminAssessmentTaxonomyManager() {
           const types: TaxonomyNode["node_type"][] = ["paper", "subject_area", "theme", "topic", "subtopic"];
           nodeType = types[Math.min(depth, 4)] || "subtopic";
         } else {
-          const types: TaxonomyNode["node_type"][] = ["subject", "topic", "subtopic"];
-          nodeType = types[Math.min(depth, 2)] || "subtopic";
+          const types: TaxonomyNode["node_type"][] = ["subject", "source_bucket", "topic", "subtopic"];
+          nodeType = types[Math.min(depth, 3)] || "subtopic";
         }
 
         // Idempotent duplication verification
