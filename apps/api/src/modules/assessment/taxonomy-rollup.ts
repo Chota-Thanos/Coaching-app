@@ -23,6 +23,8 @@ export type LeafMetricInput = {
   incorrect_count: number;
   unattempted_count: number;
   score: number;
+  /** Sum of marks for every question in this leaf, regardless of outcome. */
+  max_score: number;
   avg_time_seconds?: number;
 };
 
@@ -36,6 +38,11 @@ export type PerformanceTreeNode = {
   incorrect_count: number;
   unattempted_count: number;
   score: number;
+  max_score: number;
+  /** score / max_score * 100 — the primary ranking/display metric. Unlike
+   * accuracy (a 0..1 correct-vs-incorrect ratio), this reflects negative
+   * marking and so can go below 0 once wrong answers outweigh right ones. */
+  score_percent: number;
   accuracy: number;
   avg_time_seconds: number;
   children: PerformanceTreeNode[];
@@ -48,12 +55,17 @@ type MutableNode = Omit<PerformanceTreeNode, "children"> & {
   ownIncorrectCount: number;
   ownUnattemptedCount: number;
   ownScore: number;
+  ownMaxScore: number;
   ownTimeWeightedSeconds: number;
 };
 
 function attemptedAccuracy(correct: number, incorrect: number): number {
   const attempted = correct + incorrect;
   return attempted > 0 ? correct / attempted : 0;
+}
+
+function scorePercent(score: number, maxScore: number): number {
+  return maxScore > 0 ? (score / maxScore) * 100 : 0;
 }
 
 /**
@@ -80,6 +92,8 @@ export function buildPerformanceTree(
       incorrect_count: 0,
       unattempted_count: 0,
       score: 0,
+      max_score: 0,
+      score_percent: 0,
       accuracy: 0,
       avg_time_seconds: 0,
       children: [],
@@ -88,6 +102,7 @@ export function buildPerformanceTree(
       ownIncorrectCount: 0,
       ownUnattemptedCount: 0,
       ownScore: 0,
+      ownMaxScore: 0,
       ownTimeWeightedSeconds: 0
     });
   }
@@ -100,6 +115,7 @@ export function buildPerformanceTree(
     node.ownIncorrectCount += metric.incorrect_count;
     node.ownUnattemptedCount += metric.unattempted_count;
     node.ownScore += metric.score;
+    node.ownMaxScore += metric.max_score;
     node.ownTimeWeightedSeconds += (metric.avg_time_seconds ?? 0) * metric.total_questions;
   }
 
@@ -119,6 +135,7 @@ export function buildPerformanceTree(
     let incorrectCount = node.ownIncorrectCount;
     let unattemptedCount = node.ownUnattemptedCount;
     let score = node.ownScore;
+    let maxScore = node.ownMaxScore;
     let timeWeightedSeconds = node.ownTimeWeightedSeconds;
 
     for (const child of node.children) {
@@ -128,6 +145,7 @@ export function buildPerformanceTree(
       incorrectCount += child.incorrect_count;
       unattemptedCount += child.unattempted_count;
       score += child.score;
+      maxScore += child.max_score;
       timeWeightedSeconds += child.avg_time_seconds * child.total_questions;
     }
 
@@ -136,6 +154,8 @@ export function buildPerformanceTree(
     node.incorrect_count = incorrectCount;
     node.unattempted_count = unattemptedCount;
     node.score = score;
+    node.max_score = maxScore;
+    node.score_percent = scorePercent(score, maxScore);
     node.accuracy = attemptedAccuracy(correctCount, incorrectCount);
     node.avg_time_seconds = totalQuestions > 0 ? timeWeightedSeconds / totalQuestions : 0;
   }
@@ -158,13 +178,13 @@ export function buildPerformanceTree(
     .filter((root): root is MutableNode => root !== null);
 
   function sortTree(node: MutableNode): void {
-    node.children.sort((a, b) => a.accuracy - b.accuracy);
+    node.children.sort((a, b) => a.score_percent - b.score_percent);
     for (const child of node.children) {
       sortTree(child);
     }
   }
 
-  prunedRoots.sort((a, b) => a.accuracy - b.accuracy);
+  prunedRoots.sort((a, b) => a.score_percent - b.score_percent);
   for (const root of prunedRoots) {
     sortTree(root);
   }

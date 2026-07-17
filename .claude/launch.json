@@ -20,6 +20,13 @@
       "runtimeArgs": ["run", "--release", "-d", "web-server", "--web-port=5050", "--web-hostname=0.0.0.0"],
       "cwd": "upsc_test_series",
       "port": 5050
+    },
+    {
+      "name": "mobile-debug",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": ["run", "-d", "web-server", "--web-port=5051", "--web-hostname=0.0.0.0"],
+      "cwd": "upsc_test_series",
+      "port": 5051
     }
   ]
 }

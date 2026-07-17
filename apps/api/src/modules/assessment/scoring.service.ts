@@ -150,10 +150,11 @@ export async function submitAttempt(
               incorrect_count,
               unattempted_count,
               score,
+              max_score,
               accuracy,
               avg_time_seconds
             )
-          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `,
         [
           newResultId,
@@ -164,6 +165,7 @@ export async function submitAttempt(
           breakdown.incorrect,
           breakdown.unattempted,
           breakdown.score,
+          breakdown.maxScore,
           breakdown.correct + breakdown.incorrect > 0
             ? breakdown.correct / (breakdown.correct + breakdown.incorrect)
             : 0,
@@ -181,7 +183,8 @@ export async function submitAttempt(
           correct: breakdown.correct,
           incorrect: breakdown.incorrect,
           unattempted: breakdown.unattempted,
-          score: breakdown.score
+          score: breakdown.score,
+          maxScore: breakdown.maxScore
         });
       }
     }
@@ -262,6 +265,7 @@ type TopicMetricInput = {
   incorrect: number;
   unattempted: number;
   score: number;
+  maxScore: number;
 };
 
 async function upsertStudentTopicMetric(
@@ -285,9 +289,11 @@ async function upsertStudentTopicMetric(
           unattempted_count,
           avg_accuracy,
           avg_score,
+          total_score,
+          total_max_score,
           last_attempted_at
         )
-      values ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, now())
+      values ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, $10, $11, now())
       on conflict (user_id, taxonomy_node_id, question_nature_id)
       do update set
         attempt_count = assessment.student_topic_metrics.attempt_count + 1,
@@ -307,6 +313,8 @@ async function upsertStudentTopicMetric(
           (assessment.student_topic_metrics.avg_score * assessment.student_topic_metrics.attempt_count + excluded.avg_score) /
           nullif(assessment.student_topic_metrics.attempt_count + 1, 0)
         ),
+        total_score = assessment.student_topic_metrics.total_score + excluded.total_score,
+        total_max_score = assessment.student_topic_metrics.total_max_score + excluded.total_max_score,
         last_attempted_at = now(),
         updated_at = now()
     `,
@@ -319,7 +327,9 @@ async function upsertStudentTopicMetric(
       breakdown.incorrect,
       breakdown.unattempted,
       breakdown.correct + breakdown.incorrect > 0 ? breakdown.correct / (breakdown.correct + breakdown.incorrect) : 0,
-      breakdown.score
+      breakdown.score,
+      breakdown.score,
+      breakdown.maxScore
     ]
   );
 }
@@ -340,9 +350,10 @@ export async function backfillStudentTopicMetricsForResult(
     incorrect_count: number;
     unattempted_count: number;
     score: string;
+    max_score: string;
   }>(
     `
-      select taxonomy_node_id, question_nature_id, total_questions, correct_count, incorrect_count, unattempted_count, score
+      select taxonomy_node_id, question_nature_id, total_questions, correct_count, incorrect_count, unattempted_count, score, max_score
       from assessment.result_topic_breakdowns
       where result_id = $1
     `,
@@ -357,7 +368,8 @@ export async function backfillStudentTopicMetricsForResult(
       correct: row.correct_count,
       incorrect: row.incorrect_count,
       unattempted: row.unattempted_count,
-      score: Number(row.score)
+      score: Number(row.score),
+      maxScore: Number(row.max_score)
     });
   }
 }

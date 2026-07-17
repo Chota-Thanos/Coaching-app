@@ -31,6 +31,7 @@ export function calculateObjectiveScore(items: ScoreItem[]): ObjectiveScore {
         incorrect: 0,
         unattempted: 0,
         score: 0,
+        maxScore: 0,
         time: 0
       });
     }
@@ -39,6 +40,7 @@ export function calculateObjectiveScore(items: ScoreItem[]): ObjectiveScore {
     if (!breakdown) throw new Error("Breakdown aggregation failed.");
 
     breakdown.total += 1;
+    breakdown.maxScore += marks;
     breakdown.time += Number(item.response_time_seconds ?? 0);
 
     let questionScore = 0;

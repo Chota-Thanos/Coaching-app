@@ -729,6 +729,7 @@ export async function getStudentPerformanceTree(
     incorrect_count: string;
     unattempted_count: string;
     score: string;
+    max_score: string;
   }>(
     `
       select
@@ -737,7 +738,8 @@ export async function getStudentPerformanceTree(
         sum(stm.correct_count)::integer as correct_count,
         sum(stm.incorrect_count)::integer as incorrect_count,
         sum(stm.unattempted_count)::integer as unattempted_count,
-        sum(stm.avg_score * stm.attempt_count)::numeric as score
+        sum(stm.total_score)::numeric as score,
+        sum(stm.total_max_score)::numeric as max_score
       from assessment.student_topic_metrics stm
       join assessment.assessment_taxonomy_nodes atn on atn.id = stm.taxonomy_node_id
       where stm.user_id = $1 and atn.content_type = $2
@@ -759,7 +761,8 @@ export async function getStudentPerformanceTree(
     correct_count: Number(m.correct_count),
     incorrect_count: Number(m.incorrect_count),
     unattempted_count: Number(m.unattempted_count),
-    score: Number(m.score)
+    score: Number(m.score),
+    max_score: Number(m.max_score)
   }));
 
   return buildPerformanceTree(nodeInputs, leafInputs);
@@ -1110,6 +1113,7 @@ export async function getStudentCategoryPerformance(
       const time = Number(row.time_spent_seconds ?? 0);
       acc.total_questions += 1;
       acc.score += Number.isFinite(score) ? score : 0;
+      acc.max_score += Number(row.marks ?? 0);
       acc.time_spent_seconds += Number.isFinite(time) ? time : 0;
       if (outcome === "correct") acc.correct_count += 1;
       else if (outcome === "incorrect") acc.incorrect_count += 1;
@@ -1123,6 +1127,7 @@ export async function getStudentCategoryPerformance(
       incorrect_count: 0,
       unattempted_count: 0,
       score: 0,
+      max_score: 0,
       time_spent_seconds: 0,
       attempt_ids: new Set<number>()
     }
@@ -1145,11 +1150,13 @@ export async function getStudentCategoryPerformance(
         incorrect_count: 0,
         unattempted_count: 0,
         score: 0,
+        max_score: 0,
         time_spent_seconds: 0
       };
 
       existing.total_questions += 1;
       existing.score += Number(row.score ?? 0);
+      existing.max_score += Number(row.marks ?? 0);
       existing.time_spent_seconds += Number(row.time_spent_seconds ?? 0);
       if (row.outcome === "correct") existing.correct_count += 1;
       else if (row.outcome === "incorrect") existing.incorrect_count += 1;
@@ -1161,9 +1168,11 @@ export async function getStudentCategoryPerformance(
     const correct = Number(attempt.correct_count ?? 0);
     const incorrect = Number(attempt.incorrect_count ?? 0);
     const attemptAnswered = correct + incorrect;
+    const attemptMaxScore = Number(attempt.max_score ?? 0);
     return {
       ...attempt,
-      accuracy: attemptAnswered > 0 ? correct / attemptAnswered : 0
+      accuracy: attemptAnswered > 0 ? correct / attemptAnswered : 0,
+      score_percent: attemptMaxScore > 0 ? (Number(attempt.score ?? 0) / attemptMaxScore) * 100 : 0
     };
   });
 
@@ -1208,6 +1217,8 @@ export async function getStudentCategoryPerformance(
       (acc, r) => {
         const outcome = r.outcome ?? "unattempted";
         acc.total_questions += 1;
+        acc.score += Number(r.score ?? 0);
+        acc.max_score += Number(r.marks ?? 0);
         if (outcome === "correct") acc.correct_count += 1;
         else if (outcome === "incorrect") acc.incorrect_count += 1;
         else acc.unattempted_count += 1;
@@ -1217,12 +1228,15 @@ export async function getStudentCategoryPerformance(
         total_questions: 0,
         correct_count: 0,
         incorrect_count: 0,
-        unattempted_count: 0
+        unattempted_count: 0,
+        score: 0,
+        max_score: 0
       }
     );
 
     const childAnswered = childSummary.correct_count + childSummary.incorrect_count;
     const accuracy = childAnswered > 0 ? childSummary.correct_count / childAnswered : 0;
+    const scorePercent = childSummary.max_score > 0 ? (childSummary.score / childSummary.max_score) * 100 : 0;
 
     return {
       id: Number(child.id),
@@ -1234,10 +1248,15 @@ export async function getStudentCategoryPerformance(
         correct_count: childSummary.correct_count,
         incorrect_count: childSummary.incorrect_count,
         unattempted_count: childSummary.unattempted_count,
+        score: childSummary.score,
+        max_score: childSummary.max_score,
+        score_percent: scorePercent,
         accuracy
       }
     };
   });
+
+  const summaryScorePercent = summary.max_score > 0 ? (summary.score / summary.max_score) * 100 : 0;
 
   return {
     category: {
@@ -1252,6 +1271,8 @@ export async function getStudentCategoryPerformance(
       incorrect_count: summary.incorrect_count,
       unattempted_count: summary.unattempted_count,
       score: summary.score,
+      max_score: summary.max_score,
+      score_percent: summaryScorePercent,
       accuracy: answered > 0 ? summary.correct_count / answered : 0,
       avg_time_seconds: summary.total_questions > 0 ? summary.time_spent_seconds / summary.total_questions : 0
     },

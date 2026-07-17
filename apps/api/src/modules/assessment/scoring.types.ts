@@ -20,6 +20,10 @@ export type TopicBreakdown = {
   incorrect: number;
   unattempted: number;
   score: number;
+  /** Sum of marks for every question in this breakdown, regardless of outcome —
+   * the denominator for score-percentage ranking (score / maxScore * 100), which
+   * can go negative once negative marking outweighs correct answers. */
+  maxScore: number;
   time: number;
 };
 

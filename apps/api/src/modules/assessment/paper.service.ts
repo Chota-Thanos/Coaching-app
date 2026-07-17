@@ -308,6 +308,7 @@ export async function getResultReview(resultId: number, user: AssessmentUser): P
               'incorrect_count', rtb.incorrect_count,
               'unattempted_count', rtb.unattempted_count,
               'score', rtb.score,
+              'max_score', rtb.max_score,
               'accuracy', rtb.accuracy,
               'avg_time_seconds', rtb.avg_time_seconds
             )
