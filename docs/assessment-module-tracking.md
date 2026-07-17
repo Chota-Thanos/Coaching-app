@@ -1,6 +1,6 @@
 # Assessment Module Tracking Plan
 
-Last updated: 2026-06-02
+Last updated: 2026-07-17
 
 ## Current Implementation Status
 
@@ -96,6 +96,8 @@ Assessment code is intentionally split by responsibility:
 - `assessment.student_topic_metrics`
 - `assessment.question_import_batches`
 - `assessment.question_import_items`
+- `app.home_collections` (migration `042_home_collections.sql`) — admin-curated lists of taxonomy nodes shown on the student Home screen: slug, title, subtitle, cover_image_url, display_order, is_active.
+- `app.home_collection_items` (migration `042_home_collections.sql`) — collection_id, taxonomy_type (`objective`|`mains`), node_id, display_order, cover_image_url.
 
 ## Implemented Backend Endpoints
 
@@ -195,6 +197,21 @@ Review and analytics:
 - `POST /api/v1/assessment/me/error-logs`
 - `GET /api/v1/assessment/me/dashboard`
 - `GET /api/v1/assessment/leaderboard`
+
+User-owned custom tests (student self-built tests, distinct from admin-authored `test-templates`):
+
+- `POST /api/v1/assessment/user/custom-tests` — creates a private test template. Accepts either `question_ids` (explicit list) or `categories` (array of `{node_id, taxonomy_type, quantity, ...}` — resolved server-side via `resolveCategoriesToQuestions()` against the same recursive/stratified taxonomy rollup used for compiled attempts, so a parent category's full subtree resolves correctly; added 2026-07-17, see `apps/api/src/modules/assessment/test-templates.service.ts`).
+- `POST /api/v1/assessment/user/custom-tests/:testTemplateId/add-questions` — same `question_ids`/`categories` duality; when using `categories`, excludes question versions already in the target test (avoids the `test_question_items_test_template_id_question_version_id_key` duplicate-key error) and returns a `no_matching_questions` 404 if nothing new resolves.
+- `POST /api/v1/assessment/user/ai/parse-file`
+- `POST /api/v1/assessment/user/ai/parse-images`
+- `POST /api/v1/assessment/user/ai/parse-text`
+- `POST /api/v1/assessment/user/ai/save-questions`
+
+Home collections (curated taxonomy-node lists shown on the student Home screen, added 2026-07-17):
+
+- `GET /api/v1/assessment/home-collections` — public; resolves each item's name/image/node_type/rolled-up question count against whichever taxonomy tree it belongs to (objective or mains).
+- Admin CRUD for `app.home_collections` + `app.home_collection_items`, including a `PUT .../items` transaction-wrapped bulk-reorder (delete-then-reinsert). See `apps/api/src/modules/assessment/home-collections.routes.ts`.
+- Student-facing display (mobile or web) is **not yet built** — deferred until a real collection exists to test against.
 
 Legacy test series:
 
@@ -349,6 +366,12 @@ These are the remaining backend tasks for the next implementation pass. The Node
 - [x] Add test attempt and result schema.
 - [x] Add analytics and weakness tracking schema.
 - [x] Add subscription schema.
+- [x] Added home collections (curated taxonomy-node lists) — schema, backend CRUD + public resolve endpoint, admin UI. Student-facing display still pending.
+- [x] Fixed bookmark `content_type` filtering bug — `listBookmarks()` was silently dropping all bookmarks whenever the revision list was filtered by content type.
+- [x] Redesigned category browser as tabs + inline drill-down (mobile and web) — every row (folder or leaf) can now start/add from its rolled-up total, not just leaves.
+- [x] Fixed category-based question resolution for saved/existing custom tests — adding from a parent category previously failed with "no questions available" because the endpoint matched taxonomy nodes exactly instead of resolving the subtree.
+- [x] Reworked the custom-test builder cart flow (mobile + web) to silent-accumulate-then-choose-destination instead of forcing add-destination decisions per action.
+- [x] Rolled up category-wise performance on results and dashboards so a subject/book/chapter reflects the combined accuracy of its topics, not just questions tagged directly on that node. Added a shared `buildPerformanceTree()` helper (`apps/api/src/modules/assessment/taxonomy-rollup.ts`), a new `GET /api/v1/assessment/me/performance-tree` endpoint, and a `topic_performance_tree` field on `GET /results/:id/review`. Mobile's dashboard (GK/Aptitude tabs) and Result Review "Topics" tab already did this rollup client-side and were left as-is; fixed the Result Review Summary tab's "Priority Revision Areas" (was reading raw flat breakdowns) to use the rolled-up tree instead. Web previously had no rollup anywhere — added a `PerformanceTree` component (`apps/web/src/components/assessment/performance-tree.tsx`) used by both the dashboard ("Full Syllabus Performance" section, replacing the flat "Weakness Heatmap") and the result page's Topics tab (replacing the flat `TopicHeatmap` for objective tests; mains tests still fall back to the flat heatmap since mains questions aren't tagged against the objective taxonomy). Categories with no directly-tagged questions anywhere in their subtree are pruned rather than shown as empty.
 - [ ] Add FastAPI internal AI/parsing service.
 - [ ] Replace manual JSON import flow with real DOCX/PDF parser service.
 - [ ] Add Redis-backed autosave, attempt expiry, and event logging.

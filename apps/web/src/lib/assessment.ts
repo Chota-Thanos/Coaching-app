@@ -157,6 +157,9 @@ export type ResultReview = AssessmentResult & {
     accuracy: number | string;
     avg_time_seconds: number | string;
   }>;
+  /** Subject/book/chapter/topic breakdown rolled up through the taxonomy tree — absent for
+   * mains tests, where questions aren't tagged against the objective taxonomy. */
+  topic_performance_tree?: import("../components/assessment/performance-tree").PerformanceTreeNode[];
 };
 
 export type StudentAttemptSummary = {

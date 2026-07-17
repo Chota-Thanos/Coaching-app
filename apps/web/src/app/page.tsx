@@ -76,6 +76,9 @@ export default function HomePage() {
   const [userNotes, setUserNotes] = useState<any[]>([]);
   const [userCollections, setUserCollections] = useState<any[]>([]);
   const [mentors, setMentors] = useState<any[]>([]);
+  const [myAttempts, setMyAttempts] = useState<any[]>([]);
+  const [mentorshipRequests, setMentorshipRequests] = useState<any[]>([]);
+  const [readingDashboard, setReadingDashboard] = useState<any>(null);
 
   // Quiz state removed — 'Start a Free Test' now goes directly to the real custom test builder
   const [showSignupModal, setShowSignupModal] = useState(false);
@@ -169,6 +172,12 @@ export default function HomePage() {
         setUserCollections(collectionsData || []);
         const mentorsData = await authenticatedGet<any[]>("/api/v1/mentorship/profiles", token);
         setMentors((mentorsData || []).slice(0, 3));
+        const attemptsData = await authenticatedGet<any[]>("/api/v1/assessment/me/attempts?limit=10", token);
+        setMyAttempts(attemptsData || []);
+        const requestsData = await authenticatedGet<any[]>("/api/v1/mentorship/requests?mode=user", token);
+        setMentorshipRequests(requestsData || []);
+        const readingData = await authenticatedGet<any>("/api/v1/current-affairs/me/reading-dashboard?limit=5", token);
+        setReadingDashboard(readingData || null);
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       } finally {
@@ -274,6 +283,10 @@ export default function HomePage() {
   const csatAccuracy = stats?.aptitude?.summary?.avg_accuracy
     ? Math.round(Number(stats.aptitude.summary.avg_accuracy) * 100)
     : 0;
+  const mainsAvgScore = stats?.mains?.summary?.avg_score
+    ? Number(stats.mains.summary.avg_score).toFixed(1)
+    : null;
+  const evaluationsPending = stats?.mains?.summary?.pending_count ?? 0;
 
   const motivationalQuotes = [
     "Success is not final, failure is not fatal: it is the courage to continue that counts.",
@@ -284,41 +297,104 @@ export default function HomePage() {
   ];
   const quote = motivationalQuotes[username.length % motivationalQuotes.length];
 
-  // Radar chart
-  const radarSubjects = [
-    { label: "Polity", slug: "polity" },
-    { label: "Economy", slug: "economy" },
-    { label: "History", slug: "history" },
-    { label: "Geography", slug: "geography" },
-    { label: "Environment", slug: "environment" },
-    { label: "S & T", slug: "science" },
-  ];
-  const center = 110;
-  const maxRadius = 70;
-  const getCoordinates = (index: number, value: number) => {
-    const angle = -Math.PI / 2 + (2 * Math.PI * index) / 6;
-    const r = maxRadius * (value / 100);
-    return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle), angle };
+  // ─── Continue where you left off — scans across every feature for activity ──
+  const formatRelativeTime = (iso?: string | null) => {
+    if (!iso) return "recently";
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const diffHours = Math.round(diffMs / 3_600_000);
+    if (diffHours < 1) return "just now";
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays}d ago`;
   };
-  const gridLevels = [25, 50, 75, 100];
-  const gridPolygons = gridLevels.map((lvl) =>
-    radarSubjects.map((_, i) => {
-      const c = getCoordinates(i, lvl);
-      return `${c.x},${c.y}`;
-    }).join(" ")
-  );
-  const getSubjectAccuracy = (slug: string) => {
-    const match = topicMetrics.find((m) => m.taxonomy_name.toLowerCase().includes(slug.toLowerCase()));
-    if (!match) return 0;
-    const acc = Number(match.avg_accuracy ?? 0);
+  const formatSessionTime = (iso?: string | null) => {
+    if (!iso) return "Scheduled";
+    return new Date(iso).toLocaleString("en-IN", { weekday: "short", hour: "numeric", minute: "2-digit" });
+  };
+
+  const inProgressAttempt = myAttempts.find((a) => a.status === "in_progress" && !a.result);
+  const pendingEvalRequest = mentorshipRequests.find((r) => r.evaluation_status === "pending");
+  const upcomingSession = [...mentorshipRequests]
+    .filter((r) => r.session_status === "scheduled" && r.session_starts_at && new Date(r.session_starts_at) > new Date())
+    .sort((a, b) => new Date(a.session_starts_at).getTime() - new Date(b.session_starts_at).getTime())[0];
+  const continueReadingItem = readingDashboard?.continue_reading?.[0];
+  const dueRevisionItem = readingDashboard?.due_revisions?.[0];
+
+  type ActivityAccent = "accent" | "warning" | "danger" | "neutral";
+  type ActivityCard = { id: string; title: string; meta: string; cta: string; href: string; accent: ActivityAccent };
+  const activityCards: ActivityCard[] = [];
+  if (inProgressAttempt) {
+    activityCards.push({
+      id: `attempt-${inProgressAttempt.id}`,
+      title: inProgressAttempt.test_template?.title || "Practice test",
+      meta: `In progress · started ${formatRelativeTime(inProgressAttempt.started_at)}`,
+      cta: "Resume",
+      href: `/assessment/attempts/${inProgressAttempt.id}`,
+      accent: "accent",
+    });
+  }
+  if (pendingEvalRequest) {
+    activityCards.push({
+      id: `eval-${pendingEvalRequest.id}`,
+      title: "Mains answer in review",
+      meta: `Submitted ${formatRelativeTime(pendingEvalRequest.updated_at || pendingEvalRequest.created_at)}`,
+      cta: "View status",
+      href: "/mentorship",
+      accent: "warning",
+    });
+  }
+  if (upcomingSession) {
+    activityCards.push({
+      id: `session-${upcomingSession.session_id}`,
+      title: `Session with ${upcomingSession.mentor_name || "your mentor"}`,
+      meta: formatSessionTime(upcomingSession.session_starts_at),
+      cta: "View details",
+      href: "/mentorship",
+      accent: "accent",
+    });
+  }
+  if (continueReadingItem) {
+    const pct = Math.round(Number(continueReadingItem.reading_progress?.progress_percent ?? 0));
+    activityCards.push({
+      id: `reading-${continueReadingItem.id}`,
+      title: continueReadingItem.master_article?.title || "Article",
+      meta: `${pct}% read`,
+      cta: "Continue reading",
+      href: `/current-affairs/articles/${continueReadingItem.master_article?.slug}`,
+      accent: "neutral",
+    });
+  }
+  if (dueRevisionItem) {
+    activityCards.push({
+      id: `revision-${dueRevisionItem.id}`,
+      title: dueRevisionItem.master_article?.title || "Article",
+      meta: "Revision due",
+      cta: "Revise now",
+      href: `/current-affairs/articles/${dueRevisionItem.master_article?.slug}`,
+      accent: "danger",
+    });
+  }
+
+  const hasAnyActivity =
+    totalMCQ > 0 ||
+    userNotes.length > 0 ||
+    userCollections.length > 0 ||
+    mentorshipRequests.length > 0 ||
+    (readingDashboard?.stats?.saved_articles ?? 0) > 0;
+
+  // Category-level extremes table — highest/lowest performing topics across
+  // gk, csat and mains, reusing the already-fetched per-user topic metrics.
+  const accuracyPct = (raw: unknown) => {
+    const acc = Number(raw ?? 0);
     return acc <= 1 ? Math.round(acc * 100) : Math.round(acc);
   };
-  const radarPoints = radarSubjects.map((s) => getSubjectAccuracy(s.slug));
-  const hasRadarData = totalMCQ > 0 && radarPoints.some((p) => p > 0);
-  const studentPointsString = radarSubjects.map((_, i) => {
-    const c = getCoordinates(i, radarPoints[i] ?? 0);
-    return `${c.x},${c.y}`;
-  }).join(" ");
+  const rankedTopics = topicMetrics.filter((t: any) => Number(t.question_count ?? 0) >= 3);
+  const highestTopics = [...rankedTopics]
+    .sort((a: any, b: any) => accuracyPct(b.avg_accuracy) - accuracyPct(a.avg_accuracy))
+    .slice(0, 2);
+  const lowestTopics = [...rankedTopics]
+    .sort((a: any, b: any) => accuracyPct(a.avg_accuracy) - accuracyPct(b.avg_accuracy))
+    .slice(0, 2);
 
   // ─── Loading state ─────────────────────────────────────────────────────────
   if (!isInitialized) {
@@ -1327,18 +1403,16 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Agenda progress tracker (shown when subscribed) */}
-          {hasAnyActive && (
+          {/* Real agenda summary — upcoming sessions + pending evaluations */}
+          {mentorshipRequests.length > 0 && (
             <div className="mt-4 rounded-xl bg-white/5 border border-purple-800/40 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-purple-200">Mentorship Agenda Progress</span>
-                  <span className="font-black text-white">2 / 5 sessions</span>
-                </div>
-                <div className="h-2 w-full bg-purple-900/60 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-500 rounded-full" style={{ width: "40%" }} />
-                </div>
-                <p className="text-[10px] text-purple-400">Next: GS1 Mains Answer Review — scheduled</p>
+              <div className="flex-1 flex items-center gap-4 text-xs">
+                <span className="font-bold text-purple-200">
+                  {mentorshipRequests.filter((r) => r.session_status === "scheduled" && r.session_starts_at && new Date(r.session_starts_at) > new Date()).length} upcoming session(s)
+                </span>
+                <span className="font-bold text-purple-200">
+                  {mentorshipRequests.filter((r) => r.evaluation_status === "pending").length} evaluation(s) pending
+                </span>
               </div>
               <Link
                 href="/mentorship"
@@ -1377,7 +1451,100 @@ export default function HomePage() {
           ))}
         </div>
 
+        {/* ══════════════════════════════════════════════════════
+            NEW USER — zero activity anywhere: a single discovery grid
+            across all 5 feature areas, replacing the activity + performance
+            sections below (which have nothing to show yet).
+        ══════════════════════════════════════════════════════ */}
+        {!loadingDashboard && !hasAnyActivity && (
+          <section className="space-y-5">
+            <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
+              <h2 className="text-xl font-black text-slate-900">Welcome, let&rsquo;s set up your prep</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                Pick a starting point below — your progress and focus areas will start showing up here once you do.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { href: "/assessment/gk", icon: Target, title: "Take a test", desc: "Build a custom GK, CSAT, or Mains test from any topic.", cta: "Start a GK test" },
+                { href: "/study-plans", icon: Layers, title: "Follow a study plan", desc: "Structured week-by-week prep with tests included.", cta: "Browse plans" },
+                { href: "/assessment/mains-hub", icon: FileText, title: "Get an answer evaluated", desc: "Expert feedback on your Mains answers.", cta: "Submit an answer" },
+                { href: "/current-affairs/daily-news", icon: Newspaper, title: "Read current affairs", desc: "Daily news, editorials, and PYQs, organized into notes.", cta: "Read today's news" },
+              ].map(({ href, icon: Icon, title, desc, cta }) => (
+                <Link
+                  key={title}
+                  href={href}
+                  className="group flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all"
+                >
+                  <span className="h-10 w-10 rounded-xl bg-civic/10 text-civic flex items-center justify-center mb-3">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <p className="text-sm font-black text-slate-800">{title}</p>
+                  <p className="mt-1 text-xs text-slate-500 leading-snug flex-1">{desc}</p>
+                  <span className="mt-3 text-xs font-black text-civic flex items-center gap-1 group-hover:underline">
+                    {cta} <ChevronRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              ))}
+              <Link
+                href="/mentors"
+                className="group flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all sm:col-span-2"
+              >
+                <span className="h-10 w-10 rounded-xl bg-civic/10 text-civic flex items-center justify-center mb-3">
+                  <GraduationCap className="h-5 w-5" />
+                </span>
+                <p className="text-sm font-black text-slate-800">Talk to a mentor</p>
+                <p className="mt-1 text-xs text-slate-500 leading-snug">1:1 sessions with mentors who&rsquo;ve cleared the exam.</p>
+                <span className="mt-3 text-xs font-black text-civic flex items-center gap-1 group-hover:underline">
+                  Find a mentor <ChevronRight className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            </div>
+          </section>
+        )}
 
+        {/* ══════════════════════════════════════════════════════
+            CONTINUE WHERE YOU LEFT OFF — scans every feature area for
+            anything in progress: a live test attempt, a pending mains
+            evaluation, an upcoming mentor session, an unfinished read,
+            or a due revision.
+        ══════════════════════════════════════════════════════ */}
+        {hasAnyActivity && activityCards.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-slate-800">Continue where you left off</h2>
+              <Link href="/assessment/gk?view=performance&perf=tests" className="text-sm font-bold text-indigo-600 hover:underline">
+                View all tests →
+              </Link>
+            </div>
+            <div className="snap-scroll-x">
+              {activityCards.map((card) => {
+                const accentClasses: Record<ActivityAccent, string> = {
+                  accent: "bg-civic",
+                  warning: "bg-amber-500",
+                  danger: "bg-rose-500",
+                  neutral: "bg-slate-300",
+                };
+                return (
+                  <div
+                    key={card.id}
+                    className="w-[240px] flex-shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                  >
+                    <div className={`h-1 w-8 rounded-full mb-3 ${accentClasses[card.accent]}`} />
+                    <p className="text-sm font-black text-slate-800 line-clamp-2 leading-snug">{card.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{card.meta}</p>
+                    <Link
+                      href={card.href}
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 px-3 py-2 text-xs font-bold text-white transition-colors"
+                    >
+                      {card.cta}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ══════════════════════════════════════════════════════
             SECTION 2 — MAIN WORKSPACE
@@ -1409,7 +1576,7 @@ export default function HomePage() {
             {/* Quick Action Buttons */}
             <div id="tour-quick-actions" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { href: "/assessment/gk", icon: Target, label: "Resume Test", sub: "Continue last GS test", color: "blue", primary: true, id: "tour-action-resume" },
+                { href: "/assessment/gk?view=performance&perf=tests", icon: Target, label: "My Tests", sub: "In-progress, scored & custom tests", color: "blue", primary: true, id: "tour-action-resume" },
                 { href: "/assessment/gk?view=revision", icon: Bookmark, label: "Revision Test", sub: "Tagged questions only", color: "amber", primary: true, id: "tour-action-revision" },
                 { href: "/assessment/csat", icon: BookOpenCheck, label: "CSAT Drill", sub: "Aptitude practice", color: "amber", primary: false, id: "tour-action-csat" },
                 { href: "/assessment/mains-hub", icon: FileText, label: "Mains Hub", sub: "Upload & get evaluated", color: "purple", primary: false, id: "tour-action-mains" },
@@ -1429,127 +1596,145 @@ export default function HomePage() {
                   }`}>
                     <Icon className="h-4 w-4" />
                   </span>
-                  <p className="text-xs font-black text-slate-800">{label}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{sub}</p>
+                  <p className="text-sm font-black text-slate-800">{label}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-snug">{sub}</p>
                 </Link>
               ))}
             </div>
 
-            {/* GS Tracking + Weak Area Focus */}
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-              {/* GS paper tracking (3/5) */}
-              <div id="tour-gs-tracking" className="sm:col-span-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
+            {/* Your performance — metric cards, category extremes table, focus areas */}
+            {hasAnyActivity && (
+              <div id="tour-gs-tracking" className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-800">GS Paper Tracking</h3>
-                  <Link href="/assessment/dashboard" className="text-xs font-bold text-indigo-600 hover:underline">Full Report →</Link>
+                  <h3 className="text-base font-black text-slate-800">Your performance</h3>
+                  <Link href="/assessment/dashboard" className="text-sm font-bold text-indigo-600 hover:underline">Full report →</Link>
                 </div>
-                <div className="space-y-3">
-                  {objectiveSubjects.filter(n => n.content_type === "gk").length > 0 ? (
-                    objectiveSubjects.filter(n => n.content_type === "gk").map((subject) => {
-                      const acc = getSubjectAccuracy(subject.name);
-                      const bar = acc >= 70 ? "bg-emerald-500" : acc >= 40 ? "bg-amber-500" : "bg-rose-400";
-                      return (
-                        <div key={subject.id} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-slate-600 truncate mr-2">{subject.name}</span>
-                            <span className={`font-black shrink-0 ${
-                              acc === 0 ? "text-slate-300" : acc >= 70 ? "text-emerald-600" : acc >= 40 ? "text-amber-600" : "text-rose-600"
-                            }`}>{acc > 0 ? `${acc}%` : "—"}</span>
-                          </div>
-                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            {acc > 0 ? (
-                              <div className={`h-full ${bar} rounded-full transition-all duration-500`} style={{ width: `${acc}%` }} />
-                            ) : (
-                              <div className="h-full w-full bg-slate-100 rounded-full" />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    // Fallback to static subjects during loading
-                    [
-                      { label: "Polity & Governance", name: "Indian Polity" },
-                      { label: "Economy", name: "Indian Economy" },
-                      { label: "Environment", name: "Environment" },
-                      { label: "History", name: "Modern Indian History" },
-                      { label: "Geography", name: "Geography" },
-                    ].map((subject) => {
-                      const acc = getSubjectAccuracy(subject.name);
-                      const bar = acc >= 70 ? "bg-emerald-500" : acc >= 40 ? "bg-amber-500" : "bg-rose-400";
-                      return (
-                        <div key={subject.label} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-slate-600 truncate mr-2">{subject.label}</span>
-                            <span className={`font-black shrink-0 ${
-                              acc === 0 ? "text-slate-300" : acc >= 70 ? "text-emerald-600" : acc >= 40 ? "text-amber-600" : "text-rose-600"
-                            }`}>{acc > 0 ? `${acc}%` : "—"}</span>
-                          </div>
-                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            {acc > 0 ? (
-                              <div className={`h-full ${bar} rounded-full transition-all duration-500`} style={{ width: `${acc}%` }} />
-                            ) : (
-                              <div className="h-full w-full bg-slate-100 rounded-full" />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">GK accuracy</p>
+                    <p className="mt-1 text-2xl font-black text-slate-900">{gkAttempts > 0 ? `${gkAccuracy}%` : "—"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">CSAT accuracy</p>
+                    <p className="mt-1 text-2xl font-black text-slate-900">{csatAttempts > 0 ? `${csatAccuracy}%` : "—"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Mains avg score</p>
+                    <p className="mt-1 text-2xl font-black text-slate-900">
+                      {mainsAvgScore !== null ? mainsAvgScore : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Evaluations pending</p>
+                    <p className="mt-1 text-2xl font-black text-slate-900">{evaluationsPending}</p>
+                  </div>
                 </div>
-                {totalMCQ === 0 && (
-                  <div className="rounded-xl bg-civic/10 border border-blue-100 px-3 py-2 text-xs text-civic font-semibold text-center">
-                    Take your first test to start tracking accuracy here
+
+                {(highestTopics.length > 0 || lowestTopics.length > 0) && (
+                  <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">
+                      Category level extremes — lowest and highest performing topics
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="text-left font-bold text-slate-400 text-xs uppercase pb-2 border-b border-slate-200">Performance</th>
+                            <th className="text-left font-bold text-slate-400 text-xs uppercase pb-2 border-b border-slate-200">Category / topic</th>
+                            <th className="text-left font-bold text-slate-400 text-xs uppercase pb-2 border-b border-slate-200">Level</th>
+                            <th className="text-right font-bold text-slate-400 text-xs uppercase pb-2 border-b border-slate-200">Accuracy</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {highestTopics.map((topic: any, i: number) => (
+                            <tr key={`highest-${i}`} className="border-b border-slate-100">
+                              <td className="py-3">
+                                <span className="rounded bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-1">Highest</span>
+                              </td>
+                              <td className="py-3">
+                                <Link href={`/assessment/gk?topic=${encodeURIComponent(topic.taxonomy_name)}`} className="text-indigo-600 hover:underline font-semibold">
+                                  {topic.taxonomy_name}
+                                </Link>
+                              </td>
+                              <td className="py-3 text-slate-500">{(topic.node_type || "topic").replace(/_/g, " ")}</td>
+                              <td className="py-3 text-right font-black text-slate-800">{accuracyPct(topic.avg_accuracy)}%</td>
+                            </tr>
+                          ))}
+                          {lowestTopics.map((topic: any, i: number) => (
+                            <tr key={`lowest-${i}`} className={i === lowestTopics.length - 1 ? "" : "border-b border-slate-100"}>
+                              <td className="py-3">
+                                <span className="rounded bg-rose-50 text-rose-700 text-xs font-bold px-2 py-1">Lowest</span>
+                              </td>
+                              <td className="py-3">
+                                <Link href={`/assessment/gk?topic=${encodeURIComponent(topic.taxonomy_name)}`} className="text-indigo-600 hover:underline font-semibold">
+                                  {topic.taxonomy_name}
+                                </Link>
+                              </td>
+                              <td className="py-3 text-slate-500">{(topic.node_type || "topic").replace(/_/g, " ")}</td>
+                              <td className="py-3 text-right font-black text-slate-800">{accuracyPct(topic.avg_accuracy)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {/* Weak Area Focus (2/5) */}
-              <div id="tour-weak-focus" className="sm:col-span-2 rounded-2xl border border-rose-100 bg-white p-5 shadow-sm space-y-4">
-                <div className="flex items-center gap-2">
-                  <BrainCircuit className="h-4 w-4 text-rose-600" />
-                  <h3 className="text-sm font-black text-slate-800">Weak Area Focus</h3>
-                </div>
-                {weakTopics.length > 0 ? (
-                  <div className="space-y-3">
-                    {weakTopics.map((topic, i) => {
-                      const acc = Number(topic.avg_accuracy ?? 0);
-                      const pct = acc <= 1 ? Math.round(acc * 100) : Math.round(acc);
-                      return (
-                        <div key={`${topic.taxonomy_name}-${i}`} className="rounded-xl border border-rose-100 bg-rose-50 p-3 space-y-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="h-5 w-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[9px] font-black shrink-0">{i + 1}</span>
-                            <p className="text-xs font-bold text-rose-900 leading-snug line-clamp-1">{topic.taxonomy_name}</p>
-                          </div>
-                          <div className="h-1.5 w-full bg-rose-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-rose-500 rounded-full" style={{ width: `${pct}%` }} />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-rose-700">{pct}% accuracy</span>
+                <div id="tour-weak-focus" className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BrainCircuit className="h-4 w-4 text-rose-600" />
+                    <h3 className="text-base font-black text-slate-800">Focus areas</h3>
+                  </div>
+                  {weakTopics.length === 0 && !stats?.mains?.consistent_mistakes?.[0] ? (
+                    <div className="flex flex-col items-center justify-center py-4 text-center space-y-2">
+                      <BrainCircuit className="h-8 w-8 text-slate-200" />
+                      <p className="text-sm font-bold text-slate-600">No weak areas identified</p>
+                      <p className="text-xs text-slate-400">Take 1+ tests to detect problem topics</p>
+                      <Link href="/assessment/gk" className="text-sm font-bold text-civic bg-civic/10 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors">
+                        Take a test
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {weakTopics.map((topic, i) => {
+                        const pct = accuracyPct(topic.avg_accuracy);
+                        return (
+                          <div key={`${topic.taxonomy_name}-${i}`} className="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-rose-900 truncate">{topic.taxonomy_name}</p>
+                              <p className="text-xs text-rose-700">{pct}% accuracy over {topic.question_count ?? 0} questions</p>
+                            </div>
                             <Link
                               href={`/assessment/gk?topic=${encodeURIComponent(topic.taxonomy_name)}`}
-                              className="text-[10px] font-black text-rose-600 hover:underline flex items-center gap-0.5"
+                              className="shrink-0 ml-3 text-xs font-black text-rose-600 hover:underline flex items-center gap-0.5"
                             >
-                              Practise now <ChevronRight className="h-3 w-3" />
+                              Practise <ChevronRight className="h-3.5 w-3.5" />
                             </Link>
                           </div>
+                        );
+                      })}
+                      {stats?.mains?.consistent_mistakes?.[0] && (
+                        <div className="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-rose-900 truncate">Mains — recurring feedback</p>
+                            <p className="text-xs text-rose-700 truncate">
+                              &ldquo;{stats.mains.consistent_mistakes[0].mistake}&rdquo; — flagged {stats.mains.consistent_mistakes[0].occurrence_count} times
+                            </p>
+                          </div>
+                          <Link
+                            href="/assessment/mains-hub"
+                            className="shrink-0 ml-3 text-xs font-black text-rose-600 hover:underline flex items-center gap-0.5"
+                          >
+                            Review <ChevronRight className="h-3.5 w-3.5" />
+                          </Link>
                         </div>
-                      );
-                    })}
-                    <p className="text-[10px] text-slate-400 text-center">Updates after each test</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-4 text-center space-y-2">
-                    <BrainCircuit className="h-8 w-8 text-slate-200" />
-                    <p className="text-xs font-bold text-slate-600">No weak areas identified</p>
-                    <p className="text-[10px] text-slate-400">Take 1+ tests to detect problem topics</p>
-                    <Link href="/assessment/gk" className="text-xs font-bold text-civic bg-civic/10 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors">
-                      Take a Test
-                    </Link>
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quick Custom Test Builder */}
             <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-5">
@@ -1741,72 +1926,6 @@ export default function HomePage() {
               </form>
             </div>
 
-            {/* Subject Accuracy Radar */}
-            <section id="tour-radar-chart" className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-indigo-600" />
-                  Subject Accuracy Radar
-                </h2>
-                <Link href="/assessment/dashboard" className="text-xs font-bold text-indigo-600 hover:underline">Full Report</Link>
-              </div>
-              {!hasRadarData ? (
-                <div className="flex flex-col items-center py-6 text-center space-y-3">
-                  <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                    <BrainCircuit className="h-6 w-6 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Radar Empty</h3>
-                    <p className="mt-1 text-xs text-slate-500">Complete a practice test to start tracking subject accuracy.</p>
-                  </div>
-                  <Link href="/assessment/gk" className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 text-xs font-bold text-white transition-colors">
-                    Take First Test
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                  <div className="flex justify-center">
-                    <svg className="w-48 h-48" viewBox="0 0 220 220">
-                      {gridPolygons.map((pts, i) => (
-                        <polygon key={i} points={pts} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2,2" />
-                      ))}
-                      {radarSubjects.map((_, i) => {
-                        const oc = getCoordinates(i, 100);
-                        return <line key={i} x1={center} y1={center} x2={oc.x} y2={oc.y} stroke="#e2e8f0" strokeWidth="1" />;
-                      })}
-                      <polygon points={studentPointsString} fill="rgba(79,70,229,0.16)" stroke="rgb(79,70,229)" strokeWidth="2" />
-                      {radarSubjects.map((subj, i) => {
-                        const c = getCoordinates(i, 100);
-                        const lr = 88;
-                        const lx = center + lr * Math.cos(c.angle);
-                        const ly = center + lr * Math.sin(c.angle) + 4;
-                        let anchor: "middle" | "start" | "end" = "middle";
-                        if (Math.cos(c.angle) > 0.15) anchor = "start";
-                        if (Math.cos(c.angle) < -0.15) anchor = "end";
-                        return <text key={i} x={lx} y={ly} textAnchor={anchor} className="text-[9px] font-bold fill-slate-500">{subj.label}</text>;
-                      })}
-                    </svg>
-                  </div>
-                  <div className="space-y-2">
-                    {radarSubjects.map((s, i) => {
-                      const acc = radarPoints[i] ?? 0;
-                      const bar = acc >= 70 ? "bg-emerald-500" : acc >= 40 ? "bg-amber-500" : "bg-rose-500";
-                      return (
-                        <div key={s.slug} className="space-y-0.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-600">{s.label}</span>
-                            <span className="font-black text-slate-800">{acc}%</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${bar}`} style={{ width: `${acc}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </section>
           </div>
 
           {/* ── RIGHT: Current Affairs + Notes Sidebar (1/3) ── */}
@@ -1957,7 +2076,7 @@ export default function HomePage() {
         </div>
 
         {/* ══════════════════════════════════════════════════════
-            SECTION 3 — STUDY PLANS (least priority, bottom)
+            EXPLORE MORE — feature discovery for areas not yet used
         ══════════════════════════════════════════════════════ */}
         <section id="tour-study-plans" className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -1966,30 +2085,31 @@ export default function HomePage() {
                 <Layers className="h-4 w-4 text-slate-500" />
               </span>
               <div>
-                <h2 className="text-sm font-black text-slate-700">Structured Study Plans</h2>
-                <p className="text-xs text-slate-400">Guided modules for every stage of UPSC prep</p>
+                <h2 className="text-base font-black text-slate-700">Explore more</h2>
+                <p className="text-sm text-slate-400">Other ways to prepare, beyond what you're already using</p>
               </div>
             </div>
-            <Link href="/study-plans" className="text-xs font-bold text-slate-500 hover:text-slate-800 hover:underline">Browse all →</Link>
           </div>
           <div className="snap-scroll-x lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-x-visible">
             {[
-              { title: "UPSC Prelims 90-Day Sprint", desc: "Covers all GS syllabus topics with daily micro-tests and current affairs.", badge: "Most Popular", color: "blue" },
-              { title: "Mains GS Answer Writing", desc: "Structured daily writing practice with mentor evaluation and model answers.", badge: "With Mentorship", color: "purple" },
-              { title: "CSAT Full Preparation", desc: "Concept-by-concept drills — comprehension, quant, logical reasoning.", badge: "Beginner-Friendly", color: "amber" },
-            ].map(({ title, desc, badge, color }) => (
+              { title: "Study plans", desc: "Structured week-by-week prep with tests built in.", cta: "Browse plans", href: "/study-plans", icon: Layers },
+              { title: "Mentorship", desc: "1:1 sessions with mentors who've cleared the exam.", cta: "Find a mentor", href: "/mentors", icon: GraduationCap },
+              { title: "Notes workspace", desc: "Turn daily current affairs into your own notes.", cta: "Start a note", href: "/current-affairs/workspace", icon: NotebookPen },
+            ].map(({ title, desc, cta, href, icon: Icon }) => (
               <Link
                 key={title}
-                href="/study-plans"
+                href={href}
                 className="w-[85vw] sm:w-[300px] lg:w-auto flex-shrink-0 group flex flex-col justify-between rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50 hover:bg-white p-4 hover:shadow-sm transition-all duration-200"
               >
                 <div className="space-y-2">
-                  <span className={`text-[9px] font-black uppercase tracking-widest text-${color}-600 bg-${color}-50 px-1.5 py-0.5 rounded`}>{badge}</span>
-                  <h3 className="text-xs font-black text-slate-800 group-hover:text-slate-900">{title}</h3>
-                  <p className="text-[10px] text-slate-500 leading-snug">{desc}</p>
+                  <span className="h-8 w-8 rounded-lg bg-civic/10 text-civic flex items-center justify-center">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <h3 className="text-sm font-black text-slate-800 group-hover:text-slate-900">{title}</h3>
+                  <p className="text-xs text-slate-500 leading-snug">{desc}</p>
                 </div>
-                <span className={`mt-3 text-[10px] font-black text-${color}-600 flex items-center gap-0.5 group-hover:underline`}>
-                  View plan <ChevronRight className="h-3 w-3" />
+                <span className="mt-3 text-xs font-black text-civic flex items-center gap-0.5 group-hover:underline">
+                  {cta} <ChevronRight className="h-3.5 w-3.5" />
                 </span>
               </Link>
             ))}

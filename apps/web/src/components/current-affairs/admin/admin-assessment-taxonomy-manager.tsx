@@ -852,14 +852,14 @@ export function AdminAssessmentTaxonomyManager() {
         </div>
 
         {/* Content-Type Tabs */}
-        <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1 max-w-xl">
+        <div className="flex flex-wrap gap-2">
           {(["gk", "aptitude", "mains", "natures"] as const).map((tab) => {
             const isActive = activeTab === tab;
-            const label = 
-              tab === "gk" 
-                ? "GK Section" 
-                : tab === "aptitude" 
-                ? "CSAT & Aptitude" 
+            const label =
+              tab === "gk"
+                ? "GK Section"
+                : tab === "aptitude"
+                ? "CSAT & Aptitude"
                 : tab === "mains"
                 ? "Mains Syllabus"
                 : "Question Natures";
@@ -867,10 +867,10 @@ export function AdminAssessmentTaxonomyManager() {
             return (
               <button
                 key={tab}
-                className={`flex-1 rounded-lg py-2 px-3 text-center text-xs font-bold transition-all whitespace-nowrap ${
+                className={`shrink-0 rounded-xl border-2 py-2.5 px-4 text-center text-sm font-bold transition-all whitespace-nowrap ${
                   isActive
-                    ? "bg-white text-civic shadow-sm border border-slate-200/40"
-                    : "text-ink/60 hover:text-civic hover:bg-white/40"
+                    ? "border-civic bg-civic text-white shadow-sm"
+                    : "border-slate-300 bg-white text-ink/60 hover:border-civic/40 hover:text-civic"
                 }`}
                 onClick={() => setActiveTab(tab)}
               >

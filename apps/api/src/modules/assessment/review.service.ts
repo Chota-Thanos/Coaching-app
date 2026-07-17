@@ -7,6 +7,7 @@ import type {
   CreateErrorTypeInput,
   UpdateErrorTypeInput
 } from "./review.schemas.js";
+import { buildPerformanceTree, type LeafMetricInput, type TaxonomyNodeInput } from "./taxonomy-rollup.js";
 
 export async function listErrorTypes(): Promise<unknown[]> {
   return query(
@@ -699,6 +700,69 @@ export async function getStudentTopicMetrics(userId: number): Promise<unknown[]>
     `,
     [userId]
   );
+}
+
+/**
+ * Rolled-up performance tree across every attempt a student has made in a content type
+ * (gk or aptitude). Unlike raw student_topic_metrics rows — which only exist at whatever
+ * node a question happened to be tagged at — this rolls each leaf's metrics up through
+ * parent_id so a subject/book/chapter shows the combined performance of everything tagged
+ * anywhere underneath it, even when no question was ever tagged directly on that ancestor.
+ */
+export async function getStudentPerformanceTree(
+  userId: number,
+  contentType: "gk" | "aptitude"
+): Promise<unknown[]> {
+  const nodes = await query<{ id: string; parent_id: string | null; name: string; node_type: string }>(
+    `
+      select id, parent_id, name, node_type
+      from assessment.assessment_taxonomy_nodes
+      where content_type = $1 and is_active = true
+    `,
+    [contentType]
+  );
+
+  const leafMetrics = await query<{
+    taxonomy_node_id: string;
+    total_questions: string;
+    correct_count: string;
+    incorrect_count: string;
+    unattempted_count: string;
+    score: string;
+  }>(
+    `
+      select
+        stm.taxonomy_node_id,
+        sum(stm.question_count)::integer as total_questions,
+        sum(stm.correct_count)::integer as correct_count,
+        sum(stm.incorrect_count)::integer as incorrect_count,
+        sum(stm.unattempted_count)::integer as unattempted_count,
+        sum(stm.avg_score * stm.attempt_count)::numeric as score
+      from assessment.student_topic_metrics stm
+      join assessment.assessment_taxonomy_nodes atn on atn.id = stm.taxonomy_node_id
+      where stm.user_id = $1 and atn.content_type = $2
+      group by stm.taxonomy_node_id
+    `,
+    [userId, contentType]
+  );
+
+  const nodeInputs: TaxonomyNodeInput[] = nodes.map((n) => ({
+    id: Number(n.id),
+    parent_id: n.parent_id === null ? null : Number(n.parent_id),
+    name: n.name,
+    node_type: n.node_type
+  }));
+
+  const leafInputs: LeafMetricInput[] = leafMetrics.map((m) => ({
+    taxonomy_node_id: Number(m.taxonomy_node_id),
+    total_questions: Number(m.total_questions),
+    correct_count: Number(m.correct_count),
+    incorrect_count: Number(m.incorrect_count),
+    unattempted_count: Number(m.unattempted_count),
+    score: Number(m.score)
+  }));
+
+  return buildPerformanceTree(nodeInputs, leafInputs);
 }
 
 export async function getStudentCategoryPerformance(

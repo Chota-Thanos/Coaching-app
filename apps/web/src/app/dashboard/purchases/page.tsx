@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, authenticatedGet, authenticatedPatch } from "../../../components/auth/auth-context";
+import { tabStripClass, tabButtonClass } from "../../../components/ui/tabs";
 import {
   CreditCard,
   ArrowRight,
@@ -223,7 +224,7 @@ export default function PurchasesPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-slate-200 mb-8">
+        <div className={tabStripClass("mb-8")}>
           {([
             { key: "subscriptions", label: "Subscriptions", count: subscriptions.length },
             { key: "mentorship", label: "Mentorship Sessions", count: mentorPurchases.length }
@@ -231,18 +232,14 @@ export default function PurchasesPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? "border-indigo-600 text-indigo-700"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
+              className={tabButtonClass(activeTab === tab.key)}
             >
               {tab.label}
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-black ${
                   activeTab === tab.key
-                    ? "bg-indigo-100 text-indigo-700"
-                    : "bg-slate-100 text-slate-500"
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-200 text-slate-500"
                 }`}
               >
                 {tab.count}

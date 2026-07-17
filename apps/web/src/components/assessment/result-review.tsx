@@ -26,6 +26,7 @@ const RESULTS_TOUR_STEPS = [
   },
 ];
 import { TopicHeatmap } from "./topic-heatmap";
+import { PerformanceTree, flattenPerformanceTree } from "./performance-tree";
 import { TimeChart } from "./time-chart";
 import { ErrorTagger } from "./error-tagger";
 
@@ -732,7 +733,19 @@ export function ResultReview({ resultId }: { resultId: string }) {
   }
 
   const clearedCutoff = review.cutoff_status === "cleared";
-  const weakTopics = (review.topic_breakdowns ?? []).filter((t) => Number(t.accuracy) < 0.6);
+  // Rolled up through the taxonomy tree when available (same rollup as the Topics tab), so a
+  // uniformly weak subject/chapter surfaces here too, not just individually-tagged topics.
+  const weakTopics = review.topic_performance_tree
+    ? flattenPerformanceTree(review.topic_performance_tree)
+        .filter((n) => n.correct_count + n.incorrect_count > 0 && n.accuracy < 0.6)
+        .sort((a, b) => a.accuracy - b.accuracy)
+        .map((n) => ({
+          taxonomy_name: n.name,
+          question_nature_name: null as string | null,
+          accuracy: n.accuracy,
+          total_questions: n.total_questions
+        }))
+    : (review.topic_breakdowns ?? []).filter((t) => Number(t.accuracy) < 0.6);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16 pt-0.5">
@@ -1485,8 +1498,23 @@ export function ResultReview({ resultId }: { resultId: string }) {
 
       {/* ── Tab: Topics ───────────────────────────────── */}
       {tab === "topics" && (
-        <div className="tab-content">
-          <TopicHeatmap topics={review.topic_breakdowns ?? []} />
+        <div className="tab-content space-y-6">
+          {review.topic_performance_tree && review.topic_performance_tree.length > 0 ? (
+            <div>
+              <div className="mb-3">
+                <h3 className="text-sm font-black text-slate-900">Subject → book → chapter → topic breakdown</h3>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  Every level shows the combined accuracy of everything tagged underneath it — expand a subject or
+                  chapter to see the topics that make it up. Levels with no tagged questions of their own still
+                  reflect their topics once expanded; if nothing was tagged below a category, only that category's
+                  own accuracy is shown.
+                </p>
+              </div>
+              <PerformanceTree roots={review.topic_performance_tree} />
+            </div>
+          ) : (
+            <TopicHeatmap topics={review.topic_breakdowns ?? []} />
+          )}
         </div>
       )}
 

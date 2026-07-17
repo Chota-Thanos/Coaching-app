@@ -413,6 +413,15 @@ img {
   flex-shrink: 0;
 }
 
+/* Horizontal scroll for tab strips, no snapping (variable tab widths) */
+.tab-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Quiz widget modal */
 .quiz-overlay {
   position: fixed;

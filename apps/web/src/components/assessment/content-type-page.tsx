@@ -7,6 +7,7 @@ import { Plus, Sparkles, ClipboardList } from 'lucide-react';
 import { AssessmentHomePage } from './assessment-home';
 import { AssessmentDashboard } from './assessment-dashboard';
 import { authenticatedGet, useAuth } from '../auth/auth-context';
+import { tabStripClass, tabButtonClass } from '../ui/tabs';
 
 interface ContentTypePageProps {
   contentType: 'gk' | 'aptitude' | 'mains';
@@ -66,37 +67,16 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
       </div>
 
       {/* Main tabs */}
-      <div className="sticky top-[53px] z-20 border-b border-line/60 bg-white">
+      <div className="sticky top-[53px] z-20 border-b border-line/60 bg-white py-2">
         <div className="mx-auto max-w-7xl px-4">
-          <div className="flex gap-1">
-            <Link
-              href={`?view=create`}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                view === 'create'
-                  ? 'border-indigo-650 text-indigo-650'
-                  : 'border-transparent text-muted hover:text-ink'
-              }`}
-            >
+          <div className={tabStripClass()}>
+            <Link href={`?view=create`} className={tabButtonClass(view === 'create')}>
               Create Test
             </Link>
-            <Link
-              href={`?view=performance&perf=${perfTab}`}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                view === 'performance'
-                  ? 'border-indigo-650 text-indigo-650'
-                  : 'border-transparent text-muted hover:text-ink'
-              }`}
-            >
+            <Link href={`?view=performance&perf=${perfTab}`} className={tabButtonClass(view === 'performance')}>
               Performance
             </Link>
-            <Link
-              href={`?view=revision`}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                view === 'revision'
-                  ? 'border-indigo-650 text-indigo-650'
-                  : 'border-transparent text-muted hover:text-ink'
-              }`}
-            >
+            <Link href={`?view=revision`} className={tabButtonClass(view === 'revision')}>
               Revision
             </Link>
           </div>
@@ -114,26 +94,12 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
         {view === 'performance' && (
           <div className="mx-auto max-w-7xl">
             {/* Performance sub-tabs */}
-            <div className="sticky top-[101px] z-10 border-b border-line/60 bg-white px-4">
-              <div className="flex gap-1">
-                <Link
-                  href={`?view=performance&perf=summary`}
-                  className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                    perfTab === 'summary'
-                      ? 'border-indigo-650 text-indigo-650'
-                      : 'border-transparent text-muted hover:text-ink'
-                  }`}
-                >
+            <div className="sticky top-[114px] z-10 border-b border-line/60 bg-white px-4 py-2">
+              <div className={tabStripClass()}>
+                <Link href={`?view=performance&perf=summary`} className={tabButtonClass(perfTab === 'summary')}>
                   Summary
                 </Link>
-                <Link
-                  href={`?view=performance&perf=tests`}
-                  className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                    perfTab === 'tests'
-                      ? 'border-indigo-650 text-indigo-650'
-                      : 'border-transparent text-muted hover:text-ink'
-                  }`}
-                >
+                <Link href={`?view=performance&perf=tests`} className={tabButtonClass(perfTab === 'tests')}>
                   My Tests
                 </Link>
               </div>

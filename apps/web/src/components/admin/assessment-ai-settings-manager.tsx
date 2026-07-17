@@ -3,6 +3,7 @@
 import { Brain, Sparkles, BookOpen, Save, Plus, Trash2, CheckCircle2, Loader2, AlertCircle, FileText, ArrowRight, Settings2, RefreshCcw, Edit2 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { authenticatedGet, authenticatedPost, authenticatedDelete, useAuth } from "../auth/auth-context";
+import { tabStripClass, tabButtonClass } from "../ui/tabs";
 
 type StyleGuideState = {
   id?: number;
@@ -732,29 +733,17 @@ export function AssessmentAiSettingsManager() {
   return (
     <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden font-sans">
       {/* Tab Selectors */}
-      <div className="flex border-b border-line bg-slate-50/50">
-        <button
-          onClick={() => setActiveTab("global")}
-          className={`flex items-center gap-2 py-3 px-6 text-xs font-black tracking-wider uppercase border-b-2 transition-all ${
-            activeTab === "global" 
-              ? "border-civic text-civic bg-white font-extrabold" 
-              : "border-transparent text-ink/50 hover:text-ink/80 hover:bg-slate-50"
-          }`}
-        >
-          <Settings2 className="h-4 w-4" />
-          Global Config & Templates
-        </button>
-        <button
-          onClick={() => setActiveTab("profiles")}
-          className={`flex items-center gap-2 py-3 px-6 text-xs font-black tracking-wider uppercase border-b-2 transition-all ${
-            activeTab === "profiles" 
-              ? "border-civic text-civic bg-white font-extrabold" 
-              : "border-transparent text-ink/50 hover:text-ink/80 hover:bg-slate-50"
-          }`}
-        >
-          <Sparkles className="h-4 w-4" />
-          Style Profiles (Example Analyses)
-        </button>
+      <div className="border-b border-line bg-slate-50/50 p-3">
+        <div className={tabStripClass()}>
+          <button onClick={() => setActiveTab("global")} className={tabButtonClass(activeTab === "global")}>
+            <Settings2 className="h-4 w-4" />
+            Global Config & Templates
+          </button>
+          <button onClick={() => setActiveTab("profiles")} className={tabButtonClass(activeTab === "profiles")}>
+            <Sparkles className="h-4 w-4" />
+            Style Profiles (Example Analyses)
+          </button>
+        </div>
       </div>
 
       {message && (

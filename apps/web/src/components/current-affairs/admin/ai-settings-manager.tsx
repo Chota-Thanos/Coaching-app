@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { authenticatedGet, authenticatedPost, authenticatedDelete, useAuth } from "../../auth/auth-context";
 import type { CategoryNode } from "../../../lib/api";
+import { tabStripClass, tabButtonClass } from "../../ui/tabs";
 
 type StyleGuideState = {
   id?: number;
@@ -280,43 +281,21 @@ export function AiSettingsManager() {
   return (
     <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden">
       {/* Tab Switcher */}
-      <div className="flex border-b border-line bg-paper/50">
-        <button
-          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all outline-none ${
-            activeSubTab === "articles"
-              ? "border-civic text-civic bg-white"
-              : "border-transparent text-ink/65 hover:text-ink hover:bg-paper/30"
-          }`}
-          onClick={() => setActiveSubTab("articles")}
-          type="button"
-        >
-          <BookOpen className="h-4 w-4" />
-          Article Styles & Prompts
-        </button>
-        <button
-          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all outline-none ${
-            activeSubTab === "quizzes"
-              ? "border-civic text-civic bg-white"
-              : "border-transparent text-ink/65 hover:text-ink hover:bg-paper/30"
-          }`}
-          onClick={() => setActiveSubTab("quizzes")}
-          type="button"
-        >
-          <Brain className="h-4 w-4" />
-          Quiz Styles & Prompts
-        </button>
-        <button
-          className={`flex items-center gap-2 border-b-2 px-6 py-4 text-sm font-bold transition-all outline-none ${
-            activeSubTab === "subject-prompts"
-              ? "border-civic text-civic bg-white"
-              : "border-transparent text-ink/65 hover:text-ink hover:bg-paper/30"
-          }`}
-          onClick={() => setActiveSubTab("subject-prompts")}
-          type="button"
-        >
-          <Plus className="h-4 w-4" />
-          Subject-Level Prompts
-        </button>
+      <div className="border-b border-line bg-paper/50 p-3">
+        <div className={tabStripClass()}>
+          <button onClick={() => setActiveSubTab("articles")} className={tabButtonClass(activeSubTab === "articles")} type="button">
+            <BookOpen className="h-4 w-4" />
+            Article Styles & Prompts
+          </button>
+          <button onClick={() => setActiveSubTab("quizzes")} className={tabButtonClass(activeSubTab === "quizzes")} type="button">
+            <Brain className="h-4 w-4" />
+            Quiz Styles & Prompts
+          </button>
+          <button onClick={() => setActiveSubTab("subject-prompts")} className={tabButtonClass(activeSubTab === "subject-prompts")} type="button">
+            <Plus className="h-4 w-4" />
+            Subject-Level Prompts
+          </button>
+        </div>
       </div>
 
       {message && (

@@ -1,6 +1,7 @@
 import { one, query } from "../../db.js";
 import type { UserRole } from "../auth/schemas.js";
 import type { AttemptIdentity } from "./attempts.service.js";
+import { buildPerformanceTree, type LeafMetricInput, type TaxonomyNodeInput } from "./taxonomy-rollup.js";
 
 type AssessmentUser = { id: number; role: UserRole };
 
@@ -283,7 +284,11 @@ export async function getResultReview(resultId: number, user: AssessmentUser): P
   const userFilter = canInspectAttempts(user.role) ? "" : "and ta.user_id = $2";
   const params: unknown[] = userFilter ? [resultId, user.id] : [resultId];
 
-  return one(
+  const review = await one<{
+    test_template: { exam_id: string | number; test_type: string };
+    topic_breakdowns: LeafMetricInput[];
+    [key: string]: unknown;
+  }>(
     `
       select
         tr.*,
@@ -383,4 +388,31 @@ export async function getResultReview(resultId: number, user: AssessmentUser): P
     `,
     params
   );
+
+  if (!review) return null;
+
+  // Objective tests can have questions tagged only at a subject/book/chapter level with
+  // no leaf topic underneath — rolling up here (rather than only storing leaf breakdowns)
+  // is what lets the result page show subject/chapter-level accuracy, not just topic-level.
+  if (review.test_template?.test_type !== "mains_test") {
+    const nodes = await query<{ id: string; parent_id: string | null; name: string; node_type: string }>(
+      `
+        select id, parent_id, name, node_type
+        from assessment.assessment_taxonomy_nodes
+        where exam_id = $1 and is_active = true
+      `,
+      [review.test_template.exam_id]
+    );
+
+    const nodeInputs: TaxonomyNodeInput[] = nodes.map((n) => ({
+      id: Number(n.id),
+      parent_id: n.parent_id === null ? null : Number(n.parent_id),
+      name: n.name,
+      node_type: n.node_type
+    }));
+
+    review.topic_performance_tree = buildPerformanceTree(nodeInputs, review.topic_breakdowns ?? []);
+  }
+
+  return review;
 }

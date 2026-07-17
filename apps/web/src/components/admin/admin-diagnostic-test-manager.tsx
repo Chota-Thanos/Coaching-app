@@ -282,11 +282,13 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
         {/* ── Right: question bank ── */}
         <div className="space-y-3">
           {/* Type tabs */}
-          <div className="flex gap-px rounded-lg border border-line bg-paper p-0.5">
+          <div className="flex gap-2">
             {(["gk", "csat", "mains"] as QuestionTab[]).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition ${
-                  activeTab === tab ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
+                className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-bold transition ${
+                  activeTab === tab
+                    ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                    : "border-slate-300 bg-white text-muted hover:border-indigo-300 hover:text-ink"
                 }`}
               >
                 {TAB_LABELS[tab]}

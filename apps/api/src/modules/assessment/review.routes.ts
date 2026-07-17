@@ -14,6 +14,7 @@ import {
   createErrorType,
   getDashboardAnalytics,
   getStudentCategoryPerformance,
+  getStudentPerformanceTree,
   getStudentTopicMetrics,
   listBookmarks,
   listErrorLogs,
@@ -96,6 +97,15 @@ export async function registerReviewRoutes(server: FastifyInstance): Promise<voi
   server.get("/api/v1/assessment/me/topic-metrics", async (request) => {
     const user = await requireAuth(request);
     return getStudentTopicMetrics(user.id);
+  });
+
+  server.get("/api/v1/assessment/me/performance-tree", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const query = request.query as { content_type?: string };
+      const contentType = query?.content_type === "aptitude" ? "aptitude" : "gk";
+      return getStudentPerformanceTree(user.id, contentType);
+    });
   });
 
   server.get("/api/v1/assessment/me/categories/:id/performance", async (request, reply) => {

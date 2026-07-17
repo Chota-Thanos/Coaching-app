@@ -4,6 +4,7 @@ import { Sparkles, Brain, BookOpen, Bookmark, CheckCircle2, ChevronRight, HelpCi
 import { useEffect, useState, useCallback } from "react";
 import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
 import type { CategoryNode, StudentCollection, StudentArticle } from "../../../lib/api";
+import { tabStripClass, tabButtonClass } from "../../ui/tabs";
 
 type Option = {
   label: string;
@@ -368,17 +369,13 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
   return (
     <div className="space-y-6">
       {/* Tab Selectors */}
-      <div className="flex border-b border-line">
+      <div className={tabStripClass()}>
         <button
           onClick={() => {
             setActiveTab("notes");
             setFeedback(null);
           }}
-          className={`flex items-center gap-2 border-b-2 px-6 py-3.5 text-sm font-bold transition-all ${
-            activeTab === "notes"
-              ? "border-civic text-civic"
-              : "border-transparent text-ink/65 hover:text-ink"
-          }`}
+          className={tabButtonClass(activeTab === "notes")}
         >
           <BookOpen className="h-4.5 w-4.5" />
           Generate Study Notes
@@ -388,11 +385,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
             setActiveTab("assessment");
             setFeedback(null);
           }}
-          className={`flex items-center gap-2 border-b-2 px-6 py-3.5 text-sm font-bold transition-all ${
-            activeTab === "assessment"
-              ? "border-civic text-civic"
-              : "border-transparent text-ink/65 hover:text-ink"
-          }`}
+          className={tabButtonClass(activeTab === "assessment")}
         >
           <Award className="h-4.5 w-4.5" />
           Self-Assessment Creator
