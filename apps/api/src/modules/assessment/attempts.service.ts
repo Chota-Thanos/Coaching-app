@@ -555,8 +555,8 @@ export async function startDynamicAttempt(
     const templateRes = await client.query<{ id: number }>(
       `
         insert into assessment.test_templates
-          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
-        values ($1, $2, 'Dynamically generated practice session.', $3, $4, $5, $6, $7, 'free', 'published', $8)
+          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id, source)
+        values ($1, $2, 'Dynamically generated practice session.', $3, $4, $5, $6, $7, 'free', 'published', $8, 'dynamic_practice')
         returning id
       `,
       [title, slug, input.exam_id, storedExamLevelId, testType, duration, totalMarks, userId]
@@ -876,8 +876,8 @@ export async function startCompiledAttempt(
     const templateRes = await client.query<{ id: number }>(
       `
         insert into assessment.test_templates
-          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
-        values ($1, $2, 'Custom compiled test session.', $3, $4, $5, $6, $7, 'free', 'published', $8)
+          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id, source)
+        values ($1, $2, 'Custom compiled test session.', $3, $4, $5, $6, $7, 'free', 'published', $8, 'compiled_practice')
         returning id
       `,
       [title, slug, input.exam_id, storedExamLevelId, testType, duration, totalMarks, userId]
@@ -966,8 +966,8 @@ export async function startSingleMainsQuestionAttempt(
     const templateRes = await client.query<{ id: number }>(
       `
         insert into assessment.test_templates
-          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
-        values ($1, $2, 'Single question subjective practice canvas.', $3, $4, $5, $6, $7, 'free', 'published', $8)
+          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id, source)
+        values ($1, $2, 'Single question subjective practice canvas.', $3, $4, $5, $6, $7, 'free', 'published', $8, 'single_mains_question')
         returning id
       `,
       [title, slug, question.exam_id || 1, question.exam_level_id, testType, duration, totalMarks, userId]

@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
 import { one, query, transaction } from "../../db.js";
 import { calculateObjectiveScore } from "../assessment/score-calculator.js";
+import { upsertStudentTopicMetric } from "../assessment/scoring.service.js";
 import type { ScoreItem } from "../assessment/scoring.types.js";
 import type { UserRole } from "../auth/schemas.js";
 import type {
@@ -1529,7 +1530,12 @@ export async function submitStudyPlanAttempt(
       plan_item_id: string | null;
       enrollment_id: string | null;
       status: string;
+      started_at: Date;
       test_type: string;
+      template_title: string;
+      exam_id: string;
+      exam_level_id: string;
+      duration_minutes: number;
     }>(
       `
         select
@@ -1539,7 +1545,12 @@ export async function submitStudyPlanAttempt(
           ta.plan_item_id,
           ta.enrollment_id,
           ta.status,
-          tt.test_type
+          ta.started_at,
+          tt.test_type,
+          tt.title as template_title,
+          tt.exam_id,
+          tt.exam_level_id,
+          tt.duration_minutes
         from study_plan.test_attempts ta
         join study_plan.test_templates tt on tt.id = ta.test_template_id
         where ta.id = $1
@@ -1712,6 +1723,70 @@ export async function submitStudyPlanAttempt(
     const newResultId = insertedResult.rows[0]?.id;
     if (!newResultId) throw new Error("Study plan result insert failed.");
 
+    // Mirror non-mains (objective) attempts into the central assessment schema so this
+    // attempt counts toward assessment.student_topic_metrics / the Performance dashboard
+    // the same way a custom test or dynamic practice session does. Tagged source='study_plan'
+    // and excluded from catalogs/leaderboards/"My Results" -- Study Plan keeps its own
+    // result page above; this mirror exists purely for central performance metrics.
+    // Mains stays on the existing read-time union in review.service.ts (subjective scoring
+    // doesn't fit the objective breakdown shape this mirror relies on).
+    let mirroredResultId: number | null = null;
+    if (!isMains) {
+      const mirrorTemplateResult = await client.query<{ id: string }>(
+        `
+          insert into assessment.test_templates
+            (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, source)
+          values ($1, $2, 'Study Plan attempt mirror -- feeds performance metrics only, not browsable.', $3, $4, 'sectional_test', $5, $6, 'private', 'archived', 'study_plan')
+          returning id
+        `,
+        [
+          attempt.template_title,
+          `study-plan-mirror-${attemptId}`,
+          attempt.exam_id,
+          attempt.exam_level_id,
+          attempt.duration_minutes,
+          objectiveScore.maxScore
+        ]
+      );
+      const mirrorTemplateId = mirrorTemplateResult.rows[0]?.id;
+      if (!mirrorTemplateId) throw new Error("Failed to mirror study plan template.");
+
+      const mirrorAttemptResult = await client.query<{ id: string }>(
+        `
+          insert into assessment.test_attempts
+            (user_id, test_template_id, status, started_at, submitted_at, study_plan_attempt_id)
+          values ($1, $2, 'submitted', $3, now(), $4)
+          returning id
+        `,
+        [attempt.user_id, mirrorTemplateId, attempt.started_at, attemptId]
+      );
+      const mirrorAttemptId = mirrorAttemptResult.rows[0]?.id;
+      if (!mirrorAttemptId) throw new Error("Failed to mirror study plan attempt.");
+
+      const mirrorResultResult = await client.query<{ id: string }>(
+        `
+          insert into assessment.test_results
+            (attempt_id, score, max_score, accuracy, total_questions, correct_count, incorrect_count, unattempted_count, negative_marks, summary_json)
+          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          returning id
+        `,
+        [
+          mirrorAttemptId,
+          objectiveScore.score,
+          objectiveScore.maxScore,
+          objectiveScore.accuracy,
+          objectiveScore.totalQuestions,
+          objectiveScore.correctCount,
+          objectiveScore.incorrectCount,
+          objectiveScore.unattemptedCount,
+          objectiveScore.negativeMarks,
+          JSON.stringify({ mirrored_from: "study_plan", study_plan_attempt_id: attemptId })
+        ]
+      );
+      mirroredResultId = Number(mirrorResultResult.rows[0]?.id) || null;
+      if (!mirroredResultId) throw new Error("Failed to mirror study plan result.");
+    }
+
     for (const breakdown of objectiveScore.breakdowns) {
       await client.query(
         `
@@ -1749,59 +1824,53 @@ export async function submitStudyPlanAttempt(
       );
 
       if (!isMains && (breakdown as any).taxonomyNodeId) {
-        await client.query(
-          `
-            insert into assessment.student_topic_metrics
-              (
-                user_id,
-                taxonomy_node_id,
-                question_nature_id,
-                attempt_count,
-                question_count,
-                correct_count,
-                incorrect_count,
-                unattempted_count,
-                avg_accuracy,
-                avg_score,
-                last_attempted_at
-              )
-            values ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, now())
-            on conflict (user_id, taxonomy_node_id, question_nature_id)
-            do update set
-              attempt_count = assessment.student_topic_metrics.attempt_count + 1,
-              question_count = assessment.student_topic_metrics.question_count + excluded.question_count,
-              correct_count = assessment.student_topic_metrics.correct_count + excluded.correct_count,
-              incorrect_count = assessment.student_topic_metrics.incorrect_count + excluded.incorrect_count,
-              unattempted_count = assessment.student_topic_metrics.unattempted_count + excluded.unattempted_count,
-              avg_accuracy = (
-                (assessment.student_topic_metrics.correct_count + excluded.correct_count)::numeric /
-                nullif(
-                  assessment.student_topic_metrics.correct_count + assessment.student_topic_metrics.incorrect_count +
-                  excluded.correct_count + excluded.incorrect_count,
-                  0
+        if (mirroredResultId) {
+          await client.query(
+            `
+              insert into assessment.result_topic_breakdowns
+                (
+                  result_id,
+                  taxonomy_node_id,
+                  question_nature_id,
+                  total_questions,
+                  correct_count,
+                  incorrect_count,
+                  unattempted_count,
+                  score,
+                  max_score,
+                  accuracy,
+                  avg_time_seconds
                 )
-              ),
-              avg_score = (
-                (assessment.student_topic_metrics.avg_score * assessment.student_topic_metrics.attempt_count + excluded.avg_score) /
-                nullif(assessment.student_topic_metrics.attempt_count + 1, 0)
-              ),
-              last_attempted_at = now(),
-              updated_at = now()
-          `,
-          [
-            attempt.user_id,
-            (breakdown as any).taxonomyNodeId,
-            (breakdown as any).questionNatureId,
-            breakdown.total,
-            breakdown.correct,
-            breakdown.incorrect,
-            breakdown.unattempted,
-            breakdown.correct + breakdown.incorrect > 0
-              ? breakdown.correct / (breakdown.correct + breakdown.incorrect)
-              : 0,
-            breakdown.score
-          ]
-        );
+              values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `,
+            [
+              mirroredResultId,
+              (breakdown as any).taxonomyNodeId,
+              (breakdown as any).questionNatureId,
+              breakdown.total,
+              breakdown.correct,
+              breakdown.incorrect,
+              breakdown.unattempted,
+              breakdown.score,
+              (breakdown as any).maxScore,
+              breakdown.correct + breakdown.incorrect > 0
+                ? breakdown.correct / (breakdown.correct + breakdown.incorrect)
+                : 0,
+              breakdown.total > 0 ? breakdown.time / breakdown.total : 0
+            ]
+          );
+        }
+
+        await upsertStudentTopicMetric(client, Number(attempt.user_id), {
+          taxonomyNodeId: (breakdown as any).taxonomyNodeId,
+          questionNatureId: (breakdown as any).questionNatureId,
+          total: breakdown.total,
+          correct: breakdown.correct,
+          incorrect: breakdown.incorrect,
+          unattempted: breakdown.unattempted,
+          score: breakdown.score,
+          maxScore: (breakdown as any).maxScore
+        });
       }
     }
 

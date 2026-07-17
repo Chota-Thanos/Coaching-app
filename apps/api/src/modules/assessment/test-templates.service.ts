@@ -152,7 +152,7 @@ export async function listTestTemplates(
   options: ListTestTemplatesQuery & { user_id?: number; user_role?: string }
 ): Promise<unknown[]> {
   const params: unknown[] = [];
-  const conditions: string[] = [];
+  const conditions: string[] = ["tt.source <> 'study_plan'"];
 
   if (options.exam_id) addCondition(conditions, params, "tt.exam_id = ?", options.exam_id);
   if (options.exam_level_id) addCondition(conditions, params, "tt.exam_level_id = ?", options.exam_level_id);
@@ -358,7 +358,7 @@ export async function getTestTemplate(id: number, userId?: number): Promise<unkn
         ` : ""}
       from assessment.test_templates tt
       left join assessment.test_question_items tqi on tqi.test_template_id = tt.id
-      where tt.id = $1
+      where tt.id = $1 and tt.source <> 'study_plan'
       group by tt.id
     `,
     params
@@ -1021,9 +1021,9 @@ export async function createUserCustomTest(
     const templateResult = await client.query<{ id: number }>(
       `
         insert into assessment.test_templates
-          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id)
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'published', $10)
-        returning id, title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id
+          (title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id, source)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'published', $10, 'custom_test')
+        returning id, title, slug, description, exam_id, exam_level_id, test_type, duration_minutes, total_marks, access_type, status, created_by_user_id, source
       `,
       [
         input.title,

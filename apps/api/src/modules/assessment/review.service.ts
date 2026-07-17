@@ -228,6 +228,7 @@ export async function getDashboardAnalytics(userId: number): Promise<unknown> {
         join assessment.test_results tr on tr.attempt_id = ta.id
         join assessment.test_templates tt on tt.id = ta.test_template_id
         where ta.user_id = $1
+          and tt.source <> 'study_plan'
           and ${assessmentObjectiveContentFilter("gk")}
 
         union all
@@ -283,6 +284,7 @@ export async function getDashboardAnalytics(userId: number): Promise<unknown> {
         join assessment.test_results tr on tr.attempt_id = ta.id
         join assessment.test_templates tt on tt.id = ta.test_template_id
         where ta.user_id = $1
+          and tt.source <> 'study_plan'
           and ${assessmentObjectiveContentFilter("gk")}
 
         union all
@@ -318,6 +320,7 @@ export async function getDashboardAnalytics(userId: number): Promise<unknown> {
         join assessment.test_results tr on tr.attempt_id = ta.id
         join assessment.test_templates tt on tt.id = ta.test_template_id
         where ta.user_id = $1
+          and tt.source <> 'study_plan'
           and ${assessmentObjectiveContentFilter("aptitude")}
 
         union all
@@ -373,6 +376,7 @@ export async function getDashboardAnalytics(userId: number): Promise<unknown> {
         join assessment.test_results tr on tr.attempt_id = ta.id
         join assessment.test_templates tt on tt.id = ta.test_template_id
         where ta.user_id = $1
+          and tt.source <> 'study_plan'
           and ${assessmentObjectiveContentFilter("aptitude")}
 
         union all
@@ -460,12 +464,37 @@ export async function getDashboardAnalytics(userId: number): Promise<unknown> {
 
     const mainsStrongTopics = await query(
     `
-      select stm.*, atn.name as taxonomy_name, qn.name as question_nature
-      from assessment.student_topic_metrics stm
-      join assessment.assessment_taxonomy_nodes atn on atn.id = stm.taxonomy_node_id
-      left join assessment.question_natures qn on qn.id = stm.question_nature_id
-      where stm.user_id = $1 and atn.content_type = 'mains'
-      order by stm.avg_score desc, stm.question_count desc
+      select
+        sum(attempt_count)::integer as attempt_count,
+        coalesce(sum(avg_score * attempt_count) / nullif(sum(attempt_count), 0), 0)::numeric(10,2) as avg_score,
+        taxonomy_name
+      from (
+        select
+          count(maa.id)::integer as attempt_count,
+          coalesce(avg(maa.score), 0)::numeric(10,2) as avg_score,
+          mtn.name as taxonomy_name
+        from assessment.mains_answer_attempts maa
+        join assessment.question_versions qv on qv.id = maa.question_version_id
+        join assessment.mains_question_taxonomy_links mqtl on mqtl.question_id = qv.question_id
+        join assessment.mains_taxonomy_nodes mtn on mtn.id = mqtl.paper_node_id
+        where maa.user_id = $1
+        group by mtn.id, mtn.name
+
+        union all
+
+        select
+          count(rtb.id)::integer as attempt_count,
+          coalesce(avg(rtb.score), 0)::numeric(10,2) as avg_score,
+          mtn.name as taxonomy_name
+        from study_plan.result_topic_breakdowns rtb
+        join study_plan.test_results tr on tr.id = rtb.result_id
+        join study_plan.test_attempts ta on ta.id = tr.attempt_id
+        join assessment.mains_taxonomy_nodes mtn on mtn.id = rtb.mains_taxonomy_node_id
+        where ta.user_id = $1 and tr.result_status = 'scored'
+        group by mtn.id, mtn.name
+      ) combined_mains
+      group by taxonomy_name
+      order by avg_score desc
       limit 10
     `,
     [userId]

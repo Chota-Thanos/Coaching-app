@@ -257,7 +257,7 @@ export async function submitAttempt(
   );
 }
 
-type TopicMetricInput = {
+export type TopicMetricInput = {
   taxonomyNodeId: string | number | null;
   questionNatureId: string | number | null;
   total: number;
@@ -268,7 +268,7 @@ type TopicMetricInput = {
   maxScore: number;
 };
 
-async function upsertStudentTopicMetric(
+export async function upsertStudentTopicMetric(
   client: PoolClient,
   userId: number,
   breakdown: TopicMetricInput

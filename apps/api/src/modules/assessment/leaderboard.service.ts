@@ -2,6 +2,16 @@ import { one, query } from "../../db.js";
 import type { LeaderboardQuery } from "./schemas.js";
 
 export async function getLeaderboard(options: LeaderboardQuery): Promise<unknown> {
+  const template = await one<{ source: string }>(
+    "select source from assessment.test_templates where id = $1",
+    [options.test_template_id]
+  );
+  if (!template || template.source === "study_plan") {
+    const error = new Error("Test template not found.") as Error & { statusCode?: number };
+    error.statusCode = 404;
+    throw error;
+  }
+
   const entries = await query(
     `
       select

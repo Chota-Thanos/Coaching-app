@@ -272,6 +272,7 @@ export async function listMyAttempts(
       join assessment.test_templates tt on tt.id = ta.test_template_id
       left join assessment.test_results tr on tr.attempt_id = ta.id
       where ta.user_id = $1
+        and tt.source <> 'study_plan'
         ${conditionSql}
       order by ta.started_at desc
       limit $${limitPos} offset $${offsetPos}
