@@ -175,8 +175,19 @@ export const parseStudyPlanQuestionsSchema = z.object({
 export const idParamSchema = z.object({ id: idSchema });
 export const testTemplateIdParamSchema = z.object({ testTemplateId: idSchema });
 export const attemptIdParamSchema = z.object({ attemptId: idSchema });
+export const liveClassIdParamSchema = z.object({ liveClassId: idSchema });
+
+export const scheduleLiveClassSchema = z.object({
+  plan_item_id: optionalIdSchema,
+  title: z.string().trim().min(1),
+  description: z.string().trim().optional(),
+  host_user_id: idSchema,
+  scheduled_start: z.string().datetime(),
+  scheduled_end: z.string().datetime().optional()
+});
 
 export type ListStudyPlansQuery = z.output<typeof listStudyPlansQuerySchema>;
+export type ScheduleLiveClassInput = z.output<typeof scheduleLiveClassSchema>;
 export type CreateStudyPlanInput = z.output<typeof createStudyPlanSchema>;
 export type UpdateStudyPlanInput = z.output<typeof updateStudyPlanSchema>;
 export type CreatePlanItemInput = z.output<typeof createPlanItemSchema>;

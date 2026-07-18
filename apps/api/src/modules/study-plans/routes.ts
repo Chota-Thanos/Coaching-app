@@ -30,7 +30,12 @@ import {
   upsertStudyPlanWeek,
   getStudyPlanReviews,
   upsertStudyPlanReview,
-  checkUserEnrollment
+  checkUserEnrollment,
+  listLiveClassesForPlan,
+  scheduleLiveClass,
+  startLiveClass,
+  endLiveClass,
+  getLiveClassToken
 } from "./service.js";
 import {
   attemptIdParamSchema,
@@ -40,10 +45,12 @@ import {
   createStudyPlanTestSchema,
   enrollStudyPlanSchema,
   idParamSchema,
+  liveClassIdParamSchema,
   listStudyPlansQuerySchema,
   listStudyPlanTestsQuerySchema,
   parseStudyPlanQuestionsSchema,
   saveStudyPlanQuestionsDraftSchema,
+  scheduleLiveClassSchema,
   startStudyPlanAttemptSchema,
   submitStudyPlanAttemptSchema,
   testTemplateIdParamSchema,
@@ -497,6 +504,48 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
         });
       }
       return upsertStudyPlanReview(params.id, auth.id, body);
+    });
+  });
+
+  // --- Live Classes (one-to-many Agora broadcast) ---
+
+  server.get("/api/v1/study-plans/:id/live-classes", async (request, reply) => {
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      return listLiveClassesForPlan(params.id);
+    });
+  });
+
+  server.post("/api/v1/study-plans/:id/live-classes", async (request, reply) => {
+    const auth = await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(scheduleLiveClassSchema, request.body);
+      return scheduleLiveClass(params.id, body, auth.id);
+    });
+  });
+
+  server.post("/api/v1/study-plan-live-classes/:liveClassId/start", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(liveClassIdParamSchema, request.params);
+      return startLiveClass(params.liveClassId, auth);
+    });
+  });
+
+  server.post("/api/v1/study-plan-live-classes/:liveClassId/end", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(liveClassIdParamSchema, request.params);
+      return endLiveClass(params.liveClassId, auth);
+    });
+  });
+
+  server.get("/api/v1/study-plan-live-classes/:liveClassId/token", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(liveClassIdParamSchema, request.params);
+      return getLiveClassToken(params.liveClassId, auth);
     });
   });
 }

@@ -1,4 +1,5 @@
 import { one, query, transaction, type DbClient } from "../../db.js";
+import { generateAgoraRtcToken } from "../../common/agora.js";
 import type {
   CreateOnboardingApplicationInput,
   DraftOnboardingApplicationInput,
@@ -766,35 +767,16 @@ export async function listMessages(requestId: number, userId: number) {
 
 // --- Agora Integration Helper ---
 
+/** 1:1 mentorship calls are symmetric -- both participants publish audio/video,
+ * so both are issued a "host" (publisher) role token. */
 export function generateAgoraToken(channelName: string, userId: number) {
-  // Agora token generation typically uses cryptography.
-  // In development, if AGORA_APP_ID is provided but no certificate, we return App ID and a dummy token.
-  // If the console is set to testing mode (token optional), the client joins successfully.
-  const appId = process.env.AGORA_APP_ID || "demoAppId";
-  const appCertificate = process.env.AGORA_APP_CERTIFICATE;
-  
-  if (!appCertificate) {
-    return {
-      appId,
-      token: "mock-agora-token",
-      channelName,
-      uid: userId
-    };
-  }
-
-  // Minimal implementation of token generation for Agora RTC
-  // Standard token: appID + appCertificate + channelName + uid + expiration
-  // For safety and compatibility, we return appId, a generated token (via MD5/SHA256 mock/standard signature matching Agora shape),
-  // or a simple dynamic token that clients can read.
-  const expireTimestamp = Math.floor(Date.now() / 1000) + 3600;
-  
-  // Return the parameters the frontend needs
+  const { appId, token, uid, expiresInSeconds } = generateAgoraRtcToken(channelName, userId, "host");
   return {
     appId,
-    token: `agora-rtc-token-${channelName}-${userId}-${expireTimestamp}`,
+    token,
     channelName,
-    uid: userId,
-    expiresAt: expireTimestamp
+    uid,
+    expiresAt: Math.floor(Date.now() / 1000) + expiresInSeconds
   };
 }
 

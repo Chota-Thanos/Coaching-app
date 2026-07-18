@@ -16,6 +16,8 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("8h"),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  AGORA_APP_ID: z.string().optional(),
+  AGORA_APP_CERTIFICATE: z.string().optional(),
   GOOGLE_CLIENT_ID_WEB: z.string().optional(),
   GOOGLE_CLIENT_ID_ANDROID: z.string().optional(),
   GOOGLE_CLIENT_ID_IOS: z.string().optional()

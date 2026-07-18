@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
 import { one, query, transaction } from "../../db.js";
+import { generateAgoraRtcToken, type AgoraRtcRole } from "../../common/agora.js";
 import { calculateObjectiveScore } from "../assessment/score-calculator.js";
 import { upsertStudentTopicMetric } from "../assessment/scoring.service.js";
 import type { ScoreItem } from "../assessment/scoring.types.js";
@@ -13,6 +15,7 @@ import type {
   EnrollStudyPlanInput,
   ListStudyPlansQuery,
   ListStudyPlanTestsQuery,
+  ScheduleLiveClassInput,
   StartStudyPlanAttemptInput,
   SubmitStudyPlanAttemptInput,
   UpdatePlanItemInput,
@@ -381,11 +384,14 @@ export async function listStudyPlans(options: ListStudyPlansQuery): Promise<unkn
         e.name as exam_name,
         atn.name as subject_name,
         coalesce(count(distinct pi.id), 0)::integer as item_count,
-        coalesce(count(distinct pi.id) filter (where pi.item_type in ('prelims_test', 'csat_test', 'mains_test')), 0)::integer as test_count
+        coalesce(count(distinct pi.id) filter (where pi.item_type in ('prelims_test', 'csat_test', 'mains_test')), 0)::integer as test_count,
+        coalesce(avg(rev.rating), 0.0)::float as average_rating,
+        coalesce(count(distinct rev.id), 0)::integer as total_reviews
       from study_plan.plans sp
       join assessment.exams e on e.id = sp.exam_id
       left join assessment.assessment_taxonomy_nodes atn on atn.id = sp.subject_node_id
       left join study_plan.plan_items pi on pi.plan_id = sp.id
+      left join study_plan.reviews rev on rev.plan_id = sp.id
       ${conditions.length ? `where ${conditions.join(" and ")}` : ""}
       group by sp.id, e.id, atn.id
       order by sp.created_at desc
@@ -546,12 +552,21 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
         case when $2::boolean or pi.is_preview then pi.lecture_url else null end as lecture_url,
         case when $2::boolean or pi.is_preview then pi.test_template_id else null end as test_template_id,
         row_to_json(tt.*) as test_template,
-        row_to_json(ip.*) as progress
+        row_to_json(ip.*) as progress,
+        case when lc.id is not null then json_build_object(
+          'id', lc.id,
+          'title', lc.title,
+          'status', lc.status,
+          'scheduled_start', lc.scheduled_start,
+          'scheduled_end', lc.scheduled_end,
+          'host_user_id', lc.host_user_id
+        ) else null end as live_class
       from study_plan.plan_items pi
       left join study_plan.test_templates tt on tt.id = pi.test_template_id
       left join study_plan.item_progress ip
         on ip.plan_item_id = pi.id
        and ip.enrollment_id = $3
+      left join study_plan.live_classes lc on lc.id = pi.live_class_id
       where pi.plan_id = $1
       order by pi.week_no asc, pi.day_no asc, pi.display_order asc, pi.id asc
     `,
@@ -2064,4 +2079,163 @@ export async function checkUserEnrollment(planId: number, userId: number): Promi
     [planId, userId]
   );
   return !!res;
+}
+
+// --- Live Classes (one-to-many Agora broadcast) ---
+
+export async function listLiveClassesForPlan(planId: number): Promise<unknown[]> {
+  return query(
+    `
+      select
+        lc.id,
+        lc.plan_id,
+        lc.plan_item_id,
+        lc.title,
+        lc.description,
+        lc.host_user_id,
+        u.username as host_name,
+        lc.scheduled_start,
+        lc.scheduled_end,
+        lc.status,
+        lc.started_at,
+        lc.ended_at
+      from study_plan.live_classes lc
+      join app.users u on u.id = lc.host_user_id
+      where lc.plan_id = $1 and lc.status <> 'cancelled'
+      order by lc.scheduled_start asc
+    `,
+    [planId]
+  );
+}
+
+export async function scheduleLiveClass(
+  planId: number,
+  input: ScheduleLiveClassInput,
+  createdByUserId: number
+): Promise<unknown> {
+  const channelName = `spliveclass-${planId}-${randomUUID()}`;
+
+  return transaction(async (client) => {
+    const record = await client.query(
+      `
+        insert into study_plan.live_classes
+          (plan_id, plan_item_id, title, description, host_user_id, channel_name, scheduled_start, scheduled_end, created_by_user_id)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        returning *
+      `,
+      [
+        planId,
+        input.plan_item_id ?? null,
+        input.title,
+        input.description ?? null,
+        input.host_user_id,
+        channelName,
+        input.scheduled_start,
+        input.scheduled_end ?? null,
+        createdByUserId
+      ]
+    );
+    const liveClass = record.rows[0];
+
+    if (input.plan_item_id) {
+      await client.query(
+        `update study_plan.plan_items set live_class_id = $1 where id = $2 and plan_id = $3`,
+        [liveClass.id, input.plan_item_id, planId]
+      );
+    }
+
+    return liveClass;
+  });
+}
+
+async function getLiveClass(liveClassId: number): Promise<{
+  id: number;
+  plan_id: number;
+  host_user_id: number;
+  channel_name: string;
+  status: string;
+} | null> {
+  return one(
+    `select id, plan_id, host_user_id, channel_name, status from study_plan.live_classes where id = $1`,
+    [liveClassId]
+  );
+}
+
+export async function startLiveClass(liveClassId: number, requestingUser: AuthContext): Promise<unknown> {
+  const liveClass = await getLiveClass(liveClassId);
+  if (!liveClass) notFound("Live class not found.");
+  if (!isPrivileged(requestingUser) && liveClass.host_user_id !== requestingUser.id) {
+    const error = new Error("Only the assigned host can start this class.") as Error & { statusCode?: number };
+    error.statusCode = 403;
+    throw error;
+  }
+  if (liveClass.status === "ended" || liveClass.status === "cancelled") {
+    const error = new Error(`Cannot start a class that is already ${liveClass.status}.`) as Error & { statusCode?: number };
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const res = await query(
+    `update study_plan.live_classes set status = 'live', started_at = coalesce(started_at, now()) where id = $1 returning *`,
+    [liveClassId]
+  );
+  return res[0];
+}
+
+export async function endLiveClass(liveClassId: number, requestingUser: AuthContext): Promise<unknown> {
+  const liveClass = await getLiveClass(liveClassId);
+  if (!liveClass) notFound("Live class not found.");
+  if (!isPrivileged(requestingUser) && liveClass.host_user_id !== requestingUser.id) {
+    const error = new Error("Only the assigned host can end this class.") as Error & { statusCode?: number };
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const res = await query(
+    `update study_plan.live_classes set status = 'ended', ended_at = now() where id = $1 returning *`,
+    [liveClassId]
+  );
+  return res[0];
+}
+
+export async function getLiveClassToken(
+  liveClassId: number,
+  requestingUser: AuthContext
+): Promise<{ appId: string; token: string | null; uid: number; channelName: string; role: AgoraRtcRole; expiresInSeconds: number }> {
+  const liveClass = await getLiveClass(liveClassId);
+  if (!liveClass) notFound("Live class not found.");
+
+  const isHost = isPrivileged(requestingUser) || liveClass.host_user_id === requestingUser.id;
+
+  if (!isHost) {
+    if (liveClass.status === "ended" || liveClass.status === "cancelled") {
+      const error = new Error(`This class has already ${liveClass.status === "ended" ? "ended" : "been cancelled"}.`) as Error & { statusCode?: number };
+      error.statusCode = 409;
+      throw error;
+    }
+    if (liveClass.status !== "live") {
+      const error = new Error("This class hasn't started yet.") as Error & { statusCode?: number };
+      error.statusCode = 409;
+      throw error;
+    }
+    const enrolled = await checkUserEnrollment(liveClass.plan_id, requestingUser.id);
+    if (!enrolled) {
+      const error = new Error("You must be enrolled in this study plan to join its live classes.") as Error & { statusCode?: number };
+      error.statusCode = 403;
+      throw error;
+    }
+  } else if (liveClass.status === "ended" || liveClass.status === "cancelled") {
+    const error = new Error(`Cannot join a class that is already ${liveClass.status}.`) as Error & { statusCode?: number };
+    error.statusCode = 409;
+    throw error;
+  }
+
+  await query(
+    `insert into study_plan.live_class_attendance (live_class_id, user_id) values ($1, $2)`,
+    [liveClassId, requestingUser.id]
+  );
+
+  const role: AgoraRtcRole = isHost ? "host" : "audience";
+  const { appId, token, uid, expiresInSeconds } = generateAgoraRtcToken(liveClass.channel_name, requestingUser.id, role);
+  return { appId, token, uid, channelName: liveClass.channel_name, role, expiresInSeconds };
 }
