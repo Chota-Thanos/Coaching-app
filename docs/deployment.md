@@ -46,4 +46,5 @@ Record every deployment here — date, commit(s) shipped, a one-line summary, wh
 
 | Date | Commit(s) | Summary | Run by | Outcome |
 |------|-----------|---------|--------|---------|
-| 2026-07-18 | `3467564` | Web Study Plans typography fix + roadmap/curriculum redesign to match the mobile app | User, manual SSH (`deploy.sh`) | _pending confirmation_ |
+| 2026-07-18 | `3467564` | Web Study Plans typography fix + roadmap/curriculum redesign to match the mobile app | User, manual SSH (`deploy.sh`) | SSH access resolved (passphrase/password mixup); `deploy.sh` completion not explicitly confirmed back to assistant -- verify `pm2 status` and the live site on next login |
+| 2026-07-18 | `83b27c1` | Added this deployment runbook/log and the SSH connection gotcha fix to `deploy.sh` | Not yet deployed | _not yet deployed -- commit not pushed to origin (blocked by harness classifier, see below)_ |
