@@ -24,7 +24,7 @@
     {
       "name": "mobile-debug",
       "runtimeExecutable": "flutter",
-      "runtimeArgs": ["run", "-d", "web-server", "--web-port=5051", "--web-hostname=0.0.0.0"],
+      "runtimeArgs": ["run", "-d", "web-server", "--web-port=5051", "--web-hostname=0.0.0.0", "--dart-define=API_BASE_URL=http://localhost:4000"],
       "cwd": "upsc_test_series",
       "port": 5051
     }
