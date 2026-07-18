@@ -1,4 +1,9 @@
 #!/bin/bash
+# Run this ON the live server, from the repo root (/var/www/coaching), after
+# connecting via SSH. See docs/deployment.md for the SSH connection gotcha
+# (Windows clients get stuck on a local key passphrase prompt instead of the
+# server password) and for the deployment log to record each run in.
+
 # Exit on error
 set -e
 
