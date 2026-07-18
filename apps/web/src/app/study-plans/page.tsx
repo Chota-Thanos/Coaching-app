@@ -23,33 +23,33 @@ export const metadata: Metadata = {
 };
 
 function PlanArtwork({ plan, large = false }: { plan: StudyPlanSummary; large?: boolean }) {
-  if (plan.cover_image_url) {
-    return (
-      <div
-        className={`${large ? "h-52" : "h-40"} bg-cover bg-center`}
-        style={{ backgroundImage: `url(${plan.cover_image_url})` }}
-      />
-    );
-  }
-
-  return (
+  const inner = plan.cover_image_url ? (
+    <div
+      className={`${large ? "h-52" : "h-40"} bg-cover bg-center`}
+      style={{ backgroundImage: `url(${plan.cover_image_url})` }}
+    />
+  ) : (
     <div className={`${large ? "h-52" : "h-40"} relative overflow-hidden bg-gradient-to-br from-slate-800 to-indigo-950 text-white`}>
       <div className="absolute inset-y-0 right-0 w-1/3 bg-indigo-600/15" />
       <div className="absolute bottom-0 left-0 h-1.5 w-full bg-indigo-500" />
       <div className="relative flex h-full flex-col justify-between p-4">
-        <div className="flex items-center justify-between">
-          <span className="rounded-md bg-white/10 px-2 py-1 text-[11px] font-black uppercase tracking-wide">Study Plan</span>
-          <BookOpenCheck className="h-5 w-5 text-indigo-200" />
-        </div>
-        <div>
-          <p className="max-w-[14rem] text-lg font-black leading-tight text-slate-100">{plan.exam_name ?? "Exam Prep"}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <span className="h-1.5 rounded-sm bg-white/30" />
-            <span className="h-1.5 rounded-sm bg-indigo-400" />
-            <span className="h-1.5 rounded-sm bg-slate-500" />
-          </div>
-        </div>
+        <BookOpenCheck className="ml-auto h-5 w-5 text-indigo-200" />
+        <p className="max-w-[14rem] font-heading text-lg !font-black leading-tight text-slate-100">{plan.exam_name ?? "Exam Prep"}</p>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="relative">
+      {inner}
+      <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 font-heading text-[10px] !font-black uppercase tracking-wide text-civic shadow-sm">
+        {plan.level_label ?? "Prelims"}
+      </span>
+      {plan.price_amount_minor === 0 && (
+        <span className="absolute right-2.5 top-2.5 rounded-full bg-emerald-600/90 px-2.5 py-1 font-heading text-[10px] !font-black uppercase tracking-wide text-white shadow-sm">
+          Free
+        </span>
+      )}
     </div>
   );
 }
@@ -69,12 +69,12 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
         <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px]" />
         <div className="relative mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
           <div>
-            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-400">
+            <p className="flex items-center gap-2 font-heading text-xs !font-black uppercase tracking-wider text-indigo-400">
               <BookOpenCheck aria-hidden="true" className="h-4 w-4" />
               Study plans
             </p>
-            <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight md:text-5xl">Choose a study plan and follow it day by day</h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-white/75">
+            <h1 className="mt-3 max-w-3xl font-heading text-3xl !font-black leading-tight tracking-tight md:text-5xl">Choose a study plan and follow it day by day</h1>
+            <p className="mt-4 max-w-2xl font-sans text-base leading-7 text-white/75">
               Week-wise UPSC plans with reading, revision, live lectures, and tests placed inside the schedule.
             </p>
             <div className="mt-5 flex flex-wrap gap-3 text-sm font-bold text-white/80">
@@ -97,7 +97,7 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
               <>
                 <PlanArtwork plan={plans[0]} large />
                 <div className="p-4">
-                  <p className="text-sm font-black">{plans[0].title}</p>
+                  <p className="font-heading text-sm !font-black">{plans[0].title}</p>
                   <p className="mt-1 text-xs font-semibold text-white/65">{plans[0].duration_weeks} weeks - {plans[0].test_count ?? 0} tests</p>
                 </div>
               </>
@@ -113,11 +113,11 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
       <div className="mx-auto max-w-7xl space-y-6 px-4 pt-6">
         <form action="/study-plans" className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4 shadow-card md:flex-row md:items-end md:justify-between" method="get">
           <div>
-            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+            <p className="inline-flex items-center gap-2 font-heading text-xs !font-black uppercase tracking-wide text-civic">
               <Filter className="h-3.5 w-3.5" />
               Filter plans
             </p>
-            <h2 className="mt-1 text-xl font-black text-slate-800">Available study plans</h2>
+            <h2 className="mt-1 font-heading text-xl !font-black text-ink">Available study plans</h2>
           </div>
           <label className="grid gap-1 text-sm font-bold text-slate-800 md:w-80">
             Exam
@@ -143,39 +143,38 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
               >
                 <PlanArtwork plan={plan} />
                 <div className="p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-indigo-700">Paid plan</span>
-                    <span className="inline-flex items-center gap-1 text-xs font-black text-slate-500">
-                      <Star className="h-3.5 w-3.5 fill-indigo-500 text-indigo-500" />
-                      Structured
-                    </span>
-                  </div>
-                  <h2 className="mt-3 min-h-12 text-lg font-black leading-snug text-slate-800 group-hover:text-indigo-600 transition-colors">{plan.title}</h2>
+                  <p className="inline-flex items-center gap-1.5 font-heading text-[11px] !font-black uppercase tracking-wide text-civic">
+                    <Star className="h-3.5 w-3.5 fill-civic text-civic" />
+                    {plan.exam_name ?? "Guided curriculum"}
+                  </p>
+                  <h2 className="mt-2 min-h-12 font-heading text-lg !font-extrabold leading-snug text-ink group-hover:text-civic transition-colors">{plan.title}</h2>
                   {plan.subtitle && <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-500">{plan.subtitle}</p>}
                   {plan.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{plan.description}</p>}
                   <div className="mt-4 grid grid-cols-3 gap-2 border-y border-slate-100 py-3 text-xs font-bold text-slate-500">
                     <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5 text-indigo-500" />
+                      <CalendarDays className="h-3.5 w-3.5 text-civic" />
                       {plan.duration_weeks} weeks
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <BookOpenCheck className="h-3.5 w-3.5 text-indigo-500" />
+                      <BookOpenCheck className="h-3.5 w-3.5 text-civic" />
                       {plan.item_count ?? 0} items
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <ClipboardList className="h-3.5 w-3.5 text-indigo-500" />
+                      <ClipboardList className="h-3.5 w-3.5 text-civic" />
                       {plan.test_count ?? 0} tests
                     </span>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className="text-xl font-black text-slate-800">{formatPlanPrice(plan.price_amount_minor, plan.currency)}</p>
-                    <span className="inline-flex items-center gap-1 text-xs font-black text-indigo-600">
-                      <PlayCircle className="h-4 w-4" />
+                    <p className={`font-heading text-xl !font-black ${plan.price_amount_minor === 0 ? "text-emerald-600" : "text-civic"}`}>
+                      {formatPlanPrice(plan.price_amount_minor, plan.currency)}
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-civic px-3.5 py-2 font-heading text-xs !font-black uppercase tracking-wide text-white transition group-hover:bg-indigo-700">
+                      <PlayCircle className="h-3.5 w-3.5" />
                       View plan
                     </span>
                   </div>
                   <p className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-civic" />
                     Curriculum visible before purchase
                   </p>
                 </div>

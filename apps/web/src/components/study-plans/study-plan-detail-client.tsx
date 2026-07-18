@@ -8,6 +8,7 @@ import {
   BookOpen,
   BookOpenCheck,
   CalendarDays,
+  Check,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -43,6 +44,28 @@ function itemIcon(item: StudyPlanItem) {
   return <PlayCircle className="h-4 w-4" />;
 }
 
+function WeekStatusCircle({ done, isCurrent, locked }: { done: boolean; isCurrent: boolean; locked: boolean }) {
+  if (done) {
+    return (
+      <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
+        <Check className="h-3.5 w-3.5" />
+      </div>
+    );
+  }
+  if (isCurrent) {
+    return (
+      <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-civic ring-4 ring-civic/25">
+        <div className="h-2 w-2 rounded-full bg-white" />
+      </div>
+    );
+  }
+  return (
+    <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-line bg-paper">
+      {locked && <LockKeyhole className="h-3 w-3 text-slate-400" />}
+    </div>
+  );
+}
+
 function groupByWeek(items: StudyPlanItem[]) {
   const weeks = new Map<number, StudyPlanItem[]>();
   for (const item of items) {
@@ -69,11 +92,11 @@ function CourseArtwork({ plan }: { plan: StudyPlanDetail }) {
       <div className="absolute bottom-0 left-0 h-2 w-full bg-indigo-500" />
       <div className="relative flex h-full flex-col justify-between p-5">
         <div className="flex items-center justify-between">
-          <span className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-black uppercase tracking-wide">Study Plan</span>
+          <span className="rounded-md bg-white/15 px-2 py-1 font-heading text-[11px] !font-black uppercase tracking-wide">Study Plan</span>
           <BookOpenCheck className="h-6 w-6 text-indigo-200" />
         </div>
         <div>
-          <p className="text-2xl font-black leading-tight">{plan.exam?.name ?? plan.exam_name ?? "Exam Prep"}</p>
+          <p className="font-heading text-2xl !font-black leading-tight">{plan.exam?.name ?? plan.exam_name ?? "Exam Prep"}</p>
           <p className="mt-1 text-sm font-bold text-white/70">{plan.duration_weeks} week guided schedule</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <span className="h-1.5 rounded-sm bg-white/30" />
@@ -106,6 +129,8 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
   const [plan, setPlan] = useState(initialPlan);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
+  const [weeksInitialized, setWeeksInitialized] = useState(false);
 
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
@@ -145,6 +170,32 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
   };
 
   const weeks = useMemo(() => groupByWeek(plan.items), [plan.items]);
+
+  // Auto-expand only the first week that isn't fully complete (the "current"
+  // week), matching a guided-path presentation -- past weeks collapse to a
+  // checkmark, future weeks stay collapsed and dim until access allows.
+  useEffect(() => {
+    if (weeksInitialized || weeks.length === 0) return;
+    let currentWeek: number | null = null;
+    for (const [week, items] of weeks) {
+      const allDone = items.length > 0 && items.every((item) => item.progress?.status === "completed");
+      currentWeek = week;
+      if (!allDone) break;
+    }
+    if (currentWeek === null) return;
+    setExpandedWeeks(new Set([currentWeek]));
+    setWeeksInitialized(true);
+  }, [weeks, weeksInitialized]);
+
+  const toggleWeek = (week: number) => {
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev);
+      if (next.has(week)) next.delete(week);
+      else next.add(week);
+      return next;
+    });
+  };
+
   const completed = plan.progress_summary?.completed_items ?? 0;
   const total = plan.progress_summary?.total_items ?? plan.items.length;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -285,26 +336,33 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
         <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px]" />
         <div className="relative mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div>
-            <Link className="inline-flex items-center gap-2 text-sm font-bold text-indigo-400 hover:text-white" href={studyPlanHref()}>
+            <Link className="inline-flex items-center gap-2 !font-heading text-sm !font-black text-indigo-400 hover:text-white" href={studyPlanHref()}>
               <ArrowLeft aria-hidden="true" className="h-4 w-4" />
               Study plans
             </Link>
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-indigo-500/20 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-indigo-300 border border-indigo-500/30">{plan.duration_weeks} weeks</span>
-              <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-white/80">{plan.language}</span>
-              {plan.level_label && <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-white/80">{plan.level_label}</span>}
+            <p className="mt-5 flex flex-wrap items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide text-indigo-300">
+              <span>Study plans</span>
+              <span className="text-indigo-500">·</span>
+              <span>{plan.level_label ?? `${plan.duration_weeks} week plan`}</span>
+              <span className="text-indigo-500">·</span>
+              <span>{plan.has_access ? "Unlocked" : "Locked"}</span>
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-indigo-500/20 px-2.5 py-1 font-heading text-[11px] !font-black uppercase tracking-wide text-indigo-300 border border-indigo-500/30">{plan.duration_weeks} weeks</span>
+              <span className="rounded-md bg-white/10 px-2.5 py-1 font-heading text-[11px] !font-black uppercase tracking-wide text-white/80">{plan.language}</span>
+              {plan.level_label && <span className="rounded-md bg-white/10 px-2.5 py-1 font-heading text-[11px] !font-black uppercase tracking-wide text-white/80">{plan.level_label}</span>}
               {plan.reviews_summary && plan.reviews_summary.total_reviews > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 text-[11px] font-black tracking-wide text-amber-300 border border-amber-500/30">
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 font-heading text-[11px] !font-black tracking-wide text-amber-300 border border-amber-500/30">
                   <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
                   {Number(plan.reviews_summary.average_rating).toFixed(1)} ({plan.reviews_summary.total_reviews} reviews)
                 </span>
               )}
             </div>
-            <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight md:text-5xl">{plan.title}</h1>
-            {plan.subtitle && <p className="mt-4 max-w-3xl text-lg font-bold leading-7 text-white/80">{plan.subtitle}</p>}
+            <h1 className="mt-4 max-w-4xl font-heading text-3xl !font-black leading-tight tracking-tight md:text-5xl">{plan.title}</h1>
+            {plan.subtitle && <p className="mt-4 max-w-3xl font-sans text-lg font-bold leading-7 text-white/80">{plan.subtitle}</p>}
             {plan.description && (
               <div
-                className="mt-4 max-w-3xl text-base leading-7 text-white/75 prose prose-invert max-w-none"
+                className="mt-4 max-w-3xl font-sans text-base leading-7 text-white/75 prose prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: plan.description }}
               />
             )}
@@ -346,7 +404,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
       <div className="mx-auto grid max-w-7xl gap-6 px-4 pt-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <section className="rounded-lg border border-line bg-white p-5 shadow-card">
-            <h2 className="text-2xl font-black text-ink">What you will get</h2>
+            <h2 className="text-2xl !font-black text-ink">What you will get</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {[
                 `${plan.duration_weeks} week guided schedule with no fixed calendar date`,
@@ -364,56 +422,67 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
 
           <section className="rounded-lg border border-line bg-white shadow-card">
             <div className="border-b border-line p-5">
-              <h2 className="text-2xl font-black text-ink">Course content</h2>
+              <h2 className="text-2xl !font-black text-ink">Course content</h2>
               <p className="mt-2 text-sm font-semibold text-ink/55">
                 {weeks.length} weeks - {plan.items.length} items - {tests} tests - about {estimatedHours} hours of planned effort
               </p>
             </div>
 
-            <div className="divide-y divide-line">
-              {weeks.map(([week, items]) => {
+            <div className="p-5">
+              {weeks.map(([week, items], idx) => {
+                const isLast = idx === weeks.length - 1;
                 const weekMinutes = items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
                 const overview = plan.week_overviews?.find((wo) => wo.week_no === week);
+                const allDone = items.length > 0 && items.every((item) => item.progress?.status === "completed");
+                const weekLocked = !plan.has_access && !items.some((item) => item.is_preview);
+                const isExpanded = expandedWeeks.has(week);
+                const isCurrent = isExpanded && !allDone && !weekLocked;
                 return (
-                  <section key={week}>
-                    <div className="flex flex-col gap-2 bg-slate-50 border-b border-line px-5 py-4">
-                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-indigo-600">Week {week}</h3>
-                        <p className="text-xs font-semibold text-slate-500">
+                  <div className="flex items-stretch gap-3" key={week}>
+                    <div className="flex flex-col items-center">
+                      <WeekStatusCircle done={allDone} isCurrent={isCurrent} locked={weekLocked} />
+                      {!isLast && <div className="my-1 w-0.5 flex-1 bg-line" />}
+                    </div>
+                    <div className={`min-w-0 flex-1 ${isLast ? "pb-1" : "pb-6"}`}>
+                      <button
+                        className={`w-full text-left ${weekLocked ? "opacity-50" : ""}`}
+                        onClick={() => toggleWeek(week)}
+                        type="button"
+                      >
+                        <p className={`font-heading text-[11px] !font-black uppercase tracking-wide ${allDone ? "text-emerald-600" : weekLocked ? "text-slate-400" : "text-civic"}`}>
+                          Week {week}{allDone ? " · Complete" : weekLocked ? " · Locked" : ""}
+                        </p>
+                        <h3 className="mt-0.5 font-heading text-base !font-extrabold text-ink leading-tight">{overview?.title ?? `Week ${week}`}</h3>
+                        {overview?.description && (
+                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 max-w-4xl">{overview.description}</p>
+                        )}
+                        <p className="mt-1.5 text-xs font-semibold text-slate-400">
                           {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
                         </p>
-                      </div>
-                      {overview && (
-                        <div className="mt-1">
-                          <h4 className="text-base font-black text-slate-900 leading-tight">{overview.title}</h4>
-                          {overview.description && (
-                            <p className="mt-1.5 text-xs font-bold leading-5 text-slate-500 max-w-4xl">
-                              {overview.description}
-                            </p>
-                          )}
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-3 space-y-2">
+                          {items.map((item) => (
+                            <CurriculumItem
+                              busyAction={busyAction}
+                              item={item}
+                              key={item.id}
+                              planHasAccess={plan.has_access}
+                              startTest={startTest}
+                              updateProgress={updateProgress}
+                            />
+                          ))}
                         </div>
                       )}
                     </div>
-                    <div className="divide-y divide-line">
-                      {items.map((item) => (
-                        <CurriculumItem
-                          busyAction={busyAction}
-                          item={item}
-                          key={item.id}
-                          planHasAccess={plan.has_access}
-                          startTest={startTest}
-                          updateProgress={updateProgress}
-                        />
-                      ))}
-                    </div>
-                  </section>
+                  </div>
                 );
               })}
             </div>
           </section>
 
           <section className="rounded-lg border border-line bg-white p-5 shadow-card">
-            <h2 className="text-2xl font-black text-ink">Requirements</h2>
+            <h2 className="text-2xl !font-black text-ink">Requirements</h2>
             <div className="mt-3 space-y-2 text-sm font-semibold leading-6 text-ink/70">
               <p>Follow the plan in week/day order and mark non-test tasks complete after studying.</p>
               <p>Attempt linked tests from inside the plan to keep progress and results in sync.</p>
@@ -421,11 +490,11 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
           </section>
 
           <section className="rounded-lg border border-line bg-white p-5 shadow-card">
-            <h2 className="text-2xl font-black text-ink">Student Reviews</h2>
+            <h2 className="text-2xl !font-black text-ink">Student Reviews</h2>
             
             {plan.has_access && token && (
               <div className="mt-4 rounded-xl border border-indigo-50 bg-indigo-50/30 p-4">
-                <h3 className="text-sm font-black text-ink">
+                <h3 className="font-heading text-sm !font-black text-ink">
                   {reviews.some((r) => r.user?.id === user?.id) ? "Update your review" : "Leave a review"}
                 </h3>
                 <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Share your experience with other aspirants.</p>
@@ -453,7 +522,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
                   type="button"
                   disabled={reviewBusy}
                   onClick={submitReview}
-                  className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 px-4 text-xs font-black text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-civic px-4 !font-heading text-xs !font-black text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {reviewBusy ? "Submitting..." : "Submit Review"}
                 </button>
@@ -468,7 +537,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
                   <div key={rev.id} className="pt-4 first:pt-0">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-black text-ink">{rev.user?.username || rev.user?.email || "Student"}</p>
+                        <p className="font-heading text-xs !font-black text-ink">{rev.user?.username || rev.user?.email || "Student"}</p>
                         <div className="mt-1 flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star
@@ -539,9 +608,13 @@ function PurchasePanel({
   total: number;
 }) {
   const { token } = useAuth();
+  const isFree = !plan.price_amount_minor || Number(plan.price_amount_minor) === 0;
   return (
     <div className="p-5">
-      <p className="text-3xl font-black text-ink">{formatPlanPrice(plan.price_amount_minor, plan.currency)}</p>
+      <p className={`font-heading text-[11px] !font-black uppercase tracking-wide ${plan.has_access ? "text-emerald-600" : "text-civic"}`}>
+        {plan.has_access ? "You're enrolled" : isFree ? "Unlock free" : "Unlock everything"}
+      </p>
+      <p className="mt-1 font-heading text-3xl !font-black text-ink">{formatPlanPrice(plan.price_amount_minor, plan.currency)}</p>
 
       {plan.has_access ? (
         <div className="mt-4 space-y-3">
@@ -551,13 +624,13 @@ function PurchasePanel({
               <span>{progress}%</span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
-              <div className="h-full rounded-full bg-indigo-600" style={{ width: `${progress}%` }} />
+              <div className="h-full rounded-full bg-civic" style={{ width: `${progress}%` }} />
             </div>
             <p className="mt-2 text-xs font-semibold text-slate-500">
               {completed} of {total} items done
             </p>
           </div>
-          <p className="flex items-center gap-2 text-sm font-bold text-indigo-600">
+          <p className="flex items-center gap-2 !font-heading text-sm !font-black text-civic">
             <CheckCircle2 className="h-4 w-4" />
             Unlocked
           </p>
@@ -565,13 +638,13 @@ function PurchasePanel({
       ) : token ? (
         <div className="mt-4 space-y-3">
           <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-black text-white transition hover:bg-indigo-700 disabled:opacity-60 shadow-md shadow-indigo-200"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-civic px-4 !font-heading text-sm !font-black text-white transition hover:bg-indigo-700 disabled:opacity-60 shadow-md shadow-indigo-200"
             disabled={busyAction === "enroll"}
             onClick={enroll}
             type="button"
           >
             <WalletCards className="h-4 w-4" />
-            {busyAction === "enroll" ? "Opening payment..." : `Pay ${formatPlanPrice(plan.price_amount_minor, plan.currency)} to unlock`}
+            {busyAction === "enroll" ? "Opening payment..." : isFree ? "Unlock Free" : "Unlock Plan"}
           </button>
           <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-2.5">
             <AlertCircle className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
@@ -580,7 +653,7 @@ function PurchasePanel({
         </div>
       ) : (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="mb-3 text-sm font-bold text-slate-800">Sign in to purchase this plan.</p>
+          <p className="mb-3 !font-heading text-sm !font-black text-slate-800">Sign in to purchase this plan.</p>
           {isInitialized && <SignInPanel />}
         </div>
       )}
@@ -596,7 +669,7 @@ function PurchasePanel({
       )}
 
       <div className="mt-5 border-t border-slate-100 pt-4">
-        <p className="text-sm font-black text-slate-800">This plan includes</p>
+        <p className="font-heading text-sm !font-black text-slate-800">This plan includes</p>
         <div className="mt-3 space-y-2 text-sm font-semibold text-slate-600">
           <p className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-indigo-500" />
@@ -640,19 +713,22 @@ function CurriculumItem({
   const locked = !planHasAccess && !item.is_preview;
   const done = item.progress?.status === "completed";
   const isTest = ["prelims_test", "csat_test", "mains_test"].includes(item.item_type);
+  const isFreeSample = item.is_preview && !planHasAccess;
   const resourceUrl = item.lecture_url || item.resource_url;
 
   return (
-    <article className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-start md:justify-between">
+    <article className={`flex flex-col gap-3 rounded-xl border bg-white px-4 py-3.5 md:flex-row md:items-start md:justify-between ${isFreeSample ? "border-civic/50" : "border-line"} ${locked ? "opacity-50" : ""}`}>
       <div className="flex min-w-0 gap-3">
-        <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl ${done ? "bg-indigo-600 text-white" : locked ? "bg-slate-100 text-slate-400" : "bg-indigo-50 border border-indigo-100/55 text-indigo-600"}`}>
+        <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${done ? "bg-emerald-600 text-white" : locked ? "bg-slate-100 text-slate-400" : "bg-indigo-50 border border-indigo-100/55 text-civic"}`}>
           {done ? <CheckCircle2 className="h-4 w-4" /> : itemIcon(item)}
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-wide text-indigo-600">
+          <p className="font-heading text-[10px] !font-black uppercase tracking-wide text-civic">
             Day {item.day_no} - {formatStudyPlanItemType(item.item_type)}
           </p>
-          <h4 className="mt-1 text-base font-black text-slate-800">{item.title}</h4>
+          <h4 className={`mt-1 font-heading text-base !font-extrabold ${done ? "text-slate-400 line-through decoration-2 decoration-slate-300" : "text-slate-800"}`}>
+            {item.title}
+          </h4>
           {item.description && <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>}
           <div className="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
             {item.estimated_minutes && (
@@ -661,8 +737,8 @@ function CurriculumItem({
                 {item.estimated_minutes} min
               </span>
             )}
-            {item.is_preview && !planHasAccess && (
-              <span className="inline-flex items-center gap-1 text-indigo-600">
+            {isFreeSample && (
+              <span className="inline-flex items-center gap-1 text-civic">
                 <PlayCircle className="h-3.5 w-3.5" />
                 Preview
               </span>
@@ -679,12 +755,12 @@ function CurriculumItem({
 
       <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
         {locked ? (
-          <button className="h-9 rounded-xl border border-slate-200 bg-slate-100 px-4 text-xs font-bold text-slate-400" disabled type="button">
+          <button className="h-9 rounded-xl border border-slate-200 bg-slate-100 px-4 !font-heading text-xs !font-black text-slate-400" disabled type="button">
             Locked
           </button>
         ) : isTest ? (
           <button
-            className="h-9 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:opacity-60"
+            className="h-9 rounded-xl bg-civic px-4 !font-heading text-xs !font-black text-white transition hover:bg-indigo-700 disabled:opacity-60"
             disabled={busyAction === `test-${item.id}` || !item.test_template_id}
             onClick={() => startTest(item)}
             type="button"
@@ -693,7 +769,7 @@ function CurriculumItem({
           </button>
         ) : resourceUrl ? (
           <a
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600"
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic"
             href={resourceUrl}
             rel="noreferrer"
             target="_blank"
@@ -702,7 +778,7 @@ function CurriculumItem({
           </a>
         ) : (
           <button
-            className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:opacity-60"
+            className="h-9 rounded-xl border border-slate-200 bg-white px-4 !font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic disabled:opacity-60"
             disabled={busyAction === `progress-${item.id}` || done}
             onClick={() => updateProgress(item, "completed")}
             type="button"
@@ -712,7 +788,7 @@ function CurriculumItem({
         )}
         {!locked && resourceUrl && !isTest && (
           <button
-            className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 transition hover:border-indigo-600 hover:text-indigo-600 disabled:opacity-60"
+            className="h-9 rounded-xl border border-slate-200 bg-white px-4 !font-heading text-xs !font-black text-slate-600 transition hover:border-civic hover:text-civic disabled:opacity-60"
             disabled={busyAction === `progress-${item.id}` || done}
             onClick={() => updateProgress(item, "completed")}
             type="button"
