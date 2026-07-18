@@ -48,6 +48,17 @@ export type StudyPlanTestTemplate = {
   question_count?: number;
 };
 
+export type StudyPlanLiveClassStatus = "scheduled" | "live" | "ended" | "cancelled";
+
+export type StudyPlanLiveClassSummary = {
+  id: number;
+  title: string;
+  status: StudyPlanLiveClassStatus;
+  scheduled_start: string;
+  scheduled_end: string | null;
+  host_user_id: number;
+};
+
 export type StudyPlanItem = {
   id: number;
   plan_id: number;
@@ -63,6 +74,8 @@ export type StudyPlanItem = {
   test_template_id: number | null;
   is_preview: boolean;
   test_template: StudyPlanTestTemplate | null;
+  live_class_id: number | null;
+  live_class: StudyPlanLiveClassSummary | null;
   progress: {
     id: number;
     status: StudyPlanProgressStatus;

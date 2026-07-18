@@ -131,7 +131,8 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
     is_preview: false,
     exam_level_id: "",
     duration_minutes: "120",
-    test_status: "draft"
+    test_status: "draft",
+    live_class_scheduled_at: ""
   });
 
   const [planEditForm, setPlanEditForm] = useState({
@@ -363,17 +364,30 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
         is_preview: stepForm.is_preview
       });
 
+      let liveClassMessage = "";
+      if (stepForm.item_type === "live_lecture" && stepForm.live_class_scheduled_at && user) {
+        await authenticatedPost(`/api/v1/study-plans/${selectedPlan.id}/live-classes`, token, {
+          plan_item_id: item.id,
+          title: stepForm.title,
+          description: stepForm.description || undefined,
+          host_user_id: user.id,
+          scheduled_start: new Date(stepForm.live_class_scheduled_at).toISOString()
+        });
+        liveClassMessage = " Live class scheduled.";
+      }
+
       setStepForm((current) => ({
         ...current,
         title: "",
         description: "",
         resource_url: "",
         lecture_url: "",
-        is_preview: false
+        is_preview: false,
+        live_class_scheduled_at: ""
       }));
       await loadSelectedPlan(String(selectedPlan.id));
       setSelectedItemId(item.id);
-      setMessage(testTemplateId ? "Test step created. Use the full test content manager link on the selected step." : "Step added to the plan.");
+      setMessage((testTemplateId ? "Test step created. Use the full test content manager link on the selected step." : "Step added to the plan.") + liveClassMessage);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not add step.");
     } finally {
@@ -464,6 +478,36 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
       setMessage("Step deleted from the plan.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not delete step.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const startLiveClassStep = async (liveClassId: number) => {
+    if (!token || !selectedPlan) return;
+    setBusy("live-class-start");
+    setMessage(null);
+    try {
+      await authenticatedPost(`/api/v1/study-plan-live-classes/${liveClassId}/start`, token, {});
+      await loadSelectedPlan(String(selectedPlan.id));
+      setMessage("Live class started. Join from the mobile app to broadcast.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not start the live class.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const endLiveClassStep = async (liveClassId: number) => {
+    if (!token || !selectedPlan) return;
+    setBusy("live-class-end");
+    setMessage(null);
+    try {
+      await authenticatedPost(`/api/v1/study-plan-live-classes/${liveClassId}/end`, token, {});
+      await loadSelectedPlan(String(selectedPlan.id));
+      setMessage("Live class ended.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not end the live class.");
     } finally {
       setBusy(null);
     }
@@ -756,6 +800,20 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                       </FieldReference>
                     )}
 
+                    {stepForm.item_type === "live_lecture" && (
+                      <FieldReference
+                        label="Schedule live class"
+                        reference="Creates a real Agora broadcast session tied to this step, hosted by you. Leave blank to add the step without scheduling a session yet -- you can schedule one later by re-adding it as a step, or via the API."
+                      >
+                        <input
+                          type="datetime-local"
+                          className="h-10 rounded-md border border-line px-3 text-sm"
+                          value={stepForm.live_class_scheduled_at}
+                          onChange={(event) => setStepForm({ ...stepForm, live_class_scheduled_at: event.target.value })}
+                        />
+                      </FieldReference>
+                    )}
+
                     {isTestStep(stepForm.item_type) && (
                       <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
@@ -949,6 +1007,46 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                           <Link2 className="h-4 w-4" />
                           {selectedItem.lecture_url || selectedItem.resource_url}
                         </p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedItem.item_type === "live_lecture" && (
+                    <div className="mt-4 rounded-md border border-civic/20 bg-white p-4">
+                      <p className="text-xs font-black uppercase tracking-wide text-civic">Live class</p>
+                      {!selectedItem.live_class ? (
+                        <p className="mt-2 text-sm font-bold text-ink/50">No session scheduled for this step yet. Delete and re-add it with a scheduled time to create one.</p>
+                      ) : (
+                        <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="text-sm font-black text-ink">
+                              {selectedItem.live_class.status === "live" ? "Live now" : selectedItem.live_class.status === "ended" ? "Session ended" : selectedItem.live_class.status === "cancelled" ? "Cancelled" : "Scheduled"}
+                            </p>
+                            <p className="mt-1 text-xs font-bold text-ink/50">{new Date(selectedItem.live_class.scheduled_start).toLocaleString()}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            {selectedItem.live_class.status === "scheduled" && (
+                              <button
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-civic bg-civic px-3 text-xs font-black text-white disabled:opacity-50"
+                                disabled={busy === "live-class-start"}
+                                onClick={() => startLiveClassStep(selectedItem.live_class!.id)}
+                                type="button"
+                              >
+                                Start now
+                              </button>
+                            )}
+                            {selectedItem.live_class.status === "live" && (
+                              <button
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 text-xs font-black text-rose-700 disabled:opacity-50"
+                                disabled={busy === "live-class-end"}
+                                onClick={() => endLiveClassStep(selectedItem.live_class!.id)}
+                                type="button"
+                              >
+                                End class
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
