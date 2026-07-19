@@ -3,8 +3,51 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, authenticatedGet, authenticatedPut } from "../../../components/auth/auth-context";
-import { ArrowLeft, CheckCircle2, XCircle, FileText, Phone, MapPin, ExternalLink, ShieldAlert, Sparkles, User, Calendar, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, FileText, Phone, MapPin, ExternalLink, ShieldAlert, Sparkles, User, Calendar, AlertCircle, Clock, Video, CreditCard, MessagesSquare } from "lucide-react";
 import Link from "next/link";
+import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifecycle-tracker";
+
+type MentorshipEngagement = {
+  id: number;
+  user_id: number;
+  mentor_id: number;
+  mains_answer_attempt_id: number | null;
+  preferred_mode: string;
+  note: string | null;
+  status: "requested" | "accepted" | "rejected" | "completed" | "cancelled" | "expired";
+  scheduled_slot_id: number | null;
+  payment_status: "pending" | "paid" | "refunded" | "failed";
+  payment_amount: number;
+  payment_currency: string;
+  meta: { student_copy?: { url: string; file_name: string } | null; evaluation?: any } | null;
+  created_at: string;
+  updated_at: string;
+  learner_name: string | null;
+  learner_username: string | null;
+  learner_email: string | null;
+  mentor_name: string | null;
+  mentor_username: string | null;
+  mentor_email: string | null;
+  session_id: number | null;
+  session_starts_at: string | null;
+  session_ends_at: string | null;
+  session_status: string | null;
+  evaluation_status?: string | null;
+  evaluation_score?: number | null;
+  evaluation_max_score?: number | null;
+  agenda_count: number;
+  agenda_open_count: number;
+};
+
+type MentorshipAgenda = {
+  id: number;
+  title: string;
+  description: string | null;
+  status: "proposed" | "agreed" | "solved_proposed" | "solved";
+  created_by: number;
+  creator_username: string;
+  created_at: string;
+};
 
 const DEFAULT_SPECS = [
   "Mentor for Prelims Exam",
@@ -63,8 +106,16 @@ export default function AdminMentorshipPage() {
   
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<OnboardingApplication[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "more_info_required" | "all" | "settings">("pending");
+  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "more_info_required" | "all" | "settings" | "engagements">("pending");
   const [selectedApp, setSelectedApp] = useState<OnboardingApplication | null>(null);
+
+  // Live mentorship engagements (oversight tab)
+  const [engagements, setEngagements] = useState<MentorshipEngagement[]>([]);
+  const [engagementStatusFilter, setEngagementStatusFilter] = useState<string>("all");
+  const [engagementPaymentFilter, setEngagementPaymentFilter] = useState<string>("all");
+  const [selectedEngagement, setSelectedEngagement] = useState<MentorshipEngagement | null>(null);
+  const [engagementAgendas, setEngagementAgendas] = useState<MentorshipAgenda[]>([]);
+  const [loadingEngagements, setLoadingEngagements] = useState(false);
   const [reviewerNote, setReviewerNote] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
@@ -129,13 +180,64 @@ export default function AdminMentorshipPage() {
 
   useEffect(() => {
     if (token && user && ["admin", "moderator"].includes(user.role)) {
-      if (statusFilter !== "settings") {
+      if (statusFilter !== "settings" && statusFilter !== "engagements") {
         void fetchApplications();
       } else {
         setLoading(false);
       }
     }
   }, [token, statusFilter]);
+
+  const fetchEngagements = async () => {
+    if (!token) return;
+    try {
+      setLoadingEngagements(true);
+      const params = new URLSearchParams();
+      if (engagementStatusFilter !== "all") params.set("status", engagementStatusFilter);
+      if (engagementPaymentFilter !== "all") params.set("payment_status", engagementPaymentFilter);
+      const data = await authenticatedGet<MentorshipEngagement[]>(
+        `/api/v1/admin/mentorship/requests?${params.toString()}`,
+        token
+      );
+      setEngagements(data);
+      if (selectedEngagement) {
+        const updated = data.find((e) => e.id === selectedEngagement.id);
+        setSelectedEngagement(updated || null);
+      }
+    } catch (err) {
+      console.error("Failed to load mentorship engagements:", err);
+    } finally {
+      setLoadingEngagements(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token && user && ["admin", "moderator"].includes(user.role) && statusFilter === "engagements") {
+      void fetchEngagements();
+    }
+  }, [token, statusFilter, engagementStatusFilter, engagementPaymentFilter]);
+
+  const fetchEngagementAgendas = async (requestId: number) => {
+    if (!token) return;
+    try {
+      const data = await authenticatedGet<MentorshipAgenda[]>(
+        `/api/v1/mentorship/requests/${requestId}/agendas`,
+        token
+      );
+      setEngagementAgendas(data);
+    } catch (err) {
+      console.error("Failed to load agendas:", err);
+      setEngagementAgendas([]);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedEngagement) {
+      void fetchEngagementAgendas(selectedEngagement.id);
+    } else {
+      setEngagementAgendas([]);
+    }
+  }, [selectedEngagement?.id]);
 
   const handleSaveSetting = async (key: "target_exams" | "approved_specifications") => {
     if (!token) return;
@@ -235,20 +337,21 @@ export default function AdminMentorshipPage() {
             </Link>
             <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
               <ShieldAlert className="h-8 w-8 text-indigo-600" />
-              Mentor Onboarding reviews
+              Mentorship Administration
             </h1>
             <p className="text-slate-500 text-sm">
-              Review credential documents and approve UPSC mentor roles.
+              Review mentor onboarding, oversee live engagements, and configure settings.
             </p>
           </div>
 
-          <div className="inline-flex rounded-2xl bg-white p-1 border border-slate-200 shadow-sm">
-            {(["pending", "approved", "rejected", "more_info_required", "all", "settings"] as const).map((filter) => (
+          <div className="inline-flex rounded-2xl bg-white p-1 border border-slate-200 shadow-sm flex-wrap">
+            {(["pending", "approved", "rejected", "more_info_required", "all", "engagements", "settings"] as const).map((filter) => (
               <button
                 key={filter}
                 onClick={() => {
                   setStatusFilter(filter);
                   setSelectedApp(null);
+                  setSelectedEngagement(null);
                 }}
                 className={`rounded-xl px-4 py-2 text-xs font-bold capitalize transition-all ${
                   statusFilter === filter
@@ -256,14 +359,200 @@ export default function AdminMentorshipPage() {
                     : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
                 }`}
               >
-                {filter === "more_info_required" ? "More Info Required" : filter === "settings" ? "Settings" : filter}
+                {filter === "more_info_required" ? "More Info Required" : filter === "settings" ? "Settings" : filter === "engagements" ? "Live Engagements" : filter}
               </button>
             ))}
           </div>
         </div>
 
         {/* Master-Detail Grid */}
-        {statusFilter === "settings" ? (
+        {statusFilter === "engagements" ? (
+          <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
+            {/* Engagements list */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <select
+                  value={engagementStatusFilter}
+                  onChange={(e) => setEngagementStatusFilter(e.target.value)}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold outline-none"
+                >
+                  {["all", "requested", "accepted", "rejected", "completed", "cancelled", "expired"].map((s) => (
+                    <option key={s} value={s}>{s === "all" ? "Any Status" : s}</option>
+                  ))}
+                </select>
+                <select
+                  value={engagementPaymentFilter}
+                  onChange={(e) => setEngagementPaymentFilter(e.target.value)}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold outline-none"
+                >
+                  {["all", "pending", "paid", "refunded", "failed"].map((s) => (
+                    <option key={s} value={s}>{s === "all" ? "Any Payment" : s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">
+                Engagements ({engagements.length})
+              </h2>
+
+              <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
+                {loadingEngagements ? (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                    Loading engagements...
+                  </div>
+                ) : engagements.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                    No mentorship engagements match these filters.
+                  </div>
+                ) : (
+                  engagements.map((eng) => (
+                    <button
+                      key={eng.id}
+                      onClick={() => setSelectedEngagement(eng)}
+                      className={`w-full text-left rounded-3xl p-5 border transition-all ${
+                        selectedEngagement?.id === eng.id
+                          ? "border-indigo-600 bg-indigo-50/40 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-slate-800 text-sm leading-snug">
+                            {eng.learner_name || eng.learner_username || `Student #${eng.user_id}`}
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-1">
+                            with {eng.mentor_name || eng.mentor_username || `Mentor #${eng.mentor_id}`}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                            eng.status === "completed"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : eng.status === "rejected" || eng.status === "cancelled" || eng.status === "expired"
+                              ? "bg-rose-100 text-rose-800"
+                              : eng.status === "accepted"
+                              ? "bg-indigo-100 text-indigo-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {eng.status}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-3">
+                        <span className={`font-medium px-2 py-0.5 rounded-md ${eng.payment_status === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                          {eng.payment_status}
+                        </span>
+                        {eng.agenda_open_count > 0 && (
+                          <span className="font-medium bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md">
+                            {eng.agenda_open_count} agenda open
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Engagement Detail view */}
+            <div className="space-y-6">
+              {selectedEngagement ? (
+                <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-6">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900">
+                        {selectedEngagement.learner_name || selectedEngagement.learner_username || `Student #${selectedEngagement.user_id}`}
+                        <span className="text-slate-300 font-medium mx-2">&rarr;</span>
+                        {selectedEngagement.mentor_name || selectedEngagement.mentor_username || `Mentor #${selectedEngagement.mentor_id}`}
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {selectedEngagement.learner_email || "no email"} &middot; Request #{selectedEngagement.id}
+                      </p>
+                    </div>
+                    <span className="rounded-xl bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-700 flex items-center gap-1.5 shrink-0">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      &#8377;{selectedEngagement.payment_amount} &middot; {selectedEngagement.payment_status}
+                    </span>
+                  </div>
+
+                  <MentorshipLifecycleTracker
+                    input={{
+                      status: selectedEngagement.status,
+                      payment_status: selectedEngagement.payment_status,
+                      scheduled_slot_id: selectedEngagement.scheduled_slot_id,
+                      session_id: selectedEngagement.session_id,
+                      mains_answer_attempt_id: selectedEngagement.mains_answer_attempt_id,
+                      evaluation_status: selectedEngagement.evaluation_status,
+                      meta: selectedEngagement.meta,
+                      agendas: engagementAgendas
+                    }}
+                  />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-100 p-4 space-y-1.5 text-xs text-slate-600">
+                      <p className="flex justify-between"><span className="font-medium">Preferred Mode</span><span className="font-bold text-slate-800">{selectedEngagement.preferred_mode}</span></p>
+                      {selectedEngagement.session_starts_at && (
+                        <p className="flex justify-between"><span className="font-medium">Session Time</span><span className="font-bold text-slate-800">{new Date(selectedEngagement.session_starts_at).toLocaleString()}</span></p>
+                      )}
+                      {selectedEngagement.evaluation_status && (
+                        <p className="flex justify-between"><span className="font-medium">Evaluation</span><span className="font-bold text-slate-800">{selectedEngagement.evaluation_status}{selectedEngagement.evaluation_score != null ? ` (${selectedEngagement.evaluation_score}/${selectedEngagement.evaluation_max_score})` : ""}</span></p>
+                      )}
+                    </div>
+                    {selectedEngagement.note && (
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-600">
+                        <p className="font-bold text-slate-800 mb-1 flex items-center gap-1.5"><MessagesSquare className="h-3.5 w-3.5" /> Student's Note</p>
+                        <p className="leading-relaxed whitespace-pre-wrap">{selectedEngagement.note}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                      Agendas ({engagementAgendas.length})
+                    </h4>
+                    {engagementAgendas.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">No agendas were proposed for this engagement.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {engagementAgendas.map((a) => (
+                          <div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-2.5 text-xs">
+                            <div>
+                              <p className="font-bold text-slate-800">{a.title}</p>
+                              <p className="text-slate-400 text-[10px] mt-0.5">by {a.creator_username}</p>
+                            </div>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                              a.status === "solved" ? "bg-emerald-100 text-emerald-800" :
+                              a.status === "solved_proposed" ? "bg-indigo-100 text-indigo-800" :
+                              a.status === "agreed" ? "bg-sky-100 text-sky-800" : "bg-amber-100 text-amber-800"
+                            }`}>
+                              {a.status.replace("_", " ")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedEngagement.session_id && (
+                    <Link
+                      href={`/mentorship/session/${selectedEngagement.session_id}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 text-white px-4 py-2.5 text-xs font-bold hover:bg-slate-800 transition"
+                    >
+                      <Video className="h-3.5 w-3.5" />
+                      View Session Room
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-400">
+                  <ShieldAlert className="h-12 w-12 text-slate-300 mb-3 animate-pulse" />
+                  <p className="text-sm font-medium">Select an engagement to see its full lifecycle, agendas, and evaluation status.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : statusFilter === "settings" ? (
           <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
             <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-indigo-600" /> Mentorship Settings Configuration

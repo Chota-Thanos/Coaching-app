@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import { config } from "../../config.js";
 import { one, query, transaction, type DbClient } from "../../db.js";
 import { generateAgoraRtcToken } from "../../common/agora.js";
 import type {
@@ -9,7 +11,9 @@ import type {
   CreateMentorshipRequestInput,
   UpdateMentorProfileInput,
   UpdateMentorshipSettingInput,
-  CreateAgendaInput
+  CreateAgendaInput,
+  SubmitCustomCopyEvaluationInput,
+  VerifyMentorshipPaymentInput
 } from "./schemas.js";
 
 // --- Onboarding Logic ---
@@ -354,6 +358,18 @@ export async function createRequest(userId: number, payload: CreateMentorshipReq
     throw new Error("Selected mentor profile does not exist.");
   }
 
+  // A student may only link their own submitted Mains answer -- otherwise anyone
+  // could attach another student's attempt id to their own mentorship request.
+  if (payload.mains_answer_attempt_id) {
+    const attempt = await one<{ user_id: number }>(
+      `select user_id from assessment.mains_answer_attempts where id = $1`,
+      [payload.mains_answer_attempt_id]
+    );
+    if (!attempt || Number(attempt.user_id) !== Number(userId)) {
+      throw new Error("Selected Mains answer copy does not belong to you.");
+    }
+  }
+
   const meta = {
     student_copy: payload.student_copy || null
   };
@@ -390,6 +406,73 @@ export async function createRequest(userId: number, payload: CreateMentorshipReq
   }
 
   return request;
+}
+
+/** Evaluation path for requests where the student attached a directly-uploaded
+ * answer copy (meta.student_copy) instead of linking a platform mains_answer_attempts
+ * row. Stored under meta.evaluation since there is no attempt row to attach it to. */
+export async function submitCustomCopyEvaluation(
+  requestId: number,
+  mentorId: number,
+  userRole: string,
+  payload: SubmitCustomCopyEvaluationInput
+) {
+  return transaction(async (client) => {
+    const request = await one<any>(
+      `select * from app.mentorship_requests where id = $1`,
+      [requestId],
+      client
+    );
+
+    if (!request) {
+      throw new Error("Mentorship request not found.");
+    }
+
+    if (Number(request.mentor_id) !== mentorId && !["admin", "moderator"].includes(userRole)) {
+      throw new Error("Only the mentor assigned to this request can submit its evaluation.");
+    }
+
+    if (request.mains_answer_attempt_id) {
+      throw new Error("This request is linked to a platform Mains attempt -- submit its evaluation via the Mains evaluation endpoint instead.");
+    }
+
+    if (!request.meta?.student_copy) {
+      throw new Error("This request has no attached answer copy to evaluate.");
+    }
+
+    const evaluation = {
+      score: payload.score,
+      max_score: payload.max_score,
+      feedback: payload.feedback || null,
+      checked_copy_url: payload.checked_copy_url || null,
+      checked_copy_file_name: payload.checked_copy_file_name || null,
+      strengths: payload.strengths || [],
+      weaknesses: payload.weaknesses || [],
+      evaluated_by_user_id: mentorId,
+      evaluated_at: new Date().toISOString()
+    };
+
+    const updated = await one<any>(
+      `update app.mentorship_requests
+       set meta = coalesce(meta, '{}'::jsonb) || jsonb_build_object('evaluation', $1::jsonb),
+           updated_at = now()
+       where id = $2
+       returning *`,
+      [JSON.stringify(evaluation), requestId],
+      client
+    );
+
+    await createNotification(
+      request.user_id,
+      "evaluation_submitted",
+      "Your Copy Has Been Evaluated",
+      "Your mentor has finished evaluating your answer copy. View your score, feedback and checked copy now.",
+      "/dashboard/mentorship",
+      client
+    );
+
+    return updated;
+  });
 }
 
 export async function listRequests(userId: number, userRole: string, mode: "user" | "provider") {
@@ -438,6 +521,53 @@ export async function listRequests(userId: number, userRole: string, mode: "user
   }
 
   sql += ` order by r.updated_at desc, r.created_at desc`;
+  return query(sql, params);
+}
+
+/** Admin/moderator oversight view across every in-flight mentorship engagement --
+ * unlike listRequests, this is not scoped to a single learner or mentor. */
+export async function listAllRequestsForAdmin(filter: { status?: string; payment_status?: string; limit?: number }) {
+  let sql = `
+    select r.*,
+           lm.full_name as learner_name,
+           u_l.username as learner_username,
+           u_l.email as learner_email,
+           mp.display_name as mentor_name,
+           u_m.username as mentor_username,
+           u_m.email as mentor_email,
+           s.id as session_id,
+           s.starts_at as session_starts_at,
+           s.ends_at as session_ends_at,
+           s.status as session_status,
+           maa.evaluation_status,
+           maa.score as evaluation_score,
+           maa.max_score as evaluation_max_score,
+           (select count(*)::int from app.mentorship_agendas a where a.request_id = r.id) as agenda_count,
+           (select count(*)::int from app.mentorship_agendas a where a.request_id = r.id and a.status != 'solved') as agenda_open_count
+    from app.mentorship_requests r
+    left join app.professional_onboarding_requests lm on lm.user_id = r.user_id and lm.status = 'approved'
+    left join app.users u_l on u_l.id = r.user_id
+    left join app.mentor_profiles mp on mp.user_id = r.mentor_id
+    left join app.users u_m on u_m.id = r.mentor_id
+    left join app.mentorship_sessions s on s.request_id = r.id
+    left join assessment.mains_answer_attempts maa on maa.id = r.mains_answer_attempt_id
+    where 1=1
+  `;
+  const params: unknown[] = [];
+
+  if (filter.status && filter.status !== "all") {
+    params.push(filter.status);
+    sql += ` and r.status = $${params.length}`;
+  }
+
+  if (filter.payment_status && filter.payment_status !== "all") {
+    params.push(filter.payment_status);
+    sql += ` and r.payment_status = $${params.length}`;
+  }
+
+  params.push(filter.limit || 200);
+  sql += ` order by r.updated_at desc limit $${params.length}`;
+
   return query(sql, params);
 }
 
@@ -525,26 +655,160 @@ export async function offerSlots(requestId: number, mentorId: number, slotIds: n
   return request;
 }
 
-export async function mockPayRequest(requestId: number, userId: number) {
-  return transaction(async (client) => {
-    // Check if there are any proposed (unagreed) agendas
-    const unagreedAgendas = await query(
-      `select id from app.mentorship_agendas where request_id = $1 and status = 'proposed'`,
-      [requestId],
-      client
-    );
-    if (unagreedAgendas.length > 0) {
-      throw new Error("All proposed agendas must be agreed upon by both parties before proceeding to payment.");
-    }
+async function assertNoUnagreedAgendas(requestId: number, client?: DbClient) {
+  const unagreedAgendas = await query(
+    `select id from app.mentorship_agendas where request_id = $1 and status = 'proposed'`,
+    [requestId],
+    client
+  );
+  if (unagreedAgendas.length > 0) {
+    throw new Error("All proposed agendas must be agreed upon by both parties before proceeding to payment.");
+  }
+}
 
-    return one(
-      `update app.mentorship_requests
-       set payment_status = 'paid', status = 'accepted', updated_at = now()
-       where id = $1 and user_id = $2
-       returning *`,
+type MentorshipRazorpayOrderResult = {
+  order_id: string;
+  currency: string;
+  amount: number;
+  key_id: string;
+  simulated: boolean;
+};
+
+/** Creates a Razorpay order for a mentorship request's consultation fee.
+ * Falls back to a simulated order when Razorpay keys aren't configured (dev/test). */
+export async function createMentorshipPaymentOrder(requestId: number, userId: number): Promise<MentorshipRazorpayOrderResult> {
+  const request = await one<any>(
+    `select * from app.mentorship_requests where id = $1 and user_id = $2`,
+    [requestId, userId]
+  );
+  if (!request) {
+    const err = new Error("Mentorship request not found.") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+  if (request.payment_status === "paid") {
+    throw new Error("This request has already been paid for.");
+  }
+
+  await assertNoUnagreedAgendas(requestId);
+
+  const amountMinor = Number(request.payment_amount) * 100; // rupees -> paise
+  const currency = request.payment_currency || "INR";
+
+  const keyId = config.RAZORPAY_KEY_ID;
+  const keySecret = config.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    const simulatedOrderId = `sim_order_mentorship_${requestId}_${Date.now()}`;
+    return {
+      order_id: simulatedOrderId,
+      currency,
+      amount: amountMinor,
+      key_id: "rzp_test_SIMULATED",
+      simulated: true
+    };
+  }
+
+  const orderPayload = {
+    amount: amountMinor,
+    currency,
+    receipt: `mentorship_req_${requestId}_${Date.now()}`,
+    notes: {
+      mentorship_request_id: String(requestId),
+      user_id: String(userId),
+      mentor_id: String(request.mentor_id)
+    }
+  };
+
+  const credentials = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const resp = await fetch("https://api.razorpay.com/v1/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${credentials}`
+    },
+    body: JSON.stringify(orderPayload)
+  });
+
+  if (!resp.ok) {
+    const errBody = await resp.text();
+    throw new Error(`Razorpay order creation failed: ${errBody}`);
+  }
+
+  const rzpOrder = (await resp.json()) as { id: string; currency: string; amount: number };
+  return {
+    order_id: rzpOrder.id,
+    currency: rzpOrder.currency,
+    amount: rzpOrder.amount,
+    key_id: keyId,
+    simulated: false
+  };
+}
+
+/** Verifies a completed Razorpay payment (or accepts a simulated one) and marks the
+ * mentorship request as paid + accepted. */
+export async function verifyMentorshipPayment(requestId: number, userId: number, payload: VerifyMentorshipPaymentInput) {
+  return transaction(async (client) => {
+    const request = await one<any>(
+      `select * from app.mentorship_requests where id = $1 and user_id = $2`,
       [requestId, userId],
       client
     );
+    if (!request) {
+      const err = new Error("Mentorship request not found.") as Error & { statusCode?: number };
+      err.statusCode = 404;
+      throw err;
+    }
+    if (request.payment_status === "paid") {
+      throw new Error("This request has already been paid for.");
+    }
+
+    await assertNoUnagreedAgendas(requestId, client);
+
+    const keySecret = config.RAZORPAY_KEY_SECRET;
+    const isSimulated = payload.razorpay_order_id.startsWith("sim_order_");
+
+    if (!isSimulated && keySecret) {
+      const expectedSignature = crypto
+        .createHmac("sha256", keySecret)
+        .update(`${payload.razorpay_order_id}|${payload.razorpay_payment_id}`)
+        .digest("hex");
+
+      if (expectedSignature !== payload.razorpay_signature) {
+        const err = new Error("Payment signature verification failed.") as Error & { statusCode?: number };
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    const paymentMeta = {
+      provider: isSimulated ? "simulated" : "razorpay",
+      razorpay_order_id: payload.razorpay_order_id,
+      razorpay_payment_id: payload.razorpay_payment_id,
+      paid_at: new Date().toISOString()
+    };
+
+    const updated = await one<any>(
+      `update app.mentorship_requests
+       set payment_status = 'paid', status = 'accepted',
+           meta = coalesce(meta, '{}'::jsonb) || jsonb_build_object('payment', $1::jsonb),
+           updated_at = now()
+       where id = $2 and user_id = $3
+       returning *`,
+      [JSON.stringify(paymentMeta), requestId, userId],
+      client
+    );
+
+    await createNotification(
+      request.mentor_id,
+      "payment_received",
+      "Payment Received",
+      "Payment for a mentorship request has been received and confirmed. You can now offer scheduling slots.",
+      "/mentor/workspace?tab=requests",
+      client
+    );
+
+    return updated;
   });
 }
 
@@ -740,8 +1004,8 @@ export async function sendMessage(requestId: number, senderId: number, body: str
   });
 }
 
-export async function listMessages(requestId: number, userId: number) {
-  // Check if participant
+export async function listMessages(requestId: number, userId: number, userRole?: string) {
+  // Check if participant (admins/moderators may view any thread for oversight/disputes)
   const request = await one<any>(
     `select user_id, mentor_id from app.mentorship_requests where id = $1`,
     [requestId]
@@ -751,7 +1015,9 @@ export async function listMessages(requestId: number, userId: number) {
     throw new Error("Request not found.");
   }
 
-  if (request.user_id !== userId && request.mentor_id !== userId) {
+  const isParticipant = Number(request.user_id) === userId || Number(request.mentor_id) === userId;
+  const isStaff = userRole === "admin" || userRole === "moderator";
+  if (!isParticipant && !isStaff) {
     throw new Error("You are not authorized to view this chat history.");
   }
 
@@ -861,6 +1127,18 @@ export async function updateMentorProfile(userId: number, payload: UpdateMentorP
   );
 }
 
+/** Called from the assessment module once a mentor submits/updates an evaluation
+ * for a mains_answer_attempt that is linked to one of their mentorship requests. */
+export async function notifyMentorshipEvaluationReady(requestId: number, studentUserId: number) {
+  return createNotification(
+    studentUserId,
+    "evaluation_submitted",
+    "Your Copy Has Been Evaluated",
+    "Your mentor has finished evaluating your answer copy. View your score, feedback and checked copy now.",
+    "/dashboard/mentorship"
+  );
+}
+
 // --- Notifications Logic ---
 
 export async function createNotification(
@@ -927,8 +1205,8 @@ export async function createAgenda(requestId: number, userId: number, payload: C
       throw new Error("You are not authorized to propose agendas for this request.");
     }
 
-    if (request.payment_status !== "pending") {
-      throw new Error("Agendas can only be proposed before payment is completed.");
+    if (["completed", "rejected", "cancelled", "expired"].includes(request.status)) {
+      throw new Error("Agendas cannot be proposed on a closed mentorship request.");
     }
 
     const agendaMeta = {
@@ -1121,10 +1399,7 @@ export async function confirmSolveAgenda(agendaId: number, userId: number) {
 export async function deleteAgenda(agendaId: number, userId: number) {
   return transaction(async (client) => {
     const agenda = await one<any>(
-      `select a.*, r.payment_status
-       from app.mentorship_agendas a
-       join app.mentorship_requests r on r.id = a.request_id
-       where a.id = $1`,
+      `select * from app.mentorship_agendas where id = $1`,
       [agendaId],
       client
     );
@@ -1137,8 +1412,8 @@ export async function deleteAgenda(agendaId: number, userId: number) {
       throw new Error("You are not authorized to delete this agenda.");
     }
 
-    if (agenda.payment_status !== "pending") {
-      throw new Error("Agendas cannot be deleted after payment has been completed.");
+    if (agenda.status !== "proposed") {
+      throw new Error("Only a still-proposed agenda (not yet agreed) can be deleted.");
     }
 
     await client.query(

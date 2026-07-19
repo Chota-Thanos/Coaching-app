@@ -95,6 +95,14 @@ export const updateMentorshipRequestStatusSchema = z.object({
   status: z.enum(["accepted", "rejected", "completed"])
 });
 
+export const verifyMentorshipPaymentSchema = z.object({
+  razorpay_order_id: z.string().trim().min(1),
+  razorpay_payment_id: z.string().trim().min(1),
+  razorpay_signature: z.string().trim().min(1)
+});
+
+export type VerifyMentorshipPaymentInput = z.output<typeof verifyMentorshipPaymentSchema>;
+
 export const sendMentorshipMessageSchema = z.object({
   body: z.string().trim().min(1)
 });
@@ -102,6 +110,18 @@ export const sendMentorshipMessageSchema = z.object({
 export const offerSlotsSchema = z.object({
   slot_ids: z.array(idSchema)
 });
+
+export const submitCustomCopyEvaluationSchema = z.object({
+  score: z.number().nonnegative(),
+  max_score: z.number().positive(),
+  feedback: z.string().trim().max(4000).nullable().optional(),
+  checked_copy_url: z.string().url().nullable().optional(),
+  checked_copy_file_name: z.string().trim().max(255).nullable().optional(),
+  strengths: z.array(z.string().trim()).optional(),
+  weaknesses: z.array(z.string().trim()).optional()
+});
+
+export type SubmitCustomCopyEvaluationInput = z.output<typeof submitCustomCopyEvaluationSchema>;
 
 export const createAgendaSchema = z.object({
   title: z.string().trim().min(1).max(255),

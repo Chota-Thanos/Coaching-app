@@ -190,10 +190,10 @@ test("mentorship requests agendas lifecycle, payment and completion lock", async
   assert.equal(agenda2Response.statusCode, 201);
   const agenda2Id = agenda2Response.json().id;
 
-  // 4. Try to pay (should fail because both agendas are 'proposed' and not agreed)
+  // 4. Try to create a payment order (should fail because both agendas are 'proposed' and not agreed)
   const failPayResponse = await server.inject({
     method: "POST",
-    url: `/api/v1/mentorship/requests/${requestId}/pay`,
+    url: `/api/v1/mentorship/requests/${requestId}/payment/order`,
     headers: auth(studentToken)
   });
   assert.equal(failPayResponse.statusCode, 400);
@@ -207,10 +207,10 @@ test("mentorship requests agendas lifecycle, payment and completion lock", async
   assert.equal(agree1Response.statusCode, 200);
   assert.equal(agree1Response.json().status, "agreed");
 
-  // 6. Try to pay again (should still fail because agenda 2 is still proposed)
+  // 6. Try to create a payment order again (should still fail because agenda 2 is still proposed)
   const failPay2Response = await server.inject({
     method: "POST",
-    url: `/api/v1/mentorship/requests/${requestId}/pay`,
+    url: `/api/v1/mentorship/requests/${requestId}/payment/order`,
     headers: auth(studentToken)
   });
   assert.equal(failPay2Response.statusCode, 400);
@@ -223,11 +223,25 @@ test("mentorship requests agendas lifecycle, payment and completion lock", async
   });
   assert.equal(agree2Response.statusCode, 200);
 
-  // 8. Now payment should succeed
+  // 8. Now creating and verifying a payment (simulated -- no Razorpay keys in test env) should succeed
+  const orderResponse = await server.inject({
+    method: "POST",
+    url: `/api/v1/mentorship/requests/${requestId}/payment/order`,
+    headers: auth(studentToken)
+  });
+  assert.equal(orderResponse.statusCode, 201);
+  const order = orderResponse.json();
+  assert.equal(order.simulated, true);
+
   const payResponse = await server.inject({
     method: "POST",
-    url: `/api/v1/mentorship/requests/${requestId}/pay`,
-    headers: auth(studentToken)
+    url: `/api/v1/mentorship/requests/${requestId}/payment/verify`,
+    headers: auth(studentToken),
+    payload: {
+      razorpay_order_id: order.order_id,
+      razorpay_payment_id: `sim_pay_${Date.now()}`,
+      razorpay_signature: "simulated_signature"
+    }
   });
   assert.equal(payResponse.statusCode, 200);
   assert.equal(payResponse.json().payment_status, "paid");
@@ -445,11 +459,24 @@ test("mentorship profile question PDFs, custom student copy, and agenda attachme
   });
   assert.equal(agreeRes.statusCode, 200);
 
-  // Pay the request
+  // Pay the request (simulated -- no Razorpay keys in test env)
+  const orderRes = await server.inject({
+    method: "POST",
+    url: `/api/v1/mentorship/requests/${requestId}/payment/order`,
+    headers: auth(freshStudentToken)
+  });
+  assert.equal(orderRes.statusCode, 201);
+  const orderJson = orderRes.json();
+
   const payRes = await server.inject({
     method: "POST",
-    url: `/api/v1/mentorship/requests/${requestId}/pay`,
-    headers: auth(freshStudentToken)
+    url: `/api/v1/mentorship/requests/${requestId}/payment/verify`,
+    headers: auth(freshStudentToken),
+    payload: {
+      razorpay_order_id: orderJson.order_id,
+      razorpay_payment_id: `sim_pay_${Date.now()}`,
+      razorpay_signature: "simulated_signature"
+    }
   });
   assert.equal(payRes.statusCode, 200);
 

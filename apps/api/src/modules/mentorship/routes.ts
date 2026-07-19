@@ -16,9 +16,12 @@ import {
   deactivateSlot,
   createRequest,
   listRequests,
+  listAllRequestsForAdmin,
   updateRequestStatus,
+  submitCustomCopyEvaluation,
   offerSlots,
-  mockPayRequest,
+  createMentorshipPaymentOrder,
+  verifyMentorshipPayment,
   acceptSlotAndBook,
   startSessionNow,
   sendMessage,
@@ -47,9 +50,11 @@ import {
   createMentorshipRequestSchema,
   updateMentorshipRequestStatusSchema,
   offerSlotsSchema,
+  submitCustomCopyEvaluationSchema,
   sendMentorshipMessageSchema,
   updateMentorProfileSchema,
   createAgendaSchema,
+  verifyMentorshipPaymentSchema,
   updateMentorshipSettingSchema
 } from "./schemas.js";
 
@@ -231,8 +236,12 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const body = parse(createMentorshipRequestSchema, request.body);
-      const record = await createRequest(user.id, body);
-      return reply.status(201).send(record);
+      try {
+        const record = await createRequest(user.id, body);
+        return reply.status(201).send(record);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
     });
   });
 
@@ -242,6 +251,19 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
       const queryParams = (request.query || {}) as { mode?: string };
       const mode = queryParams.mode === "provider" ? "provider" : "user";
       return listRequests(user.id, user.role, mode);
+    });
+  });
+
+  // Admin oversight of every in-flight mentorship engagement (not scoped to one user/mentor)
+  server.get("/api/v1/admin/mentorship/requests", async (request, reply) => {
+    await requireRole(request, ["admin", "moderator"]);
+    return withValidation(reply, async () => {
+      const queryParams = (request.query || {}) as { status?: string; payment_status?: string; limit?: string };
+      return listAllRequestsForAdmin({
+        status: queryParams.status,
+        payment_status: queryParams.payment_status,
+        limit: queryParams.limit ? Number(queryParams.limit) : undefined
+      });
     });
   });
 
@@ -271,15 +293,30 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
     });
   });
 
-  server.post("/api/v1/mentorship/requests/:id/pay", async (request, reply) => {
+  server.post("/api/v1/mentorship/requests/:id/payment/order", async (request, reply) => {
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
       try {
-        const record = await mockPayRequest(params.id, user.id);
-        if (!record) return reply.notFound("Request not found.");
+        const order = await createMentorshipPaymentOrder(params.id, user.id);
+        return reply.status(201).send(order);
+      } catch (err: any) {
+        if (err.statusCode === 404) return reply.notFound(err.message);
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.post("/api/v1/mentorship/requests/:id/payment/verify", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(verifyMentorshipPaymentSchema, request.body);
+      try {
+        const record = await verifyMentorshipPayment(params.id, user.id, body);
         return record;
       } catch (err: any) {
+        if (err.statusCode === 404) return reply.notFound(err.message);
         return reply.badRequest(err.message);
       }
     });
@@ -304,6 +341,22 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
     });
   });
 
+  // Evaluation for requests where the student attached a directly-uploaded copy
+  // (not linked to a platform Mains attempt -- see /assessment/mains/answers/:id/evaluation for that path).
+  server.put("/api/v1/mentorship/requests/:id/custom-copy-evaluation", async (request, reply) => {
+    const user = await requireRole(request, ["admin", "moderator", "mentor"]);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(submitCustomCopyEvaluationSchema, request.body);
+      try {
+        const record = await submitCustomCopyEvaluation(params.id, user.id, user.role, body);
+        return record;
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
   // --- Agora Video Call Room ---
 
   server.get("/api/v1/mentorship/sessions/:sessionId/agora-token", async (request, reply) => {
@@ -313,7 +366,7 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
       
       // Verify user is a participant of the session's parent request
       const session = await one<any>(
-        `select user_id, mentor_id, starts_at from app.mentorship_sessions where id = $1`,
+        `select user_id, mentor_id, starts_at, meeting_link from app.mentorship_sessions where id = $1`,
         [params.sessionId]
       );
       if (!session) return reply.notFound("Session not found.");
@@ -321,7 +374,10 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
         return reply.forbidden("You are not authorized to join this session.");
       }
 
-      return generateAgoraToken(`mentorship-session-${params.sessionId}`, user.id);
+      return {
+        ...generateAgoraToken(`mentorship-session-${params.sessionId}`, user.id),
+        meetingLink: session.meeting_link || null
+      };
     });
   });
 
@@ -331,7 +387,11 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
-      return listMessages(params.id, user.id);
+      try {
+        return await listMessages(params.id, user.id, user.role);
+      } catch (err: any) {
+        return reply.forbidden(err.message);
+      }
     });
   });
 
@@ -372,7 +432,8 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
       if (!requestRecord) return reply.notFound("Mentorship request not found.");
       const reqUserId = Number(requestRecord.user_id);
       const reqMentorId = Number(requestRecord.mentor_id);
-      if (reqUserId !== user.id && reqMentorId !== user.id) {
+      const isStaff = ["admin", "moderator"].includes(user.role);
+      if (reqUserId !== user.id && reqMentorId !== user.id && !isStaff) {
         return reply.forbidden("You are not authorized to view agendas for this request.");
       }
       return listAgendas(params.id);

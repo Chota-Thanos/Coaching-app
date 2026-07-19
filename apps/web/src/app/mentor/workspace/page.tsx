@@ -2,9 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, authenticatedGet, authenticatedPost, authenticatedPut, authenticatedDelete } from "../../../components/auth/auth-context";
+import { useAuth, authenticatedGet, authenticatedPost, authenticatedPut, authenticatedPatch, authenticatedDelete } from "../../../components/auth/auth-context";
 import { browserBaseUrl } from "../../../lib/api";
-import { Send, Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Upload, Plus, Trash2, ArrowRight, Clock, Sparkles, LayoutDashboard, Settings, User, ClipboardList, LogOut, Globe, Bell, Link2 } from "lucide-react";
+import { Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Upload, Plus, Trash2, ArrowRight, Sparkles, LayoutDashboard, Settings, User, ClipboardList, LogOut, Globe, Bell } from "lucide-react";
+import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifecycle-tracker";
+import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
+import { ChatThread } from "../../../components/mentorship/chat-thread";
+import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
 import Link from "next/link";
 
 type MentorshipMessage = {
@@ -31,6 +35,17 @@ type MentorshipRequest = {
   meta: {
     offered_slot_ids?: number[];
     student_copy?: { url: string; file_name: string } | null;
+    evaluation?: {
+      score: number;
+      max_score: number;
+      feedback: string | null;
+      checked_copy_url: string | null;
+      checked_copy_file_name: string | null;
+      strengths: string[];
+      weaknesses: string[];
+      evaluated_by_user_id: number;
+      evaluated_at: string;
+    } | null;
   } | null;
   created_at: string;
   updated_at: string;
@@ -99,6 +114,7 @@ export default function MentorWorkspacePage() {
   const [strengthsRaw, setStrengthsRaw] = useState("Strong structure, clear thesis statement");
   const [weaknessesRaw, setWeaknessesRaw] = useState("Lacks specific data points in section 2");
   const [checkedCopyUrl, setCheckedCopyUrl] = useState("");
+  const [checkedCopyFileName, setCheckedCopyFileName] = useState("");
   const [uploadingCopy, setUploadingCopy] = useState(false);
   const [submittingEvaluation, setSubmittingEvaluation] = useState(false);
 
@@ -615,13 +631,28 @@ export default function MentorWorkspacePage() {
       void fetchMessages(selectedRequest.id);
       void fetchAgendas(selectedRequest.id);
       
-      // Reset evaluation fields for selected copy
-      setCheckedCopyUrl(selectedRequest.evaluation_checked_copy_url || "");
-      setFeedback(selectedRequest.evaluation_feedback || "");
-      setScore(selectedRequest.evaluation_score !== null && selectedRequest.evaluation_score !== undefined ? String(selectedRequest.evaluation_score) : "7");
-      setMaxScore(selectedRequest.evaluation_max_score !== null && selectedRequest.evaluation_max_score !== undefined ? String(selectedRequest.evaluation_max_score) : "10");
-      setStrengthsRaw(selectedRequest.evaluation_strengths?.join(", ") || "Strong arguments, logical layout");
-      setWeaknessesRaw(selectedRequest.evaluation_weaknesses?.join(", ") || "Grammar adjustments needed, expand intro");
+      // Reset evaluation fields for selected copy -- sourced from the linked Mains
+      // attempt when present, or from meta.evaluation for a directly-uploaded custom copy.
+      const customEval = selectedRequest.meta?.evaluation;
+      const evalSource = selectedRequest.mains_answer_attempt_id
+        ? {
+            score: selectedRequest.evaluation_score,
+            max_score: selectedRequest.evaluation_max_score,
+            feedback: selectedRequest.evaluation_feedback,
+            checked_copy_url: selectedRequest.evaluation_checked_copy_url,
+            checked_copy_file_name: undefined,
+            strengths: selectedRequest.evaluation_strengths,
+            weaknesses: selectedRequest.evaluation_weaknesses,
+          }
+        : customEval || {};
+
+      setCheckedCopyUrl(evalSource.checked_copy_url || "");
+      setCheckedCopyFileName(evalSource.checked_copy_file_name || "");
+      setFeedback(evalSource.feedback || "");
+      setScore(evalSource.score !== null && evalSource.score !== undefined ? String(evalSource.score) : "7");
+      setMaxScore(evalSource.max_score !== null && evalSource.max_score !== undefined ? String(evalSource.max_score) : "10");
+      setStrengthsRaw(evalSource.strengths?.join(", ") || "Strong arguments, logical layout");
+      setWeaknessesRaw(evalSource.weaknesses?.join(", ") || "Grammar adjustments needed, expand intro");
 
       const timer = setInterval(() => {
         void fetchMessages(selectedRequest.id);
@@ -735,28 +766,31 @@ export default function MentorWorkspacePage() {
     );
   };
 
-  // Mock upload checked copy pdf
-  const handleMockUploadCopy = async () => {
+  // Upload the mentor's own checked/annotated copy of the student's answer
+  const handleUploadCheckedCopy = async (file: File) => {
     if (!token) return;
     setUploadingCopy(true);
     try {
       const res = await authenticatedPost<any>("/api/v1/onboarding/assets/upload", token, {
-        file_name: "checked_evaluation_sheet.pdf",
-        asset_kind: "sample",
+        file_name: file.name,
+        asset_kind: "checked_copy",
       });
       setCheckedCopyUrl(res.url);
-      alert("Mock evaluated sheet uploaded successfully!");
+      setCheckedCopyFileName(file.name);
     } catch (err) {
-      alert("Mock upload failed");
+      alert("Failed to upload checked copy.");
     } finally {
       setUploadingCopy(false);
     }
   };
 
-  // Submit copy evaluation feedback
+  // Submit copy evaluation feedback -- routed to the platform Mains evaluation
+  // endpoint when a mains_answer_attempt is linked, or to the mentorship module's
+  // own custom-copy evaluation endpoint otherwise.
   const handleSubmitEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !selectedRequest || !selectedRequest.mains_answer_attempt_id) return;
+    if (!token || !selectedRequest) return;
+    if (!selectedRequest.mains_answer_attempt_id && !selectedRequest.meta?.student_copy) return;
 
     setSubmittingEvaluation(true);
     try {
@@ -765,17 +799,26 @@ export default function MentorWorkspacePage() {
         max_score: Number(maxScore),
         feedback: feedback.trim() || undefined,
         checked_copy_url: checkedCopyUrl || undefined,
+        checked_copy_file_name: checkedCopyFileName || undefined,
         strengths: strengthsRaw.split(",").map((s) => s.trim()).filter(Boolean),
         weaknesses: weaknessesRaw.split(",").map((w) => w.trim()).filter(Boolean),
       };
 
-      await authenticatedPut(
-        `/api/v1/assessment/mains/answers/${selectedRequest.mains_answer_attempt_id}/evaluation`,
-        token,
-        payload
-      );
+      if (selectedRequest.mains_answer_attempt_id) {
+        await authenticatedPatch(
+          `/api/v1/assessment/mains/answers/${selectedRequest.mains_answer_attempt_id}/evaluation`,
+          token,
+          payload
+        );
+      } else {
+        await authenticatedPut(
+          `/api/v1/mentorship/requests/${selectedRequest.id}/custom-copy-evaluation`,
+          token,
+          payload
+        );
+      }
 
-      alert("Mains copy evaluation updated successfully!");
+      alert("Copy evaluation saved successfully!");
       void fetchRequests();
     } catch (err: any) {
       alert("Failed to submit copy evaluation: " + err.message);
@@ -1155,6 +1198,22 @@ export default function MentorWorkspacePage() {
             {/* Request Detail / Discussion Panel */}
             {selectedRequest ? (
               <div className="space-y-6">
+                {/* Lifecycle tracker */}
+                <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <MentorshipLifecycleTracker
+                    input={{
+                      status: selectedRequest.status,
+                      payment_status: selectedRequest.payment_status,
+                      scheduled_slot_id: selectedRequest.scheduled_slot_id,
+                      session_id: selectedRequest.session_id,
+                      mains_answer_attempt_id: selectedRequest.mains_answer_attempt_id,
+                      evaluation_status: selectedRequest.evaluation_status,
+                      meta: selectedRequest.meta,
+                      agendas
+                    }}
+                  />
+                </div>
+
                 {/* Profile Card Header */}
                 <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1252,66 +1311,61 @@ export default function MentorWorkspacePage() {
                   )}
                 </div>
 
-                {/* Custom student copy evaluation panel */}
-                {!selectedRequest.mains_answer_attempt_id && selectedRequest.meta?.student_copy && (
-                  <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-                    <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                      <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                        <FileText className="h-5 w-5 text-indigo-600" />
-                        Custom copy evaluation
-                      </h3>
-                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full uppercase">
-                        External Copy
-                      </span>
-                    </div>
-
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
-                      <h4 className="text-[10px] font-black uppercase text-slate-400">Attached Answer Copy</h4>
-                      <p className="text-xs font-bold text-slate-800 leading-snug">{selectedRequest.meta.student_copy.file_name}</p>
-                      
-                      <a
-                        href={selectedRequest.meta.student_copy.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-                      >
-                        <FileText className="h-4 w-4 text-indigo-600" />
-                        View Student PDF Submission
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Journey B: Grader / Evaluation Form */}
-                {selectedRequest.mains_answer_attempt_id && (
+                {/* Grader / Evaluation Form -- covers both a linked platform Mains attempt
+                    and a directly-uploaded custom copy (meta.student_copy) */}
+                {(selectedRequest.mains_answer_attempt_id || selectedRequest.meta?.student_copy) && (
                   <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
                     <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
                       <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
                         <FileText className="h-5 w-5 text-indigo-600" />
                         Subjective copy evaluation grader
                       </h3>
-                      <span className="text-xs font-bold text-slate-400">Attempt ID: #{selectedRequest.mains_answer_attempt_id}</span>
+                      {selectedRequest.mains_answer_attempt_id ? (
+                        <span className="text-xs font-bold text-slate-400">Attempt ID: #{selectedRequest.mains_answer_attempt_id}</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full uppercase">
+                          External Copy
+                        </span>
+                      )}
                     </div>
 
                     {/* Student Answer preview */}
                     <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
-                      <h4 className="text-[10px] font-black uppercase text-slate-400">Attempted Question</h4>
-                      <p className="text-xs font-bold text-slate-800 leading-snug">{selectedRequest.attempt_question_statement || "No question loaded."}</p>
-                      
-                      {selectedRequest.attempt_answer_file_url ? (
-                        <a
-                          href={selectedRequest.attempt_answer_file_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-                        >
-                          <FileText className="h-4 w-4 text-indigo-600" />
-                          View Student PDF Submission
-                        </a>
+                      {selectedRequest.mains_answer_attempt_id ? (
+                        <>
+                          <h4 className="text-[10px] font-black uppercase text-slate-400">Attempted Question</h4>
+                          <p className="text-xs font-bold text-slate-800 leading-snug">{selectedRequest.attempt_question_statement || "No question loaded."}</p>
+
+                          {selectedRequest.attempt_answer_file_url ? (
+                            <a
+                              href={selectedRequest.attempt_answer_file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              <FileText className="h-4 w-4 text-indigo-600" />
+                              View Student PDF Submission
+                            </a>
+                          ) : (
+                            <div className="text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                              {selectedRequest.attempt_student_answer_text || "No response details."}
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <div className="text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
-                          {selectedRequest.attempt_student_answer_text || "No response details."}
-                        </div>
+                        <>
+                          <h4 className="text-[10px] font-black uppercase text-slate-400">Attached Answer Copy</h4>
+                          <p className="text-xs font-bold text-slate-800 leading-snug">{selectedRequest.meta?.student_copy?.file_name}</p>
+                          <a
+                            href={selectedRequest.meta?.student_copy?.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                          >
+                            <FileText className="h-4 w-4 text-indigo-600" />
+                            View Student PDF Submission
+                          </a>
+                        </>
                       )}
                     </div>
 
@@ -1372,24 +1426,32 @@ export default function MentorWorkspacePage() {
                       </div>
 
                       {/* Evaluated Copy Upload */}
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4 flex items-center justify-between">
-                        <div className="space-y-0.5">
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4 flex items-center justify-between gap-3">
+                        <div className="space-y-0.5 min-w-0">
                           <h4 className="text-xs font-bold text-slate-800">Checked Evaluated Copy</h4>
-                          <p className="text-[10px] text-slate-400">PDF showing red markings and margins feedback.</p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {checkedCopyFileName || "PDF showing red markings and margins feedback."}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           {checkedCopyUrl && (
                             <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">Uploaded</span>
                           )}
-                          <button
-                            type="button"
-                            disabled={uploadingCopy}
-                            onClick={handleMockUploadCopy}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                          >
+                          <label className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
                             <Upload className="h-3.5 w-3.5" />
-                            {uploadingCopy ? "Uploading..." : "Mock Upload PDF"}
-                          </button>
+                            {uploadingCopy ? "Uploading..." : checkedCopyUrl ? "Replace PDF" : "Upload Checked PDF"}
+                            <input
+                              type="file"
+                              accept="application/pdf,image/*"
+                              disabled={uploadingCopy}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) void handleUploadCheckedCopy(file);
+                                e.target.value = "";
+                              }}
+                              className="hidden"
+                            />
+                          </label>
                         </div>
                       </div>
 
@@ -1405,420 +1467,119 @@ export default function MentorWorkspacePage() {
                 )}
 
                 {/* Agendas Checklist Panel */}
-                <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                  <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                    <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                      <ClipboardList className="h-5 w-5 text-indigo-600" />
-                      Mentorship Request Agendas ({agendas.length})
-                    </h3>
-                    {selectedRequest.payment_status === "pending" && (
-                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                        Pre-Payment Agreement Stage
-                      </span>
-                    )}
-                    {selectedRequest.payment_status === "paid" && (
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                        Paid - Tracking Deliverables
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    {agendas.map((agenda) => {
-                      const isCreatorMe = Number(agenda.created_by) === user?.id;
-                      const statusColors: Record<string, string> = {
-                        proposed: "bg-amber-100 text-amber-800 border-amber-200",
-                        agreed: "bg-indigo-100 text-indigo-800 border-indigo-200",
-                        solved_proposed: "bg-orange-100 text-orange-800 border-orange-200 animate-pulse",
-                        solved: "bg-emerald-100 text-emerald-800 border-emerald-200"
-                      };
-                      const statusLabels: Record<string, string> = {
-                        proposed: "Proposed",
-                        agreed: "Agreed",
-                        solved_proposed: "Solved proposed (pending student consent)",
-                        solved: "Solved & Confirmed"
-                      };
-
-                      return (
-                        <div key={agenda.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3 transition hover:bg-white hover:border-slate-200 shadow-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="font-extrabold text-slate-800 text-xs">{agenda.title}</h4>
-                              {agenda.description && (
-                                <p className="text-[11px] text-slate-500 mt-1 leading-normal">{agenda.description}</p>
-                              )}
-                              <p className="text-[9px] text-slate-400 mt-1.5">
-                                Proposed by: {isCreatorMe ? "You" : agenda.creator_username || "Student"} · Status: 
-                                <span className={`inline-block ml-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border ${statusColors[agenda.status]}`}>
-                                  {statusLabels[agenda.status]}
-                                </span>
-                              </p>
-                              {agenda.meta?.attached_question && (
-                                <div className="mt-2">
-                                  <a
-                                    href={agenda.meta.attached_question.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:underline bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100"
-                                  >
-                                    <FileText className="h-3 w-3 text-indigo-600 shrink-0" />
-                                    Attached Question: {agenda.meta.attached_question.file_name}
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center gap-1 shrink-0">
-                              {/* Agree Button */}
-                              {agenda.status === "proposed" && !isCreatorMe && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleAgreeAgenda(agenda.id)}
-                                  className="rounded-lg bg-indigo-600 px-2 py-1 text-[10px] font-black text-white hover:bg-indigo-700 transition"
-                                >
-                                  Agree
-                                </button>
-                              )}
-
-                              {/* Mark Solved Button */}
-                              {agenda.status === "agreed" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleProposeSolveAgenda(agenda.id)}
-                                  className="rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-black text-white hover:bg-emerald-700 transition"
-                                >
-                                  Mark Solved
-                                </button>
-                              )}
-
-                              {/* Delete Button */}
-                              {agenda.status === "proposed" && isCreatorMe && selectedRequest.payment_status === "pending" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteAgenda(agenda.id)}
-                                  className="text-slate-400 hover:text-rose-600 p-1 transition"
-                                  title="Delete Agenda"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {agendas.length === 0 && (
-                      <p className="text-xs text-slate-400 italic text-center py-4">No agendas have been proposed yet.</p>
-                    )}
-                  </div>
-
-                  {/* Propose agenda form */}
-                  {selectedRequest.payment_status === "pending" && (
-                    <form onSubmit={handleCreateAgenda} className="border-t border-slate-100 pt-4 space-y-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 block">Propose Mentorship Deliverable / Agenda Query</span>
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          required
-                          value={newAgendaTitle}
-                          onChange={(e) => setNewAgendaTitle(e.target.value)}
-                          placeholder="e.g. Mentor will evaluate 3 Mains papers..."
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500"
-                        />
-                        <textarea
-                          rows={2}
-                          value={newAgendaDesc}
-                          onChange={(e) => setNewAgendaDesc(e.target.value)}
-                          placeholder="Provide optional detail or explanation..."
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500 resize-none"
-                        />
-                        {evaluationSource === "own_questions" && questionPdfs.length > 0 && (
-                          <div className="space-y-1 mt-2">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Attach one of your question PDFs (Optional)</label>
-                            <select
-                              value={selectedAgendaQuestionIndex}
-                              onChange={(e) => setSelectedAgendaQuestionIndex(e.target.value)}
-                              className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none cursor-pointer"
-                            >
-                              <option value="">-- Select Question PDF --</option>
-                              {questionPdfs.map((q, qidx) => (
-                                <option key={qidx} value={qidx}>{q.file_name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
+                <AgendaPanel
+                  agendas={agendas}
+                  currentUserId={user?.id}
+                  viewerRole="mentor"
+                  paymentStatus={selectedRequest.payment_status}
+                  isClosed={["completed", "rejected", "cancelled", "expired"].includes(selectedRequest.status)}
+                  icon={<ClipboardList className="h-5 w-5 text-indigo-600" />}
+                  proposing={proposingAgenda}
+                  newTitle={newAgendaTitle}
+                  newDesc={newAgendaDesc}
+                  onTitleChange={setNewAgendaTitle}
+                  onDescChange={setNewAgendaDesc}
+                  onSubmitPropose={handleCreateAgenda}
+                  onAgree={handleAgreeAgenda}
+                  onProposeSolve={handleProposeSolveAgenda}
+                  onDelete={handleDeleteAgenda}
+                  titlePlaceholder="e.g. Mentor will evaluate 3 Mains papers..."
+                  emptyStateText="No agendas have been proposed yet."
+                  extraFormContent={
+                    evaluationSource === "own_questions" && questionPdfs.length > 0 ? (
+                      <div className="space-y-1 mt-2">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Attach one of your question PDFs (Optional)</label>
+                        <select
+                          value={selectedAgendaQuestionIndex}
+                          onChange={(e) => setSelectedAgendaQuestionIndex(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none cursor-pointer"
+                        >
+                          <option value="">-- Select Question PDF --</option>
+                          {questionPdfs.map((q, qidx) => (
+                            <option key={qidx} value={qidx}>{q.file_name}</option>
+                          ))}
+                        </select>
                       </div>
-                      <button
-                        type="submit"
-                        disabled={proposingAgenda}
-                        className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-600 transition disabled:opacity-50"
-                      >
-                        {proposingAgenda ? "Proposing..." : "Propose Agenda"}
-                      </button>
-                    </form>
-                  )}
-
-                  {/* Complete Mentorship Action Area */}
-                  {selectedRequest.status === "accepted" && selectedRequest.payment_status === "paid" && (
-                    <div className="border-t border-slate-100 pt-4 space-y-2">
-                      {agendas.some((a) => a.status !== "solved") ? (
-                        <div className="space-y-2">
+                    ) : undefined
+                  }
+                  footerContent={
+                    selectedRequest.status === "accepted" && selectedRequest.payment_status === "paid" ? (
+                      <div className="border-t border-slate-100 pt-4 space-y-2">
+                        {agendas.some((a) => a.status !== "solved") ? (
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-400 border border-slate-200 cursor-not-allowed"
+                            >
+                              Complete Mentorship
+                            </button>
+                            <p className="text-[10px] text-rose-500 flex items-center gap-1 leading-normal">
+                              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                              Cannot complete request yet. All proposed agendas must be solved with student consent confirmation.
+                            </p>
+                          </div>
+                        ) : (
                           <button
                             type="button"
-                            disabled
-                            className="w-full rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-400 border border-slate-200 cursor-not-allowed"
+                            onClick={() => handleTriageStatus("completed")}
+                            className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white hover:bg-indigo-700 transition shadow-md shadow-indigo-600/10"
                           >
                             Complete Mentorship
                           </button>
-                          <p className="text-[10px] text-rose-500 flex items-center gap-1 leading-normal">
-                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                            Cannot complete request yet. All proposed agendas must be solved with student consent confirmation.
-                          </p>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleTriageStatus("completed")}
-                          className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white hover:bg-indigo-700 transition shadow-md shadow-indigo-600/10"
-                        >
-                          Complete Mentorship
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
+                />
 
                 {/* Segmented Chat System */}
                 {selectedRequest.payment_status === "paid" ? (
-                  /* Post-Payment Premium Mentorship Room */
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
-                    {/* Chat Area (occupies 2 cols) */}
-                    <div className="lg:col-span-2 rounded-[32px] border border-indigo-150 bg-white shadow-sm overflow-hidden flex flex-col h-[480px]">
-                      {/* Header */}
-                      <div className="border-b border-indigo-55 bg-indigo-50/40 px-6 py-4 flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                            <MessageSquare className="h-4 w-4 text-indigo-600 animate-pulse" />
-                            Premium Mentorship Chat Room
-                          </span>
-                          <span className="text-[10px] text-slate-400 mt-0.5">Your active space for live meetings, deliverables, and resource coordination.</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-100 flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Active
-                        </span>
-                      </div>
-
-                      {/* Messages list */}
-                      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                        {messages.length === 0 ? (
-                          <div className="flex h-full items-center justify-center text-xs text-slate-400 italic">
-                            No messages yet. Send a message to coordinate with the student.
-                          </div>
-                        ) : (
-                          messages.map((msg) => {
-                            const isMe = msg.sender_id === user?.id;
-                            return (
-                              <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                                <span className="text-[10px] text-slate-400 font-semibold mb-1">
-                                  {isMe ? "You" : msg.sender_username} · {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-xs leading-normal whitespace-pre-wrap shadow-sm ${
-                                  isMe
-                                    ? "bg-indigo-600 text-white rounded-tr-none"
-                                    : "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50"
-                                }`}>
-                                  {msg.body}
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                        <div ref={chatBottomRef} />
-                      </div>
-
-                      {/* Message Input */}
-                      <form onSubmit={handleSendMessage} className="border-t border-slate-100 p-4 flex gap-2 bg-slate-50/50">
-                        <input
-                          type="text"
-                          placeholder="Type a message to coordinate with the student..."
-                          value={typedMessage}
-                          onChange={(e) => setTypedMessage(e.target.value)}
-                          className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none focus:border-indigo-500"
-                        />
-                        <button
-                          type="submit"
-                          disabled={sendingMessage || !typedMessage.trim()}
-                          className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-600 disabled:opacity-50 flex items-center justify-center shrink-0 transition"
-                        >
-                          <Send className="h-4 w-4" />
-                        </button>
-                      </form>
+                    <div className="lg:col-span-2">
+                      <ChatThread
+                        messages={messages}
+                        currentUserId={user?.id}
+                        typedMessage={typedMessage}
+                        onTypedMessageChange={setTypedMessage}
+                        onSubmit={handleSendMessage}
+                        sending={sendingMessage}
+                        bottomRef={chatBottomRef}
+                        theme="indigo"
+                        title="Premium Mentorship Chat Room"
+                        subtitle="Your active space for live meetings, deliverables, and resource coordination."
+                        badgeLabel="Active"
+                        emptyStateText="No messages yet. Send a message to coordinate with the student."
+                        inputPlaceholder="Type a message to coordinate with the student..."
+                      />
                     </div>
-
-                    {/* Premium Sidebar (occupies 1 col) */}
-                    <div className="space-y-4 flex flex-col h-[480px]">
-                      {/* Deliverables Progress Bar */}
-                      {(() => {
-                        const trackableAgendas = agendas.filter(a => ["agreed", "solved_proposed", "solved"].includes(a.status));
-                        const solvedAgendas = agendas.filter(a => ["solved_proposed", "solved"].includes(a.status));
-                        const totalCount = trackableAgendas.length;
-                        const solvedCount = solvedAgendas.length;
-                        const percentage = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
-                        return (
-                          <div className="rounded-2xl border border-indigo-105 bg-white p-4 shadow-sm space-y-2">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-indigo-950">Deliverables Progress</h4>
-                            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                              <span>Agendas Solved</span>
-                              <span>{solvedCount}/{totalCount} ({percentage}%)</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-600 transition-all duration-300" style={{ width: `${percentage}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Call Schedule Status */}
-                      {selectedRequest.scheduled_slot_id && selectedRequest.session_id && (
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/20 p-4 shadow-sm space-y-3">
-                          <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Call Schedule</h4>
-                          <div className="space-y-1">
-                            <p className="text-xs font-bold text-slate-805">Next Upcoming Slot</p>
-                            <p className="text-[10px] text-slate-500 font-semibold">
-                              {selectedRequest.session_starts_at ? new Date(selectedRequest.session_starts_at).toLocaleString() : "Date pending"}
-                            </p>
-                          </div>
-                          <Link
-                            href={`/mentorship/session/${selectedRequest.session_id}`}
-                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition"
-                          >
-                            <Video className="h-3.5 w-3.5" />
-                            Join Call Room
-                          </Link>
-                        </div>
-                      )}
-
-                      {/* Shared Resources Link Index */}
-                      {(() => {
-                        const extractUrls = (text: string) => {
-                          const urlRegex = /(https?:\/\/[^\s]+)/g;
-                          return text.match(urlRegex) || [];
-                        };
-                        const sharedLinks = Array.from(
-                          new Set(
-                            messages
-                              .flatMap(msg => extractUrls(msg.body))
-                              .map(url => url.replace(/[.,;!?]$/, "")) // remove trailing punctuation
-                          )
-                        );
-                        return (
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 flex-1 flex flex-col overflow-hidden">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 shrink-0">
-                              <Link2 className="h-3.5 w-3.5 text-indigo-500" />
-                              Shared Resources ({sharedLinks.length})
-                            </h4>
-                            <div className="overflow-y-auto space-y-1.5 pr-1 text-xs flex-1">
-                              {sharedLinks.map((link, idx) => {
-                                let displayLink = link;
-                                try {
-                                  const urlObj = new URL(link);
-                                  displayLink = urlObj.hostname + (urlObj.pathname.length > 15 ? urlObj.pathname.substring(0, 12) + "..." : urlObj.pathname);
-                                } catch {}
-                                return (
-                                  <a
-                                    key={idx}
-                                    href={link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5 hover:bg-indigo-50 hover:text-indigo-600 text-[11px] font-bold text-slate-655 truncate transition-all"
-                                    title={link}
-                                  >
-                                    {displayLink}
-                                  </a>
-                                );
-                              })}
-                              {sharedLinks.length === 0 && (
-                                <p className="text-[10px] text-slate-400 italic text-center py-4">No shared links in this chat yet.</p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Active Workspace Scratchpad */}
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 shrink-0">
-                        <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-700">Scratchpad</h4>
-                        <textarea
-                          value={scratchpad}
-                          onChange={(e) => handleScratchpadChange(e.target.value)}
-                          placeholder="Capture notes, action items, or session goals here..."
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-medium outline-none focus:border-indigo-500 bg-slate-50/50 resize-none h-20"
-                        />
-                      </div>
-                    </div>
+                    <PremiumSidePanel
+                      agendas={agendas}
+                      messages={messages}
+                      scheduledSlotId={selectedRequest.scheduled_slot_id}
+                      sessionId={selectedRequest.session_id}
+                      sessionStartsAt={selectedRequest.session_starts_at}
+                      scratchpad={scratchpad}
+                      onScratchpadChange={handleScratchpadChange}
+                    />
                   </div>
                 ) : (
-                  /* Pre-Payment Pre-Payment Agenda Coordination Chat */
-                  <div className="rounded-[32px] border border-amber-250/70 bg-white shadow-sm overflow-hidden flex flex-col h-[400px] animate-in fade-in duration-200">
-                    <div className="border-b border-amber-100 bg-amber-50/40 px-6 py-4 flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                          <MessageSquare className="h-4 w-4 text-amber-600 animate-pulse" />
-                          Pre-Payment Agenda Coordination
-                        </span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">Discuss the scope of mentorship, clarify preparation focus, and align on deliverables with the student before payment.</span>
-                      </div>
-                      <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-bold border border-amber-100">Coordination</span>
-                    </div>
-
-                    {/* Messages list */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                      {messages.length === 0 ? (
-                        <div className="flex h-full items-center justify-center text-xs text-slate-400 italic text-center px-4">
-                          Start Coordinating! Discuss goals, scope and propose deliverables with the student here.
-                        </div>
-                      ) : (
-                        messages.map((msg) => {
-                          const isMe = msg.sender_id === user?.id;
-                          return (
-                            <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                              <span className="text-[10px] text-slate-400 font-semibold mb-1">
-                                {isMe ? "You" : msg.sender_username} · {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-xs leading-normal whitespace-pre-wrap shadow-sm ${
-                                isMe
-                                  ? "bg-amber-100 text-amber-800 border border-amber-200/50 rounded-tr-none"
-                                  : "bg-slate-100 text-slate-805 rounded-tl-none border border-slate-200/50"
-                              }`}>
-                                {msg.body}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                      <div ref={chatBottomRef} />
-                    </div>
-
-                    {/* Message Input */}
-                    <form onSubmit={handleSendMessage} className="border-t border-slate-100 p-4 flex gap-2 bg-slate-50/50">
-                      <input
-                        type="text"
-                        placeholder="Type a message to coordinate with the student..."
-                        value={typedMessage}
-                        onChange={(e) => setTypedMessage(e.target.value)}
-                        className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                      />
-                      <button
-                        type="submit"
-                        disabled={sendingMessage || !typedMessage.trim()}
-                        className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center shrink-0 transition"
-                      >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    </form>
-                  </div>
+                  <ChatThread
+                    messages={messages}
+                    currentUserId={user?.id}
+                    typedMessage={typedMessage}
+                    onTypedMessageChange={setTypedMessage}
+                    onSubmit={handleSendMessage}
+                    sending={sendingMessage}
+                    bottomRef={chatBottomRef}
+                    theme="amber"
+                    title="Pre-Payment Agenda Coordination"
+                    subtitle="Discuss the scope of mentorship, clarify preparation focus, and align on deliverables with the student before payment."
+                    badgeLabel="Coordination"
+                    emptyStateText="Start Coordinating! Discuss goals, scope and propose deliverables with the student here."
+                    inputPlaceholder="Type a message to coordinate with the student..."
+                    height="400px"
+                  />
                 )}
               </div>
             ) : (

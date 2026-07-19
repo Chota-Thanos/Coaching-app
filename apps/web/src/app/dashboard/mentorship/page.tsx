@@ -3,8 +3,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, authenticatedGet, authenticatedPost, authenticatedPut, authenticatedDelete } from "../../../components/auth/auth-context";
-import { Send, Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Download, CreditCard, Clock, User, Trash2, Sparkles, Link2 } from "lucide-react";
+import { Calendar, Video, MessageSquare, FileText, Download, CreditCard, Clock, User, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifecycle-tracker";
+import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
+import { ChatThread } from "../../../components/mentorship/chat-thread";
+import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
 
 type MentorshipMessage = {
   id: number;
@@ -30,6 +34,17 @@ type MentorshipRequest = {
   meta: {
     offered_slot_ids?: number[];
     student_copy?: { url: string; file_name: string } | null;
+    evaluation?: {
+      score: number;
+      max_score: number;
+      feedback: string | null;
+      checked_copy_url: string | null;
+      checked_copy_file_name: string | null;
+      strengths: string[];
+      weaknesses: string[];
+      evaluated_by_user_id: number;
+      evaluated_at: string;
+    } | null;
   } | null;
   created_at: string;
   updated_at: string;
@@ -238,14 +253,52 @@ export default function LearnerMentorshipPage() {
     }
   };
 
+  const [payingNow, setPayingNow] = useState(false);
+
   const handlePayment = async () => {
     if (!token || !selectedRequest) return;
+    setPayingNow(true);
     try {
-      await authenticatedPost(`/api/v1/mentorship/requests/${selectedRequest.id}/pay`, token, {});
-      alert("Payment successful! You can now book your slot.");
-      void fetchRequests();
+      const order = await authenticatedPost<{
+        order_id: string;
+        currency: string;
+        amount: number;
+        key_id: string;
+        simulated: boolean;
+      }>(`/api/v1/mentorship/requests/${selectedRequest.id}/payment/order`, token, {});
+
+      const verify = async (payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+        await authenticatedPost(`/api/v1/mentorship/requests/${selectedRequest.id}/payment/verify`, token, payload);
+        alert("Payment successful! You can now book your slot.");
+        void fetchRequests();
+      };
+
+      if (order.simulated) {
+        await verify({
+          razorpay_order_id: order.order_id,
+          razorpay_payment_id: `sim_pay_${Date.now()}`,
+          razorpay_signature: "simulated_signature"
+        });
+      } else {
+        const rzp = new (window as any).Razorpay({
+          key: order.key_id,
+          amount: order.amount,
+          currency: order.currency,
+          name: "WayToIAS Mentorship",
+          description: `Consultation with ${selectedRequest.mentor_name}`,
+          order_id: order.order_id,
+          handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+            void verify(response);
+          },
+          prefill: { name: user?.username, email: user?.email },
+          theme: { color: "#4f46e5" }
+        });
+        rzp.open();
+      }
     } catch (err: any) {
       alert("Payment failed: " + err.message);
+    } finally {
+      setPayingNow(false);
     }
   };
 
@@ -321,6 +374,7 @@ export default function LearnerMentorshipPage() {
   }
 
   const isCopyEvaluated = selectedRequest?.mains_answer_attempt_id && selectedRequest?.evaluation_status === "evaluated";
+  const customEvaluation = selectedRequest?.meta?.evaluation;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 pt-10">
@@ -415,6 +469,22 @@ export default function LearnerMentorshipPage() {
             {/* Request Triage & chat panel */}
             {selectedRequest && (
               <div className="space-y-6">
+                {/* Lifecycle tracker */}
+                <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <MentorshipLifecycleTracker
+                    input={{
+                      status: selectedRequest.status,
+                      payment_status: selectedRequest.payment_status,
+                      scheduled_slot_id: selectedRequest.scheduled_slot_id,
+                      session_id: selectedRequest.session_id,
+                      mains_answer_attempt_id: selectedRequest.mains_answer_attempt_id,
+                      evaluation_status: selectedRequest.evaluation_status,
+                      meta: selectedRequest.meta,
+                      agendas
+                    }}
+                  />
+                </div>
+
                 {/* Status card */}
                 <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
                   <div className="space-y-1">
@@ -429,11 +499,11 @@ export default function LearnerMentorshipPage() {
                       <div className="flex flex-col items-end gap-1.5">
                         <button
                           onClick={handlePayment}
-                          disabled={agendas.some((a) => a.status === "proposed")}
+                          disabled={payingNow || agendas.some((a) => a.status === "proposed")}
                           className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-indigo-700 flex items-center gap-1.5 transition disabled:opacity-50"
                         >
                           <CreditCard className="h-4 w-4" />
-                          Pay & Book Session (₹1000)
+                          {payingNow ? "Processing..." : "Pay & Book Session (₹1000)"}
                         </button>
                         {agendas.some((a) => a.status === "proposed") && (
                           <span className="text-[10px] text-rose-500 font-semibold">
@@ -498,9 +568,9 @@ export default function LearnerMentorshipPage() {
                      <div className="flex items-start gap-3 text-xs text-slate-500">
                        <FileText className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
                        <div>
-                         <p className="font-bold text-slate-700">{selectedRequest.meta.student_copy.file_name}</p>
+                         <p className="font-bold text-slate-700">{selectedRequest.meta?.student_copy?.file_name}</p>
                          <a
-                           href={selectedRequest.meta.student_copy.url}
+                           href={selectedRequest.meta?.student_copy?.url}
                            target="_blank"
                            rel="noreferrer"
                            className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
@@ -509,6 +579,96 @@ export default function LearnerMentorshipPage() {
                          </a>
                        </div>
                      </div>
+                   </div>
+                 )}
+
+                 {/* Custom copy evaluation status -- mirrors "Linked subjective evaluation" below,
+                     for requests that used a directly-uploaded copy instead of a platform attempt */}
+                 {!selectedRequest.mains_answer_attempt_id && selectedRequest.meta?.student_copy && (
+                   <div className="rounded-[32px] border border-indigo-100 bg-indigo-50/10 p-6 shadow-sm space-y-4">
+                     <div className="flex items-center justify-between border-b border-indigo-50/50 pb-3">
+                       <h3 className="text-xs font-black uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                         <FileText className="h-4 w-4 text-indigo-600" />
+                         Copy evaluation
+                       </h3>
+                       <span className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                         customEvaluation ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                       }`}>
+                         {customEvaluation ? "evaluated" : "pending"}
+                       </span>
+                     </div>
+
+                     {!customEvaluation ? (
+                       <div className="flex items-start gap-3 text-xs text-slate-500">
+                         <Clock className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                         <div>
+                           <p className="font-bold text-slate-700">Evaluation is pending</p>
+                           <p className="mt-0.5">The mentor is currently reviewing your uploaded copy and will provide evaluation marks and strengths/weaknesses shortly.</p>
+                         </div>
+                       </div>
+                     ) : (
+                       <div className="space-y-4">
+                         <div className="grid gap-4 sm:grid-cols-3">
+                           <div className="bg-white rounded-2xl border border-slate-100 p-4 text-center">
+                             <span className="text-[10px] font-bold text-slate-400 uppercase">Score Obtained</span>
+                             <p className="text-2xl font-black text-slate-800 mt-1">
+                               {customEvaluation.score} <span className="text-xs text-slate-500 font-semibold">/ {customEvaluation.max_score}</span>
+                             </p>
+                           </div>
+
+                           {customEvaluation.checked_copy_url && (
+                             <a
+                               href={customEvaluation.checked_copy_url}
+                               target="_blank"
+                               rel="noreferrer"
+                               className="bg-indigo-50/40 hover:bg-indigo-50 rounded-2xl border border-indigo-100/50 p-4 text-center flex flex-col justify-center items-center gap-1 transition"
+                             >
+                               <Download className="h-5 w-5 text-indigo-600" />
+                               <span className="text-xs font-bold text-indigo-950">Checked Copy PDF</span>
+                             </a>
+                           )}
+                         </div>
+
+                         {customEvaluation.feedback && (
+                           <div className="bg-slate-50 rounded-2xl p-4 text-xs text-slate-600">
+                             <p className="font-bold text-slate-800 mb-1">Mentor Feedback Note</p>
+                             <p className="leading-relaxed whitespace-pre-line">{customEvaluation.feedback}</p>
+                           </div>
+                         )}
+
+                         <div className="grid gap-4 md:grid-cols-2">
+                           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/20 p-4">
+                             <h4 className="text-[10px] font-black uppercase text-emerald-800 tracking-wider mb-2">Strengths Identified</h4>
+                             <ul className="space-y-1.5 text-xs text-slate-600">
+                               {customEvaluation.strengths?.map((s, idx) => (
+                                 <li key={idx} className="flex items-center gap-1.5">
+                                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                   <span>{s}</span>
+                                 </li>
+                               ))}
+                               {(!customEvaluation.strengths || customEvaluation.strengths.length === 0) && (
+                                 <li className="italic text-slate-400">None specified</li>
+                               )}
+                             </ul>
+                           </div>
+
+                           <div className="rounded-2xl border border-rose-100 bg-rose-50/20 p-4">
+                             <h4 className="text-[10px] font-black uppercase text-rose-800 tracking-wider mb-2">Areas for Improvement</h4>
+                             <ul className="space-y-1.5 text-xs text-slate-600">
+                               {customEvaluation.weaknesses?.map((w, idx) => (
+                                 <li key={idx} className="flex items-center gap-1.5">
+                                   <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                                   <span>{w}</span>
+                                 </li>
+                               ))}
+                               {(!customEvaluation.weaknesses || customEvaluation.weaknesses.length === 0) && (
+                                 <li className="italic text-slate-400">None specified</li>
+                               )}
+                             </ul>
+                           </div>
+                         </div>
+                       </div>
+                     )}
                    </div>
                  )}
 
@@ -646,386 +806,72 @@ export default function LearnerMentorshipPage() {
                 )}
 
                 {/* Agendas Checklist Panel */}
-                <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4 animate-in fade-in duration-200">
-                  <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                    <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                      <FileText className="h-5 w-5 text-indigo-600" />
-                      Mentorship Request Agendas ({agendas.length})
-                    </h3>
-                    {selectedRequest.payment_status === "pending" && (
-                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                        Agreement Required Before Payment
-                      </span>
-                    )}
-                    {selectedRequest.payment_status === "paid" && (
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                        Active Tracker
-                      </span>
-                    )}
-                  </div>
-
-                  {selectedRequest.payment_status === "pending" && agendas.some((a) => a.status === "proposed") && (
-                    <div className="rounded-2xl border border-amber-100 bg-amber-50/10 p-4 flex gap-2.5 items-start text-xs text-amber-800 leading-normal">
-                      <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-bold">Proposed Agendas Pending Agreement</p>
-                        <p className="mt-0.5">Please review and agree to the proposed agendas below. You cannot make payment until all proposed agendas are agreed to by both parties.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    {agendas.map((agenda) => {
-                      const isCreatorMe = Number(agenda.created_by) === user?.id;
-                      const statusColors: Record<string, string> = {
-                        proposed: "bg-amber-100 text-amber-800 border-amber-200",
-                        agreed: "bg-indigo-100 text-indigo-800 border-indigo-200",
-                        solved_proposed: "bg-orange-100 text-orange-800 border-orange-200 animate-pulse",
-                        solved: "bg-emerald-100 text-emerald-800 border-emerald-200"
-                      };
-                      const statusLabels: Record<string, string> = {
-                        proposed: "Proposed",
-                        agreed: "Agreed",
-                        solved_proposed: "Solved (Waiting for your confirmation)",
-                        solved: "Solved & Confirmed"
-                      };
-
-                      return (
-                        <div key={agenda.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3 transition hover:bg-white hover:border-slate-200 shadow-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="font-extrabold text-slate-800 text-xs">{agenda.title}</h4>
-                              {agenda.description && (
-                                <p className="text-[11px] text-slate-500 mt-1 leading-normal">{agenda.description}</p>
-                              )}
-                              <p className="text-[9px] text-slate-400 mt-1.5">
-                                Proposed by: {isCreatorMe ? "You" : agenda.creator_username || "Mentor"} · Status: 
-                                <span className={`inline-block ml-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border ${statusColors[agenda.status]}`}>
-                                  {statusLabels[agenda.status]}
-                                </span>
-                              </p>
-                              {agenda.meta?.attached_question && (
-                                <div className="mt-2">
-                                  <a
-                                    href={agenda.meta.attached_question.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:underline bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100"
-                                  >
-                                    <FileText className="h-3 w-3 text-indigo-600 shrink-0" />
-                                    Attached Question: {agenda.meta.attached_question.file_name}
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center gap-1 shrink-0">
-                              {/* Agree Button */}
-                              {agenda.status === "proposed" && !isCreatorMe && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleAgreeAgenda(agenda.id)}
-                                  className="rounded-lg bg-indigo-600 px-2 py-1 text-[10px] font-black text-white hover:bg-indigo-700 transition"
-                                >
-                                  Agree
-                                </button>
-                              )}
-
-                              {/* Confirm Solved Button */}
-                              {agenda.status === "solved_proposed" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleConfirmSolveAgenda(agenda.id)}
-                                  className="rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-black text-white hover:bg-emerald-700 transition"
-                                >
-                                  Confirm Solved
-                                </button>
-                              )}
-
-                              {/* Delete Button */}
-                              {agenda.status === "proposed" && isCreatorMe && selectedRequest.payment_status === "pending" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteAgenda(agenda.id)}
-                                  className="text-slate-400 hover:text-rose-600 p-1 transition"
-                                  title="Delete Agenda"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {agendas.length === 0 && (
-                      <p className="text-xs text-slate-400 italic text-center py-4">No agendas proposed yet.</p>
-                    )}
-                  </div>
-
-                  {/* Propose agenda form */}
-                  {selectedRequest.payment_status === "pending" && (
-                    <form onSubmit={handleCreateAgenda} className="border-t border-slate-100 pt-4 space-y-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 block">Propose Mentorship Deliverable / Agenda Query</span>
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          required
-                          value={newAgendaTitle}
-                          onChange={(e) => setNewAgendaTitle(e.target.value)}
-                          placeholder="e.g. Can you review my Essay writing structure?"
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500"
-                        />
-                        <textarea
-                          rows={2}
-                          value={newAgendaDesc}
-                          onChange={(e) => setNewAgendaDesc(e.target.value)}
-                          placeholder="Provide optional detail or explanation..."
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500 resize-none"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={proposingAgenda}
-                        className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-600 transition disabled:opacity-50"
-                      >
-                        {proposingAgenda ? "Proposing..." : "Propose Agenda"}
-                      </button>
-                    </form>
-                  )}
-                </div>
+                <AgendaPanel
+                  agendas={agendas}
+                  currentUserId={user?.id}
+                  viewerRole="student"
+                  paymentStatus={selectedRequest.payment_status}
+                  isClosed={["completed", "rejected", "cancelled", "expired"].includes(selectedRequest.status)}
+                  icon={<FileText className="h-5 w-5 text-indigo-600" />}
+                  proposing={proposingAgenda}
+                  newTitle={newAgendaTitle}
+                  newDesc={newAgendaDesc}
+                  onTitleChange={setNewAgendaTitle}
+                  onDescChange={setNewAgendaDesc}
+                  onSubmitPropose={handleCreateAgenda}
+                  onAgree={handleAgreeAgenda}
+                  onConfirmSolve={handleConfirmSolveAgenda}
+                  onDelete={handleDeleteAgenda}
+                  titlePlaceholder="e.g. Can you review my Essay writing structure?"
+                  emptyStateText="No agendas proposed yet."
+                />
 
                 {/* Segmented Chat System */}
                 {selectedRequest.payment_status === "paid" ? (
-                  /* Post-Payment Premium Mentorship Room */
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
-                    {/* Chat Area (occupies 2 cols) */}
-                    <div className="lg:col-span-2 rounded-[32px] border border-indigo-150 bg-white shadow-sm overflow-hidden flex flex-col h-[480px]">
-                      {/* Header */}
-                      <div className="border-b border-indigo-55 bg-indigo-50/40 px-6 py-4 flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                            <MessageSquare className="h-4 w-4 text-indigo-600 animate-pulse" />
-                            Premium Mentorship Chat Room
-                          </span>
-                          <span className="text-[10px] text-slate-400 mt-0.5">Your active space for live meetings, deliverables, and resource coordination.</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-100 flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Active
-                        </span>
-                      </div>
-
-                      {/* Messages list */}
-                      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                        {messages.length === 0 ? (
-                          <div className="flex h-full items-center justify-center text-xs text-slate-400 italic">
-                            No messages yet. Send a message to start coordinating with your mentor.
-                          </div>
-                        ) : (
-                          messages.map((msg) => {
-                            const isMe = msg.sender_id === user?.id;
-                            return (
-                              <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                                <span className="text-[10px] text-slate-400 font-semibold mb-1">
-                                  {isMe ? "You" : msg.sender_username} · {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-xs leading-normal whitespace-pre-wrap shadow-sm ${
-                                  isMe
-                                    ? "bg-indigo-600 text-white rounded-tr-none"
-                                    : "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50"
-                                }`}>
-                                  {msg.body}
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                        <div ref={chatBottomRef} />
-                      </div>
-
-                      {/* Message Input */}
-                      <form onSubmit={handleSendMessage} className="border-t border-slate-100 p-4 flex gap-2 bg-slate-50/50">
-                        <input
-                          type="text"
-                          placeholder="Type a message to coordinate with your mentor..."
-                          value={typedMessage}
-                          onChange={(e) => setTypedMessage(e.target.value)}
-                          className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none focus:border-indigo-500"
-                        />
-                        <button
-                          type="submit"
-                          disabled={sendingMessage || !typedMessage.trim()}
-                          className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-600 disabled:opacity-50 flex items-center justify-center shrink-0 transition"
-                        >
-                          <Send className="h-4 w-4" />
-                        </button>
-                      </form>
+                    <div className="lg:col-span-2">
+                      <ChatThread
+                        messages={messages}
+                        currentUserId={user?.id}
+                        typedMessage={typedMessage}
+                        onTypedMessageChange={setTypedMessage}
+                        onSubmit={handleSendMessage}
+                        sending={sendingMessage}
+                        bottomRef={chatBottomRef}
+                        theme="indigo"
+                        title="Premium Mentorship Chat Room"
+                        subtitle="Your active space for live meetings, deliverables, and resource coordination."
+                        badgeLabel="Active"
+                        emptyStateText="No messages yet. Send a message to start coordinating with your mentor."
+                        inputPlaceholder="Type a message to coordinate with your mentor..."
+                      />
                     </div>
-
-                    {/* Premium Sidebar (occupies 1 col) */}
-                    <div className="space-y-4 flex flex-col h-[480px]">
-                      {/* Deliverables Progress Bar */}
-                      {(() => {
-                        const trackableAgendas = agendas.filter(a => ["agreed", "solved_proposed", "solved"].includes(a.status));
-                        const solvedAgendas = agendas.filter(a => ["solved_proposed", "solved"].includes(a.status));
-                        const totalCount = trackableAgendas.length;
-                        const solvedCount = solvedAgendas.length;
-                        const percentage = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
-                        return (
-                          <div className="rounded-2xl border border-indigo-105 bg-white p-4 shadow-sm space-y-2">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-indigo-950">Deliverables Progress</h4>
-                            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                              <span>Agendas Solved</span>
-                              <span>{solvedCount}/{totalCount} ({percentage}%)</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-600 transition-all duration-300" style={{ width: `${percentage}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Call Schedule Status */}
-                      {selectedRequest.scheduled_slot_id && selectedRequest.session_id && (
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/20 p-4 shadow-sm space-y-3">
-                          <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Call Schedule</h4>
-                          <div className="space-y-1">
-                            <p className="text-xs font-bold text-slate-805">Next Upcoming Slot</p>
-                            <p className="text-[10px] text-slate-500 font-semibold">
-                              {selectedRequest.session_starts_at ? new Date(selectedRequest.session_starts_at).toLocaleString() : "Date pending"}
-                            </p>
-                          </div>
-                          <Link
-                            href={`/mentorship/session/${selectedRequest.session_id}`}
-                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition"
-                          >
-                            <Video className="h-3.5 w-3.5" />
-                            Join Call Room
-                          </Link>
-                        </div>
-                      )}
-
-                      {/* Shared Resources Link Index */}
-                      {(() => {
-                        const extractUrls = (text: string) => {
-                          const urlRegex = /(https?:\/\/[^\s]+)/g;
-                          return text.match(urlRegex) || [];
-                        };
-                        const sharedLinks = Array.from(
-                          new Set(
-                            messages
-                              .flatMap(msg => extractUrls(msg.body))
-                              .map(url => url.replace(/[.,;!?]$/, "")) // remove trailing punctuation
-                          )
-                        );
-                        return (
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 flex-1 flex flex-col overflow-hidden">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 shrink-0">
-                              <Link2 className="h-3.5 w-3.5 text-indigo-500" />
-                              Shared Resources ({sharedLinks.length})
-                            </h4>
-                            <div className="overflow-y-auto space-y-1.5 pr-1 text-xs flex-1">
-                              {sharedLinks.map((link, idx) => {
-                                let displayLink = link;
-                                try {
-                                  const urlObj = new URL(link);
-                                  displayLink = urlObj.hostname + (urlObj.pathname.length > 15 ? urlObj.pathname.substring(0, 12) + "..." : urlObj.pathname);
-                                } catch {}
-                                return (
-                                  <a
-                                    key={idx}
-                                    href={link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5 hover:bg-indigo-50 hover:text-indigo-600 text-[11px] font-bold text-slate-650 truncate transition-all"
-                                    title={link}
-                                  >
-                                    {displayLink}
-                                  </a>
-                                );
-                              })}
-                              {sharedLinks.length === 0 && (
-                                <p className="text-[10px] text-slate-400 italic text-center py-4">No shared links in this chat yet.</p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Active Workspace Scratchpad */}
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 shrink-0">
-                        <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-700">Scratchpad</h4>
-                        <textarea
-                          value={scratchpad}
-                          onChange={(e) => handleScratchpadChange(e.target.value)}
-                          placeholder="Capture notes, action items, or session goals here..."
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-medium outline-none focus:border-indigo-500 bg-slate-50/50 resize-none h-20"
-                        />
-                      </div>
-                    </div>
+                    <PremiumSidePanel
+                      agendas={agendas}
+                      messages={messages}
+                      scheduledSlotId={selectedRequest.scheduled_slot_id}
+                      sessionId={selectedRequest.session_id}
+                      sessionStartsAt={selectedRequest.session_starts_at}
+                      scratchpad={scratchpad}
+                      onScratchpadChange={handleScratchpadChange}
+                    />
                   </div>
                 ) : (
-                  /* Pre-Payment Pre-Payment Agenda Coordination Chat */
-                  <div className="rounded-[32px] border border-amber-250/70 bg-white shadow-sm overflow-hidden flex flex-col h-[480px] animate-in fade-in duration-200">
-                    <div className="border-b border-amber-100 bg-amber-50/40 px-6 py-4 flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                          <MessageSquare className="h-4 w-4 text-amber-600 animate-pulse" />
-                          Pre-Payment Agenda Coordination
-                        </span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">Discuss the scope of your mentorship, clarify preparation focus, and align on deliverables before paying.</span>
-                      </div>
-                      <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-bold border border-amber-100">Coordination</span>
-                    </div>
-
-                    {/* Messages list */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                      {messages.length === 0 ? (
-                        <div className="flex h-full items-center justify-center text-xs text-slate-400 italic text-center px-4">
-                          Start Coordinating! Discuss goals, scope and propose deliverables with the mentor here.
-                        </div>
-                      ) : (
-                        messages.map((msg) => {
-                          const isMe = msg.sender_id === user?.id;
-                          return (
-                            <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                              <span className="text-[10px] text-slate-400 font-semibold mb-1">
-                                {isMe ? "You" : msg.sender_username} · {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-xs leading-normal whitespace-pre-wrap shadow-sm ${
-                                isMe
-                                  ? "bg-amber-100 text-amber-800 border border-amber-200/50 rounded-tr-none"
-                                  : "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50"
-                              }`}>
-                                {msg.body}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                      <div ref={chatBottomRef} />
-                    </div>
-
-                    {/* Message Input */}
-                    <form onSubmit={handleSendMessage} className="border-t border-slate-100 p-4 flex gap-2 bg-slate-50/50">
-                      <input
-                        type="text"
-                        placeholder="Type a message to coordinate with your mentor..."
-                        value={typedMessage}
-                        onChange={(e) => setTypedMessage(e.target.value)}
-                        className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                      />
-                      <button
-                        type="submit"
-                        disabled={sendingMessage || !typedMessage.trim()}
-                        className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center shrink-0 transition"
-                      >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    </form>
-                  </div>
+                  <ChatThread
+                    messages={messages}
+                    currentUserId={user?.id}
+                    typedMessage={typedMessage}
+                    onTypedMessageChange={setTypedMessage}
+                    onSubmit={handleSendMessage}
+                    sending={sendingMessage}
+                    bottomRef={chatBottomRef}
+                    theme="amber"
+                    title="Pre-Payment Agenda Coordination"
+                    subtitle="Discuss the scope of your mentorship, clarify preparation focus, and align on deliverables before paying."
+                    badgeLabel="Coordination"
+                    emptyStateText="Start Coordinating! Discuss goals, scope and propose deliverables with the mentor here."
+                    inputPlaceholder="Type a message to coordinate with your mentor..."
+                  />
                 )}
               </div>
             )}

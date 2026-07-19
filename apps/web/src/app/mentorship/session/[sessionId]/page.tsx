@@ -11,6 +11,7 @@ type AgoraCredentials = {
   token: string;
   channelName: string;
   uid: number;
+  meetingLink: string | null;
 };
 
 export default function MentorshipSessionPage({ params }: { params: Promise<{ sessionId: string }> }) {
@@ -222,12 +223,24 @@ export default function MentorshipSessionPage({ params }: { params: Promise<{ se
           <ShieldAlert className="mx-auto h-12 w-12 text-rose-500 mb-4 animate-bounce" />
           <h2 className="text-xl font-bold">Session Authorization Failed</h2>
           <p className="text-slate-400 text-xs mt-2 leading-relaxed">{errorMsg}</p>
-          <button
-            onClick={() => router.push("/")}
-            className="mt-6 rounded-2xl bg-white px-6 py-3 text-xs font-bold text-slate-950 hover:bg-slate-100 transition"
-          >
-            Return Home
-          </button>
+          <div className="mt-6 flex flex-col gap-2">
+            {credentials?.meetingLink && (
+              <a
+                href={credentials.meetingLink}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-2xl bg-indigo-600 px-6 py-3 text-xs font-bold text-white hover:bg-indigo-700 transition"
+              >
+                Try Backup Meeting Link
+              </a>
+            )}
+            <button
+              onClick={() => router.push("/")}
+              className="rounded-2xl bg-white/10 px-6 py-3 text-xs font-bold text-white hover:bg-white/20 transition"
+            >
+              Return Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -247,10 +260,22 @@ export default function MentorshipSessionPage({ params }: { params: Promise<{ se
           </div>
         </div>
         
-        <span className="rounded-full bg-indigo-500/20 border border-indigo-500/30 px-3.5 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-300 flex items-center gap-1.5">
-          <Radio className="h-3.5 w-3.5 animate-pulse" />
-          Agora Live
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-indigo-500/20 border border-indigo-500/30 px-3.5 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-300 flex items-center gap-1.5">
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            Agora Live
+          </span>
+          {credentials?.meetingLink && (
+            <a
+              href={credentials.meetingLink}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[10px] font-bold text-slate-400 hover:text-white underline underline-offset-2 transition"
+            >
+              Trouble joining? Use backup link
+            </a>
+          )}
+        </div>
       </header>
 
       {/* Video Tile Space */}

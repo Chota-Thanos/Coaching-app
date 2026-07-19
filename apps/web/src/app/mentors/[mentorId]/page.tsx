@@ -361,7 +361,15 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                   </div>
                 </div>
 
-                {/* Optional copy evaluation toggle */}
+                {/* Optional copy evaluation toggle -- only offered by mentors who do evaluation */}
+                {mentor.mentor_type === "only_mentorship" ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-start gap-2">
+                    <BadgeHelp className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-slate-500 leading-normal">
+                      This mentor offers guidance-only mentorship and does not evaluate answer copies. This session will be a pure mentorship/guidance call.
+                    </p>
+                  </div>
+                ) : (
                 <div className="rounded-2xl border border-indigo-100 bg-indigo-50/20 p-4 space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -496,6 +504,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                     </div>
                   )}
                 </div>
+                )}
 
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Note / Preparation Focus</label>

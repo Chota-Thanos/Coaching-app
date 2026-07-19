@@ -4,6 +4,7 @@ import { idParamSchema, parse, withValidation } from "../../common/http.js";
 import { requireAdminOrEditor, requireAuth, requireEvaluator } from "../auth/guards.js";
 import { draftMainsQuestionAI, performOcrGemini } from "../current-affairs/master/ai.service.js";
 import { getUserEntitlements } from "../billing/service.js";
+import { notifyMentorshipEvaluationReady } from "../mentorship/service.js";
 import { query } from "../../db.js";
 import {
   createMainsQuestionSchema,
@@ -179,10 +180,36 @@ export async function registerMainsAssessmentRoutes(server: FastifyInstance): Pr
       }
     }
 
+    // If this attempt is linked to a paid mentorship request, only the mentor assigned
+    // to that specific request (or an admin/moderator) may submit its evaluation --
+    // a generic evaluator role or a different mentor is not enough here.
+    if (user.role === "mentor" || user.role === "evaluator") {
+      const linkedRequests = await query<{ mentor_id: number }>(
+        "select mentor_id from app.mentorship_requests where mains_answer_attempt_id = $1 limit 1",
+        [params.id]
+      );
+      const linked = linkedRequests[0];
+      if (linked && Number(linked.mentor_id) !== Number(user.id)) {
+        return reply.forbidden("Only the mentor assigned to this mentorship request can submit its evaluation.");
+      }
+    }
+
     return withValidation(reply, async () => {
       const body = parse(evaluateMainsAnswerSchema, request.body);
       const record = await evaluateMainsAnswer(params.id, body, user.id);
       if (!record) return reply.notFound("Mains answer attempt not found.");
+
+      // If a mentorship request is linked to this attempt, notify the student that
+      // their evaluation is ready.
+      const linkedRequests = await query<{ id: number; user_id: number }>(
+        "select id, user_id from app.mentorship_requests where mains_answer_attempt_id = $1 limit 1",
+        [params.id]
+      );
+      const linked = linkedRequests[0];
+      if (linked) {
+        await notifyMentorshipEvaluationReady(linked.id, linked.user_id);
+      }
+
       return record;
     });
   });
