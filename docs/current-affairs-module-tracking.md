@@ -1,10 +1,36 @@
 # Current Affairs Module Tracking Plan
 
-Last updated: 2026-06-01
+Last updated: 2026-07-20
 
 ## Current Scope
 
 Backend foundation and mobile-first SEO frontend for institute-published current affairs content and student personal workspaces.
+
+## Recent Changes (2026-07-20)
+
+Web (`Coaching-app` `a86c9d2`, `3ea46c7`) and mobile (`Current-Affairs-Mobile` `7be1b8a`), both pushed to origin; server deploy left to the user per the SSH-blocked convention (see `docs/deployment.md`).
+
+**Live concepts/relations/updates in saved notes** — a student's saved fork previously froze the master article's relations/updates as of save time. `forks.service.ts` (`listForks`, `getFork`) and `collections.service.ts` (`getCollection`) now merge each `master_article` with the same `sections`/`outgoing_relations`/`incoming_relations`/`appearance_count`/`updates` subqueries that already power the public article page, via a shared SQL fragment (`master/article-enrichment-sql.ts`). So if an admin adds a concept update or a new relation after a student has saved an article, the student's saved copy reflects it automatically instead of going stale.
+
+**Anchor-based highlight/note UI** — the `student_article_highlights`/`student_article_notes` tables and CRUD endpoints existed with no frontend; built out this session:
+- Web: `lib/text-anchor.ts` (quote + prefix/suffix + offset anchoring over DOM Ranges, tolerant of minor body edits), `components/current-affairs/workspace/article-annotator.tsx` (select text → floating toolbar → highlight color or note; click an existing mark to edit/delete), a dedicated reading page at `/current-affairs/workspace/articles/[forkId]`.
+- Mobile: `core/utils/text_anchor.dart` (offset-based, simpler than DOM since Flutter's `SelectableText.rich` selection is already offset-native), `presentation/fork_reader_screen.dart`, `presentation/widgets/source_article_connections.dart`.
+- Deliberate platform difference: mobile renders the annotatable body as plain text (markdown syntax stripped) since Flutter has no rich+selectable+annotatable widget equivalent to a DOM.
+
+**PDF export** — `lib/export-pdf.ts` (web) rasterizes saved notes into image-based PDF pages (not selectable text, so they can't be copy-pasted out) with a canvas-drawn diagonal watermark ("Personal copy - {email}"); a "Download all notes" button bundles every saved article + own article across all repositories into one file. Mobile (`core/utils/export_pdf.dart`, `pdf`/`printing` packages) produces a standard native-text PDF instead — rasterizing to images isn't idiomatic there and native PDFs are normal practice for Flutter apps — still carrying the same watermark on every page.
+
+**GS Paper category tier (mains)** — migration `047_current_affairs_gs_paper_level.sql` adds `gs_paper` to `category_nodes.node_type`, seeds GS Paper I–IV as new root nodes for `content_family = mains`, and reparents the 12 existing mains subjects underneath them per the standard UPSC syllabus split (GS-I: History/Geography/Society; GS-II: Governance/Social Issues/International Relations; GS-III: Indian Economy/Environment/Internal Security/Disaster Management/Science & Tech; GS-IV: Ethics). Prelims categories are untouched — Prelims has no GS Paper tier. Threaded through:
+- Admin category manager (create/edit/bulk-create/bulk-reassign) — `nodeTypeForParent` is now content-family-aware.
+- Admin article create/edit category selector (`cascading-category-selector.tsx`) — new leading GS Paper select for mains, gates which subjects show.
+- Public category filters and student bulk-import modal (web + mobile) — same cascading pattern.
+
+**Category filter redesign** — went through two iterations before landing on the final shape:
+1. First attempt built a separate "browse by category" flow (new picker screen → detail screen → view-all screen, replacing the existing tabs entirely). The user flagged this as over-executed — it changed page structure that should have stayed a single page, and dropped Topic/Subtopic-level filtering in the process.
+2. Reverted the separate-screens approach on both platforms. Final design: the *existing* single hub page (web: `/current-affairs/[hub]`; mobile: `DailyNewsFeedScreen`) gets the category filter repositioned *above* the content-type tabs instead of below, and the filter itself became a proper cascade — GS Paper (mains only) → Subject → Topic (only rendered if the subject has topics) → Subtopic (only if the topic has subtopics). Picking any level is a complete, valid filter on its own; picking a subject does not require picking a GS Paper first (it's optional narrowing, not a gate) — verified identical behavior on both platforms, including correct ancestor backfill when reloading a URL that already has a deep category selected.
+
+**Mobile-only fixes**:
+- Fixed a pre-existing bug where the Mains bottom-nav tab loaded Prelims Daily News content on first open, because `initState` never called the function that derives the active hub from the selected tab (only fixed once a sub-tab was manually tapped).
+- Replaced the home page's hardcoded subject list (`["Polity", "Economy", ...]` with fake ids) with real category data, fixed a stale hardcoded date and fake "2h ago" timestamps, and removed the fully-fabricated "Daily Quiz #242" / "Quick Facts" / "GS Paper Progress" widgets rather than leaving invented numbers in place — there's no real quiz-attempt or syllabus-coverage tracking behind them.
 
 ## Implemented Schema Tables
 
@@ -21,6 +47,7 @@ Backend foundation and mobile-first SEO frontend for institute-published current
 - `current_affairs.student_collection_items`
 - `current_affairs.student_article_reading_progress`
 - `current_affairs.student_article_reading_events`
+- `current_affairs.master_article_updates` — dated updates timeline for concept articles
 - `current_affairs.master_article_assets`
 - `current_affairs.ingestion_jobs`
 - `current_affairs.ingestion_items`
