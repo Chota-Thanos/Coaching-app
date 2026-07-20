@@ -20,7 +20,6 @@ import {
   useAuth
 } from "../../auth/auth-context";
 import { AdminArticleDetailPanel } from "./admin-article-detail-panel";
-import { AdminArticleForm } from "./admin-article-form";
 
 type ArticleFilters = {
   contentKind: string;
@@ -69,7 +68,6 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
     ...emptyFilters,
     contentKind: defaultContentKind
   });
-  const [editingArticle, setEditingArticle] = useState<AdminArticleSummary | null>(null);
   const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<AdminArticleDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,6 +89,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const viewId = searchParams.get("view");
 
   const categoryOptions = useMemo(() => {
     if (!filters.contentKind) return categories;
@@ -171,6 +170,15 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
   }, [editId, articles, token, router]);
 
   useEffect(() => {
+    if (viewId && token) {
+      void loadDetail(Number(viewId)).then(() => {
+        document.getElementById("article-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      router.replace(window.location.pathname);
+    }
+  }, [viewId, token, router, loadDetail]);
+
+  useEffect(() => {
     void loadCategories();
   }, [loadCategories]);
 
@@ -181,44 +189,6 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
   useEffect(() => {
     void loadArticles();
   }, [loadArticles]);
-
-  async function saveArticle(payload: CreateAdminArticlePayload & { draftRelations?: any[] }, articleId?: number): Promise<void> {
-    if (!token) return;
-
-    setSaving(true);
-    setMessage(null);
-    try {
-      const { draftRelations, ...articlePayload } = payload;
-      const record = articleId
-        ? await authenticatedPatch<AdminArticleSummary>(`/api/v1/current-affairs/articles/${articleId}`, token, articlePayload)
-        : await authenticatedPost<AdminArticleSummary>("/api/v1/current-affairs/articles", token, articlePayload);
-
-      // Save draft relations sequentially if any
-      if (record && record.id && draftRelations && draftRelations.length > 0) {
-        for (const rel of draftRelations) {
-          try {
-            await authenticatedPost(`/api/v1/current-affairs/articles/${record.id}/relations`, token, {
-              target_article_id: rel.targetArticleId,
-              relation_type: rel.relationType,
-              label: rel.label,
-              note: rel.note
-            });
-          } catch (err) {
-            console.error("Failed to save relation during article edit/create:", err);
-          }
-        }
-      }
-
-      setEditingArticle(null);
-      await loadArticles();
-      await loadDetail(Number(record.id));
-      setMessage(articleId ? "Article updated." : "Article created.");
-    } catch {
-      setMessage("Could not save article. Check slug uniqueness, URL fields, and category family.");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function patchStatus(articleId: number, status: MasterArticleStatus): Promise<void> {
     if (!token) return;
@@ -239,7 +209,6 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
     await authenticatedDelete<AdminArticleSummary>(`/api/v1/current-affairs/articles/${articleId}`, token);
     setSelectedArticleId(null);
     setSelectedDetail(null);
-    if (editingArticle?.id === articleId) setEditingArticle(null);
     await loadArticles();
   }
 
@@ -790,35 +759,15 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
       )}
 
       {selectedDetail && (
-        <AdminArticleDetailPanel
-          article={selectedDetail}
-          onRefresh={async () => {
-            if (selectedArticleId) await loadDetail(selectedArticleId);
-            await loadArticles();
-          }}
-          onSelectArticleId={loadDetail}
-        />
-      )}
-
-      {/* Edit Modal Overlay */}
-      {editingArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-line p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-            <button
-              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-white hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
-              onClick={() => setEditingArticle(null)}
-              type="button"
-            >
-              ✕
-            </button>
-            <AdminArticleForm
-              article={(selectedDetail && selectedDetail.id === editingArticle.id) ? selectedDetail : editingArticle}
-              categories={categories}
-              onCancelEdit={() => setEditingArticle(null)}
-              onSubmit={saveArticle}
-              pending={saving}
-            />
-          </div>
+        <div id="article-detail-panel">
+          <AdminArticleDetailPanel
+            article={selectedDetail}
+            onRefresh={async () => {
+              if (selectedArticleId) await loadDetail(selectedArticleId);
+              await loadArticles();
+            }}
+            onSelectArticleId={loadDetail}
+          />
         </div>
       )}
     </div>

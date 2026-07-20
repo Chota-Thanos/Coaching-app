@@ -59,7 +59,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
 
   const [filters, articles] = await Promise.all([
     getArticleFilters(hub.contentKind, hub.contentFamily),
-    getArticles({ contentKind: hub.contentKind, category, month, year, page })
+    getArticles({ contentKind: hub.contentKind, articleRole: hub.articleRole, category, month, year, page })
   ]);
 
   const isMains = hub.contentFamily === "mains";
@@ -123,6 +123,16 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   }`}
                 >
                   Prelims PYQ
+                </Link>
+                <Link
+                  href="/current-affairs/concepts"
+                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                    hub.path === "concepts"
+                      ? "border-berry bg-berry/5 text-berry"
+                      : "border-line bg-white text-muted hover:bg-paper"
+                  }`}
+                >
+                  Concepts
                 </Link>
               </>
             ) : (

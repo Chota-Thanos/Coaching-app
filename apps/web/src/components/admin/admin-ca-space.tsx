@@ -118,33 +118,19 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
     if (token) void loadDashboardData();
   }, [token, loadDashboardData]);
 
-  const handleCreateArticleSubmit = async (
-    payload: CreateAdminArticlePayload & { draftRelations?: any[] }
-  ) => {
+  const handleCreateArticleSubmit = async (payload: CreateAdminArticlePayload) => {
     if (!token) return;
     setSavingArticle(true);
     setCreatorMessage(null);
     try {
-      const { draftRelations, ...articlePayload } = payload;
       const res = await authenticatedPost<{ id: number }>(
         "/api/v1/current-affairs/articles",
         token,
-        articlePayload
+        payload
       );
-      if (res?.id && draftRelations?.length) {
-        for (const rel of draftRelations) {
-          try {
-            await authenticatedPost(`/api/v1/current-affairs/articles/${res.id}/relations`, token, {
-              target_article_id: rel.targetArticleId,
-              relation_type: rel.relationType,
-              label: rel.label,
-              note: rel.note,
-            });
-          } catch {}
-        }
-      }
       setCreatorMessage("Article successfully created and published in library.");
       void loadDashboardData();
+      return res;
     } catch {
       setCreatorMessage("Failed to create article. Check that the URL slug is unique.");
     } finally {

@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
-import { Brain, Sparkles, Save, Loader2, CheckCircle2, ChevronRight, Link2, Trash2, Edit3, Check, FileText, Search, Filter, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Brain, Save, Loader2, CheckCircle2, FileText } from "lucide-react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { CategoryNode, CreateAdminArticlePayload } from "../../../lib/api";
+import type { ArticleRole, CategoryNode, CreateAdminArticlePayload } from "../../../lib/api";
 import type { ContentKind } from "../../../lib/current-affairs";
 import {
   ADMIN_ARTICLE_STATUSES,
@@ -15,24 +15,15 @@ import {
   statusLabel,
   type MasterArticleStatus
 } from "../../../lib/admin-current-affairs";
-import { authenticatedGet, authenticatedPost, authenticatedPatch, authenticatedDelete, useAuth } from "../../auth/auth-context";
+import { authenticatedGet, authenticatedPatch, authenticatedDelete, useAuth } from "../../auth/auth-context";
 import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { ArticleCreatorAiWorkspace } from "./article-creator-ai-workspace";
 import { CascadingCategorySelector } from "./cascading-category-selector";
 
-type DraftRelation = {
-  id?: number;
-  targetArticleId: number;
-  targetArticleTitle: string;
-  relationType: string;
-  label?: string;
-  note?: string;
-};
-
 type AdminArticleCreatorProps = {
   categories: CategoryNode[];
   pending: boolean;
-  onSubmit: (payload: CreateAdminArticlePayload & { draftRelations?: DraftRelation[] }) => Promise<void>;
+  onSubmit: (payload: CreateAdminArticlePayload) => Promise<{ id: number } | void>;
   message: string | null;
   createType?: "daily-news" | "summaries" | "mains-notes" | "prelims-pyq" | "mains-pyq";
 };
@@ -41,6 +32,7 @@ type FormState = {
   title: string;
   slug: string;
   contentKind: ContentKind;
+  articleRole: ArticleRole;
   status: MasterArticleStatus;
   categoryNodeId: string;
   publicationDate: string;
@@ -74,6 +66,7 @@ const initialForm = (kind: ContentKind): FormState => ({
   title: "",
   slug: "",
   contentKind: kind,
+  articleRole: "event",
   status: "published", // Default to published as requested
   categoryNodeId: "",
   publicationDate: new Date().toISOString().slice(0, 10),
@@ -102,25 +95,6 @@ const initialForm = (kind: ContentKind): FormState => ({
   modelAnswer: ""
 });
 
-const RELATION_TYPE_EXPLANATIONS: Record<string, string> = {
-  related_reference: "Intra-article reference: Links standard related articles for cross-referencing. Renders as 'Related reading' on the student details page.",
-  base_current_affairs: "Base Current Affairs: Links a Mains Daily Editorial summary to its corresponding factual Prelims Current Affairs article base.",
-  imported_source: "Imported Source (Notes content import): Links a Mains Topic-wise Note to an imported base article, whose contents can then be embedded into note sections.",
-  follow_up: "Follow Up: Links an older article to a newer article detailing further sequential developments on the same topic.",
-  prerequisite: "Prerequisite: Recommends foundational background articles or concepts the student should read before starting this page.",
-  mains_fodder: "Mains Fodder: Links a fact-filled Prelims article containing case studies, graphs, or key quotes to be used as fodder in Mains writing.",
-  pyq_context: "PYQ Context: Links a Past Year Question (PYQ) to the modern current affairs explanation or issue that prompted/contextualizes it."
-};
-
-function getCreateRouteType(kind: string): string {
-  if (kind === "daily_current_affairs") return "daily-news";
-  if (kind === "prelims_pyq") return "prelims-pyq";
-  if (kind === "daily_editorial_summary") return "summaries";
-  if (kind === "mains_topic_note") return "mains-notes";
-  if (kind === "mains_pyq") return "mains-pyq";
-  return "daily-news";
-}
-
 export function AdminArticleCreator({ categories, pending, onSubmit, message, createType }: AdminArticleCreatorProps) {
   const { token } = useAuth();
   const router = useRouter();
@@ -135,118 +109,11 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   }, [createType]);
 
   const [formState, setFormState] = useState<FormState>(initialForm(defaultKind));
-  const [allArticles, setAllArticles] = useState<any[]>([]);
-  const [draftRelations, setDraftRelations] = useState<DraftRelation[]>([]);
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
-  
+
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
-  const [successLink, setSuccessLink] = useState<{ href: string; label: string } | null>(null);
-
-  const [relTargetId, setRelTargetId] = useState("");
-  const [relType, setRelType] = useState("related_reference");
-  const [relLabel, setRelLabel] = useState("");
-  const [relNote, setRelNote] = useState("");
-
-  // Connect & Link states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterSubjectId, setFilterSubjectId] = useState("");
-  const [filterTopicId, setFilterTopicId] = useState("");
-  const [filterSubtopicId, setFilterSubtopicId] = useState("");
-  const [filterKind, setFilterKind] = useState<"all" | "same" | "other">("all");
-
-  const filterSubjects = useMemo(() => {
-    return categories.filter(c => c.node_type === "subject" && c.is_active !== false);
-  }, [categories]);
-
-  const filterTopics = useMemo(() => {
-    if (!filterSubjectId) return [];
-    return categories.filter(c => c.node_type === "topic" && String(c.parent_id) === filterSubjectId && c.is_active !== false);
-  }, [categories, filterSubjectId]);
-
-  const filterSubtopics = useMemo(() => {
-    if (!filterTopicId) return [];
-    return categories.filter(c => c.node_type === "subtopic" && String(c.parent_id) === filterTopicId && c.is_active !== false);
-  }, [categories, filterTopicId]);
-
-  // Text selection state for Modal Preview Box
-  const [selectedHtml, setSelectedHtml] = useState("");
-
-  const handlePreviewSelect = () => {
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      const previewEl = document.getElementById("import-preview-content");
-      if (previewEl && previewEl.contains(selection.anchorNode)) {
-        const container = document.createElement("div");
-        for (let i = 0; i < selection.rangeCount; i++) {
-          container.appendChild(selection.getRangeAt(i).cloneContents());
-        }
-        setSelectedHtml(container.innerHTML);
-      }
-    } else {
-      const previewEl = document.getElementById("import-preview-content");
-      if (previewEl && selection && selection.anchorNode && previewEl.contains(selection.anchorNode)) {
-        setSelectedHtml("");
-      }
-    }
-  };
-
-  const captureEditorSelection = () => {
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      const container = document.createElement("div");
-      for (let i = 0; i < selection.rangeCount; i++) {
-        container.appendChild(selection.getRangeAt(i).cloneContents());
-      }
-      setSelectedHtml(container.innerHTML);
-    } else {
-      setSelectedHtml("");
-    }
-  };
-
-  const [activeActionArticleId, setActiveActionArticleId] = useState<number | null>(null);
-  const [actionType, setActionType] = useState<"import" | "export" | "connect" | null>(null);
-  const [modalSearchQuery, setModalSearchQuery] = useState("");
-
-  const filteredModalArticles = useMemo(() => {
-    const query = modalSearchQuery.trim().toLowerCase();
-    return allArticles.filter(art => {
-      if (editingDraftId && art.id === Number(editingDraftId)) return false;
-      if (!query) return true;
-      return (
-        art.title?.toLowerCase().includes(query) ||
-        art.content_kind?.toLowerCase().includes(query)
-      );
-    });
-  }, [allArticles, modalSearchQuery, editingDraftId]);
-  const [importExportMode, setImportExportMode] = useState<"content" | "link" | "both">("content");
-  const [customLinkText, setCustomLinkText] = useState("");
-  const [relationType, setRelationType] = useState("related_reference");
-  const [processingAction, setProcessingAction] = useState(false);
-
-  const [importPreviewBody, setImportPreviewBody] = useState("");
-  const [loadingPreview, setLoadingPreview] = useState(false);
-
-  useEffect(() => {
-    if (activeActionArticleId && actionType === "import" && token) {
-      setLoadingPreview(true);
-      setImportPreviewBody("");
-      authenticatedGet<any>(`/api/v1/current-affairs/admin/articles/${activeActionArticleId}`, token)
-        .then(res => {
-          setImportPreviewBody(res?.body || "");
-        })
-        .catch(err => {
-          console.error("Failed to load preview:", err);
-          setImportPreviewBody("<p class='text-rose-500'>Failed to load preview content.</p>");
-        })
-        .finally(() => {
-          setLoadingPreview(false);
-        });
-    } else {
-      setImportPreviewBody("");
-      setLoadingPreview(false);
-    }
-  }, [activeActionArticleId, actionType, token]);
+  const [successLink, setSuccessLink] = useState<{ href: string; manageHref?: string; label: string } | null>(null);
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -298,236 +165,12 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   useEffect(() => {
     setFormState(initialForm(defaultKind));
     setEditingDraftId(null);
-    setDraftRelations([]);
   }, [defaultKind]);
 
   // Reset success link when form fields are modified
   useEffect(() => {
     setSuccessLink(null);
   }, [formState.title, formState.slug, formState.body]);
-
-  // Load all articles for dropdown select link relations
-  useEffect(() => {
-    const loadAll = async () => {
-      if (!token) return;
-      try {
-        const res = await authenticatedGet<any[]>("/api/v1/current-affairs/articles?limit=300", token);
-        setAllArticles(res || []);
-      } catch (err) {
-        console.error("Error loading articles list for connections:", err);
-      }
-    };
-    void loadAll();
-  }, [token]);
-
-  const addDraftRelation = () => {
-    if (!relTargetId) return;
-    const target = allArticles.find(a => String(a.id) === relTargetId);
-    if (!target) return;
-
-    setDraftRelations(prev => [
-      ...prev,
-      {
-        targetArticleId: Number(relTargetId),
-        targetArticleTitle: target.title,
-        relationType: relType,
-        label: relLabel.trim() || undefined,
-        note: relNote.trim() || undefined
-      }
-    ]);
-
-    setRelTargetId("");
-    setRelLabel("");
-    setRelNote("");
-  };
-
-  const removeDraftRelation = async (idx: number) => {
-    const rel = draftRelations[idx];
-    if (editingDraftId && rel && rel.id && token) {
-      if (!window.confirm("Are you sure you want to remove this relation from the database?")) return;
-      try {
-        await authenticatedDelete(`/api/v1/current-affairs/article-relations/${rel.id}`, token);
-      } catch (err) {
-        console.error("Failed to delete relation from database:", err);
-      }
-    }
-    setDraftRelations(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const connectionMatches = useMemo(() => {
-    return allArticles.filter(art => {
-      // 1. Search query filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const titleMatch = art.title?.toLowerCase().includes(query);
-        const slugMatch = art.slug?.toLowerCase().includes(query);
-        const tagsMatch = Array.isArray(art.institute_tags) && art.institute_tags.some((t: string) => t.toLowerCase().includes(query));
-        if (!titleMatch && !slugMatch && !tagsMatch) return false;
-      }
-      
-      // 2. Kind filter
-      if (filterKind === "same") {
-        if (art.content_kind !== formState.contentKind) return false;
-      } else if (filterKind === "other") {
-        if (art.content_kind === formState.contentKind) return false;
-      }
-
-      // 3. Category levels filter
-      if (filterSubjectId) {
-        const artCatId = String(art.category_node_id || art.category?.id || "");
-        if (!artCatId) return false;
-
-        // If subtopic is selected, exact match
-        if (filterSubtopicId) {
-          if (artCatId !== filterSubtopicId) return false;
-        }
-        // If topic is selected, match the topic itself or its child subtopics
-        else if (filterTopicId) {
-          const isTopicOrChild = artCatId === filterTopicId || categories.some(c => String(c.id) === artCatId && String(c.parent_id) === filterTopicId);
-          if (!isTopicOrChild) return false;
-        }
-        // If only subject is selected, match subject, child topics, or grandchild subtopics
-        else {
-          const isSubjectOrChild = artCatId === filterSubjectId || 
-            categories.some(c => String(c.id) === artCatId && String(c.parent_id) === filterSubjectId) ||
-            categories.some(c => {
-              if (String(c.id) !== artCatId) return false;
-              const parentTopic = categories.find(t => t.id === c.parent_id);
-              return parentTopic && String(parentTopic.parent_id) === filterSubjectId;
-            });
-          if (!isSubjectOrChild) return false;
-        }
-      }
-
-      // 4. Do not show the current article itself
-      if (editingDraftId && art.id === editingDraftId) return false;
-
-      return true;
-    });
-  }, [allArticles, searchQuery, filterKind, filterSubjectId, filterTopicId, filterSubtopicId, categories, formState.contentKind, editingDraftId]);
-
-  const handleExecuteAction = async () => {
-    if (!activeActionArticleId || !actionType || !token) return;
-    setProcessingAction(true);
-    try {
-      const target = allArticles.find(a => a.id === activeActionArticleId);
-      if (!target) {
-        alert("Target article not found in list.");
-        return;
-      }
-
-      let targetDetail = target;
-      if (actionType === "import" || actionType === "export") {
-        try {
-          targetDetail = await authenticatedGet<any>(`/api/v1/current-affairs/admin/articles/${activeActionArticleId}`, token);
-        } catch (err) {
-          console.error("Failed to load target details, using list values:", err);
-        }
-      }
-
-      const targetTitle = targetDetail.title || target.title;
-      const targetSlug = targetDetail.slug || target.slug;
-      const targetBody = targetDetail.body || "";
-
-      // 1. If IMPORT
-      if (actionType === "import") {
-        const importedContent = selectedHtml.trim() ? selectedHtml : targetBody;
-
-        let newBody = formState.body || "";
-        if (importExportMode === "content" || importExportMode === "both") {
-          newBody = newBody ? `${newBody}<br/>${importedContent}` : importedContent;
-        }
-        if (importExportMode === "link" || importExportMode === "both") {
-          const linkText = customLinkText.trim() || targetTitle;
-          const hyperlink = `<p><a href="/current-affairs/articles/${targetSlug}" class="text-civic font-bold hover:underline" target="_blank">${linkText}</a></p>`;
-          newBody = newBody ? `${newBody}<br/>${hyperlink}` : hyperlink;
-        }
-        updateField("body", newBody);
-      }
-
-      // 2. If EXPORT
-      if (actionType === "export") {
-        let exportContent = "";
-        const selectionContent = selectedHtml.trim() ? selectedHtml : (formState.body || "");
-
-        if (importExportMode === "content" || importExportMode === "both") {
-          exportContent = selectionContent;
-        }
-        if (importExportMode === "link" || importExportMode === "both") {
-          const currentSlug = formState.slug || adminSlug(formState.title);
-          const linkText = customLinkText.trim() || formState.title || "Related Article";
-          const hyperlink = `<p><a href="/current-affairs/articles/${currentSlug}" class="text-civic font-bold hover:underline" target="_blank">${linkText}</a></p>`;
-          exportContent = exportContent ? `${exportContent}<br/>${hyperlink}` : hyperlink;
-        }
-
-        const updatedTargetBody = targetBody ? `${targetBody}<br/>${exportContent}` : exportContent;
-
-        await authenticatedPatch(`/api/v1/current-affairs/articles/${activeActionArticleId}`, token, {
-          body: updatedTargetBody
-        });
-
-        // Sync local list cache
-        setAllArticles(prev => prev.map(a => a.id === activeActionArticleId ? { ...a, body: updatedTargetBody } : a));
-      }
-
-      // 3. Save relation link
-      let savedRelationId: number | undefined = undefined;
-      const targetRelationType = (actionType === "import" || actionType === "export") ? "imported_source" : relationType;
-
-      if (editingDraftId) {
-        try {
-          const resRel = await authenticatedPost<any>(`/api/v1/current-affairs/articles/${editingDraftId}/relations`, token, {
-            target_article_id: activeActionArticleId,
-            relation_type: targetRelationType,
-            label: (actionType === "connect" ? relLabel.trim() : `Auto-${actionType}`) || undefined,
-            note: (actionType === "connect" ? relNote.trim() : `Triggered via ${actionType}`) || undefined
-          });
-          if (resRel && resRel.id) {
-            savedRelationId = resRel.id;
-          }
-        } catch (e) {
-          console.error("Failed to save relation to DB:", e);
-        }
-      }
-
-      const newRelation: DraftRelation = {
-        id: savedRelationId,
-        targetArticleId: activeActionArticleId,
-        targetArticleTitle: targetTitle,
-        relationType: targetRelationType,
-        label: (actionType === "connect" ? relLabel.trim() : `Auto-${actionType}`) || undefined,
-        note: (actionType === "connect" ? relNote.trim() : `Triggered via ${actionType}`) || undefined
-      };
-
-      setDraftRelations(prev => {
-        const exists = prev.some(r => r.targetArticleId === activeActionArticleId && r.relationType === targetRelationType);
-        if (exists) return prev;
-        return [...prev, newRelation];
-      });
-
-      setActiveActionArticleId(null);
-      setActionType(null);
-      setCustomLinkText("");
-      setRelLabel("");
-      setRelNote("");
-      
-      alert(`Action "${actionType.toUpperCase()}" completed successfully and relation linked!`);
-    } catch (err: any) {
-      console.error("Failed to execute action:", err);
-      alert(`Failed to execute action: ${err.message || err}`);
-    } finally {
-      setProcessingAction(false);
-    }
-  };
-
-  const handleCancelAction = () => {
-    setActiveActionArticleId(null);
-    setActionType(null);
-    setCustomLinkText("");
-    setRelLabel("");
-    setRelNote("");
-    setSelectedHtml("");
-  };
 
   const family = contentFamilyForKind(formState.contentKind);
   const categoryOptions = useMemo(
@@ -552,6 +195,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
           title: detail.title,
           slug: detail.slug,
           contentKind: detail.content_kind,
+          articleRole: detail.article_role || "event",
           status: detail.status,
           categoryNodeId: detail.category?.id ? String(detail.category.id) : "",
           publicationDate: detail.publication_date ? detail.publication_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -581,19 +225,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
           modelAnswer: bodyJson.model_answer || ""
         });
 
-        if (detail.outgoing_relations) {
-          setDraftRelations(detail.outgoing_relations.map((rel: any) => ({
-            id: rel.id,
-            targetArticleId: rel.target_article.id,
-            targetArticleTitle: rel.target_article.title,
-            relationType: rel.relation_type,
-            label: rel.label || undefined,
-            note: rel.note || undefined
-          })));
-        } else {
-          setDraftRelations([]);
-        }
-        
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
@@ -619,7 +250,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       if (editingDraftId === draftId) {
         setEditingDraftId(null);
         setFormState(initialForm(defaultKind));
-        setDraftRelations([]);
       }
       void loadDrafts();
     } catch (err) {
@@ -634,7 +264,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       if (editingDraftId === draftId) {
         setEditingDraftId(null);
         setFormState(initialForm(defaultKind));
-        setDraftRelations([]);
       }
       void loadDrafts();
     } catch (err) {
@@ -678,13 +307,13 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       finalBody = `### Year: ${formState.year} | Marks: ${formState.maxMarks} | Word Limit: ${formState.wordLimit}\n\n**${formState.questionStatement}**\n\n### Answer Approach\n${formState.answerApproach}\n\n### Model Answer\n${formState.modelAnswer}`;
     }
 
-    const payload: CreateAdminArticlePayload & { body_json?: any; draftRelations?: DraftRelation[] } = {
+    const payload: CreateAdminArticlePayload & { body_json?: any } = {
       content_kind: formState.contentKind,
+      article_role: formState.contentKind === "daily_current_affairs" ? formState.articleRole : "event",
       title: formState.title,
       slug: formState.slug || adminSlug(formState.title),
       body: finalBody,
       body_json: finalBodyJson,
-      draftRelations: draftRelations,
       category_node_id: formState.categoryNodeId ? Number(formState.categoryNodeId) : undefined,
       source_name: formState.sourceName.trim() || undefined,
       source_url: formState.sourceUrl.trim() || undefined,
@@ -697,33 +326,19 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       canonical_url: formState.canonicalUrl.trim() || undefined,
       keywords: splitAdminTags(formState.keywords)
     };
-    
+
     if (editingDraftId) {
       if (!token) return;
       try {
         await authenticatedPatch(`/api/v1/current-affairs/articles/${editingDraftId}`, token, payload);
-        
-        // Save relations
-        if (draftRelations.length > 0) {
-          for (const rel of draftRelations) {
-            try {
-              await authenticatedPost(`/api/v1/current-affairs/articles/${editingDraftId}/relations`, token, {
-                target_article_id: rel.targetArticleId,
-                relation_type: rel.relationType,
-                label: rel.label,
-                note: rel.note
-              });
-            } catch {}
-          }
-        }
-        
+
         setSuccessLink({
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
+          manageHref: `/admin/current-affairs/articles?view=${editingDraftId}`,
           label: `Draft "${payload.title || formState.title}" updated successfully.`
         });
         setEditingDraftId(null);
         setFormState(initialForm(defaultKind));
-        setDraftRelations([]);
         void loadDrafts();
       } catch (err) {
         console.error("Failed to update draft:", err);
@@ -731,12 +346,12 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       }
     } else {
       try {
-        await onSubmit(payload);
+        const created = await onSubmit(payload);
         setSuccessLink({
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
+          manageHref: created?.id ? `/admin/current-affairs/articles?view=${created.id}` : undefined,
           label: `Article "${payload.title || formState.title}" created successfully.`
         });
-        setDraftRelations([]);
         setFormState(initialForm(defaultKind));
         void loadDrafts();
       } catch (err) {
@@ -751,19 +366,31 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
 
       {successLink && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 flex items-center justify-between shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span>{successLink.label}</span>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span>{successLink.label}</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {successLink.manageHref && (
+                <a
+                  href={successLink.manageHref}
+                  className="text-xs bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg font-bold shadow-xs transition-all"
+                >
+                  Manage connections & sections →
+                </a>
+              )}
+              <a
+                href={successLink.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-xs transition-all flex items-center gap-1"
+              >
+                View Article ↗
+              </a>
+            </div>
           </div>
-          <a
-            href={successLink.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-xs transition-all flex items-center gap-1"
-          >
-            View Article ↗
-          </a>
         </div>
       )}
 
@@ -788,7 +415,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             onClick={() => {
               setEditingDraftId(null);
               setFormState(initialForm(defaultKind));
-              setDraftRelations([]);
             }}
             className="text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-lg font-bold shadow-xs transition-all"
           >
@@ -850,6 +476,37 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 </select>
               </label>
             </div>
+
+            {formState.contentKind === "daily_current_affairs" && (
+              <div className="grid gap-1.5">
+                <span className="text-sm font-bold text-ink">Article role</span>
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => updateField("articleRole", "event")}
+                    className={`h-10 rounded-lg text-sm font-bold transition-all ${
+                      formState.articleRole === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                    }`}
+                  >
+                    Event (dated news)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateField("articleRole", "concept")}
+                    className={`h-10 rounded-lg text-sm font-bold transition-all ${
+                      formState.articleRole === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                    }`}
+                  >
+                    Concept (reusable primer)
+                  </button>
+                </div>
+                <p className="text-[11px] text-ink/55 leading-snug">
+                  {formState.articleRole === "concept"
+                    ? "Evergreen explainer (e.g. \"PEM Fuel Cell Technology\"). Kept out of the daily feed; link to it from event articles instead of re-explaining the concept each time. Add dated updates below once saved."
+                    : "A dated news write-up. Link any reusable background concept it depends on via \"Connect & Link\" below."}
+                </p>
+              </div>
+            )}
 
             <label className="grid gap-1.5 text-sm font-bold text-ink">
               Article Title
@@ -1152,37 +809,9 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               </div>
             ) : (
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-ink uppercase tracking-wide">
-                    Article Body (HTML Editor) <span className="text-rose-500">*</span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onMouseDown={captureEditorSelection}
-                      onClick={() => {
-                        setActionType("import");
-                        setActiveActionArticleId(null);
-                      }}
-                      className="inline-flex h-7 items-center gap-1 rounded bg-civic/10 px-2.5 text-[10px] font-bold text-civic hover:bg-civic hover:text-white transition-all"
-                    >
-                      <ArrowDownToLine className="h-3.5 w-3.5" />
-                      Import Content
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={captureEditorSelection}
-                      onClick={() => {
-                        setActionType("export");
-                        setActiveActionArticleId(null);
-                      }}
-                      className="inline-flex h-7 items-center gap-1 rounded bg-berry/10 px-2.5 text-[10px] font-bold text-berry hover:bg-berry hover:text-white transition-all"
-                    >
-                      <ArrowUpFromLine className="h-3.5 w-3.5" />
-                      Export Content
-                    </button>
-                  </div>
-                </div>
+                <span className="text-xs font-bold text-ink uppercase tracking-wide">
+                  Article Body (HTML Editor) <span className="text-rose-500">*</span>
+                </span>
                 <RichTextMarkdownEditor
                   value={formState.body}
                   onChange={(val) => updateField("body", val)}
@@ -1193,431 +822,15 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               </div>
             )}
 
-            {/* Connect & Link Other Articles */}
-            <div className="space-y-4 rounded-xl border border-line bg-paper/20 p-4 relative">
-              <h3 className="text-sm font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-civic" />
-                Connect & Link Other Articles
-              </h3>
-
-              {/* 1. Attached Connections list */}
-              {draftRelations.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-ink/65 block font-bold">Attached Article Connections:</span>
-                  <div className="grid gap-2">
-                    {draftRelations.map((rel, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-white border border-line p-3 rounded-lg text-xs shadow-xs hover:border-civic/50 transition-all">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[9px] font-bold text-civic uppercase">
-                              {rel.relationType.replace(/_/g, " ")}
-                            </span>
-                            {rel.label && (
-                              <span className="text-[10px] font-semibold text-ink/65 italic">
-                                ({rel.label})
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-bold text-ink block mt-1 truncate">{rel.targetArticleTitle}</span>
-                          {rel.note && <span className="text-[10px] text-ink/50 italic block mt-0.5">{rel.note}</span>}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void removeDraftRelation(idx)}
-                          className="text-rose-500 hover:text-rose-700 font-bold px-2.5 py-1.5 hover:bg-rose-50 rounded-lg transition-all ml-2 flex-shrink-0"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 2. Filter Toolbar */}
-              <div className="grid gap-3.5 p-4 rounded-xl bg-white/60 border border-line/65">
-                <span className="text-xs font-bold text-ink/75 flex items-center gap-1.5 font-bold">
-                  <Filter className="h-3.5 w-3.5 text-civic" />
-                  Search & Filter Library Articles
-                </span>
-                
-                {/* Row 1: Search Query & Content Type */}
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="sm:col-span-2 relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink/40" />
-                    <input
-                      type="text"
-                      className="w-full h-9 rounded-lg border border-line pl-8 pr-3 text-xs outline-none focus:border-civic bg-white"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search title, tag..."
-                    />
-                  </div>
-
-                  <select
-                    className="h-9 rounded-lg border border-line bg-white px-2.5 text-xs outline-none focus:border-civic font-medium"
-                    value={filterKind}
-                    onChange={(e) => setFilterKind(e.target.value as any)}
-                  >
-                    <option value="all">All Content Kinds</option>
-                    <option value="same">Same Content Type</option>
-                    <option value="other">Other Content Types</option>
-                  </select>
-                </div>
-
-                {/* Row 2: Category Levels */}
-                <div className="grid gap-2 sm:grid-cols-3 pt-2.5 border-t border-line/50">
-                  <select
-                    className="h-9 rounded-lg border border-line bg-white px-2.5 text-xs outline-none focus:border-civic font-medium"
-                    value={filterSubjectId}
-                    onChange={(e) => {
-                      setFilterSubjectId(e.target.value);
-                      setFilterTopicId("");
-                      setFilterSubtopicId("");
-                    }}
-                  >
-                    <option value="">-- All Subjects --</option>
-                    {filterSubjects.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    className="h-9 rounded-lg border border-line bg-white px-2.5 text-xs outline-none focus:border-civic font-medium disabled:opacity-50"
-                    value={filterTopicId}
-                    disabled={!filterSubjectId}
-                    onChange={(e) => {
-                      setFilterTopicId(e.target.value);
-                      setFilterSubtopicId("");
-                    }}
-                  >
-                    <option value="">-- All Topics --</option>
-                    {filterTopics.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    className="h-9 rounded-lg border border-line bg-white px-2.5 text-xs outline-none focus:border-civic font-medium disabled:opacity-50"
-                    value={filterSubtopicId}
-                    disabled={!filterTopicId}
-                    onChange={(e) => setFilterSubtopicId(e.target.value)}
-                  >
-                    <option value="">-- All Subtopics --</option>
-                    {filterSubtopics.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {editingDraftId && (
+              <div className="rounded-xl border border-line bg-civic/5 p-4 text-xs text-ink/70">
+                Sections, assets, connections to other articles, and (for concept articles) the updates timeline are managed from the article's{" "}
+                <a className="font-bold text-civic hover:underline" href={`/admin/current-affairs/articles?view=${editingDraftId}`}>
+                  detail view
+                </a>
+                .
               </div>
-
-              {/* 3. Search Results List */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-bold text-ink/65 block font-bold">Available Matches ({connectionMatches.length}):</span>
-                <div className="max-h-[260px] overflow-y-auto border border-line rounded-xl p-2 bg-white/70 space-y-1.5 shadow-inner">
-                  {connectionMatches.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-ink/40 italic">
-                      No matching articles found in library.
-                    </div>
-                  ) : (
-                    connectionMatches.slice(0, 50).map((art) => {
-                      const isConnected = draftRelations.some(r => r.targetArticleId === art.id);
-
-                      return (
-                        <div key={art.id} className="flex items-center justify-between gap-3 bg-white p-2.5 border border-line/60 rounded-lg hover:border-civic/30 transition-all">
-                          <div className="min-w-0 flex-1">
-                            <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-ink/60 uppercase">
-                              {art.content_kind.replace(/_/g, " ")}
-                            </span>
-                            <span className="text-xs font-bold text-ink block mt-0.5 truncate">{art.title}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {isConnected ? (
-                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                                Connected
-                              </span>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionType("connect");
-                                    setActiveActionArticleId(art.id);
-                                  }}
-                                  className="h-7 px-2.5 rounded bg-slate-100 hover:bg-civic hover:text-white text-[10px] font-bold text-ink transition-all"
-                                >
-                                  Connect
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionType("import");
-                                    setActiveActionArticleId(art.id);
-                                  }}
-                                  className="h-7 px-2.5 rounded bg-civic/10 hover:bg-civic hover:text-white text-[10px] font-bold text-civic flex items-center gap-1 transition-all"
-                                >
-                                  <ArrowDownToLine className="h-3 w-3" />
-                                  Import
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionType("export");
-                                    setActiveActionArticleId(art.id);
-                                  }}
-                                  className="h-7 px-2.5 rounded bg-berry/10 hover:bg-berry hover:text-white text-[10px] font-bold text-berry flex items-center gap-1 transition-all"
-                                >
-                                  <ArrowUpFromLine className="h-3 w-3" />
-                                  Export
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* 4. Action Config Overlay Panel */}
-              {actionType && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                  <div className={`bg-white border border-line rounded-2xl shadow-xl w-full p-5 sm:p-6 animate-in zoom-in-95 duration-200 space-y-4 ${
-                    (actionType === "import" || actionType === "export") && activeActionArticleId !== null ? "max-w-2xl" : "max-w-md"
-                  }`}>
-                    <div>
-                      <h4 className="text-sm font-black text-ink uppercase tracking-wide flex items-center gap-1.5 font-bold">
-                        <Sparkles className="h-4.5 w-4.5 text-civic" />
-                        Configure Action: {actionType.toUpperCase()}
-                      </h4>
-                      <p className="text-[11px] text-ink/65 mt-1 leading-tight flex items-center gap-1.5">
-                        Target Article: 
-                        {activeActionArticleId !== null ? (
-                          <>
-                            <strong className="text-ink truncate max-w-[220px]">
-                              {allArticles.find(a => a.id === activeActionArticleId)?.title || "Unknown Article"}
-                            </strong>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveActionArticleId(null);
-                                setImportPreviewBody("");
-                              }}
-                              className="px-2 py-0.5 rounded border border-line bg-slate-50 text-[10px] text-civic font-bold hover:bg-civic hover:text-white transition-all"
-                            >
-                              Change Article
-                            </button>
-                          </>
-                        ) : (
-                          <span className="italic text-ink/50">Select target article below</span>
-                        )}
-                      </p>
-                    </div>
-
-                    {activeActionArticleId === null ? (
-                      <div className="space-y-3 pt-2 border-t border-line/60">
-                        <label className="grid gap-1.5 text-xs font-bold text-ink">
-                          <span>Search Library Articles</span>
-                          <div className="relative">
-                            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-ink/45" />
-                            <input
-                              type="text"
-                              placeholder="Search library articles by title..."
-                              className="w-full h-9 pl-9 pr-4 rounded-lg border border-line text-xs outline-none focus:border-civic bg-paper/20 font-normal"
-                              value={modalSearchQuery}
-                              onChange={(e) => setModalSearchQuery(e.target.value)}
-                              autoFocus
-                            />
-                          </div>
-                        </label>
-                        
-                        <div className="max-h-60 overflow-y-auto border border-line rounded-lg p-1 bg-white space-y-1">
-                          {filteredModalArticles.length === 0 ? (
-                            <div className="text-center py-8 text-xs text-ink/40 italic">
-                              No matching articles found.
-                            </div>
-                          ) : (
-                            filteredModalArticles.slice(0, 100).map((art) => (
-                              <button
-                                key={art.id}
-                                type="button"
-                                onClick={() => {
-                                  setActiveActionArticleId(art.id);
-                                }}
-                                className="w-full text-left px-3 py-2 rounded-md hover:bg-civic/5 hover:text-civic border border-transparent hover:border-civic/10 transition-all flex items-center justify-between gap-3 text-xs"
-                              >
-                                <span className="font-bold truncate text-ink hover:text-civic">{art.title}</span>
-                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-ink/50 uppercase whitespace-nowrap">
-                                  {art.content_kind.replace(/_/g, " ")}
-                                </span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {(actionType === "import" || actionType === "export") && (
-                          <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="grid gap-1.5 text-xs font-bold text-ink">
-                                <span>Action Mode</span>
-                                <div className="grid grid-cols-3 gap-2">
-                                  {(["content", "link", "both"] as const).map(mode => (
-                                    <button
-                                      key={mode}
-                                      type="button"
-                                      onClick={() => setImportExportMode(mode)}
-                                      className={`h-8 rounded font-bold text-[10px] capitalize transition-all border ${
-                                        importExportMode === mode
-                                          ? "bg-civic text-white border-civic"
-                                          : "bg-white text-ink border-line hover:bg-paper"
-                                      }`}
-                                    >
-                                      {mode}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {(importExportMode === "link" || importExportMode === "both") ? (
-                                <label className="grid gap-1.5 text-xs font-bold text-ink">
-                                  Custom Hyperlink Text (Optional)
-                                  <input
-                                    type="text"
-                                    className="h-8 rounded-lg border border-line px-3 text-xs outline-none focus:border-civic font-normal"
-                                    placeholder={
-                                      actionType === "import"
-                                        ? `Defaults to: ${allArticles.find(a => a.id === activeActionArticleId)?.title || ""}`
-                                        : `Defaults to: ${formState.title || "Current Article"}`
-                                    }
-                                    value={customLinkText}
-                                    onChange={(e) => setCustomLinkText(e.target.value)}
-                                  />
-                                </label>
-                              ) : (
-                                <div className="text-xs text-ink/50 italic flex items-center pt-5">
-                                  No link will be generated in this mode.
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="space-y-1.5 pt-2 border-t border-line/40">
-                              <span className="text-xs font-bold text-ink/75 block">
-                                {actionType === "import"
-                                  ? "Target Article Content Preview (Highlight text to import a selection):"
-                                  : "Current Article Content Preview (Highlight text to export a selection):"}
-                              </span>
-                              <p className="text-[10px] text-ink/50 leading-tight">
-                                💡 <em>Optional: Highlight text inside the preview below to {actionType === "import" ? "import" : "export"} only that portion, otherwise the whole article content will be {actionType === "import" ? "appended" : "exported"}.</em>
-                              </p>
-                              {loadingPreview && actionType === "import" ? (
-                                <div className="h-72 border border-line rounded-lg bg-slate-50 flex items-center justify-center text-xs text-ink/60 animate-pulse">
-                                  <Loader2 className="h-5 w-5 animate-spin text-civic mr-1.5" />
-                                  Loading preview...
-                                </div>
-                              ) : (
-                                <div 
-                                  id="import-preview-content"
-                                  onMouseUp={handlePreviewSelect}
-                                  onKeyUp={handlePreviewSelect}
-                                  className="h-72 overflow-y-auto border border-line rounded-lg p-3 bg-paper/10 text-xs leading-relaxed select-text article-body prose prose-civic max-w-none shadow-inner"
-                                  dangerouslySetInnerHTML={{
-                                    __html: actionType === "import"
-                                      ? (importPreviewBody || "<p class='italic text-ink/40'>No content available to preview.</p>")
-                                      : (formState.body || "<p class='italic text-ink/40'>Current article is empty.</p>")
-                                  }}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {actionType === "connect" && (
-                          <div className="grid gap-3 pt-2 border-t border-line/60">
-                            <label className="grid gap-1 text-xs font-bold text-ink">
-                              Relation Type
-                              <select
-                                className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-normal outline-none focus:border-civic"
-                                value={relationType}
-                                onChange={(e) => setRelationType(e.target.value)}
-                              >
-                                <option value="related_reference">Related Reference (Intra-article reference)</option>
-                                <option value="base_current_affairs">Base Current Affairs (Daily Editorial link)</option>
-                                <option value="imported_source">Imported Source (Notes content import)</option>
-                                <option value="follow_up">Follow Up</option>
-                                <option value="prerequisite">Prerequisite</option>
-                                <option value="mains_fodder">Mains Fodder</option>
-                                <option value="pyq_context">PYQ Context</option>
-                              </select>
-                            </label>
-
-                            <div className="bg-civic/5 border border-civic/10 p-2.5 rounded-lg text-[10px] leading-relaxed text-civic font-semibold">
-                              💡 <strong>Relation Explanation:</strong> {RELATION_TYPE_EXPLANATIONS[relationType] || "Select a relation type."}
-                            </div>
-
-                            <div className="grid gap-2">
-                              <label className="grid gap-1 text-xs font-bold text-ink">
-                                Custom Label (Optional)
-                                <input
-                                  className="h-9 rounded-lg border border-line px-3 text-xs font-normal outline-none focus:border-civic"
-                                  value={relLabel}
-                                  onChange={(e) => setRelLabel(e.target.value)}
-                                  placeholder="e.g. Read context"
-                                />
-                              </label>
-                              <label className="grid gap-1 text-xs font-bold text-ink">
-                                Note (Optional)
-                                <input
-                                  className="h-9 rounded-lg border border-line px-3 text-xs font-normal outline-none focus:border-civic"
-                                  value={relNote}
-                                  onChange={(e) => setRelNote(e.target.value)}
-                                  placeholder="Administrative note"
-                                />
-                              </label>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    <div className="flex gap-2 justify-end pt-3 border-t border-line">
-                      <button
-                        type="button"
-                        onClick={handleCancelAction}
-                        disabled={processingAction}
-                        className="h-9 px-4 rounded-lg border border-line text-xs font-bold text-ink hover:bg-paper transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExecuteAction}
-                        disabled={processingAction}
-                        className="inline-flex h-9 items-center justify-center rounded-lg bg-civic px-4 text-xs font-bold text-white hover:bg-civic/90 active:scale-[0.98] disabled:opacity-50 transition-all"
-                      >
-                        {processingAction ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5 font-bold" />
-                            Processing...
-                          </>
-                        ) : (
-                          "Execute Action"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             <div className="flex gap-3 justify-end pt-4 border-t border-line">
               <button
@@ -1625,7 +838,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 onClick={() => {
                   setEditingDraftId(null);
                   setFormState(initialForm(defaultKind));
-                  setDraftRelations([]);
                 }}
                 type="button"
               >
@@ -1697,9 +909,16 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[9px] font-extrabold text-civic uppercase tracking-wider bg-civic/5 px-1.5 py-0.5 rounded">
-                          {art.content_kind.replace(/_/g, " ")}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] font-extrabold text-civic uppercase tracking-wider bg-civic/5 px-1.5 py-0.5 rounded">
+                            {art.content_kind.replace(/_/g, " ")}
+                          </span>
+                          {art.article_role === "concept" && (
+                            <span className="text-[9px] font-extrabold text-berry uppercase tracking-wider bg-berry/5 px-1.5 py-0.5 rounded">
+                              Concept
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[9px] text-ink/45 font-semibold">
                           #{art.id}
                         </span>

@@ -132,6 +132,11 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
               >
                 {article.title}
               </Link>
+              {article.article_role === "concept" && (
+                <span className="inline-flex items-center rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-bold text-berry uppercase tracking-wide">
+                  Concept
+                </span>
+              )}
               <StudentStatusBadge articleId={article.id} />
             </div>
 

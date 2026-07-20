@@ -7,6 +7,8 @@ export type ContentKind =
 
 export type ContentFamily = "prelims" | "mains";
 
+export type ArticleRole = "event" | "concept";
+
 export type CurrentAffairsHub = {
   path: string;
   label: string;
@@ -15,6 +17,7 @@ export type CurrentAffairsHub = {
   contentKind: ContentKind;
   contentFamily: ContentFamily;
   filterMode: "month" | "year";
+  articleRole?: ArticleRole;
 };
 
 export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
@@ -26,6 +29,16 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     contentKind: "daily_current_affairs",
     contentFamily: "prelims",
     filterMode: "month"
+  },
+  {
+    path: "concepts",
+    label: "Prelims Concepts",
+    shortLabel: "Concepts",
+    description: "Reusable topic primers referenced across daily news articles — read once, revise anytime.",
+    contentKind: "daily_current_affairs",
+    contentFamily: "prelims",
+    filterMode: "month",
+    articleRole: "concept"
   },
   {
     path: "editorial-summary",

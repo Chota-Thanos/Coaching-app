@@ -7,6 +7,7 @@ export const slugParamSchema = z.object({
 });
 
 export const contentFamilySchema = z.enum(["prelims", "mains"]);
+export const articleRoleSchema = z.enum(["event", "concept"]);
 export const categoryNodeTypeSchema = z.enum(["subject", "topic", "subtopic"]);
 export const masterArticleStatusSchema = z.enum(["draft", "in_review", "approved", "published", "archived"]);
 export const masterArticleKindSchema = z.enum([

@@ -7,6 +7,7 @@ import { registerCurrentAffairsIngestionRoutes } from "./master/ingestion.routes
 import { registerCurrentAffairsQuestionGenerationRoutes } from "./master/question-generation.routes.js";
 import { registerCurrentAffairsRelationRoutes } from "./master/relations.routes.js";
 import { registerCurrentAffairsSectionRoutes } from "./master/sections.routes.js";
+import { registerCurrentAffairsUpdateRoutes } from "./master/updates.routes.js";
 
 export async function registerCurrentAffairsMasterArticleRoutes(server: FastifyInstance): Promise<void> {
   await registerCurrentAffairsDiscoveryRoutes(server);
@@ -17,4 +18,5 @@ export async function registerCurrentAffairsMasterArticleRoutes(server: FastifyI
   await registerCurrentAffairsQuestionGenerationRoutes(server);
   await registerCurrentAffairsRelationRoutes(server);
   await registerCurrentAffairsSectionRoutes(server);
+  await registerCurrentAffairsUpdateRoutes(server);
 }

@@ -191,6 +191,22 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
             ))}
           </section>
         )}
+
+        {article.updates.length > 0 && (
+          <section className="mt-5 rounded-lg border border-line bg-white p-4 shadow-sm md:p-6">
+            <h2 className="text-lg font-extrabold text-ink">Updates</h2>
+            <ol className="mt-3 space-y-4 border-l-2 border-berry/20 pl-4">
+              {article.updates.map((update) => (
+                <li key={update.id}>
+                  <span className="block text-xs font-bold text-berry">
+                    {new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(update.created_at))}
+                  </span>
+                  <RenderedContent className="mt-1 text-sm text-ink/85" content={update.body} />
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
 
       <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
@@ -219,6 +235,20 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
               {article.outgoing_relations.map((relation) => (
                 <Link className="rounded-md border border-line p-3 text-sm font-semibold text-ink hover:border-civic" href={`/current-affairs/articles/${relation.target_article.slug}`} key={relation.id}>
                   {relation.label ?? relation.target_article.title}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        {article.incoming_relations.length > 0 && (
+          <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+            <h2 className="text-base font-extrabold text-ink">
+              Appears in {article.appearance_count} article{article.appearance_count === 1 ? "" : "s"}
+            </h2>
+            <div className="mt-3 grid gap-3">
+              {article.incoming_relations.map((relation) => (
+                <Link className="rounded-md border border-line p-3 text-sm font-semibold text-ink hover:border-civic" href={`/current-affairs/articles/${relation.source_article.slug}`} key={relation.id}>
+                  {relation.label ?? relation.source_article.title}
                 </Link>
               ))}
             </div>

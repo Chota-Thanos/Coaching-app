@@ -132,32 +132,15 @@ export function AdminSpace() {
   }, [token, loadDashboardData]);
 
   // Handle article creation
-  const handleCreateArticleSubmit = async (payload: CreateAdminArticlePayload & { draftRelations?: any[] }) => {
+  const handleCreateArticleSubmit = async (payload: CreateAdminArticlePayload) => {
     if (!token) return;
     setSavingArticle(true);
     setCreatorMessage(null);
     try {
-      const { draftRelations, ...articlePayload } = payload;
-      const res = await authenticatedPost<{ id: number }>("/api/v1/current-affairs/articles", token, articlePayload);
-      
-      // Save draft relations sequentially
-      if (res && res.id && draftRelations && draftRelations.length > 0) {
-        for (const rel of draftRelations) {
-          try {
-            await authenticatedPost(`/api/v1/current-affairs/articles/${res.id}/relations`, token, {
-              target_article_id: rel.targetArticleId,
-              relation_type: rel.relationType,
-              label: rel.label,
-              note: rel.note
-            });
-          } catch (err) {
-            console.error("Failed to save relation during article creation:", err);
-          }
-        }
-      }
-
+      const res = await authenticatedPost<{ id: number }>("/api/v1/current-affairs/articles", token, payload);
       setCreatorMessage("Article successfully created and published in library.");
       void loadDashboardData(); // Reload stats & recent items
+      return res;
     } catch {
       setCreatorMessage("Failed to create article. Please check that the URL slug is unique and inputs are correct.");
     } finally {

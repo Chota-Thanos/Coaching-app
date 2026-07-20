@@ -93,6 +93,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <div className="flex flex-wrap gap-2">
             <span className="rounded-md bg-civic/10 px-2 py-1 text-xs font-bold text-civic">{contentKindLabel(article.content_kind)}</span>
+            {article.article_role === "concept" && (
+              <span className="rounded-md bg-berry/10 px-2 py-1 text-xs font-bold text-berry">Concept</span>
+            )}
             {article.category && <span className="rounded-md bg-paper px-2 py-1 text-xs font-bold text-ink/65">{article.category.name}</span>}
           </div>
           <AdminArticleActions article={article} />
@@ -109,6 +112,13 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               <ExternalLink aria-hidden="true" className="h-4 w-4 text-civic" />
               <dt className="sr-only">Source</dt>
               <dd>{article.source_name}</dd>
+            </div>
+          )}
+          {article.updates[0] && (
+            <div className="flex items-center gap-2">
+              <CalendarDays aria-hidden="true" className="h-4 w-4 text-berry" />
+              <dt className="sr-only">Last updated</dt>
+              <dd>Last updated {formatDate(article.updates[0].created_at)}</dd>
             </div>
           )}
         </dl>

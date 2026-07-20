@@ -24,6 +24,7 @@ export async function listMasterArticles(
 
   if (options.content_family) addCondition(conditions, params, "ma.content_family = ?", options.content_family);
   if (options.content_kind) addCondition(conditions, params, "ma.content_kind = ?", options.content_kind);
+  if (options.article_role) addCondition(conditions, params, "ma.article_role = ?", options.article_role);
   if (options.category_node_id) {
     params.push(options.category_node_id);
     if (options.include_descendants) {
@@ -95,6 +96,7 @@ export async function createMasterArticle(input: CreateMasterArticleInput, userI
         (
           content_family,
           content_kind,
+          article_role,
           title,
           slug,
           body,
@@ -114,12 +116,13 @@ export async function createMasterArticle(input: CreateMasterArticleInput, userI
           canonical_url,
           keywords
         )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, coalesce($12, 'draft'), $13, $14, $15, coalesce($16, false), $17, $18, $19, coalesce($20, '[]'::jsonb))
+      values ($1, $2, coalesce($3, 'event'), $4, $5, $6, $7, $8, $9, $10, $11, $12, coalesce($13, 'draft'), $14, $15, $16, coalesce($17, false), $18, $19, $20, coalesce($21, '[]'::jsonb))
       returning *
     `,
     [
       contentFamily,
       input.content_kind,
+      input.article_role ?? null,
       input.title,
       input.slug,
       input.body,
@@ -192,7 +195,17 @@ export async function getMasterArticle(id: number, includeUnpublished: boolean):
           join current_affairs.master_articles source on source.id = rel.source_article_id
           where rel.target_article_id = ma.id
             ${includeUnpublished ? "" : "and source.status = 'published'"}
-        ), '[]'::jsonb) as incoming_relations
+        ), '[]'::jsonb) as incoming_relations,
+        (
+          select count(*)::integer
+          from current_affairs.master_article_relations rel
+          where rel.target_article_id = ma.id
+        ) as appearance_count,
+        coalesce((
+          select jsonb_agg(to_jsonb(upd.*) order by upd.created_at desc)
+          from current_affairs.master_article_updates upd
+          where upd.article_id = ma.id
+        ), '[]'::jsonb) as updates
       from current_affairs.master_articles ma
       left join current_affairs.category_nodes cn on cn.id = ma.category_node_id
       where ma.id = $1
@@ -212,6 +225,7 @@ export async function updateMasterArticle(
 
   addUpdate(updates, params, "content_family", input.content_kind ? deriveContentFamily(input.content_kind, input.content_family) : input.content_family);
   addUpdate(updates, params, "content_kind", input.content_kind);
+  addUpdate(updates, params, "article_role", input.article_role);
   addUpdate(updates, params, "title", input.title);
   addUpdate(updates, params, "slug", input.slug);
   addUpdate(updates, params, "body", input.body);

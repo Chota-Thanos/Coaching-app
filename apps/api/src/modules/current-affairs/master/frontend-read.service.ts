@@ -44,8 +44,8 @@ function categoryPredicate(category: string, paramPosition: number): string {
 }
 
 export async function listFrontendArticles(options: FrontendArticleListQuery): Promise<unknown> {
-  const params: unknown[] = [options.content_kind];
-  const conditions = ["ma.status = 'published'", "ma.content_kind = $1"];
+  const params: unknown[] = [options.content_kind, options.article_role];
+  const conditions = ["ma.status = 'published'", "ma.content_kind = $1", "ma.article_role = $2"];
 
   if (options.category) {
     params.push(options.category);
@@ -156,7 +156,36 @@ export async function getPublishedArticleBySlug(slug: string): Promise<unknown |
           join current_affairs.master_articles target on target.id = rel.target_article_id
           where rel.source_article_id = ma.id
             and target.status = 'published'
-        ), '[]'::jsonb) as outgoing_relations
+        ), '[]'::jsonb) as outgoing_relations,
+        coalesce((
+          select jsonb_agg(
+            jsonb_build_object(
+              'id', rel.id,
+              'relation_type', rel.relation_type,
+              'label', rel.label,
+              'note', rel.note,
+              'display_order', rel.display_order,
+              'source_article', to_jsonb(source.*)
+            )
+            order by rel.display_order, rel.id
+          )
+          from current_affairs.master_article_relations rel
+          join current_affairs.master_articles source on source.id = rel.source_article_id
+          where rel.target_article_id = ma.id
+            and source.status = 'published'
+        ), '[]'::jsonb) as incoming_relations,
+        (
+          select count(*)::integer
+          from current_affairs.master_article_relations rel
+          join current_affairs.master_articles source on source.id = rel.source_article_id
+          where rel.target_article_id = ma.id
+            and source.status = 'published'
+        ) as appearance_count,
+        coalesce((
+          select jsonb_agg(to_jsonb(upd.*) order by upd.created_at desc)
+          from current_affairs.master_article_updates upd
+          where upd.article_id = ma.id
+        ), '[]'::jsonb) as updates
       from current_affairs.master_articles ma
       left join current_affairs.category_nodes cn on cn.id = ma.category_node_id
       where ma.slug = $1

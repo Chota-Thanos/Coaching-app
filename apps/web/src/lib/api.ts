@@ -87,10 +87,21 @@ export type ArticleSection = {
   updated_at?: string;
 };
 
+export type ArticleRole = "event" | "concept";
+
+export type ArticleUpdateEntry = {
+  id: number;
+  article_id: number;
+  body: string;
+  created_by_user_id: number | null;
+  created_at: string;
+};
+
 export type ArticleSummary = {
   id: number;
   content_family: ContentFamily;
   content_kind: ContentKind;
+  article_role: ArticleRole;
   title: string;
   slug: string;
   body: string;
@@ -134,6 +145,8 @@ export type AdminArticleDetail = AdminArticleSummary & {
     display_order?: number;
     source_article: AdminArticleSummary;
   }>;
+  appearance_count: number;
+  updates: ArticleUpdateEntry[];
 };
 
 export type ArticleDetail = ArticleSummary & {
@@ -145,6 +158,14 @@ export type ArticleDetail = ArticleSummary & {
     label: string | null;
     target_article: ArticleSummary;
   }>;
+  incoming_relations: Array<{
+    id: number;
+    relation_type: string;
+    label: string | null;
+    source_article: ArticleSummary;
+  }>;
+  appearance_count: number;
+  updates: ArticleUpdateEntry[];
 };
 
 export type ArticleListResponse = {
@@ -163,6 +184,7 @@ export type ArticleFiltersResponse = {
 
 export type ArticleListParams = {
   contentKind: ContentKind;
+  articleRole?: ArticleRole;
   category?: string;
   month?: string;
   year?: string;
@@ -176,6 +198,7 @@ export function getArticles(params: ArticleListParams): Promise<ArticleListRespo
     page: String(params.page),
     limit: String(params.limit ?? 12)
   });
+  if (params.articleRole) search.set("article_role", params.articleRole);
   if (params.category) search.set("category", params.category);
   if (params.month) search.set("month", params.month);
   if (params.year) search.set("year", params.year);
@@ -332,6 +355,7 @@ export type IngestionJobDetail = IngestionJob & {
 
 export type CreateAdminArticlePayload = {
   content_kind: ContentKind;
+  article_role?: ArticleRole;
   title: string;
   slug: string;
   body: string;

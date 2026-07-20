@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ImagePlus, Layers3, Plus, Trash2, Link2, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ImagePlus, Layers3, Plus, Trash2, Link2, ExternalLink, FileText, RefreshCw, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import type { AdminArticleDetail, AdminArticleSummary, ArticleAsset, ArticleSection, CreateArticleAssetPayload } from "../../../lib/api";
 import { ARTICLE_ASSET_TYPES, adminSlug, type ArticleAssetType } from "../../../lib/admin-current-affairs";
 import { articleHref } from "../../../lib/current-affairs";
-import { authenticatedDelete, authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
 
 type AdminArticleDetailPanelProps = {
   article: AdminArticleDetail | null;
@@ -75,13 +75,23 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   const [relationLabel, setRelationLabel] = useState<string>("");
   const [relationNote, setRelationNote] = useState<string>("");
   const [relationPending, setRelationPending] = useState(false);
+  const [relationConceptsOnly, setRelationConceptsOnly] = useState(false);
+
+  // Article role (event/concept) state
+  const [roleSaving, setRoleSaving] = useState(false);
+
+  // Concept updates timeline state
+  const [conceptUpdates, setConceptUpdates] = useState<any[]>([]);
+  const [loadingConceptUpdates, setLoadingConceptUpdates] = useState(false);
+  const [newUpdateBody, setNewUpdateBody] = useState("");
+  const [savingUpdate, setSavingUpdate] = useState(false);
 
   // Backlink Modal states
   const [backlinkModalOpen, setBacklinkModalOpen] = useState(false);
   const [backlinkDestArticle, setBacklinkDestArticle] = useState<{ id: number; title: string; slug: string } | null>(null);
   const [backlinkDestSections, setBacklinkDestSections] = useState<ArticleSection[]>([]);
   const [selectedDestSectionId, setSelectedDestSectionId] = useState<string>("");
-  const [backlinkMarkdown, setBacklinkMarkdown] = useState("");
+  const [backlinkContent, setBacklinkContent] = useState("");
   const [backlinkLoadingSections, setBacklinkLoadingSections] = useState(false);
   const [backlinkPending, setBacklinkPending] = useState(false);
 
@@ -97,6 +107,69 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     };
     void loadAll();
   }, [token]);
+
+  const loadConceptUpdates = async (articleId: number) => {
+    if (!token) return;
+    setLoadingConceptUpdates(true);
+    try {
+      const res = await authenticatedGet<any[]>(`/api/v1/current-affairs/articles/${articleId}/updates`, token);
+      setConceptUpdates(res || []);
+    } catch (err) {
+      console.error("Failed to load concept updates:", err);
+    } finally {
+      setLoadingConceptUpdates(false);
+    }
+  };
+
+  useEffect(() => {
+    if (article && article.article_role === "concept") {
+      void loadConceptUpdates(article.id);
+    } else {
+      setConceptUpdates([]);
+    }
+    setNewUpdateBody("");
+  }, [article?.id, article?.article_role, token]);
+
+  async function toggleArticleRole(nextRole: "event" | "concept"): Promise<void> {
+    if (!token || !article || article.article_role === nextRole) return;
+    setRoleSaving(true);
+    try {
+      await authenticatedPatch(`/api/v1/current-affairs/articles/${article.id}`, token, { article_role: nextRole });
+      await onRefresh();
+    } catch (err) {
+      console.error("Failed to update article role:", err);
+      setMessage("Could not update article role.");
+    } finally {
+      setRoleSaving(false);
+    }
+  }
+
+  async function addConceptUpdate(): Promise<void> {
+    if (!token || !article || !newUpdateBody.trim()) return;
+    setSavingUpdate(true);
+    try {
+      await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/updates`, token, {
+        body: newUpdateBody.trim()
+      });
+      setNewUpdateBody("");
+      await loadConceptUpdates(article.id);
+    } catch (err) {
+      console.error("Failed to add concept update:", err);
+      setMessage("Failed to save update.");
+    } finally {
+      setSavingUpdate(false);
+    }
+  }
+
+  async function deleteConceptUpdate(updateId: number): Promise<void> {
+    if (!token || !article || !window.confirm("Remove this update entry?")) return;
+    try {
+      await authenticatedDelete(`/api/v1/current-affairs/article-updates/${updateId}`, token);
+      await loadConceptUpdates(article.id);
+    } catch (err) {
+      console.error("Failed to delete concept update:", err);
+    }
+  }
 
   async function createRelation(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -139,7 +212,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     setBacklinkModalOpen(true);
     setBacklinkLoadingSections(true);
     setSelectedDestSectionId("");
-    setBacklinkMarkdown(`\n\nSee also: [${article.title}](/current-affairs/articles/${article.slug})`);
+    setBacklinkContent(`<p>See also: <a href="/current-affairs/articles/${article.slug}">${article.title}</a></p>`);
     
     try {
       const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${destId}`, token);
@@ -159,7 +232,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     setBacklinkPending(true);
     try {
       await authenticatedPost(`/api/v1/current-affairs/articles/${backlinkDestArticle.id}/insert-content`, token, {
-        content: backlinkMarkdown,
+        content: backlinkContent,
         section_id: selectedDestSectionId ? Number(selectedDestSectionId) : undefined
       });
       setBacklinkModalOpen(false);
@@ -254,7 +327,39 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
           <span className="rounded-md bg-paper px-2 py-1 text-ink/65">{article.status}</span>
           <span className="rounded-md bg-paper px-2 py-1 text-ink/65">{article.content_kind.replace(/_/g, " ")}</span>
           {article.category && <span className="rounded-md bg-paper px-2 py-1 text-ink/65">{article.category.name}</span>}
+          {article.article_role === "concept" && (
+            <span className="rounded-md bg-berry/10 px-2 py-1 text-berry">Concept</span>
+          )}
         </div>
+
+        {article.content_kind === "daily_current_affairs" && (
+          <div className="mt-3 grid gap-1.5">
+            <span className="text-xs font-bold text-ink">Article role</span>
+            <div className="grid w-fit grid-cols-2 gap-1.5 rounded-lg border border-line bg-surface p-1">
+              <button
+                type="button"
+                disabled={roleSaving}
+                onClick={() => void toggleArticleRole("event")}
+                className={`h-8 rounded-md px-4 text-xs font-bold transition-all disabled:opacity-60 ${
+                  article.article_role === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                }`}
+              >
+                Event
+              </button>
+              <button
+                type="button"
+                disabled={roleSaving}
+                onClick={() => void toggleArticleRole("concept")}
+                className={`h-8 rounded-md px-4 text-xs font-bold transition-all disabled:opacity-60 ${
+                  article.article_role === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                }`}
+              >
+                Concept
+              </button>
+            </div>
+          </div>
+        )}
+
         {article.status === "published" && (
           <Link className="mt-4 inline-flex h-10 items-center rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-civic" href={articleHref(article.slug)}>
             Open public page
@@ -453,6 +558,15 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         
         {/* Form to Add Relation */}
         <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createRelation}>
+          <label className="flex items-center gap-2 text-xs font-bold text-ink/75 cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 rounded border-line accent-civic"
+              checked={relationConceptsOnly}
+              onChange={(e) => setRelationConceptsOnly(e.target.checked)}
+            />
+            Concepts only (reusable topic primers)
+          </label>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1 text-sm font-bold text-ink">
               Related Article
@@ -465,9 +579,10 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 <option value="">-- Choose Article --</option>
                 {allArticles
                   .filter((a) => Number(a.id) !== article.id)
+                  .filter((a) => !relationConceptsOnly || a.article_role === "concept")
                   .map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.title} ({a.content_kind.replace(/_/g, " ")})
+                      {a.title} ({a.content_kind.replace(/_/g, " ")}{a.article_role === "concept" ? " — Concept" : ""})
                     </option>
                   ))}
               </select>
@@ -546,6 +661,11 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                           ({rel.label})
                         </span>
                       )}
+                      {rel.target_article.article_role === "concept" && (
+                        <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-bold text-berry uppercase">
+                          Concept
+                        </span>
+                      )}
                     </div>
                     <h5 className="mt-1 text-sm font-extrabold text-ink truncate">{rel.target_article.title}</h5>
                     {rel.note && <p className="text-xs text-ink/65 mt-0.5 italic">{rel.note}</p>}
@@ -604,6 +724,11 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                           ({rel.label})
                         </span>
                       )}
+                      {rel.source_article.article_role === "concept" && (
+                        <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-bold text-berry uppercase">
+                          Concept
+                        </span>
+                      )}
                     </div>
                     <h5 className="mt-1 text-sm font-extrabold text-ink truncate">{rel.source_article.title}</h5>
                     {rel.note && <p className="text-xs text-ink/65 mt-0.5 italic">{rel.note}</p>}
@@ -641,6 +766,62 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
           )}
         </div>
       </section>
+
+      {article.article_role === "concept" && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles aria-hidden="true" className="h-5 w-5 text-berry" />
+            <h3 className="text-lg font-black text-ink">Concept Updates Timeline</h3>
+          </div>
+          <p className="text-xs text-ink/55 leading-snug -mt-2">
+            Add dated updates as new developments touch this concept, instead of creating a duplicate article. Every article linking here shows the latest update automatically.
+          </p>
+
+          <div className="grid gap-2 rounded-lg border border-line bg-white p-4">
+            <textarea
+              className="min-h-20 rounded-md border border-line px-3 py-2 text-sm font-normal leading-6"
+              onChange={(event) => setNewUpdateBody(event.target.value)}
+              placeholder="e.g. Ministry of Railways announced a second hydrogen train route in Oct 2026..."
+              value={newUpdateBody}
+            />
+            <button
+              type="button"
+              onClick={() => void addConceptUpdate()}
+              disabled={savingUpdate || !newUpdateBody.trim()}
+              className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white disabled:opacity-60"
+            >
+              <Plus aria-hidden="true" className="h-4 w-4" />
+              {savingUpdate ? "Saving..." : "Add update"}
+            </button>
+          </div>
+
+          <div className="grid gap-2">
+            {loadingConceptUpdates ? (
+              <p className="text-xs text-ink/50 italic">Loading updates...</p>
+            ) : conceptUpdates.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-line bg-white p-3 text-xs text-ink/65">No updates yet.</p>
+            ) : (
+              conceptUpdates.map((upd) => (
+                <div key={upd.id} className="rounded-lg border border-line bg-white p-3 shadow-xs flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] font-bold text-berry uppercase">
+                      {new Date(upd.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                    </span>
+                    <p className="text-xs text-ink mt-1 whitespace-pre-wrap">{upd.body}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void deleteConceptUpdate(upd.id)}
+                    className="text-rose-500 hover:text-rose-700 shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Backlink Insertion Modal Overlay */}
       {backlinkModalOpen && backlinkDestArticle && (
@@ -694,13 +875,13 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
             </label>
 
             <label className="grid gap-1.5 text-xs font-bold text-ink">
-              Backlink Markdown Content to Insert
+              Backlink HTML Content to Insert
               <textarea
-                value={backlinkMarkdown}
-                onChange={(e) => setBacklinkMarkdown(e.target.value)}
+                value={backlinkContent}
+                onChange={(e) => setBacklinkContent(e.target.value)}
                 required
                 className="min-h-[120px] rounded-lg border border-line p-3 font-mono text-xs outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                placeholder="Markdown to append..."
+                placeholder="HTML to append, e.g. <p>See also: <a href=&quot;/current-affairs/articles/slug&quot;>Title</a></p>"
               />
             </label>
 

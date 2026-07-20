@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { listQuerySchema } from "../../../common/http.js";
 import {
+  articleRoleSchema,
   contentFamilySchema,
   idSchema,
   masterArticleKindSchema,
@@ -11,6 +12,7 @@ import {
 export const listMasterArticlesQuerySchema = listQuerySchema.extend({
   content_family: contentFamilySchema.optional(),
   content_kind: masterArticleKindSchema.optional(),
+  article_role: articleRoleSchema.optional(),
   status: masterArticleStatusSchema.optional(),
   category_node_id: idSchema.optional(),
   include_descendants: z.coerce.boolean().default(false),
@@ -24,6 +26,7 @@ export const listMasterArticlesQuerySchema = listQuerySchema.extend({
 
 export const frontendArticleListQuerySchema = z.object({
   content_kind: masterArticleKindSchema,
+  article_role: articleRoleSchema.default("event"),
   category: z.string().trim().min(1).optional(),
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   year: z.string().regex(/^\d{4}$/).optional(),
@@ -39,6 +42,7 @@ export const frontendArticleFiltersQuerySchema = z.object({
 export const createMasterArticleSchema = z.object({
   content_family: contentFamilySchema.optional(),
   content_kind: masterArticleKindSchema,
+  article_role: articleRoleSchema.optional(),
   title: z.string().trim().min(1),
   slug: slugSchema,
   body: z.string().trim().min(1),
@@ -129,6 +133,10 @@ export const addArticleSectionSourceSchema = z.object({
   display_order: z.number().int().optional()
 });
 
+export const createArticleUpdateSchema = z.object({
+  body: z.string().trim().min(1)
+});
+
 export const categoryPageQuerySchema = listQuerySchema.extend({
   include_descendants: z.coerce.boolean().default(true),
   content_kind: masterArticleKindSchema.optional(),
@@ -159,5 +167,6 @@ export type UpdateArticleRelationInput = z.output<typeof updateArticleRelationSc
 export type CreateArticleSectionInput = z.output<typeof createArticleSectionSchema>;
 export type UpdateArticleSectionInput = z.output<typeof updateArticleSectionSchema>;
 export type AddArticleSectionSourceInput = z.output<typeof addArticleSectionSourceSchema>;
+export type CreateArticleUpdateInput = z.output<typeof createArticleUpdateSchema>;
 export type CategoryPageQuery = z.output<typeof categoryPageQuerySchema>;
 export type SearchCurrentAffairsQuery = z.output<typeof searchCurrentAffairsQuerySchema>;
