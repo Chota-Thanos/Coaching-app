@@ -26,7 +26,7 @@ export const listMasterArticlesQuerySchema = listQuerySchema.extend({
 
 export const frontendArticleListQuerySchema = z.object({
   content_kind: masterArticleKindSchema,
-  article_role: articleRoleSchema.default("event"),
+  article_role: articleRoleSchema.optional(),
   category: z.string().trim().min(1).optional(),
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   year: z.string().regex(/^\d{4}$/).optional(),

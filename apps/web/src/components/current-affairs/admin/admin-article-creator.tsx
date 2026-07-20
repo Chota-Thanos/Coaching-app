@@ -4,7 +4,7 @@ import { Brain, Save, Loader2, CheckCircle2, FileText } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { ArticleRole, CategoryNode, CreateAdminArticlePayload } from "../../../lib/api";
+import type { AdminArticleDetail, ArticleRole, CategoryNode, CreateAdminArticlePayload } from "../../../lib/api";
 import type { ContentKind } from "../../../lib/current-affairs";
 import {
   ADMIN_ARTICLE_STATUSES,
@@ -19,6 +19,7 @@ import { authenticatedGet, authenticatedPatch, authenticatedDelete, useAuth } fr
 import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { ArticleCreatorAiWorkspace } from "./article-creator-ai-workspace";
 import { CascadingCategorySelector } from "./cascading-category-selector";
+import { AdminArticleDetailPanel } from "./admin-article-detail-panel";
 
 type AdminArticleCreatorProps = {
   categories: CategoryNode[];
@@ -110,10 +111,11 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
   const [formState, setFormState] = useState<FormState>(initialForm(defaultKind));
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
+  const [editingArticleDetail, setEditingArticleDetail] = useState<AdminArticleDetail | null>(null);
 
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
-  const [successLink, setSuccessLink] = useState<{ href: string; manageHref?: string; label: string } | null>(null);
+  const [successLink, setSuccessLink] = useState<{ href: string; label: string } | null>(null);
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -165,6 +167,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   useEffect(() => {
     setFormState(initialForm(defaultKind));
     setEditingDraftId(null);
+    setEditingArticleDetail(null);
   }, [defaultKind]);
 
   // Reset success link when form fields are modified
@@ -185,11 +188,12 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   const handleEditDraft = async (draftId: number) => {
     if (!token) return;
     try {
-      const detail = await authenticatedGet<any>(`/api/v1/current-affairs/admin/articles/${draftId}`, token);
+      const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${draftId}`, token);
       if (detail) {
         setEditingDraftId(detail.id);
-        
-        const bodyJson = detail.body_json || {};
+        setEditingArticleDetail(detail);
+
+        const bodyJson: any = (detail as any).body_json || {};
         
         setFormState({
           title: detail.title,
@@ -232,6 +236,18 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
     }
   };
 
+  // Lightweight refresh for the embedded connections panel — does not touch
+  // formState, so it won't clobber in-progress, unsaved title/body edits.
+  const refreshEditingArticleDetail = useCallback(async () => {
+    if (!token || !editingDraftId) return;
+    try {
+      const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${editingDraftId}`, token);
+      setEditingArticleDetail(detail);
+    } catch (err) {
+      console.error("Failed to refresh article detail:", err);
+    }
+  }, [token, editingDraftId]);
+
   const loadedEditIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -249,6 +265,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       await authenticatedDelete(`/api/v1/current-affairs/articles/${draftId}`, token);
       if (editingDraftId === draftId) {
         setEditingDraftId(null);
+        setEditingArticleDetail(null);
         setFormState(initialForm(defaultKind));
       }
       void loadDrafts();
@@ -262,8 +279,8 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
     try {
       await authenticatedPatch(`/api/v1/current-affairs/articles/${draftId}`, token, { status: "published" });
       if (editingDraftId === draftId) {
-        setEditingDraftId(null);
-        setFormState(initialForm(defaultKind));
+        void refreshEditingArticleDetail();
+        updateField("status", "published");
       }
       void loadDrafts();
     } catch (err) {
@@ -334,11 +351,11 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
         setSuccessLink({
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
-          manageHref: `/admin/current-affairs/articles?view=${editingDraftId}`,
           label: `Draft "${payload.title || formState.title}" updated successfully.`
         });
-        setEditingDraftId(null);
-        setFormState(initialForm(defaultKind));
+        // Stay in edit mode — the connections panel below stays available for
+        // continued work instead of vanishing on every save.
+        void refreshEditingArticleDetail();
         void loadDrafts();
       } catch (err) {
         console.error("Failed to update draft:", err);
@@ -349,10 +366,15 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
         const created = await onSubmit(payload);
         setSuccessLink({
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
-          manageHref: created?.id ? `/admin/current-affairs/articles?view=${created.id}` : undefined,
-          label: `Article "${payload.title || formState.title}" created successfully.`
+          label: `Article "${payload.title || formState.title}" created successfully. You can now connect it to other articles below.`
         });
-        setFormState(initialForm(defaultKind));
+        // Switch straight into edit mode for the article just created, so the
+        // connections panel (sections/relations/import-export) appears immediately.
+        if (created?.id) {
+          void handleEditDraft(created.id);
+        } else {
+          setFormState(initialForm(defaultKind));
+        }
         void loadDrafts();
       } catch (err) {
         console.error("Failed to create article:", err);
@@ -373,14 +395,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               <span>{successLink.label}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {successLink.manageHref && (
-                <a
-                  href={successLink.manageHref}
-                  className="text-xs bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg font-bold shadow-xs transition-all"
-                >
-                  Manage connections & sections →
-                </a>
-              )}
               <a
                 href={successLink.href}
                 target="_blank"
@@ -414,6 +428,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             type="button"
             onClick={() => {
               setEditingDraftId(null);
+              setEditingArticleDetail(null);
               setFormState(initialForm(defaultKind));
             }}
             className="text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-lg font-bold shadow-xs transition-all"
@@ -445,7 +460,8 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               )}
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            {/* Row 1, above title/body: what you're creating */}
+            <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-bold text-ink">
                 Content type (UPSC syllabus)
                 <select
@@ -484,7 +500,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <button
                     type="button"
                     onClick={() => updateField("articleRole", "event")}
-                    className={`h-10 rounded-lg text-sm font-bold transition-all ${
+                    className={`h-9 rounded-lg text-sm font-bold transition-all ${
                       formState.articleRole === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
                     }`}
                   >
@@ -493,7 +509,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <button
                     type="button"
                     onClick={() => updateField("articleRole", "concept")}
-                    className={`h-10 rounded-lg text-sm font-bold transition-all ${
+                    className={`h-9 rounded-lg text-sm font-bold transition-all ${
                       formState.articleRole === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
                     }`}
                   >
@@ -502,16 +518,27 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 </div>
                 <p className="text-[11px] text-ink/55 leading-snug">
                   {formState.articleRole === "concept"
-                    ? "Evergreen explainer (e.g. \"PEM Fuel Cell Technology\"). Kept out of the daily feed; link to it from event articles instead of re-explaining the concept each time. Add dated updates below once saved."
-                    : "A dated news write-up. Link any reusable background concept it depends on via \"Connect & Link\" below."}
+                    ? "Evergreen explainer, kept out of the daily feed. Link event articles to it instead of re-explaining the concept each time. Add dated updates from the connections section below once saved."
+                    : "A dated news write-up. Link any reusable background concept it depends on from the connections section below once saved."}
                 </p>
               </div>
             )}
 
+            <div className="space-y-2 rounded-xl border border-line bg-paper/30 p-4">
+              <h3 className="text-xs font-black uppercase tracking-wider text-ink">Category</h3>
+              <CascadingCategorySelector
+                categories={categories}
+                value={formState.categoryNodeId}
+                onChange={(nodeId) => updateField("categoryNodeId", nodeId)}
+                contentFamily={family}
+              />
+            </div>
+
+            {/* Title, permalink, and the content editor */}
             <label className="grid gap-1.5 text-sm font-bold text-ink">
               Article Title
               <input
-                className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                className="h-12 rounded-xl border border-line px-4 text-lg font-bold text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
                 onBlur={() => {
                   if (!formState.slug) updateField("slug", adminSlug(formState.title));
                 }}
@@ -523,122 +550,20 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               />
             </label>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <label className="grid gap-1.5 text-sm font-bold text-ink">
-                Slug (URL suffix)
+            <label className="grid gap-1 text-xs font-bold text-ink">
+              Permalink
+              <div className="flex h-9 items-center gap-1 overflow-x-auto whitespace-nowrap rounded-lg border border-line bg-paper/40 px-3 text-xs text-ink/60">
+                <span className="shrink-0">/current-affairs/articles/</span>
                 <input
-                  className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-ink outline-none"
                   onChange={(event) => updateField("slug", adminSlug(event.target.value))}
-                  placeholder="e.g. digital-data-protection-act"
+                  placeholder="digital-data-protection-act"
                   required
                   type="text"
                   value={formState.slug}
                 />
-              </label>
-
-              <label className="grid gap-1.5 text-sm font-bold text-ink">
-                Publication Date
-                <input
-                  className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
-                  onChange={(event) => updateField("publicationDate", event.target.value)}
-                  type="date"
-                  value={formState.publicationDate}
-                />
-              </label>
-            </div>
-
-            {/* Step-by-Step Subject Category selection as requested */}
-            <div className="space-y-1.5">
-              <span className="text-sm font-bold text-ink block">Subject Category Selection (Step-by-Step)</span>
-              <CascadingCategorySelector
-                categories={categories}
-                value={formState.categoryNodeId}
-                onChange={(nodeId) => updateField("categoryNodeId", nodeId)}
-                contentFamily={family}
-              />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <label className="grid gap-1.5 text-sm font-bold text-ink">
-                Source Citation Name
-                <input
-                  className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
-                  onChange={(event) => updateField("sourceName", event.target.value)}
-                  placeholder="e.g. The Hindu"
-                  type="text"
-                  value={formState.sourceName}
-                />
-              </label>
-
-              <label className="grid gap-1.5 text-sm font-bold text-ink">
-                Source Citation URL
-                <input
-                  className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
-                  onChange={(event) => updateField("sourceUrl", event.target.value)}
-                  placeholder="e.g. https://www.thehindu.com/..."
-                  type="url"
-                  value={formState.sourceUrl}
-                />
-              </label>
-            </div>
-
-            <label className="grid gap-1.5 text-sm font-bold text-ink">
-              Tags (comma-separated)
-              <input
-                className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
-                onChange={(event) => updateField("tags", event.target.value)}
-                placeholder="e.g. data-privacy, fundamental-rights, cyber-security"
-                type="text"
-                value={formState.tags}
-              />
-            </label>
-
-            <details className="group border border-line rounded-xl bg-surface p-4 overflow-hidden transition-all duration-300">
-              <summary className="flex items-center justify-between cursor-pointer list-none text-sm font-bold text-ink select-none">
-                <span>Search Engine Optimization (SEO) & Meta Settings</span>
-                <span className="text-civic transition-transform group-open:rotate-180 text-xs">▼</span>
-              </summary>
-              <div className="grid gap-4 mt-4 pt-4 border-t border-line/50">
-                <label className="grid gap-1.5 text-xs font-bold text-ink">
-                  SEO Title Override
-                  <input
-                    className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                    onChange={(event) => updateField("seoTitle", event.target.value)}
-                    placeholder="Defaults to article title"
-                    value={formState.seoTitle}
-                  />
-                </label>
-                <label className="grid gap-1.5 text-xs font-bold text-ink">
-                  SEO Meta Description
-                  <textarea
-                    className="min-h-16 rounded-lg border border-line px-3 py-2 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                    onChange={(event) => updateField("seoDescription", event.target.value)}
-                    placeholder="Brief summary for search engine results"
-                    value={formState.seoDescription || ""}
-                  />
-                </label>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="grid gap-1.5 text-xs font-bold text-ink">
-                    Canonical URL
-                    <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                      onChange={(event) => updateField("canonicalUrl", event.target.value)}
-                      placeholder="https://yourdomain.com/..."
-                      value={formState.canonicalUrl}
-                    />
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-bold text-ink">
-                    Meta Keywords (comma-separated)
-                    <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                      onChange={(event) => updateField("keywords", event.target.value)}
-                      placeholder="e.g. data-privacy, upsc-notes"
-                      value={formState.keywords}
-                    />
-                  </label>
-                </div>
               </div>
-            </details>
+            </label>
 
             {formState.contentKind === "prelims_pyq" ? (
               <div className="space-y-4 rounded-xl border border-line bg-paper/20 p-4">
@@ -822,13 +747,103 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               </div>
             )}
 
-            {editingDraftId && (
-              <div className="rounded-xl border border-line bg-civic/5 p-4 text-xs text-ink/70">
-                Sections, assets, connections to other articles, and (for concept articles) the updates timeline are managed from the article's{" "}
-                <a className="font-bold text-civic hover:underline" href={`/admin/current-affairs/articles?view=${editingDraftId}`}>
-                  detail view
-                </a>
-                .
+            {/* Below title/body: source, tags, SEO — in that reading order */}
+            <div className="grid gap-4 rounded-xl border border-line bg-paper/30 p-4 md:grid-cols-3">
+              <h3 className="col-span-full text-xs font-black uppercase tracking-wider text-ink">Source & Tags</h3>
+              <label className="grid gap-1.5 text-xs font-bold text-ink">
+                Source Name
+                <input
+                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  onChange={(event) => updateField("sourceName", event.target.value)}
+                  placeholder="e.g. The Hindu"
+                  type="text"
+                  value={formState.sourceName}
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold text-ink">
+                Source URL
+                <input
+                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  onChange={(event) => updateField("sourceUrl", event.target.value)}
+                  placeholder="https://..."
+                  type="url"
+                  value={formState.sourceUrl}
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold text-ink">
+                Tags (comma-separated)
+                <input
+                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  onChange={(event) => updateField("tags", event.target.value)}
+                  placeholder="data-privacy, cyber-security"
+                  type="text"
+                  value={formState.tags}
+                />
+              </label>
+            </div>
+
+            <details className="group rounded-xl border border-line bg-paper/30 p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-black uppercase tracking-wider text-ink select-none">
+                <span>SEO & Meta</span>
+                <span className="text-civic transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <div className="mt-3 grid gap-3 border-t border-line/50 pt-3 md:grid-cols-2">
+                <label className="grid gap-1.5 text-xs font-bold text-ink">
+                  SEO Title Override
+                  <input
+                    className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    onChange={(event) => updateField("seoTitle", event.target.value)}
+                    placeholder="Defaults to article title"
+                    value={formState.seoTitle}
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-bold text-ink">
+                  Canonical URL
+                  <input
+                    className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    onChange={(event) => updateField("canonicalUrl", event.target.value)}
+                    placeholder="https://yourdomain.com/..."
+                    value={formState.canonicalUrl}
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-bold text-ink md:col-span-2">
+                  SEO Meta Description
+                  <textarea
+                    className="min-h-16 rounded-lg border border-line bg-white px-3 py-2 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    onChange={(event) => updateField("seoDescription", event.target.value)}
+                    placeholder="Brief summary for search engine results — also reused as the default blurb when this article is referenced elsewhere"
+                    value={formState.seoDescription || ""}
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-bold text-ink md:col-span-2">
+                  Meta Keywords (comma-separated)
+                  <input
+                    className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    onChange={(event) => updateField("keywords", event.target.value)}
+                    placeholder="e.g. data-privacy, upsc-notes"
+                    value={formState.keywords}
+                  />
+                </label>
+              </div>
+            </details>
+
+            <label className="grid gap-1.5 text-sm font-bold text-ink">
+              Publication Date
+              <input
+                className="h-11 rounded-xl border border-line px-4 text-base font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                onChange={(event) => updateField("publicationDate", event.target.value)}
+                type="date"
+                value={formState.publicationDate}
+              />
+            </label>
+
+            {!editingDraftId && (
+              <div className="rounded-xl border border-dashed border-civic/40 bg-civic/5 p-4">
+                <p className="text-[10px] font-black uppercase tracking-wider text-civic/70">🔒 Locked until you save — not a working section yet</p>
+                <h3 className="mt-1 text-sm font-black text-ink">Sections, Connections & Concept Updates</h3>
+                <p className="mt-1 text-xs text-ink/65 leading-relaxed">
+                  This is just a preview note, not a real panel. Hit "{formState.status === "draft" ? "Save Draft" : "Publish"}" below and it will be replaced, right here on this page, by the actual working tools: breaking the article into named sections, linking it to other articles (with buttons to import a short reference <em>from</em> a linked article into this one, or export a reference <em>to</em> this article into a linked one), and — for Concept articles — the dated Updates Timeline.
+                </p>
               </div>
             )}
 
@@ -837,6 +852,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 className="h-11 px-6 rounded-xl border border-line font-bold text-ink hover:bg-paper transition-all"
                 onClick={() => {
                   setEditingDraftId(null);
+                  setEditingArticleDetail(null);
                   setFormState(initialForm(defaultKind));
                 }}
                 type="button"
@@ -849,10 +865,20 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 type="submit"
               >
                 <Save className="h-4 w-4" />
-                {pending ? "Saving..." : editingDraftId ? "Update Draft" : "Create and Save Article"}
+                {pending ? "Saving..." : editingDraftId ? "Update" : formState.status === "draft" ? "Save Draft" : "Publish"}
               </button>
             </div>
           </form>
+
+          {/* 1.5th - Sections, assets, connections & concept updates — unlocked once the article is saved */}
+          {editingDraftId && editingArticleDetail && (
+            <div className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm">
+              <AdminArticleDetailPanel
+                article={editingArticleDetail}
+                onRefresh={refreshEditingArticleDetail}
+              />
+            </div>
+          )}
 
           {/* 2nd - UNIFIED AI GENERATION WORKSPACE (Moves to the bottom of the form) */}
           <ArticleCreatorAiWorkspace

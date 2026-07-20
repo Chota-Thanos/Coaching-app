@@ -35,6 +35,7 @@ export function RepositoryBulkImportModal({
   const { token, refreshForks } = useAuth();
   const [hubPath, setHubPath] = useState(DEFAULT_HUB.path);
   const [filters, setFilters] = useState<ArticleFiltersResponse | null>(null);
+  const [gsPaperId, setGsPaperId] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [topicId, setTopicId] = useState("");
   const [subtopicId, setSubtopicId] = useState("");
@@ -55,9 +56,16 @@ export function RepositoryBulkImportModal({
       category.content_family === activeHub.contentFamily && category.is_active !== false
     ));
   }, [activeHub.contentFamily, filters?.categories]);
-  const subjects = useMemo(() => {
-    return familyCategories.filter((category) => category.node_type === "subject");
+  const gsPapers = useMemo(() => {
+    return familyCategories.filter((category) => category.node_type === "gs_paper");
   }, [familyCategories]);
+  const hasGsPapers = gsPapers.length > 0;
+  const subjects = useMemo(() => {
+    const roots = familyCategories.filter((category) => category.node_type === "subject");
+    if (!hasGsPapers) return roots;
+    if (!gsPaperId) return [];
+    return roots.filter((category) => String(category.parent_id) === gsPaperId);
+  }, [familyCategories, hasGsPapers, gsPaperId]);
   const topics = useMemo(() => {
     return familyCategories.filter((category) => category.node_type === "topic" && String(category.parent_id) === subjectId);
   }, [familyCategories, subjectId]);
@@ -75,6 +83,7 @@ export function RepositoryBulkImportModal({
       token
     );
     setFilters(records);
+    setGsPaperId("");
     setSubjectId("");
     setTopicId("");
     setSubtopicId("");
@@ -97,6 +106,16 @@ export function RepositoryBulkImportModal({
     setSelectedIds(new Set());
     setMessage(null);
     await loadFilters(nextHub);
+  }
+
+  function changeGsPaper(id: string): void {
+    setGsPaperId(id);
+    setSubjectId("");
+    setTopicId("");
+    setSubtopicId("");
+    setArticles([]);
+    setSelectedIds(new Set());
+    setMessage(null);
   }
 
   function changeSubject(id: string): void {
@@ -224,7 +243,7 @@ export function RepositoryBulkImportModal({
         </div>
 
         <div className="grid gap-5 p-5">
-          <div className="grid gap-3 rounded-lg border border-line bg-paper/30 p-4 md:grid-cols-2 xl:grid-cols-6">
+          <div className={`grid gap-3 rounded-lg border border-line bg-paper/30 p-4 md:grid-cols-2 ${hasGsPapers ? "xl:grid-cols-7" : "xl:grid-cols-6"}`}>
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
               1. Section
               <select
@@ -240,14 +259,33 @@ export function RepositoryBulkImportModal({
               </select>
             </label>
 
+            {hasGsPapers && (
+              <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
+                2. GS Paper
+                <select
+                  className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+                  onChange={(event) => changeGsPaper(event.target.value)}
+                  value={gsPaperId}
+                >
+                  <option value="">All GS papers</option>
+                  {gsPapers.map((paper) => (
+                    <option key={paper.id} value={paper.id}>
+                      {categoryOptionLabel(paper)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
-              2. Subject
+              {hasGsPapers ? "3" : "2"}. Subject
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+                className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
+                disabled={hasGsPapers && !gsPaperId}
                 onChange={(event) => changeSubject(event.target.value)}
                 value={subjectId}
               >
-                <option value="">All subjects</option>
+                <option value="">{hasGsPapers && !gsPaperId ? "Choose GS Paper first" : "All subjects"}</option>
                 {subjects.map((subject) => (
                   <option key={subject.id} value={subject.id}>
                     {categoryOptionLabel(subject)}
@@ -257,7 +295,7 @@ export function RepositoryBulkImportModal({
             </label>
 
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
-              3. Topic
+              {hasGsPapers ? "4" : "3"}. Topic
               <select
                 className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
                 disabled={!subjectId}
@@ -274,7 +312,7 @@ export function RepositoryBulkImportModal({
             </label>
 
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
-              4. Subtopic
+              {hasGsPapers ? "5" : "4"}. Subtopic
               <select
                 className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
                 disabled={!topicId}
@@ -292,7 +330,7 @@ export function RepositoryBulkImportModal({
 
             {activeHub.filterMode === "month" ? (
               <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
-                5. Month
+                {hasGsPapers ? "6" : "5"}. Month
                 <select
                   className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
                   onChange={(event) => setMonth(event.target.value)}
@@ -308,7 +346,7 @@ export function RepositoryBulkImportModal({
               </label>
             ) : (
               <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
-                5. Year
+                {hasGsPapers ? "6" : "5"}. Year
                 <select
                   className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
                   onChange={(event) => setYear(event.target.value)}

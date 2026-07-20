@@ -76,8 +76,48 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
           <span className="font-semibold text-ink">{hub.label}</span>
         </nav>
 
+        <div className="flex flex-col gap-4 rounded-2xl border border-line/60 bg-surface px-5 py-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg ${accentBg}`}>
+              {isMains ? "📝" : "📰"}
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold uppercase tracking-widest ${accentColor}`}>
+                  {hub.contentFamily}
+                </span>
+                <span className="text-xs text-muted">·</span>
+                <span className="text-xs font-semibold text-muted">{articles.total} articles</span>
+              </div>
+              <h1 className="text-lg font-black leading-tight text-ink">{hub.label}</h1>
+            </div>
+          </div>
+
+          {/* Desktop inline filters — category first, ahead of the content-type tabs below */}
+          <div className="hidden sm:block">
+            <FilterPanel
+              filters={filters}
+              hub={hub}
+              selectedCategory={category}
+              selectedMonth={month}
+              selectedYear={year}
+            />
+          </div>
+        </div>
+
+        {/* Mobile: filter chips row */}
+        <div className="mt-3 sm:hidden">
+          <FilterPanel
+            filters={filters}
+            hub={hub}
+            selectedCategory={category}
+            selectedMonth={month}
+            selectedYear={year}
+          />
+        </div>
+
         {/* Hub Segments / Navigation Tab Bar */}
-        <div className="mb-5">
+        <div className="mt-5">
           <div className="inline-flex p-1 bg-paper/70 rounded-xl border border-line/60">
             <Link
               href="/current-affairs/daily-news"
@@ -170,46 +210,6 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
               </>
             )}
           </div>
-        </div>
-
-        <div className="flex flex-col gap-4 rounded-2xl border border-line/60 bg-surface px-5 py-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg ${accentBg}`}>
-              {isMains ? "📝" : "📰"}
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold uppercase tracking-widest ${accentColor}`}>
-                  {hub.contentFamily}
-                </span>
-                <span className="text-xs text-muted">·</span>
-                <span className="text-xs font-semibold text-muted">{articles.total} articles</span>
-              </div>
-              <h1 className="text-lg font-black leading-tight text-ink">{hub.label}</h1>
-            </div>
-          </div>
-
-          {/* Desktop inline filters */}
-          <div className="hidden sm:block">
-            <FilterPanel
-              filters={filters}
-              hub={hub}
-              selectedCategory={category}
-              selectedMonth={month}
-              selectedYear={year}
-            />
-          </div>
-        </div>
-
-        {/* Mobile: filter chips row */}
-        <div className="mt-3 sm:hidden">
-          <FilterPanel
-            filters={filters}
-            hub={hub}
-            selectedCategory={category}
-            selectedMonth={month}
-            selectedYear={year}
-          />
         </div>
       </div>
 

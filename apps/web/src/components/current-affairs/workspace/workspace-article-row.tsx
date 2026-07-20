@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock3, Edit3, FileText, Save, StickyNote, Tags, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock3, Download, Edit3, FileText, Highlighter, Save, StickyNote, Tags, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { StudentCollection, StudentFork } from "../../../lib/api";
 import { articleHref, contentKindLabel } from "../../../lib/current-affairs";
 import { joinWorkspaceTags, progressLabel, splitWorkspaceTags, visibleWorkspaceTags } from "../../../lib/workspace";
 import { authenticatedPatch, authenticatedPut, useAuth } from "../../auth/auth-context";
+import { RichTextMarkdownEditor } from "../rich-text-editor";
+import { RenderedContent } from "../rendered-content";
+import { downloadScannedPdf } from "../../../lib/export-pdf";
 import { ForkTagQuickEdit } from "./fork-tag-quick-edit";
 import { RepositoryAttachControl } from "./repository-attach-control";
+import { SourceArticleConnections } from "./source-article-connections";
 
 type WorkspaceArticleRowProps = {
   fork: StudentFork;
@@ -35,7 +39,7 @@ export function WorkspaceArticleRow({
   trailingAction,
   onChanged
 }: WorkspaceArticleRowProps) {
-  const { token, refreshForks } = useAuth();
+  const { token, user, refreshForks } = useAuth();
   const article = fork.master_article;
   const title = fork.forked_title ?? article?.title ?? `Article #${fork.master_article_id}`;
   const body = fork.forked_body ?? article?.body ?? "";
@@ -54,6 +58,12 @@ export function WorkspaceArticleRow({
   const [bodyExpanded, setBodyExpanded] = useState(false);
   const [editingCopy, setEditingCopy] = useState(false);
   const [savingCopy, setSavingCopy] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [tagsError, setTagsError] = useState<string | null>(null);
+  const [markReadError, setMarkReadError] = useState<string | null>(null);
+  const [markingRead, setMarkingRead] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     const nextTags = visibleWorkspaceTags(fork.personal_tags);
@@ -68,13 +78,21 @@ export function WorkspaceArticleRow({
 
   async function markRead(): Promise<void> {
     if (!token) return;
-    await authenticatedPut(`/api/v1/current-affairs/me/forks/${fork.id}/progress`, token, {
-      progress_percent: 100,
-      reading_seconds_delta: 0,
-      mark_complete: true
-    });
-    await refreshForks();
-    await onChanged();
+    setMarkingRead(true);
+    setMarkReadError(null);
+    try {
+      await authenticatedPut(`/api/v1/current-affairs/me/forks/${fork.id}/progress`, token, {
+        progress_percent: 100,
+        reading_seconds_delta: 0,
+        mark_complete: true
+      });
+      await refreshForks();
+      await onChanged();
+    } catch {
+      setMarkReadError("Could not mark this article as read. Try again.");
+    } finally {
+      setMarkingRead(false);
+    }
   }
 
   async function savePersonalSummary(): Promise<void> {
@@ -101,6 +119,7 @@ export function WorkspaceArticleRow({
     if (!token) return;
     const nextTags = splitWorkspaceTags(tagsDraft);
     setSavingTags(true);
+    setTagsError(null);
     try {
       await authenticatedPatch(`/api/v1/current-affairs/me/forks/${fork.id}`, token, {
         personal_tags: nextTags
@@ -110,6 +129,8 @@ export function WorkspaceArticleRow({
       setSavedTags(nextTags);
       setTagsDraft(joinWorkspaceTags(nextTags));
       setEditingTags(false);
+    } catch {
+      setTagsError("Could not save tags. Try again.");
     } finally {
       setSavingTags(false);
     }
@@ -117,6 +138,7 @@ export function WorkspaceArticleRow({
 
   function cancelTags(): void {
     setTagsDraft(joinWorkspaceTags(savedTags));
+    setTagsError(null);
     setEditingTags(false);
   }
 
@@ -129,6 +151,7 @@ export function WorkspaceArticleRow({
   function cancelArticleCopy(): void {
     setArticleTitle(title);
     setArticleBody(body);
+    setCopyError(null);
     setEditingCopy(false);
   }
 
@@ -139,6 +162,7 @@ export function WorkspaceArticleRow({
     if (!nextTitle || !nextBody) return;
 
     setSavingCopy(true);
+    setCopyError(null);
     try {
       await authenticatedPatch(`/api/v1/current-affairs/me/forks/${fork.id}`, token, {
         forked_title: nextTitle,
@@ -149,8 +173,40 @@ export function WorkspaceArticleRow({
       setArticleTitle(nextTitle);
       setArticleBody(nextBody);
       setEditingCopy(false);
+    } catch {
+      setCopyError("Could not save your article copy. Try again.");
     } finally {
       setSavingCopy(false);
+    }
+  }
+
+  async function downloadPdf(): Promise<void> {
+    setDownloadingPdf(true);
+    setDownloadError(null);
+    try {
+      const metaParts = [
+        article?.content_kind ? contentKindLabel(article.content_kind) : null,
+        article?.publication_date ? formatDate(article.publication_date) : null,
+        article?.source_name ?? null
+      ].filter(Boolean);
+      await downloadScannedPdf(
+        [
+          {
+            title: articleTitle,
+            meta: metaParts.join(" · "),
+            tags: savedTags,
+            personalNote: savedSummary || undefined,
+            bodyHtml: articleBody
+          }
+        ],
+        articleTitle,
+        user?.email ? `Personal copy - ${user.email}` : undefined
+      );
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+      setDownloadError("Could not generate the PDF. Try again.");
+    } finally {
+      setDownloadingPdf(false);
     }
   }
 
@@ -199,16 +255,34 @@ export function WorkspaceArticleRow({
             )}
             <button
               className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-civic px-3 text-xs font-bold text-white disabled:opacity-60"
-              disabled={fork.read_status === "read"}
+              disabled={fork.read_status === "read" || markingRead}
               onClick={markRead}
               type="button"
             >
               <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
-              Mark read
+              {markingRead ? "Saving..." : "Mark read"}
             </button>
+            <button
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink disabled:opacity-60"
+              disabled={downloadingPdf}
+              onClick={downloadPdf}
+              type="button"
+            >
+              <Download aria-hidden="true" className="h-3.5 w-3.5" />
+              {downloadingPdf ? "Preparing..." : "Download PDF"}
+            </button>
+            <Link
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-xs font-bold text-civic"
+              href={`/current-affairs/workspace/articles/${fork.id}`}
+            >
+              <Highlighter aria-hidden="true" className="h-3.5 w-3.5" />
+              Highlight &amp; annotate
+            </Link>
             {trailingAction}
           </div>
         </div>
+        {markReadError && <p className="mt-2 text-xs font-semibold text-berry">{markReadError}</p>}
+        {downloadError && <p className="mt-2 text-xs font-semibold text-berry">{downloadError}</p>}
 
         {showRepositoryAttach && (
           <div className="mt-3">
@@ -296,6 +370,7 @@ export function WorkspaceArticleRow({
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>
+                {tagsError && <p className="col-span-full text-xs font-semibold text-berry">{tagsError}</p>}
               </div>
             ) : savedTags.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -326,10 +401,11 @@ export function WorkspaceArticleRow({
                 onChange={(event) => setArticleTitle(event.target.value)}
                 value={articleTitle}
               />
-              <textarea
-                className="min-h-36 rounded-md border border-line bg-white px-3 py-2 text-sm leading-6 text-ink"
-                onChange={(event) => setArticleBody(event.target.value)}
-                value={articleBody || ""}
+              <RichTextMarkdownEditor
+                value={articleBody}
+                onChange={setArticleBody}
+                placeholder="Edit your saved copy..."
+                minHeightClass="min-h-36"
               />
               <div className="flex flex-wrap gap-2">
                 <button
@@ -345,15 +421,21 @@ export function WorkspaceArticleRow({
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>
+                {copyError && <p className="text-xs font-semibold text-berry">{copyError}</p>}
               </div>
             </div>
           ) : bodyExpanded ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink/70">
-              {articleBody || "The article body is ready to edit after the note is saved."}
-            </p>
+            <RenderedContent
+              className="mt-2 text-sm leading-6 text-ink/70"
+              content={articleBody || "The article body is ready to edit after the note is saved."}
+            />
           ) : null}
         </section>
         )}
+
+        <div className="mt-2">
+          <SourceArticleConnections article={article} />
+        </div>
       </article>
     );
   }
@@ -386,16 +468,34 @@ export function WorkspaceArticleRow({
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-civic px-3 text-sm font-bold text-white disabled:opacity-60"
-            disabled={fork.read_status === "read"}
+            disabled={fork.read_status === "read" || markingRead}
             onClick={markRead}
             type="button"
           >
             <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-            Mark read
+            {markingRead ? "Saving..." : "Mark read"}
           </button>
+          <button
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink disabled:opacity-60"
+            disabled={downloadingPdf}
+            onClick={downloadPdf}
+            type="button"
+          >
+            <Download aria-hidden="true" className="h-4 w-4" />
+            {downloadingPdf ? "Preparing..." : "Download PDF"}
+          </button>
+          <Link
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-sm font-bold text-civic"
+            href={`/current-affairs/workspace/articles/${fork.id}`}
+          >
+            <Highlighter aria-hidden="true" className="h-4 w-4" />
+            Highlight &amp; annotate
+          </Link>
           {trailingAction}
         </div>
       </div>
+      {markReadError && <p className="mt-2 text-xs font-semibold text-berry">{markReadError}</p>}
+      {downloadError && <p className="mt-2 text-xs font-semibold text-berry">{downloadError}</p>}
       {showRepositoryAttach && (
         <div className="mt-4">
           <RepositoryAttachControl
@@ -436,6 +536,7 @@ export function WorkspaceArticleRow({
                 <X aria-hidden="true" className="h-4 w-4" />
                 Cancel
               </button>
+              {tagsError && <p className="col-span-full text-xs font-semibold text-berry">{tagsError}</p>}
             </div>
           ) : savedTags.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -517,10 +618,11 @@ export function WorkspaceArticleRow({
                 onChange={(event) => setArticleTitle(event.target.value)}
                 value={articleTitle}
               />
-              <textarea
-                className="min-h-36 rounded-md border border-line bg-white px-3 py-2 text-sm leading-6 text-ink"
-                onChange={(event) => setArticleBody(event.target.value)}
-                value={articleBody || ""}
+              <RichTextMarkdownEditor
+                value={articleBody}
+                onChange={setArticleBody}
+                placeholder="Edit your saved copy..."
+                minHeightClass="min-h-36"
               />
               <div className="flex flex-wrap gap-2">
                 <button
@@ -536,14 +638,18 @@ export function WorkspaceArticleRow({
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>
+                {copyError && <p className="text-xs font-semibold text-berry">{copyError}</p>}
               </div>
             </div>
           ) : (
-            <p className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-ink/65">
-              {articleBody || "The article body is ready to edit after the note is saved."}
-            </p>
+            <RenderedContent
+              className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-ink/65"
+              content={articleBody || "The article body is ready to edit after the note is saved."}
+            />
           )}
         </section>
+
+        <SourceArticleConnections article={article} />
       </div>
     </article>
   );

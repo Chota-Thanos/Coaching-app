@@ -4,7 +4,7 @@ import { FilePlus2, Save, Tags, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { StudentArticle, StudentCollection } from "../../../lib/api";
-import { joinWorkspaceTags, splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
+import { createUniqueWorkspaceSlug, joinWorkspaceTags, splitWorkspaceTags } from "../../../lib/workspace";
 import { authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
 
 type RepositoryOwnArticleModalProps = {
@@ -14,10 +14,6 @@ type RepositoryOwnArticleModalProps = {
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 };
-
-function createUniqueSlug(title: string): string {
-  return `${workspaceSlug(title)}-${Date.now().toString(36)}`;
-}
 
 export function RepositoryOwnArticleModal({
   repository,
@@ -79,7 +75,7 @@ export function RepositoryOwnArticleModal({
       } else {
         const createdArticle = await authenticatedPost<StudentArticle>("/api/v1/current-affairs/me/articles", token, {
           title: cleanTitle,
-          slug: createUniqueSlug(cleanTitle),
+          slug: createUniqueWorkspaceSlug(cleanTitle),
           body: cleanBody,
           source_url: sourceUrl.trim() || undefined,
           personal_tags: selectedTags,

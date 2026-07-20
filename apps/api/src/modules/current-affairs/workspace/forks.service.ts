@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { addUpdate, requireUpdates } from "../../../common/sql.js";
 import { one, query, transaction } from "../../../db.js";
 import type { ForkArticleInput, UpdateForkInput } from "../schemas.js";
+import { masterArticleEnrichmentJsonbPairs } from "../master/article-enrichment-sql.js";
 
 async function ensureUndefinedCollection(client: PoolClient, userId: number): Promise<number> {
   const existing = await client.query<{ id: number }>(
@@ -161,7 +162,7 @@ export async function listForks(userId: number, options: { limit: number; offset
           ),
           '[]'::jsonb
         ) as collection_names,
-        row_to_json(ma.*) as master_article,
+        to_jsonb(ma.*) || jsonb_build_object(${masterArticleEnrichmentJsonbPairs}) as master_article,
         case when sarp.id is null then null else row_to_json(sarp.*) end as reading_progress
       from current_affairs.student_article_forks saf
       join current_affairs.master_articles ma on ma.id = saf.master_article_id
@@ -179,7 +180,7 @@ export async function getFork(id: number, userId: number): Promise<unknown | nul
     `
       select
         saf.*,
-        row_to_json(ma.*) as master_article,
+        to_jsonb(ma.*) || jsonb_build_object(${masterArticleEnrichmentJsonbPairs}) as master_article,
         case when sarp.id is null then null else row_to_json(sarp.*) end as reading_progress,
         coalesce(jsonb_agg(distinct to_jsonb(sah.*)) filter (where sah.id is not null), '[]'::jsonb) as highlights,
         coalesce(jsonb_agg(distinct to_jsonb(san.*)) filter (where san.id is not null), '[]'::jsonb) as notes

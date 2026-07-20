@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ImagePlus, Layers3, Plus, Trash2, Link2, ExternalLink, FileText, RefreshCw, Sparkles } from "lucide-react";
-import { useState, useEffect } from "react";
+import { ImagePlus, Layers3, Plus, Trash2, Link2, ExternalLink, FileText, RefreshCw, Sparkles, ArrowDownToLine, ArrowUpFromLine, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import type { FormEvent } from "react";
 import type { AdminArticleDetail, AdminArticleSummary, ArticleAsset, ArticleSection, CreateArticleAssetPayload } from "../../../lib/api";
 import { ARTICLE_ASSET_TYPES, adminSlug, type ArticleAssetType } from "../../../lib/admin-current-affairs";
@@ -76,6 +76,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   const [relationNote, setRelationNote] = useState<string>("");
   const [relationPending, setRelationPending] = useState(false);
   const [relationConceptsOnly, setRelationConceptsOnly] = useState(false);
+  const [relationSearchQuery, setRelationSearchQuery] = useState("");
 
   // Article role (event/concept) state
   const [roleSaving, setRoleSaving] = useState(false);
@@ -86,14 +87,16 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   const [newUpdateBody, setNewUpdateBody] = useState("");
   const [savingUpdate, setSavingUpdate] = useState(false);
 
-  // Backlink Modal states
-  const [backlinkModalOpen, setBacklinkModalOpen] = useState(false);
-  const [backlinkDestArticle, setBacklinkDestArticle] = useState<{ id: number; title: string; slug: string } | null>(null);
-  const [backlinkDestSections, setBacklinkDestSections] = useState<ArticleSection[]>([]);
-  const [selectedDestSectionId, setSelectedDestSectionId] = useState<string>("");
-  const [backlinkContent, setBacklinkContent] = useState("");
-  const [backlinkLoadingSections, setBacklinkLoadingSections] = useState(false);
-  const [backlinkPending, setBacklinkPending] = useState(false);
+  // Reference insert modal states (import content/link from another article, or export it there)
+  type RefDirection = "import" | "export";
+  const [refModalOpen, setRefModalOpen] = useState(false);
+  const [refDirection, setRefDirection] = useState<RefDirection>("export");
+  const [refOtherArticle, setRefOtherArticle] = useState<{ id: number; title: string; slug: string } | null>(null);
+  const [refTargetSections, setRefTargetSections] = useState<ArticleSection[]>([]);
+  const [refSelectedSectionId, setRefSelectedSectionId] = useState<string>("");
+  const [refContent, setRefContent] = useState("");
+  const [refLoadingSections, setRefLoadingSections] = useState(false);
+  const [refPending, setRefPending] = useState(false);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -171,21 +174,16 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     }
   }
 
-  async function createRelation(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (!token || !article || !targetArticleId) return;
-
+  async function addRelation(targetId: number, relType: string, label?: string, note?: string): Promise<void> {
+    if (!token || !article) return;
     setRelationPending(true);
     try {
       await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/relations`, token, {
-        target_article_id: Number(targetArticleId),
-        relation_type: relationType,
-        label: relationLabel || undefined,
-        note: relationNote || undefined
+        target_article_id: targetId,
+        relation_type: relType,
+        label: label || undefined,
+        note: note || undefined
       });
-      setTargetArticleId("");
-      setRelationLabel("");
-      setRelationNote("");
       await onRefresh();
       setMessage("Relation added successfully.");
     } catch {
@@ -194,6 +192,69 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
       setRelationPending(false);
     }
   }
+
+  async function createRelation(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (!targetArticleId) return;
+    await addRelation(Number(targetArticleId), relationType, relationLabel, relationNote);
+    setTargetArticleId("");
+    setRelationLabel("");
+    setRelationNote("");
+  }
+
+  // Already-linked article IDs, so suggestions never repeat an existing relation.
+  const alreadyLinkedIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (!article) return ids;
+    article.outgoing_relations.forEach((r) => ids.add(Number(r.target_article.id)));
+    article.incoming_relations.forEach((r) => ids.add(Number(r.source_article.id)));
+    return ids;
+  }, [article]);
+
+  // Suggest concept articles either literally mentioned in this article's text,
+  // or sharing tags/keywords with it — so linking rarely needs manual searching.
+  const suggestedConcepts = useMemo(() => {
+    if (!article) return [];
+    const bodyText = (article.body || "").toLowerCase();
+    const titleText = (article.title || "").toLowerCase();
+    const currentTags = new Set(
+      [...(article.institute_tags || []), ...(article.keywords || [])].map((t) => t.toLowerCase().trim())
+    );
+
+    return allArticles
+      .filter((a) => a.article_role === "concept" && Number(a.id) !== article.id && !alreadyLinkedIds.has(Number(a.id)))
+      .map((candidate) => {
+        const candidateTitle = (candidate.title || "").toLowerCase().trim();
+        let score = 0;
+        const reasons: string[] = [];
+
+        if (candidateTitle.length > 3 && (bodyText.includes(candidateTitle) || titleText.includes(candidateTitle))) {
+          score += 10;
+          reasons.push("mentioned in this article");
+        }
+
+        const candidateTags = [...(candidate.institute_tags || []), ...(candidate.keywords || [])].map((t) => t.toLowerCase().trim());
+        const overlap = candidateTags.filter((t) => currentTags.has(t));
+        if (overlap.length > 0) {
+          score += overlap.length * 3;
+          reasons.push(`shared tags: ${overlap.slice(0, 2).join(", ")}`);
+        }
+
+        return { candidate, score, reason: reasons.join(" · ") };
+      })
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }, [article, allArticles, alreadyLinkedIds]);
+
+  const filteredRelationTargets = useMemo(() => {
+    if (!article) return [];
+    const query = relationSearchQuery.trim().toLowerCase();
+    return allArticles
+      .filter((a) => Number(a.id) !== article.id)
+      .filter((a) => !relationConceptsOnly || a.article_role === "concept")
+      .filter((a) => !query || a.title.toLowerCase().includes(query));
+  }, [allArticles, article, relationConceptsOnly, relationSearchQuery]);
 
   async function deleteRelation(relationId: number): Promise<void> {
     if (!token || !window.confirm("Are you sure you want to remove this relation?")) return;
@@ -206,44 +267,69 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     }
   }
 
-  async function openBacklinkModal(destId: number, destTitle: string, destSlug: string) {
+  function referenceHtml(title: string, slug: string, summary?: string | null): string {
+    const desc = summary?.trim();
+    return `<p>${desc ? `${desc} ` : ""}<a href="/current-affairs/articles/${slug}">Read more: ${title}</a></p>`;
+  }
+
+  async function openReferenceModal(
+    direction: RefDirection,
+    otherId: number,
+    otherTitle: string,
+    otherSlug: string,
+    otherSummary?: string | null
+  ) {
     if (!token || !article) return;
-    setBacklinkDestArticle({ id: destId, title: destTitle, slug: destSlug });
-    setBacklinkModalOpen(true);
-    setBacklinkLoadingSections(true);
-    setSelectedDestSectionId("");
-    setBacklinkContent(`<p>See also: <a href="/current-affairs/articles/${article.slug}">${article.title}</a></p>`);
-    
-    try {
-      const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${destId}`, token);
-      setBacklinkDestSections(detail.sections || []);
-    } catch (err) {
-      console.error("Failed to load sections for destination article:", err);
-      setBacklinkDestSections([]);
-    } finally {
-      setBacklinkLoadingSections(false);
+    setRefDirection(direction);
+    setRefOtherArticle({ id: otherId, title: otherTitle, slug: otherSlug });
+    setRefModalOpen(true);
+    setRefSelectedSectionId("");
+
+    if (direction === "export") {
+      // Insert INTO the linked article; the content references the current article.
+      setRefContent(referenceHtml(article.title, article.slug, article.seo_description));
+      setRefLoadingSections(true);
+      try {
+        const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${otherId}`, token);
+        setRefTargetSections(detail.sections || []);
+      } catch (err) {
+        console.error("Failed to load sections for destination article:", err);
+        setRefTargetSections([]);
+      } finally {
+        setRefLoadingSections(false);
+      }
+    } else {
+      // Insert INTO the current article; the content references the linked article.
+      setRefContent(referenceHtml(otherTitle, otherSlug, otherSummary));
+      setRefTargetSections(article.sections || []);
+      setRefLoadingSections(false);
     }
   }
 
-  async function submitBacklink(event: FormEvent<HTMLFormElement>) {
+  async function submitReference(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token || !backlinkDestArticle) return;
-    
-    setBacklinkPending(true);
+    if (!token || !article || !refOtherArticle) return;
+
+    const insertTargetId = refDirection === "export" ? refOtherArticle.id : article.id;
+    setRefPending(true);
     try {
-      await authenticatedPost(`/api/v1/current-affairs/articles/${backlinkDestArticle.id}/insert-content`, token, {
-        content: backlinkContent,
-        section_id: selectedDestSectionId ? Number(selectedDestSectionId) : undefined
+      await authenticatedPost(`/api/v1/current-affairs/articles/${insertTargetId}/insert-content`, token, {
+        content: refContent,
+        section_id: refSelectedSectionId ? Number(refSelectedSectionId) : undefined
       });
-      setBacklinkModalOpen(false);
-      setBacklinkDestArticle(null);
+      setRefModalOpen(false);
+      setRefOtherArticle(null);
       await onRefresh();
-      setMessage(`Backlink successfully inserted into '${backlinkDestArticle.title}'`);
+      setMessage(
+        refDirection === "export"
+          ? `Reference inserted into '${refOtherArticle.title}'.`
+          : `Reference to '${refOtherArticle.title}' inserted into this article.`
+      );
     } catch (err) {
       console.error(err);
-      setMessage("Could not insert backlink.");
+      setMessage("Could not insert reference.");
     } finally {
-      setBacklinkPending(false);
+      setRefPending(false);
     }
   }
 
@@ -555,21 +641,57 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
           <Link2 aria-hidden="true" className="h-5 w-5 text-civic" />
           <h3 className="text-lg font-black text-ink">Relations & Cross-Linking</h3>
         </div>
-        
+
+        {suggestedConcepts.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-civic/20 bg-civic/5 p-3">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-civic">
+              <Sparkles className="h-3.5 w-3.5" />
+              Suggested concepts (matched by mention or shared tags — click to link instantly)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {suggestedConcepts.map(({ candidate, reason }) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  disabled={relationPending}
+                  onClick={() => void addRelation(Number(candidate.id), "related_reference")}
+                  title={reason}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-civic/30 bg-white px-3 py-1.5 text-xs font-bold text-civic transition-all hover:bg-civic hover:text-white disabled:opacity-50"
+                >
+                  <Plus className="h-3 w-3" />
+                  {candidate.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Form to Add Relation */}
         <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createRelation}>
-          <label className="flex items-center gap-2 text-xs font-bold text-ink/75 cursor-pointer">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 rounded border-line accent-civic"
-              checked={relationConceptsOnly}
-              onChange={(e) => setRelationConceptsOnly(e.target.checked)}
-            />
-            Concepts only (reusable topic primers)
-          </label>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/40" />
+              <input
+                type="text"
+                className="h-9 w-full rounded-md border border-line bg-white pl-8 pr-3 text-xs outline-none focus:border-civic"
+                placeholder="Search articles by title..."
+                value={relationSearchQuery}
+                onChange={(e) => setRelationSearchQuery(e.target.value)}
+              />
+            </div>
+            <label className="flex items-center gap-2 whitespace-nowrap text-xs font-bold text-ink/75 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border-line accent-civic"
+                checked={relationConceptsOnly}
+                onChange={(e) => setRelationConceptsOnly(e.target.checked)}
+              />
+              Concepts only
+            </label>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1 text-sm font-bold text-ink">
-              Related Article
+              Related Article ({filteredRelationTargets.length} match{filteredRelationTargets.length === 1 ? "" : "es"})
               <select
                 className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
                 onChange={(event) => setTargetArticleId(event.target.value)}
@@ -577,14 +699,11 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 value={targetArticleId}
               >
                 <option value="">-- Choose Article --</option>
-                {allArticles
-                  .filter((a) => Number(a.id) !== article.id)
-                  .filter((a) => !relationConceptsOnly || a.article_role === "concept")
-                  .map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title} ({a.content_kind.replace(/_/g, " ")}{a.article_role === "concept" ? " — Concept" : ""})
-                    </option>
-                  ))}
+                {filteredRelationTargets.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.title} ({a.content_kind.replace(/_/g, " ")}{a.article_role === "concept" ? " — Concept" : ""})
+                  </option>
+                ))}
               </select>
             </label>
             <label className="grid gap-1 text-sm font-bold text-ink">
@@ -682,12 +801,20 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                       </button>
                     )}
                     <button
-                      onClick={() => openBacklinkModal(Number(rel.target_article.id), rel.target_article.title, rel.target_article.slug)}
+                      onClick={() => openReferenceModal("import", Number(rel.target_article.id), rel.target_article.title, rel.target_article.slug, rel.target_article.seo_description)}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-bold text-civic hover:border-civic transition-all"
+                      type="button"
+                    >
+                      <ArrowDownToLine className="h-3 w-3" />
+                      Import reference
+                    </button>
+                    <button
+                      onClick={() => openReferenceModal("export", Number(rel.target_article.id), rel.target_article.title, rel.target_article.slug)}
                       className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white hover:bg-civic/90 transition-all"
                       type="button"
                     >
-                      <Link2 className="h-3 w-3" />
-                      Insert Link Back
+                      <ArrowUpFromLine className="h-3 w-3" />
+                      Export reference
                     </button>
                     <button
                       onClick={() => deleteRelation(rel.id)}
@@ -745,12 +872,20 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                       </button>
                     )}
                     <button
-                      onClick={() => openBacklinkModal(Number(rel.source_article.id), rel.source_article.title, rel.source_article.slug)}
+                      onClick={() => openReferenceModal("import", Number(rel.source_article.id), rel.source_article.title, rel.source_article.slug, rel.source_article.seo_description)}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-bold text-civic hover:border-civic transition-all"
+                      type="button"
+                    >
+                      <ArrowDownToLine className="h-3 w-3" />
+                      Import reference
+                    </button>
+                    <button
+                      onClick={() => openReferenceModal("export", Number(rel.source_article.id), rel.source_article.title, rel.source_article.slug)}
                       className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white hover:bg-civic/90 transition-all"
                       type="button"
                     >
-                      <Link2 className="h-3 w-3" />
-                      Insert Link Back
+                      <ArrowUpFromLine className="h-3 w-3" />
+                      Export reference
                     </button>
                     <button
                       onClick={() => deleteRelation(rel.id)}
@@ -823,49 +958,57 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         </section>
       )}
 
-      {/* Backlink Insertion Modal Overlay */}
-      {backlinkModalOpen && backlinkDestArticle && (
+      {/* Reference Insert Modal Overlay */}
+      {refModalOpen && refOtherArticle && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <form 
-            onSubmit={submitBacklink} 
+          <form
+            onSubmit={submitReference}
             className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200 space-y-4"
           >
             <button
               className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-white hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
               onClick={() => {
-                setBacklinkModalOpen(false);
-                setBacklinkDestArticle(null);
+                setRefModalOpen(false);
+                setRefOtherArticle(null);
               }}
               type="button"
             >
               ✕
             </button>
-            
+
             <div>
               <h3 className="text-lg font-black text-ink flex items-center gap-2">
-                <Link2 className="h-5 w-5 text-civic" />
-                Insert Backlink & Content
+                {refDirection === "export" ? (
+                  <ArrowUpFromLine className="h-5 w-5 text-civic" />
+                ) : (
+                  <ArrowDownToLine className="h-5 w-5 text-civic" />
+                )}
+                {refDirection === "export" ? "Export Reference" : "Import Reference"}
               </h3>
               <p className="text-xs text-ink/60 mt-1">
-                Insert a backlink pointing to the current article <strong>"{article.title}"</strong> into the target article <strong>"{backlinkDestArticle.title}"</strong>.
+                {refDirection === "export" ? (
+                  <>Insert a short reference pointing to <strong>"{article.title}"</strong> into the target article <strong>"{refOtherArticle.title}"</strong>.</>
+                ) : (
+                  <>Insert a short reference to <strong>"{refOtherArticle.title}"</strong> into this article, <strong>"{article.title}"</strong>.</>
+                )}
               </p>
             </div>
 
             <label className="grid gap-1.5 text-xs font-bold text-ink">
               Select Target Placement Area
-              {backlinkLoadingSections ? (
+              {refLoadingSections ? (
                 <div className="flex items-center gap-2 text-ink/65 text-xs py-2 bg-paper/50 rounded px-3 border border-line">
                   <RefreshCw className="h-3.5 w-3.5 animate-spin text-civic" />
                   <span>Loading article sections...</span>
                 </div>
               ) : (
                 <select
-                  value={selectedDestSectionId}
-                  onChange={(e) => setSelectedDestSectionId(e.target.value)}
+                  value={refSelectedSectionId}
+                  onChange={(e) => setRefSelectedSectionId(e.target.value)}
                   className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                 >
                   <option value="">Main Body (Append to end)</option>
-                  {backlinkDestSections.map(sec => (
+                  {refTargetSections.map(sec => (
                     <option key={sec.id} value={sec.id}>
                       Section: {sec.heading}
                     </option>
@@ -875,14 +1018,17 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
             </label>
 
             <label className="grid gap-1.5 text-xs font-bold text-ink">
-              Backlink HTML Content to Insert
+              Reference HTML Content to Insert
               <textarea
-                value={backlinkContent}
-                onChange={(e) => setBacklinkContent(e.target.value)}
+                value={refContent}
+                onChange={(e) => setRefContent(e.target.value)}
                 required
                 className="min-h-[120px] rounded-lg border border-line p-3 font-mono text-xs outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                placeholder="HTML to append, e.g. <p>See also: <a href=&quot;/current-affairs/articles/slug&quot;>Title</a></p>"
+                placeholder="HTML to append, e.g. <p>Short blurb <a href=&quot;/current-affairs/articles/slug&quot;>Read more: Title</a></p>"
               />
+              <span className="text-[11px] font-normal text-ink/50">
+                Pre-filled from the linked article's SEO description, if it has one — edit freely before inserting.
+              </span>
             </label>
 
             <div className="flex gap-3 justify-end pt-4 border-t border-line">
@@ -890,19 +1036,19 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 type="button"
                 className="h-10 px-4 rounded-lg border border-line font-bold text-xs text-ink hover:bg-paper"
                 onClick={() => {
-                  setBacklinkModalOpen(false);
-                  setBacklinkDestArticle(null);
+                  setRefModalOpen(false);
+                  setRefOtherArticle(null);
                 }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={backlinkPending}
+                disabled={refPending}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-civic px-4 text-xs font-bold text-white shadow-md hover:bg-civic/90 transition-all"
               >
-                {backlinkPending && <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />}
-                Insert Backlink
+                {refPending && <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />}
+                {refDirection === "export" ? "Export Reference" : "Import Reference"}
               </button>
             </div>
           </form>

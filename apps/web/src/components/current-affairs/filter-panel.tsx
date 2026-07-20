@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Filter, X } from "lucide-react";
 import type { ArticleFiltersResponse, CategoryNode } from "../../lib/api";
 import type { CurrentAffairsHub } from "../../lib/current-affairs";
@@ -13,52 +14,8 @@ type FilterPanelProps = {
   selectedYear?: string;
 };
 
-/* ── Tree building ──────────────────────────────────────── */
-
-type CategoryTree = CategoryNode & { children: CategoryTree[] };
-
-function buildTree(flat: CategoryNode[]): CategoryTree[] {
-  const byId = new Map<number, CategoryTree>(
-    flat.map((node) => ({ ...node, children: [] })).map((node) => [node.id, node])
-  );
-  const roots: CategoryTree[] = [];
-  for (const node of byId.values()) {
-    if (node.parent_id === null) {
-      roots.push(node);
-    } else {
-      const parent = byId.get(node.parent_id);
-      if (parent) {
-        parent.children.push(node);
-      } else {
-        roots.push(node); // orphan → treat as root
-      }
-    }
-  }
-  return roots;
-}
-
 function categoryValue(category: CategoryNode): string {
   return category.slug || String(category.id);
-}
-
-/* ── Flat list for <select> with indentation ───────────── */
-
-type FlatOption = {
-  value: string;
-  label: string;
-  depth: number;
-};
-
-function flattenTree(nodes: CategoryTree[], depth = 0): FlatOption[] {
-  const result: FlatOption[] = [];
-  for (const node of nodes) {
-    const prefix = depth > 0 ? "  ".repeat(depth) + "↳ " : "";
-    result.push({ value: categoryValue(node), label: `${prefix}${node.name}`, depth });
-    if (node.children.length > 0) {
-      result.push(...flattenTree(node.children, depth + 1));
-    }
-  }
-  return result;
 }
 
 export function FilterPanel({
@@ -68,12 +25,104 @@ export function FilterPanel({
   selectedMonth,
   selectedYear
 }: FilterPanelProps) {
-  const hasActiveFilter = Boolean(selectedCategory || selectedMonth || selectedYear);
-  const tree = buildTree(filters.categories);
-  const flatOptions = flattenTree(tree);
+  const categories = filters.categories;
 
-  // Find the display label for the active category chip
-  const activeCategory = flatOptions.find((o) => o.value === selectedCategory);
+  const gsPapers = useMemo(() => categories.filter((c) => c.node_type === "gs_paper"), [categories]);
+  const hasGsPapers = gsPapers.length > 0;
+  const allSubjects = useMemo(() => categories.filter((c) => c.node_type === "subject"), [categories]);
+  const allTopics = useMemo(() => categories.filter((c) => c.node_type === "topic"), [categories]);
+  const allSubtopics = useMemo(() => categories.filter((c) => c.node_type === "subtopic"), [categories]);
+
+  const [gsPaperId, setGsPaperId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [topicId, setTopicId] = useState("");
+  const [subtopicId, setSubtopicId] = useState("");
+
+  // Resolve the URL's current category value (slug or id, at any level) into
+  // its full ancestor chain so the cascading selects preselect correctly.
+  useEffect(() => {
+    if (!selectedCategory) {
+      setGsPaperId("");
+      setSubjectId("");
+      setTopicId("");
+      setSubtopicId("");
+      return;
+    }
+
+    const match = categories.find((c) => categoryValue(c) === selectedCategory);
+    if (!match) return;
+
+    if (match.node_type === "subtopic") {
+      setSubtopicId(String(match.id));
+      const topic = allTopics.find((t) => t.id === match.parent_id);
+      setTopicId(topic ? String(topic.id) : "");
+      const subject = topic ? allSubjects.find((s) => s.id === topic.parent_id) : undefined;
+      setSubjectId(subject ? String(subject.id) : "");
+      const paper = subject ? gsPapers.find((g) => g.id === subject.parent_id) : undefined;
+      setGsPaperId(paper ? String(paper.id) : "");
+    } else if (match.node_type === "topic") {
+      setSubtopicId("");
+      setTopicId(String(match.id));
+      const subject = allSubjects.find((s) => s.id === match.parent_id);
+      setSubjectId(subject ? String(subject.id) : "");
+      const paper = subject ? gsPapers.find((g) => g.id === subject.parent_id) : undefined;
+      setGsPaperId(paper ? String(paper.id) : "");
+    } else if (match.node_type === "subject") {
+      setSubtopicId("");
+      setTopicId("");
+      setSubjectId(String(match.id));
+      const paper = gsPapers.find((g) => g.id === match.parent_id);
+      setGsPaperId(paper ? String(paper.id) : "");
+    } else if (match.node_type === "gs_paper") {
+      setSubtopicId("");
+      setTopicId("");
+      setSubjectId("");
+      setGsPaperId(String(match.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, categories]);
+
+  const subjects = useMemo(() => {
+    if (!gsPaperId) return allSubjects;
+    return allSubjects.filter((s) => String(s.parent_id) === gsPaperId);
+  }, [allSubjects, gsPaperId]);
+
+  const topics = useMemo(() => {
+    if (!subjectId) return [];
+    return allTopics.filter((t) => String(t.parent_id) === subjectId);
+  }, [allTopics, subjectId]);
+
+  const subtopics = useMemo(() => {
+    if (!topicId) return [];
+    return allSubtopics.filter((st) => String(st.parent_id) === topicId);
+  }, [allSubtopics, topicId]);
+
+  const selectedNode = useMemo(() => {
+    const deepestId = subtopicId || topicId || subjectId || gsPaperId;
+    if (!deepestId) return null;
+    return categories.find((c) => String(c.id) === deepestId) ?? null;
+  }, [categories, subtopicId, topicId, subjectId, gsPaperId]);
+
+  const finalCategoryValue = selectedNode ? categoryValue(selectedNode) : "";
+  const hasActiveFilter = Boolean(finalCategoryValue || selectedMonth || selectedYear);
+
+  function handleGsPaperChange(value: string): void {
+    setGsPaperId(value);
+    setSubjectId("");
+    setTopicId("");
+    setSubtopicId("");
+  }
+
+  function handleSubjectChange(value: string): void {
+    setSubjectId(value);
+    setTopicId("");
+    setSubtopicId("");
+  }
+
+  function handleTopicChange(value: string): void {
+    setTopicId(value);
+    setSubtopicId("");
+  }
 
   return (
     <form
@@ -82,22 +131,61 @@ export function FilterPanel({
       method="get"
     >
       <input name="page" type="hidden" value="1" />
+      <input name="category" type="hidden" value={finalCategoryValue} />
 
-      {/* Category — hierarchical <select> */}
+      {hasGsPapers && (
+        <select
+          className="h-9 max-w-[170px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          aria-label="Filter by GS Paper"
+          onChange={(e) => handleGsPaperChange(e.target.value)}
+          value={gsPaperId}
+        >
+          <option value="">All GS Papers</option>
+          {gsPapers.map((paper) => (
+            <option key={paper.id} value={paper.id}>{paper.name}</option>
+          ))}
+        </select>
+      )}
+
       <select
-        className="h-9 max-w-[200px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
-        defaultValue={selectedCategory ?? ""}
-        name="category"
-        id="filter-category"
+        className="h-9 max-w-[180px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
         aria-label="Filter by subject"
+        onChange={(e) => handleSubjectChange(e.target.value)}
+        value={subjectId}
       >
         <option value="">All Subjects</option>
-        {flatOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
+        {subjects.map((subject) => (
+          <option key={subject.id} value={subject.id}>{subject.name}</option>
         ))}
       </select>
+
+      {topics.length > 0 && (
+        <select
+          className="h-9 max-w-[180px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          aria-label="Filter by topic"
+          onChange={(e) => handleTopicChange(e.target.value)}
+          value={topicId}
+        >
+          <option value="">All Topics</option>
+          {topics.map((topic) => (
+            <option key={topic.id} value={topic.id}>{topic.name}</option>
+          ))}
+        </select>
+      )}
+
+      {subtopics.length > 0 && (
+        <select
+          className="h-9 max-w-[180px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          aria-label="Filter by subtopic"
+          onChange={(e) => setSubtopicId(e.target.value)}
+          value={subtopicId}
+        >
+          <option value="">All Subtopics</option>
+          {subtopics.map((subtopic) => (
+            <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>
+          ))}
+        </select>
+      )}
 
       {/* Month / Year */}
       {hub.filterMode === "month" ? (
@@ -153,9 +241,9 @@ export function FilterPanel({
       )}
 
       {/* Active filter chips */}
-      {selectedCategory && activeCategory && (
+      {selectedNode && (
         <span className="inline-flex items-center gap-1 rounded-full bg-civic/12 px-3 py-1 text-xs font-bold text-civic">
-          {activeCategory.label.replace(/^[\s↳]+/, "")}
+          {selectedNode.name}
         </span>
       )}
       {selectedMonth && (

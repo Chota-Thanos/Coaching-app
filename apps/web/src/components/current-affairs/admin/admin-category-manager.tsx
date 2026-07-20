@@ -95,6 +95,10 @@ function formatNodeType(value: string): string {
   return value.replace(/_/g, " ");
 }
 
+function rootParentLabel(contentFamily: ContentFamily | null): string {
+  return contentFamily === "mains" ? "No parent: root GS Paper" : "No parent: root subject";
+}
+
 function sortCategories<T extends CategoryNode>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     const orderDelta = Number(a.display_order ?? 0) - Number(b.display_order ?? 0);
@@ -148,8 +152,9 @@ function flattenTree(nodes: CategoryTreeNode[]): ParentOption[] {
   return options;
 }
 
-function nodeTypeForParent(parent: CategoryNode | null | undefined): CategoryNodeType {
-  if (!parent) return "subject";
+function nodeTypeForParent(parent: CategoryNode | null | undefined, contentFamily: ContentFamily): CategoryNodeType {
+  if (!parent) return contentFamily === "mains" ? "gs_paper" : "subject";
+  if (parent.node_type === "gs_paper") return "subject";
   if (parent.node_type === "subject") return "topic";
   return "subtopic";
 }
@@ -187,19 +192,21 @@ function descendantIds(categories: CategoryNode[], ids: Set<number>): Set<number
 }
 
 function categoryTypeBadgeClass(category: CategoryNode): string {
+  if (category.node_type === "gs_paper") return "bg-berry text-white";
   if (category.node_type === "subject") return "bg-civic text-white";
   if (category.node_type === "topic") return "bg-civic/10 text-civic";
   return "bg-paper text-ink/70";
 }
 
 function categoryTitleClass(category: CategoryNode): string {
+  if (category.node_type === "gs_paper") return "text-xl";
   if (category.node_type === "subject") return "text-lg";
   if (category.node_type === "topic") return "text-sm";
   return "text-xs";
 }
 
 function categoryMetaClass(category: CategoryNode): string {
-  return category.node_type === "subject" ? "text-sm" : "text-xs";
+  return category.node_type === "gs_paper" || category.node_type === "subject" ? "text-sm" : "text-xs";
 }
 
 type CategoryTreeItemProps = {
@@ -224,8 +231,10 @@ function CategoryTreeItem({
   return (
     <div className={category.depth === 0 ? "space-y-2" : "space-y-2 border-l border-line pl-4"}>
       <article
-        className={`rounded-lg border bg-white shadow-sm ${category.node_type === "subject" ? "p-3" : "p-2.5"} ${
-          category.node_type === "subject" ? "border-civic/25" : "border-line"
+        className={`rounded-lg border bg-white shadow-sm ${
+          category.node_type === "gs_paper" || category.node_type === "subject" ? "p-3" : "p-2.5"
+        } ${
+          category.node_type === "gs_paper" ? "border-berry/30" : category.node_type === "subject" ? "border-civic/25" : "border-line"
         }`}
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -438,7 +447,7 @@ export function AdminCategoryManager() {
   }
 
   function handleFamilyChange(value: ContentFamily): void {
-    setForm((current) => ({ ...current, contentFamily: value, parentId: "", nodeType: "subject" }));
+    setForm((current) => ({ ...current, contentFamily: value, parentId: "", nodeType: nodeTypeForParent(null, value) }));
   }
 
   function handleParentChange(value: string): void {
@@ -446,7 +455,7 @@ export function AdminCategoryManager() {
     setForm((current) => ({
       ...current,
       parentId: value,
-      nodeType: nodeTypeForParent(parent)
+      nodeType: nodeTypeForParent(parent, current.contentFamily)
     }));
   }
 
@@ -455,7 +464,7 @@ export function AdminCategoryManager() {
     setEditForm((current) => ({
       ...current,
       parentId: value,
-      nodeType: nodeTypeForParent(parent)
+      nodeType: nodeTypeForParent(parent, current.contentFamily)
     }));
   }
 
@@ -480,7 +489,7 @@ export function AdminCategoryManager() {
   }
 
   function handleBulkCreateFamilyChange(value: ContentFamily): void {
-    setBulkCreateForm((current) => ({ ...current, contentFamily: value, parentId: "", nodeType: "subject" }));
+    setBulkCreateForm((current) => ({ ...current, contentFamily: value, parentId: "", nodeType: nodeTypeForParent(null, value) }));
   }
 
   function handleBulkCreateParentChange(value: string): void {
@@ -488,7 +497,7 @@ export function AdminCategoryManager() {
     setBulkCreateForm((current) => ({
       ...current,
       parentId: value,
-      nodeType: nodeTypeForParent(parent)
+      nodeType: nodeTypeForParent(parent, current.contentFamily)
     }));
   }
 
@@ -496,7 +505,7 @@ export function AdminCategoryManager() {
     const parent = value ? categoriesById.get(Number(value)) : null;
     setBulkReassignForm({
       parentId: value,
-      nodeType: nodeTypeForParent(parent)
+      nodeType: nodeTypeForParent(parent, selectedFamily ?? "prelims")
     });
   }
 
@@ -813,7 +822,7 @@ export function AdminCategoryManager() {
               onChange={(event) => handleParentChange(event.target.value)}
               value={form.parentId}
             >
-              <option value="">No parent: root subject</option>
+              <option value="">{rootParentLabel(form.contentFamily)}</option>
               {parentOptions.map((option) => (
                 <option key={option.category.id} value={option.category.id}>
                   {option.label}
@@ -929,7 +938,7 @@ export function AdminCategoryManager() {
               onChange={(event) => handleBulkCreateParentChange(event.target.value)}
               value={bulkCreateForm.parentId}
             >
-              <option value="">No parent: root subjects</option>
+              <option value="">{rootParentLabel(bulkCreateForm.contentFamily)}</option>
               {bulkCreateParentOptions.map((option) => (
                 <option key={option.category.id} value={option.category.id}>
                   {option.label}
@@ -1001,7 +1010,7 @@ export function AdminCategoryManager() {
               onChange={(event) => handleBulkReassignParentChange(event.target.value)}
               value={bulkReassignForm.parentId}
             >
-              <option value="">No parent: make root subject</option>
+              <option value="">{rootParentLabel(selectedFamily)}</option>
               {bulkReassignParentOptions.map((option) => (
                 <option key={option.category.id} value={option.category.id}>
                   {option.label}
@@ -1095,7 +1104,7 @@ export function AdminCategoryManager() {
                   onChange={(event) => handleEditParentChange(event.target.value)}
                   value={editForm.parentId}
                 >
-                  <option value="">No parent: root subject</option>
+                  <option value="">{rootParentLabel(editForm.contentFamily)}</option>
                   {editParentOptions.map((option) => (
                     <option key={option.category.id} value={option.category.id}>
                       {option.label}

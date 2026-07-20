@@ -5,6 +5,7 @@ import type {
   CreateCollectionInput,
   UpdateCollectionInput
 } from "../schemas.js";
+import { masterArticleEnrichmentJsonbPairs } from "../master/article-enrichment-sql.js";
 
 export async function listCollections(userId: number): Promise<unknown[]> {
   return query(
@@ -39,7 +40,8 @@ export async function getCollection(id: number, userId: number): Promise<unknown
               'master_article', case
                 when ma.id is null then null
                 else to_jsonb(ma) || jsonb_build_object(
-                  'category', case when cn.id is null then null else to_jsonb(cn) end
+                  'category', case when cn.id is null then null else to_jsonb(cn) end,
+                  ${masterArticleEnrichmentJsonbPairs}
                 )
               end,
               'student_article', case when sa.id is null then null else to_jsonb(sa) end

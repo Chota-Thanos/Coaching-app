@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle2, FolderPlus, LayoutDashboard, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, FileDown, FolderPlus, LayoutDashboard, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type {
@@ -13,6 +13,7 @@ import type {
 } from "../../../lib/api";
 import { CURRENT_AFFAIRS_HUBS, articleHref, contentKindLabel } from "../../../lib/current-affairs";
 import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { downloadScannedPdf, type PdfSection } from "../../../lib/export-pdf";
 import { BulkImportPanel } from "./bulk-import-panel";
 import { PersonalArticlesPanel } from "./personal-articles-panel";
 import { RepositoryManager } from "./repository-manager";
@@ -310,13 +311,23 @@ function RepositorySuggestionPanel({
   );
 }
 
+function forkTitle(fork: StudentFork): string {
+  return fork.forked_title ?? fork.master_article?.title ?? `Article #${fork.master_article_id}`;
+}
+
+function forkBody(fork: StudentFork): string {
+  return fork.forked_body ?? fork.master_article?.body ?? "";
+}
+
 export function WorkspaceDashboard() {
-  const { token, isInitialized } = useAuth();
+  const { token, user, isInitialized } = useAuth();
   const searchParams = useSearchParams();
   const [state, setState] = useState<WorkspaceState>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTour, setShowTour] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadAllError, setDownloadAllError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isInitialized && searchParams.get("start_tour") === "true") {
@@ -343,11 +354,12 @@ export function WorkspaceDashboard() {
         
         setState({
           dashboard: {
+            stats: { saved_articles: guestForks.length, completed_articles: 0, due_revisions: 0, reading_seconds_7d: 0 },
             continue_reading: [],
             due_revisions: [],
-            recommended_articles: publicArticles || [],
-            revision_summary: { total: 0, due: 0, done: 0 }
-          } as any,
+            latest_unread: [],
+            recommended_articles: publicArticles || []
+          },
           forks: guestForks,
           collections: guestCollections,
           studentArticles: []
@@ -372,6 +384,47 @@ export function WorkspaceDashboard() {
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  async function downloadAllNotes(): Promise<void> {
+    setDownloadingAll(true);
+    setDownloadAllError(null);
+    try {
+      const forkSections: PdfSection[] = state.forks.map((fork) => ({
+        title: forkTitle(fork),
+        meta: [
+          fork.collection_names && fork.collection_names.length > 0
+            ? `Repository: ${fork.collection_names.join(", ")}`
+            : "Repository: Unfiled",
+          fork.master_article?.content_kind ? contentKindLabel(fork.master_article.content_kind) : null
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        tags: fork.personal_tags,
+        personalNote: fork.personal_summary || undefined,
+        bodyHtml: forkBody(fork)
+      }));
+
+      const ownSections: PdfSection[] = state.studentArticles.map((article) => ({
+        title: article.title,
+        meta: "Repository: My own articles",
+        tags: article.personal_tags,
+        bodyHtml: article.body
+      }));
+
+      const allSections = [...forkSections, ...ownSections];
+      if (allSections.length === 0) {
+        setDownloadAllError("Nothing to export yet - save or write an article first.");
+        return;
+      }
+
+      await downloadScannedPdf(allSections, "My Notes Space", user?.email ? `Personal copy - ${user.email}` : undefined);
+    } catch (err) {
+      console.error("Failed to generate master notes PDF:", err);
+      setDownloadAllError("Could not generate the PDF. Try again.");
+    } finally {
+      setDownloadingAll(false);
+    }
+  }
 
   if (!isInitialized) {
     return (
@@ -423,6 +476,17 @@ export function WorkspaceDashboard() {
             <Sparkles aria-hidden="true" className="h-4 w-4" />
             AI Notes Helper
           </Link>
+          {token && (
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic disabled:opacity-60"
+              disabled={downloadingAll}
+              onClick={downloadAllNotes}
+              type="button"
+            >
+              <FileDown aria-hidden="true" className="h-4 w-4" />
+              {downloadingAll ? "Preparing PDF..." : "Download all notes"}
+            </button>
+          )}
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic disabled:opacity-60"
             disabled={loading}
@@ -435,6 +499,7 @@ export function WorkspaceDashboard() {
         </div>
       </section>
 
+      {downloadAllError && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{downloadAllError}</p>}
       {error && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{error}</p>}
       {loading && !state.dashboard && (
         <p className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70">Loading Notes Space...</p>

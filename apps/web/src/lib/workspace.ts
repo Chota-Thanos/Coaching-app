@@ -10,6 +10,12 @@ export function workspaceSlug(value: string): string {
   return slug || "repository";
 }
 
+// student_articles has a unique(user_id, slug) constraint — always suffix with
+// a time-based token so two drafts with the same title never collide.
+export function createUniqueWorkspaceSlug(value: string): string {
+  return `${workspaceSlug(value)}-${Date.now().toString(36)}`;
+}
+
 export function progressPercent(fork: StudentFork): number {
   const value = Number(fork.reading_progress?.progress_percent ?? 0);
   if (!Number.isFinite(value)) return 0;

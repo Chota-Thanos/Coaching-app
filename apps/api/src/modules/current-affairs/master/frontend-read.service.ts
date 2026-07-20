@@ -44,8 +44,13 @@ function categoryPredicate(category: string, paramPosition: number): string {
 }
 
 export async function listFrontendArticles(options: FrontendArticleListQuery): Promise<unknown> {
-  const params: unknown[] = [options.content_kind, options.article_role];
-  const conditions = ["ma.status = 'published'", "ma.content_kind = $1", "ma.article_role = $2"];
+  const params: unknown[] = [options.content_kind];
+  const conditions = ["ma.status = 'published'", "ma.content_kind = $1"];
+
+  if (options.article_role) {
+    params.push(options.article_role);
+    conditions.push(`ma.article_role = $${params.length}`);
+  }
 
   if (options.category) {
     params.push(options.category);

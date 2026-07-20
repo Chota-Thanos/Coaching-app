@@ -4,7 +4,7 @@ import { FileText, Save } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { StudentArticle, StudentCollection } from "../../../lib/api";
-import { workspaceSlug } from "../../../lib/workspace";
+import { createUniqueWorkspaceSlug } from "../../../lib/workspace";
 import { authenticatedPost, useAuth } from "../../auth/auth-context";
 import { RepositoryAttachControl } from "./repository-attach-control";
 
@@ -43,7 +43,7 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
     try {
       await authenticatedPost<StudentArticle>("/api/v1/current-affairs/me/articles", token, {
         title,
-        slug: workspaceSlug(title),
+        slug: createUniqueWorkspaceSlug(title),
         body,
         source_url: sourceUrl.trim() || undefined,
         personal_tags: splitTags(tags),
@@ -56,7 +56,7 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
       await onChanged();
       setMessage("Draft saved.");
     } catch {
-      setMessage("Could not save draft. Use a unique title and valid source URL.");
+      setMessage("Could not save draft. Check the source URL is a valid link and try again.");
     } finally {
       setPending(false);
     }

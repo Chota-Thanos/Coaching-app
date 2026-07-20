@@ -8,6 +8,7 @@ import {
   Download,
   Edit3,
   ExternalLink,
+  FileDown,
   FilePlus2,
   Filter,
   FolderKanban,
@@ -23,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { StudentArticle, StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
 import { joinWorkspaceTags, splitWorkspaceTags, visibleWorkspaceTags } from "../../../lib/workspace";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, useAuth } from "../../auth/auth-context";
+import { downloadScannedPdf } from "../../../lib/export-pdf";
 import { RepositoryBulkImportModal } from "./repository-bulk-import-modal";
 import { RepositoryOwnArticleModal } from "./repository-own-article-modal";
 import { WorkspaceArticleRow } from "./workspace-article-row";
@@ -163,7 +165,7 @@ function buildFlashcards(items: StudentCollectionItem[]): Flashcard[] {
 }
 
 export function RepositoryDetail({ id }: RepositoryDetailProps) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [repository, setRepository] = useState<StudentCollectionDetail | null>(null);
   const [tagDraft, setTagDraft] = useState("");
   const [tagMessage, setTagMessage] = useState<string | null>(null);
@@ -180,6 +182,8 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
   const [savingTags, setSavingTags] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const loadRepository = useCallback(async () => {
     if (!token) return;
@@ -359,6 +363,30 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
     printWindow.document.close();
   }
 
+  async function downloadRepositoryPdf(): Promise<void> {
+    if (!repository) return;
+    setDownloadingPdf(true);
+    setPdfError(null);
+    try {
+      const printableItems = hasActiveViewFilter ? filteredItems : repository.items;
+      await downloadScannedPdf(
+        printableItems.map((item) => ({
+          title: itemTitle(item),
+          tags: itemTags(item),
+          personalNote: itemNote(item) || undefined,
+          bodyHtml: itemBody(item) || item.student_article?.body || ""
+        })),
+        repository.name,
+        user?.email ? `Personal copy - ${user.email}` : undefined
+      );
+    } catch (err) {
+      console.error("Failed to generate repository PDF:", err);
+      setPdfError("Could not generate the PDF. Try again.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   if (!token) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
@@ -426,8 +454,18 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 <Printer aria-hidden="true" className="h-4 w-4" />
                 Print sheet
               </button>
+              <button
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-white px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
+                disabled={repository.items.length === 0 || downloadingPdf}
+                onClick={downloadRepositoryPdf}
+                type="button"
+              >
+                <FileDown aria-hidden="true" className="h-4 w-4" />
+                {downloadingPdf ? "Preparing PDF..." : "Download PDF"}
+              </button>
             </div>
           </section>
+          {pdfError && <p className="text-sm font-semibold text-berry">{pdfError}</p>}
 
           <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
             <div className="flex items-start gap-3">

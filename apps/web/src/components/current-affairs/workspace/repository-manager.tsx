@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FolderKanban, Plus, X } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, FolderKanban, Plus, X, Filter } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { StudentCollection } from "../../../lib/api";
 import { splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
@@ -21,6 +21,22 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeFilterTags, setActiveFilterTags] = useState<string[]>([]);
+
+  const allRepositoryTags = useMemo(() => {
+    const set = new Set<string>();
+    collections.forEach((c) => (c.custom_tags || []).forEach((tag) => set.add(tag)));
+    return Array.from(set).sort();
+  }, [collections]);
+
+  const filteredCollections = useMemo(() => {
+    if (activeFilterTags.length === 0) return collections;
+    return collections.filter((c) => activeFilterTags.every((tag) => (c.custom_tags || []).includes(tag)));
+  }, [collections, activeFilterTags]);
+
+  function toggleFilterTag(tag: string): void {
+    setActiveFilterTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  }
 
   async function createRepository(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -132,13 +148,44 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
       )}
       {message && <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">{message}</p>}
 
+      {allRepositoryTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-paper/30 p-2.5">
+          <Filter aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-ink/40" />
+          {allRepositoryTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleFilterTag(tag)}
+              className={`rounded-full px-2.5 py-1 text-xs font-bold transition-all ${
+                activeFilterTags.includes(tag) ? "bg-civic text-white" : "bg-white text-ink/65 border border-line hover:border-civic"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {activeFilterTags.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveFilterTags([])}
+              className="ml-1 text-xs font-bold text-ink/50 hover:text-berry"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-3">
         {collections.length === 0 ? (
           <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">
             Create repositories for monthly revision, syllabus topics, interview prep, or PYQ practice.
           </p>
+        ) : filteredCollections.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">
+            No repositories match the selected tags.
+          </p>
         ) : (
-          collections.map((collection) => (
+          filteredCollections.map((collection) => (
             <Link
               className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white p-4 hover:border-civic"
               href={`/current-affairs/workspace/repositories/${collection.id}`}

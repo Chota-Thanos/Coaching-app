@@ -1,7 +1,7 @@
 import type { ContentFamily, ContentKind } from "./current-affairs";
 
 export type MasterArticleStatus = "draft" | "in_review" | "approved" | "published" | "archived";
-export type CategoryNodeType = "subject" | "topic" | "subtopic";
+export type CategoryNodeType = "gs_paper" | "subject" | "topic" | "subtopic";
 export type IngestionItemStatus = "pending_review" | "approved" | "rejected" | "published";
 export type IngestionJobStatus = "queued" | "parsed" | "reviewed" | "published" | "failed";
 export type IngestionParserKind = "structured_current_affairs" | "plain_text" | "manual_json" | "external_ai";
@@ -24,7 +24,7 @@ export const ADMIN_ARTICLE_STATUSES: MasterArticleStatus[] = [
   "archived"
 ];
 
-export const CATEGORY_NODE_TYPES: CategoryNodeType[] = ["subject", "topic", "subtopic"];
+export const CATEGORY_NODE_TYPES: CategoryNodeType[] = ["gs_paper", "subject", "topic", "subtopic"];
 export const INGESTION_ITEM_STATUSES: IngestionItemStatus[] = ["pending_review", "approved", "rejected", "published"];
 export const INGESTION_JOB_STATUSES: IngestionJobStatus[] = ["queued", "parsed", "reviewed", "published", "failed"];
 export const INGESTION_PARSER_KINDS: IngestionParserKind[] = ["structured_current_affairs", "plain_text", "manual_json", "external_ai"];

@@ -58,13 +58,13 @@ export function WorkspaceAiHelper() {
   // Guide generator states
   const [guideTopic, setGuideTopic] = useState("");
   const [generatingGuide, setGeneratingGuide] = useState(false);
-  const [generatedGuide, setGeneratedGuide] = useState<{ title: string; body: string } | null>(null);
-  
+  const [generatedGuide, setGeneratedGuide] = useState<{ title: string; body: string; source: "ai" | "template" } | null>(null);
+
   // Assessment states
   const [quizTopic, setQuizTopic] = useState("");
   const [quizType, setQuizType] = useState<"gk" | "maths" | "passage">("gk");
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
-  const [generatedQuiz, setGeneratedQuiz] = useState<Quiz | null>(null);
+  const [generatedQuiz, setGeneratedQuiz] = useState<(Quiz & { source: "ai" | "template" }) | null>(null);
   
   // Quiz playing states
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
@@ -104,12 +104,16 @@ export function WorkspaceAiHelper() {
     void loadWorkspaceMeta();
   }, [loadWorkspaceMeta]);
 
-  // Generate study notes (with client fallback if role is not admin/editor)
+  // Generate study notes. The backend AI endpoint requires an admin/editor
+  // role, so for students this always 403s and falls through to the
+  // client-side template below — that template is a generic fill-in-the-blanks
+  // outline, not real AI output, and must be labeled as such (never as "AI
+  // generated"), or it misleads students into treating placeholder text as fact.
   const handleGenerateGuide = async () => {
     if (!guideTopic.trim() || !token) return;
     setGeneratingGuide(true);
     setGeneratedGuide(null);
-    
+
     // Simulate generation steps for UI richness
     await new Promise((r) => setTimeout(r, 1200));
 
@@ -129,17 +133,19 @@ export function WorkspaceAiHelper() {
         const bodyContent = sectionsList.map((sec: any) => `## ${sec.section_title}\n\n${sec.content}`).join("\n\n");
         setGeneratedGuide({
           title: art.title || `Study Notes: ${guideTopic}`,
-          body: bodyContent
+          body: bodyContent,
+          source: "ai"
         });
       } else {
         throw new Error("No article returned");
       }
     } catch {
-      // Fallback: Client-side High-quality UPSC Notes Generator
+      // Fallback: generic fill-in-the-blanks outline. Not AI-generated, not
+      // fact-checked — a starting structure only.
       const mainTopic = guideTopic.trim();
       const capitalizedTopic = mainTopic.charAt(0).toUpperCase() + mainTopic.slice(1);
-      
-      const fallbackTitle = `Comprehensive UPSC Study Guide: ${capitalizedTopic}`;
+
+      const fallbackTitle = `Study Outline Template: ${capitalizedTopic}`;
       const fallbackBody = `## Syllabus Connection
 - **GS Paper II & III**: Governance, Public Policy, Regulatory Institutions, and Technology-driven development models.
 
@@ -161,7 +167,8 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
 
       setGeneratedGuide({
         title: fallbackTitle,
-        body: fallbackBody
+        body: fallbackBody,
+        source: "template"
       });
     } finally {
       setGeneratingGuide(false);
@@ -204,7 +211,9 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
     }
   };
 
-  // Generate self-assessment quiz (with client-side fallback)
+  // Generate self-assessment quiz. Same as the study guide generator above:
+  // the backend endpoint is admin/editor-only, so students always fall through
+  // to the fixed-pattern template questions below — label those honestly.
   const handleGenerateQuiz = async () => {
     if (!quizTopic.trim() || !token) return;
     setGeneratingQuiz(true);
@@ -229,7 +238,8 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
         setGeneratedQuiz({
           passage_title: res.passage_title,
           passage_text: res.passage_text,
-          questions: res.questions
+          questions: res.questions,
+          source: "ai"
         });
       } else {
         throw new Error("Invalid schema");
@@ -333,7 +343,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
         };
       }
 
-      setGeneratedQuiz(mockQuiz);
+      setGeneratedQuiz({ ...mockQuiz, source: "template" });
     } finally {
       setGeneratingQuiz(false);
     }
@@ -506,7 +516,11 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
               <div className="bg-white border border-line rounded-2xl p-6 shadow-sm space-y-5 animate-in fade-in duration-200">
                 <div className="flex items-start justify-between border-b border-line pb-4 gap-4">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-civic">AI generated notes</span>
+                    {generatedGuide.source === "ai" ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-civic">AI generated notes</span>
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-saffron">Starter template — not AI, not fact-checked</span>
+                    )}
                     <h3 className="text-xl font-black text-ink mt-0.5">{generatedGuide.title}</h3>
                   </div>
                   <button
@@ -519,6 +533,15 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                     Save to Library
                   </button>
                 </div>
+
+                {generatedGuide.source === "template" && (
+                  <div className="flex items-start gap-2 rounded-lg border border-saffron/30 bg-saffron/5 p-3 text-xs text-ink/70">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-saffron mt-0.5" />
+                    <span>
+                      This is a generic structural outline, not real AI analysis of "{guideTopic}" — it's the same skeleton for every topic. Replace every placeholder point with verified facts from your saved articles before treating it as study material.
+                    </span>
+                  </div>
+                )}
 
                 <article className="prose prose-sm max-w-none text-ink text-sm leading-relaxed whitespace-pre-wrap font-sans p-4 bg-paper/30 rounded-xl border border-line/40">
                   {generatedGuide.body}
@@ -612,6 +635,20 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
 
             {!generatingQuiz && generatedQuiz && (
               <div className="space-y-4">
+                {generatedQuiz.source === "template" ? (
+                  <div className="flex items-start gap-2 rounded-lg border border-saffron/30 bg-saffron/5 p-3 text-xs text-ink/70">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-saffron mt-0.5" />
+                    <span>
+                      <strong className="text-saffron">Practice template, not AI-generated.</strong> These questions follow a fixed pattern with "{quizTopic}" substituted in — they are not real-time analysis of the topic. Use them for format practice only, not as verified facts.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg border border-civic/20 bg-civic/5 p-3 text-xs font-bold text-civic">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI-generated assessment
+                  </div>
+                )}
+
                 {/* Passage card if reading passage is selected */}
                 {quizType === "passage" && generatedQuiz.passage_text && (
                   <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-3">

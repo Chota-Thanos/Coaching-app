@@ -237,11 +237,40 @@ export type StudentFork = {
     reading_seconds?: number | string;
     last_read_at?: string | null;
   } | null;
+  highlights?: StudentHighlight[];
+  notes?: StudentNote[];
+};
+
+export type TextAnchor = {
+  quote: string;
+  prefix: string;
+  suffix: string;
+  start: number;
+};
+
+export type StudentHighlight = {
+  id: number;
+  fork_id: number;
+  anchor_json: TextAnchor | Record<string, never>;
+  color: string;
+  note: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type StudentNote = {
+  id: number;
+  fork_id: number;
+  anchor_json: TextAnchor | Record<string, never>;
+  note: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type StudentMasterArticle = {
   id: number;
   content_kind: ContentKind;
+  article_role?: ArticleRole;
   title: string;
   slug: string;
   body: string;
@@ -254,6 +283,25 @@ export type StudentMasterArticle = {
   status?: string;
   created_at?: string;
   updated_at?: string;
+  sections?: ArticleSection[];
+  outgoing_relations?: Array<{
+    id: number;
+    relation_type: string;
+    label: string | null;
+    note?: string | null;
+    display_order?: number;
+    target_article: ArticleSummary;
+  }>;
+  incoming_relations?: Array<{
+    id: number;
+    relation_type: string;
+    label: string | null;
+    note?: string | null;
+    display_order?: number;
+    source_article: ArticleSummary;
+  }>;
+  appearance_count?: number;
+  updates?: ArticleUpdateEntry[];
 };
 
 export type StudentArticle = {
