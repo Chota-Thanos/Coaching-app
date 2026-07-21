@@ -28,7 +28,12 @@ const envSchema = z.object({
   // mailer logs the message instead of sending, so dev/staging still works.
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  // NOT z.coerce.boolean(): that does Boolean("false") === true, so the common
+  // `SMTP_SECURE=false` would silently enable implicit TLS and break port 587.
+  SMTP_SECURE: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1" || v === "yes"),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   MAIL_FROM: z.string().default("WayToIAS <no-reply@waytoias.com>"),
