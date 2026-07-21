@@ -496,9 +496,14 @@ export async function verifyRazorpayPayment(
   }
 
   const keySecret = config.RAZORPAY_KEY_SECRET;
-  const isSimulated = input.razorpay_order_id.startsWith("sim_order_");
+  // A "sim_order_*" id is only trustworthy when this server is genuinely running
+  // in simulated mode (no Razorpay keys). The id arrives in the request body, so
+  // trusting it unconditionally would let any caller forge one, skip signature
+  // verification, and grant themselves a paid subscription for free.
+  const simulatedAllowed = !config.RAZORPAY_KEY_ID || !config.RAZORPAY_KEY_SECRET;
+  const isSimulated = simulatedAllowed && input.razorpay_order_id.startsWith("sim_order_");
 
-  // Signature verification (skip for simulated orders)
+  // Signature verification (skipped only for genuinely simulated orders)
   if (!isSimulated && keySecret) {
     const expectedSignature = crypto
       .createHmac("sha256", keySecret)

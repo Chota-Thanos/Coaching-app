@@ -200,9 +200,13 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
         return reply.status(409).send({ error: "You already have access to this plan." });
       }
 
-      const isSimulated = razorpay_order_id.startsWith("sim_order_");
       const { config } = await import("../../config.js");
       const keySecret = config.RAZORPAY_KEY_SECRET;
+      // Only honour a "sim_order_*" id when this server genuinely has no Razorpay
+      // keys. The id comes from the request body, so trusting it unconditionally
+      // would let a caller forge one and unlock a paid plan without paying.
+      const simulatedAllowed = !config.RAZORPAY_KEY_ID || !config.RAZORPAY_KEY_SECRET;
+      const isSimulated = simulatedAllowed && razorpay_order_id.startsWith("sim_order_");
 
       // Verify signature for real payments
       if (!isSimulated && keySecret) {

@@ -766,7 +766,11 @@ export async function verifyMentorshipPayment(requestId: number, userId: number,
     await assertNoUnagreedAgendas(requestId, client);
 
     const keySecret = config.RAZORPAY_KEY_SECRET;
-    const isSimulated = payload.razorpay_order_id.startsWith("sim_order_");
+    // Only honour a "sim_order_*" id when this server genuinely has no Razorpay
+    // keys. The id comes from the request body, so trusting it unconditionally
+    // would let a caller forge one and mark a request paid without paying.
+    const simulatedAllowed = !config.RAZORPAY_KEY_ID || !config.RAZORPAY_KEY_SECRET;
+    const isSimulated = simulatedAllowed && payload.razorpay_order_id.startsWith("sim_order_");
 
     if (!isSimulated && keySecret) {
       const expectedSignature = crypto
