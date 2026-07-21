@@ -211,9 +211,14 @@ export async function loginOrRegisterGoogleUser(idToken: string): Promise<{ user
     throw error;
   }
 
-  // Validate audience if client IDs are configured
+  // Validate the token's audience. Falling back to the project's public Web
+  // client ID keeps this check ON by default: without it, a Google-issued token
+  // minted for *any other* app could be replayed here to log in as that email.
+  // Env vars still take precedence so another deployment can override them.
+  const FALLBACK_GOOGLE_CLIENT_ID_WEB =
+    "783135018669-i7qlooqlbaf7rjth2kb66c834eivl4s5.apps.googleusercontent.com";
   const googleClientIds = [
-    config.GOOGLE_CLIENT_ID_WEB,
+    config.GOOGLE_CLIENT_ID_WEB || FALLBACK_GOOGLE_CLIENT_ID_WEB,
     config.GOOGLE_CLIENT_ID_ANDROID,
     config.GOOGLE_CLIENT_ID_IOS
   ].filter(Boolean);

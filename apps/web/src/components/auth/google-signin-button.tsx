@@ -11,6 +11,16 @@ declare global {
   }
 }
 
+// The Google Web OAuth client ID is public — it ships inside the browser bundle
+// either way — so we keep a fallback here. This means Google Sign-In works from a
+// plain deploy without hand-editing the (gitignored) apps/web/.env on the server.
+// NEXT_PUBLIC_GOOGLE_CLIENT_ID still takes precedence when set, so another
+// environment can point at a different Google project with no code change.
+const FALLBACK_GOOGLE_CLIENT_ID =
+  "783135018669-i7qlooqlbaf7rjth2kb66c834eivl4s5.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || FALLBACK_GOOGLE_CLIENT_ID;
+
 export function GoogleSignInButton({ nextPath }: { nextPath: string }) {
   const { loginWithGoogle } = useAuth();
   const router = useRouter();
@@ -19,9 +29,9 @@ export function GoogleSignInButton({ nextPath }: { nextPath: string }) {
   const buttonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientId = GOOGLE_CLIENT_ID;
     if (!clientId) {
-      console.warn("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured in environmental variables.");
+      console.warn("Google client ID is not configured.");
       return;
     }
 
@@ -64,7 +74,7 @@ export function GoogleSignInButton({ nextPath }: { nextPath: string }) {
         strategy="lazyOnload"
       />
       
-      {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
+      {!GOOGLE_CLIENT_ID ? (
         <button
           type="button"
           onClick={() => {
