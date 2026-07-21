@@ -563,6 +563,65 @@ export async function verifyRazorpayPayment(
   };
 }
 
+/**
+ * Idempotently grant a subscription from a Razorpay webhook (order.paid /
+ * payment.captured). Safety net for when the browser drops before the
+ * synchronous verify call lands. Signature is already verified by the webhook
+ * handler, so this trusts its inputs. No-ops if the payment was already
+ * recorded (e.g. verify already ran).
+ */
+export async function reconcileBillingSubscriptionFromWebhook(params: {
+  userId: number;
+  planPriceId: number;
+  orderId: string | null;
+  paymentId: string;
+}): Promise<{ status: string }> {
+  const { userId, planPriceId, paymentId } = params;
+
+  const already = await one(
+    `select id from billing.subscriptions where provider_subscription_id = $1 limit 1`,
+    [paymentId]
+  );
+  if (already) return { status: "already_recorded" };
+
+  const priceRow = await one<{ plan_id: number; billing_interval: string }>(
+    `select plan_id, billing_interval from billing.plan_prices where id = $1`,
+    [planPriceId]
+  );
+  if (!priceRow) return { status: "price_not_found" };
+
+  let endsAt: string | null = null;
+  const now = new Date();
+  if (priceRow.billing_interval === "month") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + 1);
+    endsAt = d.toISOString();
+  } else if (priceRow.billing_interval === "quarter") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + 3);
+    endsAt = d.toISOString();
+  } else if (priceRow.billing_interval === "year") {
+    const d = new Date(now);
+    d.setFullYear(d.getFullYear() + 1);
+    endsAt = d.toISOString();
+  }
+
+  await query(
+    `update billing.subscriptions set status = 'cancelled', updated_at = now()
+     where user_id = $1 and plan_id = $2 and status = 'active'`,
+    [userId, priceRow.plan_id]
+  );
+
+  await one(
+    `insert into billing.subscriptions
+       (user_id, plan_id, status, starts_at, ends_at, provider, provider_subscription_id)
+     values ($1, $2, 'active', now(), $3, 'razorpay', $4)`,
+    [userId, priceRow.plan_id, endsAt, paymentId]
+  );
+
+  return { status: "reconciled" };
+}
+
 // ---------------------------------------------------------------------------
 // Admin Subscription Stats
 // ---------------------------------------------------------------------------

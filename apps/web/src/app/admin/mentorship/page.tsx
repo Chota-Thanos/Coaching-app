@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, authenticatedGet, authenticatedPut } from "../../../components/auth/auth-context";
+import { useAuth, authenticatedGet, authenticatedPut, authenticatedPost } from "../../../components/auth/auth-context";
 import { ArrowLeft, CheckCircle2, XCircle, FileText, Phone, MapPin, ExternalLink, ShieldAlert, Sparkles, User, Calendar, AlertCircle, Clock, Video, CreditCard, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifecycle-tracker";
@@ -130,6 +130,27 @@ export default function AdminMentorshipPage() {
   ]);
   const [newExamText, setNewExamText] = useState("");
   const [newSpecText, setNewSpecText] = useState("");
+
+  // Direct-promote a user to mentor (bypassing onboarding)
+  const [promoteEmail, setPromoteEmail] = useState("");
+  const [promoting, setPromoting] = useState(false);
+
+  const handleDirectPromote = async () => {
+    if (!token || !promoteEmail.trim()) return;
+    if (!confirm(`Directly promote ${promoteEmail.trim()} to mentor? They will get access to the mentor workspace immediately.`)) {
+      return;
+    }
+    setPromoting(true);
+    try {
+      await authenticatedPost("/api/v1/admin/mentorship/promote", token, { email: promoteEmail.trim() });
+      alert(`${promoteEmail.trim()} is now a mentor. They can open the workspace after their next login/profile sync.`);
+      setPromoteEmail("");
+    } catch (err: any) {
+      alert("Failed to promote: " + err.message);
+    } finally {
+      setPromoting(false);
+    }
+  };
 
   useEffect(() => {
     if (isInitialized) {
@@ -362,6 +383,37 @@ export default function AdminMentorshipPage() {
                 {filter === "more_info_required" ? "More Info Required" : filter === "settings" ? "Settings" : filter === "engagements" ? "Live Engagements" : filter}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Direct promote to mentor */}
+        <div className="mb-8 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                Directly Promote a User to Mentor
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-lg">
+                Bypass the onboarding application and grant mentor access immediately. A starter profile is created which the mentor can complete from the web or mobile workspace.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                value={promoteEmail}
+                onChange={(e) => setPromoteEmail(e.target.value)}
+                placeholder="user@email.com"
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 min-w-[220px]"
+              />
+              <button
+                onClick={handleDirectPromote}
+                disabled={promoting || !promoteEmail.trim()}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {promoting ? "Promoting..." : "Promote"}
+              </button>
+            </div>
           </div>
         </div>
 

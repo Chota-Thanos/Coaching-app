@@ -174,6 +174,15 @@ export const updateMentorProfileSchema = z.object({
 
 export type UpdateMentorProfileInput = z.output<typeof updateMentorProfileSchema>;
 
+export const promoteMentorSchema = z.object({
+  user_id: idSchema.optional(),
+  email: z.string().trim().email().optional()
+}).refine((data) => data.user_id !== undefined || data.email !== undefined, {
+  message: "Provide either a user_id or an email."
+});
+
+export type PromoteMentorInput = z.output<typeof promoteMentorSchema>;
+
 export const updateMentorshipSettingSchema = z.object({
   key: z.string().trim().min(1),
   value: z.array(z.string().trim())

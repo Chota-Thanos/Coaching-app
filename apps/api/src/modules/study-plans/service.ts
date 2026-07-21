@@ -619,6 +619,42 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
   };
 }
 
+/**
+ * Idempotently unlock a paid study plan from a Razorpay webhook (order.paid /
+ * payment.captured). Safety net for a dropped browser between payment and the
+ * synchronous verify-purchase call. Signature is already verified by the
+ * webhook handler. The underlying enroll upsert is idempotent, and we short-
+ * circuit if the enrollment is already paid.
+ */
+export async function reconcileStudyPlanEnrollmentFromWebhook(params: {
+  userId: number;
+  studyPlanId: number;
+  orderId: string | null;
+  paymentId: string;
+}): Promise<{ status: string }> {
+  const { userId, studyPlanId, orderId, paymentId } = params;
+
+  const existing = await one<{ payment_status: string }>(
+    `select payment_status from study_plan.enrollments where user_id = $1 and plan_id = $2`,
+    [userId, studyPlanId]
+  );
+  if (existing && existing.payment_status === "paid") {
+    return { status: "already_paid" };
+  }
+
+  await enrollStudyPlan(
+    studyPlanId,
+    {
+      provider: "razorpay",
+      payment_status: "paid",
+      razorpay_order_id: orderId ?? undefined,
+      razorpay_payment_id: paymentId
+    } as EnrollStudyPlanInput,
+    userId
+  );
+  return { status: "reconciled" };
+}
+
 export async function enrollStudyPlan(
   planId: number,
   input: EnrollStudyPlanInput,

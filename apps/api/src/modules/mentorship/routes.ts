@@ -28,6 +28,7 @@ import {
   listMessages,
   generateAgoraToken,
   updateMentorProfile,
+  promoteUserToMentor,
   listNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -55,7 +56,8 @@ import {
   updateMentorProfileSchema,
   createAgendaSchema,
   verifyMentorshipPaymentSchema,
-  updateMentorshipSettingSchema
+  updateMentorshipSettingSchema,
+  promoteMentorSchema
 } from "./schemas.js";
 
 const idParamSchema = z.object({
@@ -109,6 +111,20 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
       const body = parse(reviewOnboardingApplicationSchema, request.body);
       const record = await reviewOnboarding(params.id, user.id, body);
       return record;
+    });
+  });
+
+  // Admin action: directly promote a user to mentor (bypassing the onboarding
+  // application), seeding a starter mentor profile.
+  server.post("/api/v1/admin/mentorship/promote", async (request, reply) => {
+    await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const body = parse(promoteMentorSchema, request.body);
+      try {
+        return await promoteUserToMentor({ user_id: body.user_id, email: body.email });
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
     });
   });
 

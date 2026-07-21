@@ -16,6 +16,7 @@ import { registerReviewRoutes } from "./modules/assessment/review.routes.js";
 import { registerTestSeriesRoutes } from "./modules/assessment/series.routes.js";
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { registerBillingRoutes } from "./modules/billing/routes.js";
+import { registerRazorpayWebhookRoute } from "./modules/billing/webhook.js";
 import { registerCurrentAffairsRoutes } from "./modules/current-affairs/routes.js";
 import { registerMediaRoutes } from "./modules/media/routes.js";
 import { getMediaStaticPrefix, getMediaUploadRoot, MEDIA_MAX_FILE_SIZE_BYTES } from "./modules/media/storage.js";
@@ -127,6 +128,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerAuthRoutes(server);
   await registerMediaRoutes(server);
   await registerBillingRoutes(server);
+  await registerRazorpayWebhookRoute(server);
   await registerAssessmentRoutes(server);
   await registerMainsAssessmentRoutes(server);
   await registerTestSeriesRoutes(server);

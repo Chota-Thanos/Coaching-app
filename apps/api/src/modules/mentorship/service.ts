@@ -1047,10 +1047,30 @@ export function generateAgoraToken(channelName: string, userId: number) {
 }
 
 export async function updateMentorProfile(userId: number, payload: UpdateMentorProfileInput) {
-  const existing = await getMentorProfile(userId);
-  if (!existing) {
-    throw new Error("Mentor profile not found.");
-  }
+  // Create-if-missing: a mentor promoted directly by an admin (via the users
+  // endpoint) has no profile row yet, so we fall back to sensible defaults and
+  // upsert rather than erroring. Existing mentors are updated in place.
+  const existing: any = (await getMentorProfile(userId)) || {
+    display_name: null,
+    headline: null,
+    bio: null,
+    years_experience: 0,
+    city: null,
+    profile_image_url: null,
+    contact_url: null,
+    public_email: null,
+    education: null,
+    specialization_tags: [],
+    highlights: [],
+    credentials: [],
+    is_public: true,
+    is_active: true,
+    specifications: [],
+    exams: [],
+    specialization_type: "all_areas",
+    mentor_type: "evaluation_mentorship",
+    meta: {}
+  };
 
   const displayName = payload.display_name !== undefined ? payload.display_name : existing.display_name;
   const headline = payload.headline !== undefined ? payload.headline : existing.headline;
@@ -1079,28 +1099,35 @@ export async function updateMentorProfile(userId: number, payload: UpdateMentorP
   };
 
   return one(
-    `update app.mentor_profiles set
-       display_name = $1,
-       headline = $2,
-       bio = $3,
-       years_experience = $4,
-       city = $5,
-       profile_image_url = $6,
-       contact_url = $7,
-       public_email = $8,
-       education = $9,
-       specialization_tags = $10,
-       highlights = $11,
-       credentials = $12,
-       is_public = $13,
-       is_active = $14,
-       specifications = $15,
-       exams = $16,
-       specialization_type = $17,
-       mentor_type = $18,
-       meta = $19,
+    `insert into app.mentor_profiles (
+       display_name, headline, bio, years_experience, city, profile_image_url,
+       contact_url, public_email, education, specialization_tags, highlights,
+       credentials, is_public, is_active, specifications, exams,
+       specialization_type, mentor_type, meta, user_id
+     )
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+       $16, $17, $18, $19, $20)
+     on conflict (user_id) do update set
+       display_name = excluded.display_name,
+       headline = excluded.headline,
+       bio = excluded.bio,
+       years_experience = excluded.years_experience,
+       city = excluded.city,
+       profile_image_url = excluded.profile_image_url,
+       contact_url = excluded.contact_url,
+       public_email = excluded.public_email,
+       education = excluded.education,
+       specialization_tags = excluded.specialization_tags,
+       highlights = excluded.highlights,
+       credentials = excluded.credentials,
+       is_public = excluded.is_public,
+       is_active = excluded.is_active,
+       specifications = excluded.specifications,
+       exams = excluded.exams,
+       specialization_type = excluded.specialization_type,
+       mentor_type = excluded.mentor_type,
+       meta = excluded.meta,
        updated_at = now()
-     where user_id = $20
      returning *`,
     [
       displayName,
@@ -1125,6 +1152,108 @@ export async function updateMentorProfile(userId: number, payload: UpdateMentorP
       userId
     ]
   );
+}
+
+/** Admin action: promote a user directly to the mentor role without an
+ * onboarding application, seeding a minimal mentor_profile so the mentor
+ * workspace (web + mobile) is immediately usable. Idempotent. */
+export async function promoteUserToMentor(input: { user_id?: number; email?: string }) {
+  return transaction(async (client) => {
+    const user = input.user_id !== undefined
+      ? await one<any>(
+          `select id, username, email, role from app.users where id = $1`,
+          [input.user_id],
+          client
+        )
+      : await one<any>(
+          `select id, username, email, role from app.users where lower(email) = lower($1)`,
+          [input.email],
+          client
+        );
+    if (!user) {
+      throw new Error("User not found.");
+    }
+    const userId = Number(user.id);
+    if (user.role === "admin") {
+      throw new Error("Cannot change an admin account into a mentor.");
+    }
+
+    await client.query(
+      `update app.users set role = 'mentor', updated_at = now() where id = $1`,
+      [userId]
+    );
+
+    const displayName = (user.username as string) || "New Mentor";
+    const meta = {
+      onboarding_source: "admin_direct_promotion",
+      promoted_at: new Date().toISOString()
+    };
+
+    await client.query(
+      `insert into app.mentor_profiles (
+         user_id, display_name, public_email, is_public, is_active, meta
+       )
+       values ($1, $2, $3, false, true, $4)
+       on conflict (user_id) do update set
+         is_active = true,
+         updated_at = now()`,
+      [userId, displayName, user.email, JSON.stringify(meta)]
+    );
+
+    return { user_id: userId, role: "mentor", display_name: displayName };
+  });
+}
+
+/**
+ * Idempotently mark a mentorship request paid from a Razorpay webhook
+ * (order.paid / payment.captured). Safety net for a dropped browser between
+ * payment and the synchronous verify call. Signature is already verified by the
+ * webhook handler. Skips the unagreed-agenda guard on purpose: the money is
+ * already captured, so the payment must be recorded regardless.
+ */
+export async function reconcileMentorshipPaymentFromWebhook(params: {
+  requestId: number;
+  orderId: string | null;
+  paymentId: string;
+}): Promise<{ status: string }> {
+  const { requestId, orderId, paymentId } = params;
+  return transaction(async (client) => {
+    const request = await one<any>(
+      `select * from app.mentorship_requests where id = $1`,
+      [requestId],
+      client
+    );
+    if (!request) return { status: "not_found" };
+    if (request.payment_status === "paid") return { status: "already_paid" };
+
+    const paymentMeta = {
+      provider: "razorpay",
+      razorpay_order_id: orderId,
+      razorpay_payment_id: paymentId,
+      paid_at: new Date().toISOString(),
+      source: "webhook"
+    };
+
+    await client.query(
+      `update app.mentorship_requests
+       set payment_status = 'paid', status = 'accepted',
+           meta = coalesce(meta, '{}'::jsonb) || jsonb_build_object('payment', $1::jsonb),
+           updated_at = now()
+       where id = $2`,
+      [JSON.stringify(paymentMeta), requestId]
+    );
+
+    await createNotification(
+      request.mentor_id,
+      "payment_received",
+      "Payment Received",
+      "Payment for a mentorship request has been received and confirmed. You can now offer scheduling slots.",
+      "/mentor/workspace?tab=requests",
+      client
+    );
+
+    return { status: "reconciled" };
+  });
 }
 
 /** Called from the assessment module once a mentor submits/updates an evaluation
