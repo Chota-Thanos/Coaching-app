@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { config } from "../../config.js";
 import { one, query, transaction, type DbClient } from "../../db.js";
 import { generateAgoraRtcToken } from "../../common/agora.js";
+import { recordPayment } from "../billing/payments.service.js";
 import type {
   CreateOnboardingApplicationInput,
   DraftOnboardingApplicationInput,
@@ -811,6 +812,22 @@ export async function verifyMentorshipPayment(requestId: number, userId: number,
       "/mentor/workspace?tab=requests",
       client
     );
+
+    await recordPayment({
+      userId,
+      productType: "mentorship",
+      productId: requestId,
+      productLabel: "Mentorship session",
+      provider: isSimulated ? "simulated" : "razorpay",
+      providerOrderId: payload.razorpay_order_id,
+      providerPaymentId: payload.razorpay_payment_id,
+      // mentorship_requests.payment_amount is stored in rupees, not paise
+      amountMinor: Math.round(Number(request.payment_amount ?? 0) * 100),
+      currency: request.payment_currency || "INR",
+      status: "paid",
+      source: isSimulated ? "simulated" : "verify",
+      meta: { mentor_id: request.mentor_id }
+    });
 
     return updated;
   });

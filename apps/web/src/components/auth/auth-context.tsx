@@ -9,6 +9,8 @@ type AuthUser = {
   email: string;
   username: string;
   role: string;
+  /** Null until the address is confirmed; used to prompt for verification. */
+  email_verified_at?: string | null;
 };
 
 type AuthContextValue = {

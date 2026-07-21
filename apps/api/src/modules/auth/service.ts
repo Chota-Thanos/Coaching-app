@@ -22,7 +22,8 @@ function publicUser(row: UserRow | AuthUser): AuthUser {
     email: row.email,
     username: row.username,
     role: row.role,
-    is_active: row.is_active
+    is_active: row.is_active,
+    email_verified_at: (row as AuthUser).email_verified_at ?? null
   };
 }
 
@@ -98,7 +99,7 @@ export async function loginUser(input: LoginInput): Promise<{ user: AuthUser; ac
 export async function getUserById(id: number): Promise<AuthUser | null> {
   const user = await one<AuthUser>(
     `
-      select id, email, username, role, is_active
+      select id, email, username, role, is_active, email_verified_at
       from app.users
       where id = $1
     `,

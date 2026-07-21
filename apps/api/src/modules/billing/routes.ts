@@ -32,9 +32,75 @@ import {
   updateSubscription,
   verifyRazorpayPayment
 } from "./service.js";
+import {
+  getPaymentById,
+  getPaymentStats,
+  listPayments,
+  listPaymentsForUser,
+  markPaymentRefunded,
+  type ListPaymentsFilters,
+  type PaymentProductType,
+  type PaymentStatus
+} from "./payments.service.js";
 import { getFreeTestUsage } from "../assessment/free-test-allowance.js";
 
 export async function registerBillingRoutes(server: FastifyInstance): Promise<void> {
+
+  // -------------------------------------------------------------------------
+  // Unified payment ledger — admin oversight for reconciliation and disputes
+  // -------------------------------------------------------------------------
+  server.get("/api/v1/admin/payments", async (request, reply) => {
+    await requireRole(request, ["admin", "moderator"]);
+    return withValidation(reply, async () => {
+      const q = (request.query ?? {}) as Record<string, string>;
+      const filters: ListPaymentsFilters = {
+        user_id: q.user_id ? Number(q.user_id) : undefined,
+        product_type: q.product_type ? (q.product_type as PaymentProductType) : undefined,
+        status: q.status ? (q.status as PaymentStatus) : undefined,
+        provider: q.provider || undefined,
+        search: q.search || undefined,
+        from: q.from || undefined,
+        to: q.to || undefined,
+        limit: q.limit ? Math.min(Number(q.limit), 500) : 100,
+        offset: q.offset ? Number(q.offset) : 0
+      };
+      return listPayments(filters);
+    });
+  });
+
+  server.get("/api/v1/admin/payments/stats", async (request, reply) => {
+    await requireRole(request, ["admin", "moderator"]);
+    return withValidation(reply, async () => getPaymentStats());
+  });
+
+  server.get("/api/v1/admin/payments/:id", async (request, reply) => {
+    await requireRole(request, ["admin", "moderator"]);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const record = await getPaymentById(params.id);
+      if (!record) return reply.notFound("Payment not found.");
+      return record;
+    });
+  });
+
+  // Record-keeping only: marks the ledger row refunded. Issue the actual refund
+  // in the Razorpay dashboard — we deliberately don't move money from here.
+  server.patch("/api/v1/admin/payments/:id/refund", async (request, reply) => {
+    await requireRole(request, ["admin"]);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = (request.body ?? {}) as { notes?: string };
+      const record = await markPaymentRefunded(params.id, body.notes ?? null);
+      if (!record) return reply.notFound("Payment not found.");
+      return record;
+    });
+  });
+
+  // A user's own payment history
+  server.get("/api/v1/billing/me/payments", async (request) => {
+    const user = await requireAuth(request);
+    return listPaymentsForUser(user.id);
+  });
 
   // -------------------------------------------------------------------------
   // Public: List all active plans with prices + entitlements

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import { config } from "../../config.js";
 import { reconcileBillingSubscriptionFromWebhook } from "./service.js";
+import { recordPayment, recordPaymentEvent } from "./payments.service.js";
 import { reconcileMentorshipPaymentFromWebhook } from "../mentorship/service.js";
 import { reconcileStudyPlanEnrollmentFromWebhook } from "../study-plans/service.js";
 
@@ -9,6 +10,9 @@ type RazorpayEntity = {
   id?: string;
   order_id?: string;
   notes?: Record<string, string> | null;
+  amount?: number;
+  currency?: string;
+  method?: string;
 };
 
 type RazorpayEvent = {
@@ -85,11 +89,28 @@ export async function registerRazorpayWebhookRoute(server: FastifyInstance): Pro
 
 async function processRazorpayEvent(event: RazorpayEvent, log: FastifyBaseLogger): Promise<void> {
   const type = event?.event;
+  const paymentEntityEarly = event?.payload?.payment?.entity;
+
+  // Persist the raw event first. The unique (provider, provider_event_id)
+  // constraint doubles as idempotency: a redelivered event is skipped here
+  // rather than re-granting access downstream.
+  const eventId = `${type ?? "unknown"}:${paymentEntityEarly?.id ?? event?.payload?.order?.entity?.id ?? Date.now()}`;
+  const { isNew } = await recordPaymentEvent({
+    provider: "razorpay",
+    eventId,
+    eventType: type ?? "unknown",
+    payload: event
+  });
+  if (!isNew) {
+    log.info({ eventId }, "Razorpay webhook: duplicate event, already processed");
+    return;
+  }
+
   // Only successful-capture events grant access. Ignore payment.failed, refunds, etc.
   if (type !== "order.paid" && type !== "payment.captured") return;
 
   const orderEntity = event?.payload?.order?.entity;
-  const paymentEntity = event?.payload?.payment?.entity;
+  const paymentEntity = paymentEntityEarly;
 
   const paymentId = paymentEntity?.id ?? null;
   const orderId = orderEntity?.id ?? paymentEntity?.order_id ?? null;
@@ -108,11 +129,31 @@ async function processRazorpayEvent(event: RazorpayEvent, log: FastifyBaseLogger
     notes = await fetchOrderNotes(orderId);
   }
 
+  // Common payment facts for the ledger, taken from the payment entity.
+  const ledgerBase = {
+    provider: "razorpay",
+    providerOrderId: orderId,
+    providerPaymentId: paymentId,
+    amountMinor: Number(paymentEntity?.amount ?? orderEntity?.amount ?? 0),
+    currency: paymentEntity?.currency ?? orderEntity?.currency ?? "INR",
+    method: paymentEntity?.method ?? null,
+    status: "paid" as const,
+    source: "webhook" as const
+  };
+
   if (notes.mentorship_request_id) {
     const res = await reconcileMentorshipPaymentFromWebhook({
       requestId: Number(notes.mentorship_request_id),
       orderId,
       paymentId
+    });
+    await recordPayment({
+      ...ledgerBase,
+      userId: Number(notes.user_id),
+      productType: "mentorship",
+      productId: Number(notes.mentorship_request_id),
+      productLabel: "Mentorship session",
+      meta: { reconcile: res }
     });
     log.info({ res, orderId }, "Razorpay webhook: mentorship reconciled");
   } else if (notes.study_plan_id && notes.user_id) {
@@ -122,6 +163,13 @@ async function processRazorpayEvent(event: RazorpayEvent, log: FastifyBaseLogger
       orderId,
       paymentId
     });
+    await recordPayment({
+      ...ledgerBase,
+      userId: Number(notes.user_id),
+      productType: "study_plan",
+      productId: Number(notes.study_plan_id),
+      meta: { reconcile: res }
+    });
     log.info({ res, orderId }, "Razorpay webhook: study-plan reconciled");
   } else if (notes.plan_price_id && notes.user_id) {
     const res = await reconcileBillingSubscriptionFromWebhook({
@@ -129,6 +177,13 @@ async function processRazorpayEvent(event: RazorpayEvent, log: FastifyBaseLogger
       planPriceId: Number(notes.plan_price_id),
       orderId,
       paymentId
+    });
+    await recordPayment({
+      ...ledgerBase,
+      userId: Number(notes.user_id),
+      productType: "subscription",
+      productId: notes.plan_id ? Number(notes.plan_id) : null,
+      meta: { reconcile: res, plan_price_id: Number(notes.plan_price_id) }
     });
     log.info({ res, orderId }, "Razorpay webhook: subscription reconciled");
   } else {

@@ -86,7 +86,12 @@ export function LoginForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-ink" htmlFor="login-password">Password</label>
+          <div className="flex items-baseline justify-between">
+            <label className="block text-sm font-bold text-ink" htmlFor="login-password">Password</label>
+            <Link className="text-xs font-bold text-civic hover:underline" href="/forgot-password">
+              Forgot password?
+            </Link>
+          </div>
           <input
             autoComplete="current-password"
             className="mt-1 h-12 w-full rounded-md border border-line bg-white px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"

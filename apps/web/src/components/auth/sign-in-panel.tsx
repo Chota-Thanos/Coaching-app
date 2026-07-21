@@ -123,6 +123,21 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
                 </Link>
               )}
 
+              {/* Account settings */}
+              <Link
+                href="/account"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 hover:bg-indigo-50 transition-colors group"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                  <User className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-slate-700 group-hover:text-indigo-800 transition-colors">Account Settings</p>
+                  <p className="text-[10px] text-slate-400 leading-none mt-0.5">Email & password</p>
+                </div>
+              </Link>
+
               {/* My Purchases */}
               <Link
                 href="/dashboard/purchases"

@@ -38,6 +38,28 @@ export const updateUserAdminSchema = z.object({
   email_verified: z.boolean().optional()
 });
 
+export const requestPasswordResetSchema = z.object({
+  email: z.string().trim().email()
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(16),
+  password: z.string().min(8).max(200)
+});
+
+export const changePasswordSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(8).max(200)
+});
+
+export const confirmEmailSchema = z.object({
+  token: z.string().trim().min(16)
+});
+
+export type RequestPasswordResetInput = z.output<typeof requestPasswordResetSchema>;
+export type ResetPasswordInput = z.output<typeof resetPasswordSchema>;
+export type ChangePasswordInput = z.output<typeof changePasswordSchema>;
+
 export type UserRole = z.output<typeof userRoleSchema>;
 export type RegisterInput = z.output<typeof registerSchema>;
 export type LoginInput = z.output<typeof loginSchema>;
@@ -51,4 +73,6 @@ export type AuthUser = {
   username: string;
   role: UserRole;
   is_active: boolean;
+  /** Null until the address is confirmed. Surfaced so clients can prompt. */
+  email_verified_at?: string | null;
 };

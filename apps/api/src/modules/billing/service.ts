@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { config } from "../../config.js";
 import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
 import { one, query } from "../../db.js";
+import { recordPayment } from "./payments.service.js";
 import type {
   AdminListSubscriptionsQuery,
   CreateEntitlementInput,
@@ -479,9 +480,11 @@ export async function verifyRazorpayPayment(
     plan_id: number;
     billing_interval: string;
     plan_name: string;
+    amount_minor: number;
+    currency: string;
   }>(
     `
-      select pp.id, pp.plan_id, pp.billing_interval, p.name as plan_name
+      select pp.id, pp.plan_id, pp.billing_interval, pp.amount_minor, pp.currency, p.name as plan_name
       from billing.plan_prices pp
       join billing.plans p on p.id = pp.plan_id
       where pp.id = $1 and pp.is_active = true
@@ -560,6 +563,21 @@ export async function verifyRazorpayPayment(
       isSimulated ? input.razorpay_order_id : input.razorpay_payment_id
     ]
   );
+
+  await recordPayment({
+    userId,
+    productType: "subscription",
+    productId: priceRow.plan_id,
+    productLabel: priceRow.plan_name,
+    provider: isSimulated ? "simulated" : "razorpay",
+    providerOrderId: input.razorpay_order_id,
+    providerPaymentId: input.razorpay_payment_id,
+    amountMinor: Number(priceRow.amount_minor ?? 0),
+    currency: priceRow.currency ?? "INR",
+    status: "paid",
+    source: isSimulated ? "simulated" : "verify",
+    meta: { plan_price_id: input.plan_price_id, billing_interval: priceRow.billing_interval }
+  });
 
   return {
     subscription,

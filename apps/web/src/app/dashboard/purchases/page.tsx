@@ -106,7 +106,39 @@ function fmtDateTime(dateStr: string) {
 // Main Page
 // -------------------------------------------------------------------------
 
-type TabKey = "subscriptions" | "mentorship";
+type TabKey = "subscriptions" | "mentorship" | "payments";
+
+/** A row from the unified billing.payments ledger — covers subscriptions,
+ *  study plans and mentorship, so study-plan purchases finally show up here. */
+type PaymentRow = {
+  id: number;
+  product_type: "subscription" | "study_plan" | "mentorship";
+  product_id: number | null;
+  product_label: string | null;
+  provider: string;
+  provider_order_id: string | null;
+  provider_payment_id: string | null;
+  amount_minor: string | number;
+  currency: string;
+  status: "created" | "paid" | "failed" | "refunded";
+  method: string | null;
+  created_at: string;
+};
+
+const PAYMENT_PRODUCT_LABELS: Record<PaymentRow["product_type"], string> = {
+  subscription: "Subscription",
+  study_plan: "Study Plan",
+  mentorship: "Mentorship"
+};
+
+function formatPaymentAmount(minor: string | number, currency = "INR") {
+  const value = Number(minor ?? 0) / 100;
+  try {
+    return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
+}
 
 export default function PurchasesPage() {
   const router = useRouter();
@@ -115,6 +147,7 @@ export default function PurchasesPage() {
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [mentorPurchases, setMentorPurchases] = useState<MentorshipRequest[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -127,12 +160,14 @@ export default function PurchasesPage() {
     if (!token) return;
     try {
       setLoading(true);
-      const [subs, mentorReqs] = await Promise.all([
+      const [subs, mentorReqs, paymentRows] = await Promise.all([
         authenticatedGet<Subscription[]>("/api/v1/billing/me/subscriptions", token),
-        authenticatedGet<MentorshipRequest[]>("/api/v1/mentorship/requests?mode=user", token)
+        authenticatedGet<MentorshipRequest[]>("/api/v1/mentorship/requests?mode=user", token),
+        authenticatedGet<PaymentRow[]>("/api/v1/billing/me/payments", token)
       ]);
       setSubscriptions(subs ?? []);
       setMentorPurchases((mentorReqs ?? []).filter((r) => r.payment_status === "paid"));
+      setPayments(paymentRows ?? []);
     } catch (err) {
       console.error("Failed to fetch purchases:", err);
     } finally {
@@ -227,7 +262,8 @@ export default function PurchasesPage() {
         <div className={tabStripClass("mb-8")}>
           {([
             { key: "subscriptions", label: "Subscriptions", count: subscriptions.length },
-            { key: "mentorship", label: "Mentorship Sessions", count: mentorPurchases.length }
+            { key: "mentorship", label: "Mentorship Sessions", count: mentorPurchases.length },
+            { key: "payments", label: "Payment History", count: payments.length }
           ] as { key: TabKey; label: string; count: number }[]).map((tab) => (
             <button
               key={tab.key}
@@ -435,6 +471,82 @@ export default function PurchasesPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Payment History Tab ──
+            Reads the unified billing.payments ledger, so study-plan purchases
+            (previously invisible on this page) appear alongside everything else. */}
+        {activeTab === "payments" && (
+          <div className="space-y-4">
+            {payments.length === 0 ? (
+              <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
+                <p className="text-sm font-bold text-slate-700">No payments yet</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Anything you purchase — subscriptions, study plans or mentorship — will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th className="px-5 py-3">Date</th>
+                        <th className="px-5 py-3">Item</th>
+                        <th className="px-5 py-3 text-right">Amount</th>
+                        <th className="px-5 py-3">Status</th>
+                        <th className="px-5 py-3">Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {payments.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/60">
+                          <td className="whitespace-nowrap px-5 py-3.5 text-xs text-slate-600">
+                            {fmtDate(p.created_at)}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <p className="font-bold text-slate-800">
+                              {p.product_label ?? PAYMENT_PRODUCT_LABELS[p.product_type]}
+                            </p>
+                            <p className="text-[11px] text-slate-500">
+                              {PAYMENT_PRODUCT_LABELS[p.product_type]}
+                              {p.method ? ` · ${p.method}` : ""}
+                            </p>
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-3.5 text-right font-black text-slate-900">
+                            {formatPaymentAmount(p.amount_minor, p.currency)}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                                p.status === "paid"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : p.status === "refunded"
+                                    ? "bg-slate-200 text-slate-700"
+                                    : p.status === "failed"
+                                      ? "bg-rose-100 text-rose-800"
+                                      : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {p.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 font-mono text-[11px] text-slate-500">
+                            {p.provider_payment_id ?? "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+                  <p className="text-[11px] text-slate-500">
+                    Need an invoice or have a question about a charge? Quote the reference above when contacting support.
+                  </p>
                 </div>
               </div>
             )}

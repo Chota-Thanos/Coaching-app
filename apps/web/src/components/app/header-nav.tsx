@@ -445,6 +445,23 @@ export function HeaderNav() {
                     </div>
                   </Link>
                 )}
+
+                {/* Unified payments ledger (all revenue streams) */}
+                {user && ["admin", "moderator"].includes(user.role) && (
+                  <Link
+                    href="/admin/payments"
+                    onClick={() => setAdminOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-indigo-50 transition-colors group"
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                      <CreditCard className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-ink group-hover:text-indigo-800 transition-colors">Payments Ledger</p>
+                      <p className="text-[11px] text-ink/50 leading-none mt-0.5">Every payment, refunds & disputes</p>
+                    </div>
+                  </Link>
+                )}
               </div>
 
               {/* Footer link to hub */}

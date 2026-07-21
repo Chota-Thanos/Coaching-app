@@ -231,6 +231,22 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
         },
         user.id
       );
+
+      const { recordPayment } = await import("../billing/payments.service.js");
+      await recordPayment({
+        userId: user.id,
+        productType: "study_plan",
+        productId: params.id,
+        productLabel: plan.title,
+        provider: isSimulated ? "simulated" : "razorpay",
+        providerOrderId: razorpay_order_id,
+        providerPaymentId: razorpay_payment_id,
+        amountMinor: Number(plan.price_amount_minor ?? 0),
+        currency: plan.currency ?? "INR",
+        status: "paid",
+        source: isSimulated ? "simulated" : "verify"
+      });
+
       return reply.status(201).send(record);
     });
   });

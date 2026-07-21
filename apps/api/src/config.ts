@@ -21,7 +21,19 @@ const envSchema = z.object({
   AGORA_APP_CERTIFICATE: z.string().optional(),
   GOOGLE_CLIENT_ID_WEB: z.string().optional(),
   GOOGLE_CLIENT_ID_ANDROID: z.string().optional(),
-  GOOGLE_CLIENT_ID_IOS: z.string().optional()
+  GOOGLE_CLIENT_ID_IOS: z.string().optional(),
+
+  // Outbound email (SMTP). Provider-agnostic: works with Resend, AWS SES,
+  // SendGrid, Postmark, Gmail, or any SMTP relay. When SMTP_HOST is unset the
+  // mailer logs the message instead of sending, so dev/staging still works.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  MAIL_FROM: z.string().default("WayToIAS <no-reply@waytoias.com>"),
+  // Base URL used to build links in emails (verification / password reset).
+  PUBLIC_WEB_URL: z.string().default("https://waytoias.com")
 });
 
 const parsed = envSchema.parse(process.env);
