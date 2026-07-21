@@ -206,6 +206,14 @@ export async function loginOrRegisterGoogleUser(idToken: string): Promise<{ user
   }
 
   const { email, email_verified, name, aud } = payload;
+
+  // Google's tokeninfo endpoint returns email_verified as the STRING "true";
+  // the decoded-JWT form uses a real boolean. Accept both. We only treat an
+  // address as verified when Google actually vouches for it — previously this
+  // field was read but never used, so every Google account was marked verified
+  // regardless of what Google said.
+  const googleEmailVerified = email_verified === true || email_verified === "true";
+
   if (!email) {
     const error = new Error("Google account email not found.") as Error & { statusCode?: number };
     error.statusCode = 400;
@@ -271,10 +279,10 @@ export async function loginOrRegisterGoogleUser(idToken: string): Promise<{ user
     user = await one<UserRow>(
       `
         insert into app.users (email, username, password_hash, role, email_verified_at)
-        values ($1, $2, $3, $4, now())
-        returning id, email, username, password_hash, role, is_active
+        values ($1, $2, $3, $4, $5)
+        returning id, email, username, password_hash, role, is_active, email_verified_at
       `,
-      [email.toLowerCase(), username, "google-oauth", role]
+      [email.toLowerCase(), username, "google-oauth", role, googleEmailVerified ? new Date() : null]
     );
 
     if (!user) {
@@ -286,7 +294,20 @@ export async function loginOrRegisterGoogleUser(idToken: string): Promise<{ user
       error.statusCode = 403;
       throw error;
     }
-    await query("update app.users set last_login_at = now() where id = $1", [user.id]);
+    // Signing in with Google proves ownership of the address, so an existing
+    // password-registered account gets verified for free here — no email sent.
+    const refreshed = await one<{ email_verified_at: string | null }>(
+      `update app.users
+       set last_login_at = now(),
+           email_verified_at = case
+             when $2::boolean and email_verified_at is null then now()
+             else email_verified_at
+           end
+       where id = $1
+       returning email_verified_at`,
+      [user.id, googleEmailVerified]
+    );
+    if (refreshed) user.email_verified_at = refreshed.email_verified_at;
   }
 
   const safeUser = publicUser(user);
