@@ -15,11 +15,22 @@ import {
   listCollections,
   updateCollection
 } from "./collections.service.js";
+import {
+  assertCanAddCollectionItem,
+  assertCanCreateCollection,
+  getNotesWorkspaceLimits
+} from "../../billing/free-tier.js";
 
 export async function registerCurrentAffairsCollectionRoutes(server: FastifyInstance): Promise<void> {
   server.get("/api/v1/current-affairs/me/collections", async (request) => {
     const user = await requireAuth(request);
     return listCollections(user.id);
+  });
+
+  /** Lets clients show remaining allowance before the user hits a wall. */
+  server.get("/api/v1/current-affairs/me/workspace-limits", async (request) => {
+    const user = await requireAuth(request);
+    return getNotesWorkspaceLimits(user.id);
   });
 
   server.get("/api/v1/current-affairs/me/collections/:id", async (request, reply) => {
@@ -36,6 +47,7 @@ export async function registerCurrentAffairsCollectionRoutes(server: FastifyInst
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const body = parse(createCollectionSchema, request.body);
+      await assertCanCreateCollection(user.id);
       const record = await createCollection(body, user.id);
       return reply.status(201).send(record);
     });
@@ -67,6 +79,7 @@ export async function registerCurrentAffairsCollectionRoutes(server: FastifyInst
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
       const body = parse(addCollectionItemSchema, request.body);
+      await assertCanAddCollectionItem(user.id, params.id);
       const record = await addCollectionItem(params.id, body, user.id);
       if (!record) return reply.notFound("Collection not found.");
       return reply.status(201).send(record);
