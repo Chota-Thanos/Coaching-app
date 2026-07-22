@@ -3,6 +3,7 @@ export * from "./schemas/base.js";
 export * from "./schemas/category.schemas.js";
 export * from "./schemas/ingestion.schemas.js";
 export * from "./schemas/master.schemas.js";
+export * from "./schemas/posting-agent.schemas.js";
 export * from "./schemas/question-generation.schemas.js";
 export * from "./schemas/revisions.schemas.js";
 export * from "./schemas/workspace.schemas.js";

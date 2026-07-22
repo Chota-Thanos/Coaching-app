@@ -85,7 +85,30 @@ export function parseJsonRobust(raw: string): any {
   throw new Error("Could not parse JSON from AI response.");
 }
 
-function hasAiCredentials(): boolean {
+// Default model preference, best-first. Older models act as fallbacks if a newer
+// one isn't enabled on the project. Override per-environment with AI_MODEL_PRIORITY
+// (comma-separated) — e.g. a project without gemini-3.5 access can set
+// AI_MODEL_PRIORITY=gemini-2.5-flash,gemini-2.5-pro to skip the 404 fallbacks.
+const DEFAULT_MODEL_PRIORITY = [
+  "gemini-3.5-flash",
+  "gemini-3.5-pro",
+  "gemini-3.1-pro",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro"
+];
+
+function getModelPriority(): string[] {
+  const override = process.env.AI_MODEL_PRIORITY;
+  if (override && override.trim()) {
+    const list = override.split(",").map((m) => m.trim()).filter(Boolean);
+    if (list.length) return list;
+  }
+  return DEFAULT_MODEL_PRIORITY;
+}
+
+export function hasAiCredentials(): boolean {
   return !!(
     process.env.OPENAI_API_KEY ||
     process.env.GEMINI_API_KEY ||
@@ -318,7 +341,7 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
     const json = (await response.json()) as any;
     return json.choices?.[0]?.message?.content?.trim() || "";
   } else if (isVertexAi) {
-    const models = ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-3.1-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    const models = getModelPriority();
     let lastError: any = null;
     for (const model of models) {
       try {
@@ -330,7 +353,7 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
     }
     throw new Error(`All Vertex AI models failed. Last error: ${lastError?.message || lastError}`);
   } else if (geminiKey) {
-    const models = ["gemini-3.5-flash", "gemini-3.5-pro", "gemini-3.1-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    const models = getModelPriority();
     let lastError: any = null;
     for (const model of models) {
       try {
@@ -1626,7 +1649,7 @@ export async function performOcrGemini(imagesBase64: string[]): Promise<string> 
   }
 
   const results: string[] = [];
-  const model = "gemini-3.5-flash"; // default vision-capable model
+  const model = getModelPriority()[0] ?? "gemini-2.5-flash"; // vision-capable model (env-overridable)
 
   for (const imgB64 of imagesBase64) {
     let mimeType = "image/jpeg";

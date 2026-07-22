@@ -48,6 +48,9 @@ export const createMasterArticleSchema = z.object({
   body: z.string().trim().min(1),
   body_json: z.record(z.unknown()).optional(),
   category_node_id: idSchema.optional(),
+  // Additional category trees this article belongs to (multi-category).
+  // The first id becomes the primary link if category_node_id is omitted.
+  category_node_ids: z.array(idSchema).max(50).optional(),
   source_name: z.string().trim().optional(),
   source_url: z.string().url().optional(),
   publication_date: z.string().date().optional(),
@@ -62,6 +65,7 @@ export const createMasterArticleSchema = z.object({
 
 export const updateMasterArticleSchema = createMasterArticleSchema.partial().extend({
   category_node_id: idSchema.nullable().optional(),
+  category_node_ids: z.array(idSchema).max(50).nullable().optional(),
   source_name: z.string().trim().nullable().optional(),
   source_url: z.string().url().nullable().optional(),
   publication_date: z.string().date().nullable().optional(),

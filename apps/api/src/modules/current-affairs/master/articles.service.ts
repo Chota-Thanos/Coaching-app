@@ -7,6 +7,47 @@ import type {
 } from "../schemas.js";
 import { deriveContentFamily } from "./content-family.js";
 
+/**
+ * Reconciles the article_category_links join table for an article so it reflects
+ * a single primary category plus any additional category trees. Full-replace:
+ * existing links are removed and the desired set reinserted. Safe to call with
+ * the same pooled connection used elsewhere in this module.
+ */
+async function syncArticleCategoryLinks(
+  articleId: number,
+  primaryCategoryNodeId: number | null,
+  additionalNodeIds: number[] | null | undefined
+): Promise<void> {
+  const ordered: number[] = [];
+  const seen = new Set<number>();
+  if (primaryCategoryNodeId != null) {
+    ordered.push(primaryCategoryNodeId);
+    seen.add(primaryCategoryNodeId);
+  }
+  for (const id of additionalNodeIds ?? []) {
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    ordered.push(id);
+  }
+
+  await query(`delete from current_affairs.article_category_links where article_id = $1`, [articleId]);
+  if (ordered.length === 0) return;
+
+  // The primary link is either the article's category_node_id or, when that is
+  // absent, the first supplied id.
+  const primaryId = primaryCategoryNodeId ?? ordered[0];
+  for (const nodeId of ordered) {
+    await query(
+      `
+        insert into current_affairs.article_category_links (article_id, category_node_id, is_primary)
+        values ($1, $2, $3)
+        on conflict (article_id, category_node_id) do update set is_primary = excluded.is_primary
+      `,
+      [articleId, nodeId, nodeId === primaryId]
+    );
+  }
+}
+
 function categoryFilterSql(alias: string, includeDescendants: boolean, paramPosition: number): string {
   if (includeDescendants) {
     return `${alias}.category_node_id in (select id from category_tree)`;
@@ -90,7 +131,10 @@ export async function listMasterArticles(
 
 export async function createMasterArticle(input: CreateMasterArticleInput, userId: number): Promise<unknown> {
   const contentFamily = deriveContentFamily(input.content_kind, input.content_family);
-  return one(
+  // Resolve the primary category: an explicit category_node_id wins, otherwise
+  // fall back to the first of the multi-category list.
+  const primaryCategoryNodeId = input.category_node_id ?? input.category_node_ids?.[0] ?? null;
+  const record = await one<{ id: number }>(
     `
       insert into current_affairs.master_articles
         (
@@ -127,7 +171,7 @@ export async function createMasterArticle(input: CreateMasterArticleInput, userI
       input.slug,
       input.body,
       JSON.stringify(input.body_json ?? {}),
-      input.category_node_id ?? null,
+      primaryCategoryNodeId,
       input.source_name ?? null,
       input.source_url ?? null,
       input.publication_date ?? null,
@@ -143,6 +187,10 @@ export async function createMasterArticle(input: CreateMasterArticleInput, userI
       input.keywords ? JSON.stringify(input.keywords) : null
     ]
   );
+
+  if (!record) throw new Error("Failed to create current affairs article.");
+  await syncArticleCategoryLinks(record.id, primaryCategoryNodeId, input.category_node_ids);
+  return getMasterArticle(record.id, true);
 }
 
 export async function getMasterArticle(id: number, includeUnpublished: boolean): Promise<unknown | null> {
@@ -151,6 +199,19 @@ export async function getMasterArticle(id: number, includeUnpublished: boolean):
       select
         ma.*,
         row_to_json(cn.*) as category,
+        coalesce((
+          select jsonb_agg(
+            jsonb_build_object(
+              'link_id', acl.id,
+              'is_primary', acl.is_primary,
+              'category', to_jsonb(node.*)
+            )
+            order by acl.is_primary desc, node.name
+          )
+          from current_affairs.article_category_links acl
+          join current_affairs.category_nodes node on node.id = acl.category_node_id
+          where acl.article_id = ma.id
+        ), '[]'::jsonb) as categories,
         coalesce((
           select jsonb_agg(to_jsonb(asset.*) order by asset.asset_type, asset.display_order, asset.id)
           from current_affairs.master_article_assets asset
@@ -230,7 +291,15 @@ export async function updateMasterArticle(
   addUpdate(updates, params, "slug", input.slug);
   addUpdate(updates, params, "body", input.body);
   addUpdate(updates, params, "body_json", input.body_json === undefined ? undefined : JSON.stringify(input.body_json));
-  addUpdate(updates, params, "category_node_id", input.category_node_id);
+  // Category handling: the join table is the source of truth for multi-category,
+  // while the category_node_id column mirrors the primary link. If only the
+  // multi-category list is supplied, the first entry becomes the new primary.
+  const categoryTouched = input.category_node_id !== undefined || input.category_node_ids !== undefined;
+  if (input.category_node_id !== undefined) {
+    addUpdate(updates, params, "category_node_id", input.category_node_id);
+  } else if (input.category_node_ids !== undefined) {
+    addUpdate(updates, params, "category_node_id", input.category_node_ids?.[0] ?? null);
+  }
   addUpdate(updates, params, "source_name", input.source_name);
   addUpdate(updates, params, "source_url", input.source_url);
   addUpdate(updates, params, "publication_date", input.publication_date);
@@ -250,7 +319,7 @@ export async function updateMasterArticle(
   requireUpdates(updates);
 
   params.push(id);
-  return one(
+  const updated = await one<{ id: number; category_node_id: number | null }>(
     `
       update current_affairs.master_articles
       set ${updates.join(", ")}, updated_at = now()
@@ -259,6 +328,22 @@ export async function updateMasterArticle(
     `,
     params
   );
+  if (!updated) return null;
+
+  if (categoryTouched) {
+    let extras = input.category_node_ids;
+    if (extras === undefined) {
+      // Only the primary changed — preserve the existing additional trees.
+      const existing = await query<{ category_node_id: string }>(
+        `select category_node_id from current_affairs.article_category_links where article_id = $1`,
+        [id]
+      );
+      extras = existing.map((row) => Number(row.category_node_id));
+    }
+    await syncArticleCategoryLinks(updated.id, updated.category_node_id ?? null, extras);
+  }
+
+  return getMasterArticle(updated.id, true);
 }
 
 export async function archiveMasterArticle(id: number, userId: number): Promise<unknown | null> {

@@ -31,6 +31,7 @@ import { AdminMainsQuestionCreator } from "../current-affairs/admin/admin-mains-
 import { AdminMainsTaxonomyManager } from "../current-affairs/admin/admin-mains-taxonomy-manager";
 import { AdminMainsEvaluationManager } from "../current-affairs/admin/admin-mains-evaluation-manager";
 import { AssessmentAiSettingsManager } from "./assessment-ai-settings-manager";
+import { AdminAssessmentPostingAgentManager } from "../current-affairs/admin/admin-assessment-posting-agent-manager";
 import { AdminDiagnosticTestManager } from "./admin-diagnostic-test-manager";
 import { AdminHomeCollectionsManager } from "./admin-home-collections-manager";
 
@@ -46,6 +47,7 @@ type AssessmentTab =
   | "assessment-categories"
   | "mains-categories"
   | "ai-settings"
+  | "ai-posting-agent"
   | "diagnostic-tests"
   | "home-collections";
 
@@ -64,6 +66,7 @@ const ASSESSMENT_NAV: {
   { tab: "create-objective", label: "Add GK Question", icon: <Plus className="h-4 w-4" />, group: "Create" },
   { tab: "create-csat", label: "Add CSAT Question", icon: <Plus className="h-4 w-4" />, group: "Create" },
   { tab: "create-mains", label: "Add Mains Question", icon: <Plus className="h-4 w-4" />, group: "Create" },
+  { tab: "ai-posting-agent", label: "AI Posting Agent", icon: <Sparkles className="h-4 w-4" />, group: "Create" },
   { tab: "mains-evaluations", label: "Mains Evaluations", icon: <ClipboardCheck className="h-4 w-4" />, group: "Evaluation" },
   { tab: "assessment-categories", label: "Assessment Categories", icon: <FolderTree className="h-4 w-4" />, group: "Configuration" },
   { tab: "mains-categories", label: "Mains Categories", icon: <FolderTree className="h-4 w-4" />, group: "Configuration" },
@@ -413,6 +416,18 @@ export function AdminAssessmentSpace() {
               <p className="text-sm text-ink/65 mt-1">Configure quiz generation prompts, question schemas, and output styles.</p>
             </div>
             <AssessmentAiSettingsManager />
+          </div>
+        )}
+
+        {/* AI POSTING AGENT */}
+        {activeTab === "ai-posting-agent" && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div>
+              <span className="text-xs font-bold text-civic uppercase tracking-wider">Fast Posting</span>
+              <h2 className="text-2xl font-black text-ink mt-0.5">AI Posting Agent</h2>
+              <p className="text-sm text-ink/65 mt-1">Post GK, CSAT, and Mains questions from Word/PDF/URL, auto-classified into the full taxonomy tree.</p>
+            </div>
+            <AdminAssessmentPostingAgentManager />
           </div>
         )}
       </main>

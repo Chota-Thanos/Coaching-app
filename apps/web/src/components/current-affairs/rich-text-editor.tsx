@@ -39,8 +39,20 @@ import {
   Code,
   Eye,
   Link2,
-  Unlink
+  Unlink,
+  Wand2,
+  Loader2,
+  ChevronDown
 } from "lucide-react";
+import { authenticatedPost, useAuth } from "../auth/auth-context";
+
+const REWORD_MODES: { value: string; label: string }[] = [
+  { value: "exam_tone", label: "Exam tone" },
+  { value: "concise", label: "Make concise" },
+  { value: "expand", label: "Expand" },
+  { value: "simplify", label: "Simplify" },
+  { value: "grammar", label: "Fix grammar" }
+];
 
 const HIGHLIGHT_COLORS = [
   { name: "Yellow", value: "#fef08a", class: "bg-[#fef08a]" },
@@ -67,6 +79,9 @@ export function RichTextMarkdownEditor({
   minHeightClass = "min-h-[300px]"
 }: RichTextMarkdownEditorProps) {
   const [tab, setTab] = useState<"visual" | "html" | "preview">("visual");
+  const { token } = useAuth();
+  const [rewording, setRewording] = useState(false);
+  const [rewordMenu, setRewordMenu] = useState(false);
 
   const extensions = useMemo(() => {
     const list = [
@@ -128,6 +143,31 @@ export function RichTextMarkdownEditor({
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
     } else {
       editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    }
+  };
+
+  const rewordSelection = async (mode: string) => {
+    setRewordMenu(false);
+    if (!editor || !token) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      alert("Select the text you want to reword first.");
+      return;
+    }
+    const selected = editor.state.doc.textBetween(from, to, "\n");
+    if (!selected.trim()) return;
+    setRewording(true);
+    try {
+      const res = await authenticatedPost<{ text: string }>(
+        "/api/v1/current-affairs/admin/agent/reword",
+        token,
+        { text: selected, mode }
+      );
+      editor.chain().focus().deleteRange({ from, to }).insertContent(res.text).run();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Rewording failed.");
+    } finally {
+      setRewording(false);
     }
   };
 
@@ -393,6 +433,37 @@ export function RichTextMarkdownEditor({
             >
               <TableIcon className="h-4 w-4" />
             </button>
+
+            <span className="rte-sep h-4 w-[1px] bg-line/80 mx-1" />
+
+            {/* Reword with AI */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setRewordMenu((open) => !open)}
+                disabled={rewording}
+                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-bold text-violet-600 hover:bg-violet-50 transition-all disabled:opacity-50"
+                title="Reword the selected text with AI"
+              >
+                {rewording ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                Reword AI
+                <ChevronDown className="h-3 w-3" />
+              </button>
+              {rewordMenu && (
+                <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-line bg-white py-1 shadow-lg">
+                  {REWORD_MODES.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => void rewordSelection(m.value)}
+                      className="block w-full px-3 py-1.5 text-left text-xs font-semibold text-ink/80 hover:bg-violet-50 hover:text-violet-700"
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Table specific contextual actions */}
             {editor.isActive("table") && (

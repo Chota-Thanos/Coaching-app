@@ -25,6 +25,7 @@ import { useAuth, authenticatedGet, authenticatedPost } from "../auth/auth-conte
 import { AdminArticleManager } from "../current-affairs/admin/admin-article-manager";
 import { AdminCategoryManager } from "../current-affairs/admin/admin-category-manager";
 import { AdminIngestionManager } from "../current-affairs/admin/admin-ingestion-manager";
+import { AdminPostingAgentManager } from "../current-affairs/admin/admin-posting-agent-manager";
 import { AdminArticleCreator } from "../current-affairs/admin/admin-article-creator";
 import { AiSettingsManager } from "../current-affairs/admin/ai-settings-manager";
 import { ContentTypeAiSettings } from "../current-affairs/admin/content-type-ai-settings";
@@ -36,6 +37,7 @@ type CATab =
   | "prelims-pyq"
   | "mains-pyq"
   | "create"
+  | "agent"
   | "ingestion"
   | "categories"
   | "ai-settings";
@@ -46,6 +48,7 @@ const CA_NAV: { tab: CATab; label: string; icon: React.ReactNode; description: s
   { tab: "prelims-pyq", label: "Prelims PYQ Library", icon: <BookOpen className="h-4 w-4" />, description: "Prelims past year questions" },
   { tab: "mains-pyq", label: "Mains PYQ Library", icon: <FileText className="h-4 w-4" />, description: "Mains past year questions" },
   { tab: "create", label: "Create Content", icon: <PenLine className="h-4 w-4" />, description: "Write or generate articles" },
+  { tab: "agent", label: "AI Posting Agent", icon: <Sparkles className="h-4 w-4" />, description: "Post from Word/PDF/URL, fast" },
   { tab: "ingestion", label: "Ingestion Queue", icon: <Inbox className="h-4 w-4" />, description: "Review AI-parsed articles" },
   { tab: "categories", label: "Article Categories", icon: <FolderTree className="h-4 w-4" />, description: "Manage CA category tree" },
   { tab: "ai-settings", label: "AI Settings", icon: <Settings2 className="h-4 w-4" />, description: "Prompts & style guides" },
@@ -479,6 +482,20 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
                 createType={overrideSubView}
               />
             )}
+          </div>
+        )}
+
+        {/* AI POSTING AGENT */}
+        {activeTab === "agent" && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div>
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Content Pipeline</span>
+              <h2 className="text-2xl font-black text-ink mt-0.5">AI Posting Agent</h2>
+              <p className="text-sm text-ink/65 mt-1">
+                Drop in a Word/PDF or a URL. The agent extracts, back-dates, and files it into categories — you review, then post fast.
+              </p>
+            </div>
+            <AdminPostingAgentManager />
           </div>
         )}
 
