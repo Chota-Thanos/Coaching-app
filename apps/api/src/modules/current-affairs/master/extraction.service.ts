@@ -1,8 +1,10 @@
 import { createRequire } from "module";
 import mammoth from "mammoth";
-import { JSDOM } from "jsdom";
-import { Readability } from "@mozilla/readability";
 import { performOcrGemini, hasAiCredentials } from "./ai.service.js";
+// jsdom + @mozilla/readability are imported lazily inside extractFromUrl (below).
+// They carry a hard Node-version floor, so importing them at module load would
+// crash the whole API at startup on an older runtime. Loading them on demand
+// keeps the server booting and isolates any failure to the URL-extraction path.
 
 const require = createRequire(import.meta.url);
 // pdf-parse ships as CommonJS; load it the same way the assessment parser does.
@@ -108,13 +110,22 @@ export async function extractFromUrl(url: string): Promise<ExtractedSource> {
   }
   const html = await res.text();
 
-  const dom = new JSDOM(html, { url });
-  const reader = new Readability(dom.window.document);
-  const article = reader.parse();
+  // Load the heavy DOM libraries only when a URL is actually being parsed. If
+  // they fail to load (e.g. Node-version floor on an older runtime), fall back to
+  // a crude tag strip rather than crashing.
+  let article: { title?: string | null; textContent?: string | null; siteName?: string | null } | null = null;
+  try {
+    const [{ JSDOM }, { Readability }] = await Promise.all([import("jsdom"), import("@mozilla/readability")]);
+    const dom = new JSDOM(html, { url });
+    article = new Readability(dom.window.document).parse();
+  } catch (err) {
+    console.error("[Extraction] Readability/JSDOM unavailable, falling back to tag strip:", err);
+  }
 
   let text = (article?.textContent ?? "").trim();
   if (!text) {
-    // Readability failed (paywall wrapper, unusual markup) — strip tags manually.
+    // Readability failed or unavailable (paywall wrapper, unusual markup, or the
+    // DOM libs could not load) — strip tags manually.
     text = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
