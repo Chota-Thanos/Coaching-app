@@ -16,6 +16,7 @@ import {
   Globe,
   Loader2,
   Minus,
+  Pencil,
   Play,
   Plus,
   Search,
@@ -186,6 +187,22 @@ function clampCount(value: number, available: number): number {
   return Math.max(1, Math.min(value, Math.min(50, available)));
 }
 
+// Names the tree depth the way the category actually reads for each section —
+// objective content is organised as reference Books broken into Chapters
+// (e.g. "Laxmikanth" -> "Fundamental Rights"), while Mains follows the
+// syllabus's own Theme -> Topic -> Subtopic breakdown.
+function roleLabel(activeTab: ActiveTab, depth: number): string {
+  if (activeTab === "mains") {
+    if (depth === 0) return "Theme";
+    if (depth === 1) return "Topic";
+    if (depth === 2) return "Sub-topic";
+    return `Level ${depth + 1}`;
+  }
+  if (depth === 0) return "Book";
+  if (depth === 1) return "Chapter";
+  return `Level ${depth + 1}`;
+}
+
 export function AssessmentHomePage({
   contentTypeFilter,
   rootNodeId,
@@ -252,6 +269,10 @@ export function AssessmentHomePage({
   const [compiling, setCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFormNode, setActiveFormNode] = useState<TreeNodeType | null>(null);
+  // "Add your questions" — one entry point that offers Write manually / Parse
+  // with AI, matching the mobile app's single-button + choice-sheet pattern
+  // (replacing what used to be two separate always-visible links here).
+  const [questionsSheetNode, setQuestionsSheetNode] = useState<TreeNodeType | null>(null);
 
   // Custom test query param and inline options
   const testTemplateId = searchParams ? searchParams.get("test_template_id") : null;
@@ -1241,6 +1262,10 @@ export function AssessmentHomePage({
 
   const totalCompiledQuestions = compiledItems.reduce((total, item) => total + item.count, 0);
   const canCompile = compiledItems.length > 0 && !compiling && compiledItems.every((item) => getAvailableCount(item.node.id) > 0);
+  // Mirrors checkCartCap's limit so the sidebar can show it before the user
+  // hits it, instead of only surfacing the cap as a rejection on save.
+  const compiledCartIsMains = compiledItems.some((item) => item.question_family === "mains_subjective");
+  const compiledCartCap = isAssessmentPremium ? (compiledCartIsMains ? 25 : 100) : (compiledCartIsMains ? 10 : 50);
   const activeSection = TABS.find((tab) => tab.id === activeTab);
 
   const builderTourSteps: TourStep[] = [
@@ -1450,7 +1475,7 @@ export function AssessmentHomePage({
                     setFilterText(event.target.value);
                     if (event.target.value.trim()) setDrillPath([]);
                   }}
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-surface pl-9 pr-3 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                  className="h-10 w-full rounded-[10px] border border-slate-300 bg-surface pl-9 pr-3 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
                 />
               </div>
             )}
@@ -1673,7 +1698,7 @@ export function AssessmentHomePage({
                 <button
                   type="button"
                   onClick={() => setIsFilterModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-indigo-705 hover:text-indigo-800 bg-surface hover:bg-slate-50 rounded-xl transition shadow-sm border border-indigo-150 shrink-0"
+                  className="flex h-9 items-center gap-1.5 px-3.5 text-xs font-bold text-indigo-705 hover:text-indigo-800 bg-surface hover:bg-slate-50 rounded-[9px] transition shadow-sm border border-indigo-150 shrink-0"
                 >
                   Customize View
                 </button>
@@ -1688,7 +1713,7 @@ export function AssessmentHomePage({
                       type="button"
                       id={subject.id === tourAnchorId ? "tour-browse-btn" : undefined}
                       onClick={() => setDrillPath([subject])}
-                      className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-black transition ${
+                      className={`inline-flex h-[38px] shrink-0 items-center rounded-[10px] border px-4 text-[13px] font-[800] transition ${
                         isActive
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-surface text-slate-700 hover:border-indigo-300"
@@ -1739,7 +1764,7 @@ export function AssessmentHomePage({
                       onAddToTest={handleAddToTest}
                       onStartTest={handleStartTest}
                       activeTab={activeTab}
-                      onAddQuestion={setActiveFormNode}
+                      onAddQuestion={setQuestionsSheetNode}
                       userQuestionCounts={userQuestionCounts}
                       onDrillInto={(n) => setDrillPath([...effectiveDrillPath, n])}
                     />
@@ -1774,7 +1799,7 @@ export function AssessmentHomePage({
                   {compiledItems.map((item) => {
                     const available = getAvailableCount(item.node.id);
                     return (
-                      <div key={item.node.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div key={item.node.id} className="rounded-[9px] border border-slate-200 bg-slate-50 px-2.5 py-2">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-black text-slate-900">{item.node.name}</p>
@@ -1796,6 +1821,11 @@ export function AssessmentHomePage({
                   })}
                 </div>
 
+                <p className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] leading-relaxed text-slate-500">
+                  {isAssessmentPremium ? "Premium" : "Free"} plan: up to {compiledCartCap}{" "}
+                  {compiledCartIsMains ? "Mains " : ""}questions per test · {totalCompiledQuestions}/{compiledCartCap} used
+                </p>
+
                 {/* Destination is chosen once, here — not per Add click.
                     Both paths follow the same shape: name a new test, or
                     pick from your existing ones. */}
@@ -1809,7 +1839,7 @@ export function AssessmentHomePage({
                       type="button"
                       onClick={() => setIsAddToExistingModalOpen(true)}
                       disabled={!canCompile}
-                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-indigo-600 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                      className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded-[10px] border border-indigo-600 px-3 text-xs font-[800] text-indigo-700 shadow-sm transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
                     >
                       Add to Existing
                     </button>
@@ -1817,7 +1847,7 @@ export function AssessmentHomePage({
                       type="button"
                       onClick={() => setIsNewTestModalOpen(true)}
                       disabled={!canCompile}
-                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 px-3 text-xs font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                      className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded-[10px] bg-slate-900 hover:bg-slate-800 px-3 text-xs font-[800] text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       {compiling ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
                       Save as New Test
@@ -1867,7 +1897,7 @@ export function AssessmentHomePage({
                   key={format.id}
                   type="button"
                   onClick={() => handleStartPromptedTest(promptNode, format.id as TestFormat, count)}
-                  className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-left hover:border-indigo-500 hover:bg-indigo-50/20 transition"
+                  className="flex w-full items-center justify-between rounded-[11px] border border-slate-200 bg-slate-50 px-3.5 py-3 text-left hover:border-indigo-500 hover:bg-indigo-50/20 transition"
                 >
                   <div>
                     <p className="text-sm font-bold text-slate-900">{format.label} Test ({count} Qs)</p>
@@ -1977,6 +2007,61 @@ export function AssessmentHomePage({
                 Save Changes
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {questionsSheetNode && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-surface p-6 shadow-xl">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+            <h3 className="text-base font-black text-slate-900">Add your questions</h3>
+            <button
+              type="button"
+              onClick={() => setQuestionsSheetNode(null)}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-600">
+            Add a question to <strong>{questionsSheetNode.name}</strong>.
+          </p>
+          <div className="mt-4 space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveFormNode(questionsSheetNode);
+                setQuestionsSheetNode(null);
+              }}
+              className="flex w-full items-start gap-3 rounded-[11px] border border-slate-200 bg-slate-50 px-3.5 py-3 text-left hover:border-indigo-500 hover:bg-indigo-50/20 transition"
+            >
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-surface text-indigo-600">
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span>
+                <p className="text-sm font-bold text-slate-900">Write manually</p>
+                <p className="text-xs text-slate-500">Type out the question yourself</p>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const node = questionsSheetNode;
+                setQuestionsSheetNode(null);
+                router.push(`/assessment/ai-parser?category_node_id=${node.id}&content_type=${activeTab}`);
+              }}
+              className="flex w-full items-start gap-3 rounded-[11px] border border-slate-200 bg-slate-50 px-3.5 py-3 text-left hover:border-indigo-500 hover:bg-indigo-50/20 transition"
+            >
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-surface text-indigo-600">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span>
+                <p className="text-sm font-bold text-slate-900">Parse with AI</p>
+                <p className="text-xs text-slate-500">Upload a file, image, or text and post with AI</p>
+              </span>
+            </button>
           </div>
         </div>
       </div>
@@ -2169,7 +2254,7 @@ function TreeRow({
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[auto_1fr] md:w-[22rem]">
-            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-surface p-1">
+            <div className="inline-flex h-10 items-center justify-between rounded-[9px] border border-slate-200 bg-surface p-1">
               <button
                 type="button"
                 aria-label={`Decrease questions for ${node.name}`}
@@ -2196,7 +2281,7 @@ function TreeRow({
                 type="button"
                 disabled={disabled}
                 onClick={() => onAddToTest(node)}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add
@@ -2205,7 +2290,7 @@ function TreeRow({
                 type="button"
                 disabled={disabled || isStarting}
                 onClick={() => onStartTest(node)}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 {isStarting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
                 Start
@@ -2214,7 +2299,7 @@ function TreeRow({
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 rounded-xl border border-slate-200 bg-surface p-3 transition md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="grid gap-4 rounded-2xl border border-slate-200 bg-surface p-3.5 transition md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-start gap-3">
             <button
               type="button"
@@ -2232,15 +2317,20 @@ function TreeRow({
               ) : null}
             </button>
 
-            {depth <= 2 && node.image_url && (
-              <img alt="" className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover" src={resolveMediaUrl(node.image_url) ?? undefined} />
+            {node.image_url && (
+              <img
+                alt=""
+                className="h-11 w-11 shrink-0 rounded-lg border border-slate-200 object-cover"
+                src={resolveMediaUrl(node.image_url) ?? undefined}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
             )}
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="min-w-0 truncate text-sm font-black text-slate-900">{node.name}</p>
-                <span className="rounded-full border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
-                  Level {depth + 1}
+                <span className="shrink-0 rounded-full border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-[10px] font-[800] uppercase tracking-wider text-indigo-700">
+                  {roleLabel(activeTab, depth)}
                 </span>
               </div>
               {node.description && (
@@ -2248,7 +2338,7 @@ function TreeRow({
               )}
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span
-                  className={`rounded-full border px-2 py-0.5 text-[11px] font-black ${
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-[800] ${
                     availableCount > 0
                       ? "border-indigo-100 bg-indigo-50 text-indigo-700"
                       : "border-rose-100 bg-rose-50 text-rose-700"
@@ -2257,7 +2347,7 @@ function TreeRow({
                   {loadingCounts ? "Checking..." : `${availableCount} Quiz`}
                 </span>
                 {userQuestionCounts && (userQuestionCounts[node.id] ?? 0) > 0 && (
-                  <span className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[11px] font-black text-amber-700">
+                  <span className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[11px] font-[800] text-amber-700">
                     +{userQuestionCounts[node.id]} yours
                   </span>
                 )}
@@ -2270,34 +2360,33 @@ function TreeRow({
                   <button
                     type="button"
                     onClick={() => onDrillInto(node)}
-                    className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-650 hover:text-indigo-850 transition"
+                    className="inline-flex items-center gap-1 text-[11.5px] font-[800] text-indigo-650 hover:text-indigo-850 transition"
                   >
                     Browse sub-categories →
                   </button>
                 )}
                 {onAddQuestion && (
-                  <div className="inline-flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => onAddQuestion(node)}
-                      className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-650 hover:text-indigo-850 transition"
-                    >
-                      📝 Add Q
-                    </button>
-                    <Link
-                      href={`/assessment/ai-parser?category_node_id=${node.id}&content_type=${activeTab}`}
-                      className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-650 hover:text-indigo-850 transition"
-                    >
-                      🤖 Parse AI
-                    </Link>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onAddQuestion(node)}
+                    className="inline-flex items-center gap-1 text-[11.5px] font-[800] text-indigo-650 hover:text-indigo-850 transition"
+                  >
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                    Add your questions
+                  </button>
                 )}
               </div>
+              {hasChildren && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11.5px] text-slate-500">
+                  <span aria-hidden="true">⚖</span>
+                  Draws proportionally across {node.children.length} {roleLabel(activeTab, depth + 1).toLowerCase()}s
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[auto_1fr] md:w-[22rem]">
-            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-surface p-1">
+            <div className="inline-flex h-10 items-center justify-between rounded-[9px] border border-slate-200 bg-surface p-1">
               <button
                 type="button"
                 aria-label={`Decrease questions for ${node.name}`}
@@ -2324,7 +2413,7 @@ function TreeRow({
                 type="button"
                 disabled={disabled}
                 onClick={() => onAddToTest(node)}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add
@@ -2333,7 +2422,7 @@ function TreeRow({
                 type="button"
                 disabled={disabled || isStarting}
                 onClick={() => onStartTest(node)}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 {isStarting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
                 Start
