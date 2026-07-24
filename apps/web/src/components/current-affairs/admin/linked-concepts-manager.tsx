@@ -4,7 +4,7 @@ import { BookOpen, Layers3, Plus, Search, Sparkles, Trash2, X } from "lucide-rea
 import { useEffect, useState } from "react";
 import type { AdminArticleSummary, CategoryNode } from "../../../lib/api";
 import type { ContentFamily } from "../../../lib/current-affairs";
-import { adminSlug, formatNodeType } from "../../../lib/admin-current-affairs";
+import { adminSlug } from "../../../lib/admin-current-affairs";
 import { CascadingParentCategorySelector } from "./cascading-parent-category-selector";
 import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
 
