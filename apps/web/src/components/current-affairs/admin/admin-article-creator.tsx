@@ -334,6 +334,10 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const targetEl = event.nativeEvent?.target as HTMLElement | null;
+    if (targetEl && (targetEl.closest(".z-50") || targetEl.closest("[role='dialog']"))) {
+      return;
+    }
     
     let finalBody = formState.body;
     let finalBodyJson: any = undefined;

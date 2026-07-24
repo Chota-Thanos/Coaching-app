@@ -88,9 +88,15 @@ export function LinkedConceptsManager({
   }, [modalOpen, token]);
 
   // Client-side local addition of new concept (NO page reload, NO server request yet)
-  const handleAddConceptDraft = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!conceptTitle.trim() || !conceptBody.trim()) return;
+  const handleAddConceptDraft = (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!conceptTitle.trim() || !conceptBody.trim()) {
+      setErrorMessage("Please provide both Concept Title and Explainer Content.");
+      return;
+    }
 
     const categoryObj = primaryCategoryId ? categoriesById.get(primaryCategoryId) : null;
     const newDraft: ConceptDraft = {
@@ -116,7 +122,11 @@ export function LinkedConceptsManager({
   };
 
   // Client-side local linking of existing DB concept
-  const handleLinkExistingConcept = () => {
+  const handleLinkExistingConcept = (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!selectedConceptId) return;
 
     const conceptId = Number(selectedConceptId);
@@ -233,8 +243,25 @@ export function LinkedConceptsManager({
 
       {/* Concept Creation & Linking Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-midnight/60 px-4 py-6 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-midnight/60 px-4 py-6 overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+              e.preventDefault();
+              if (activeTab === "create") {
+                handleAddConceptDraft(e);
+              } else if (activeTab === "existing") {
+                handleLinkExistingConcept(e);
+              }
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-4 border-b border-line pb-3">
               <div>
                 <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-berry">
