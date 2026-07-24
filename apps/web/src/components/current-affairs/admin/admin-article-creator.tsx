@@ -912,7 +912,6 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             </details>
 
             <LinkedConceptsManager
-              articleId={editingDraftId}
               categories={categories}
               contentFamily={family}
               linkedConcepts={linkedConcepts}
