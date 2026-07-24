@@ -9,7 +9,7 @@ export function StudentStatusBadge({ articleId }: { articleId: number }) {
 
   const fork = forksByArticleId.get(articleId);
   if (!fork) {
-    return <span className="rounded-md bg-white px-2 py-1 text-xs font-bold text-ink/55">Not saved</span>;
+    return <span className="rounded-md bg-surface px-2 py-1 text-xs font-bold text-ink/55">Not saved</span>;
   }
 
   const completed = fork.read_status === "read" || Boolean(fork.reading_progress?.completed_at);

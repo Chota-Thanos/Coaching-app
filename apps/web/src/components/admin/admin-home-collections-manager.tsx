@@ -172,7 +172,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
     <div className="space-y-4">
       <div className="flex items-center gap-3 min-w-0">
         <button onClick={onBack}
-          className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition shrink-0"
+          className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition shrink-0"
         >
           <ChevronLeft className="h-3.5 w-3.5" /> All Collections
         </button>
@@ -180,7 +180,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs text-muted">
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">
           <span className="flex-1">{error}</span>
           <button onClick={() => setError(null)}><X className="h-3.5 w-3.5 text-muted/50" /></button>
         </div>
@@ -197,7 +197,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
             <button
               onClick={handleSave}
               disabled={saving || loadingItems}
-              className="rounded-lg border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink/90 disabled:opacity-40 transition"
+              className="rounded-lg border border-midnight bg-midnight px-3 py-1.5 text-xs font-semibold text-white hover:bg-midnight/90 disabled:opacity-40 transition"
             >
               {saving ? "Saving…" : "Save Order"}
             </button>
@@ -212,7 +212,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
           ) : (
             <div className="space-y-1.5 max-h-[580px] overflow-y-auto">
               {items.map((it, i) => (
-                <div key={it.key} className="group flex items-center gap-2 rounded-lg border border-line/50 bg-white px-3 py-2.5">
+                <div key={it.key} className="group flex items-center gap-2 rounded-lg border border-line/50 bg-surface px-3 py-2.5">
                   <GripVertical className="h-3.5 w-3.5 text-muted/30 shrink-0" />
                   <span className="shrink-0 text-[10px] font-bold text-muted/40 w-4">{i + 1}</span>
                   <div className="flex-1 min-w-0">
@@ -245,7 +245,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
             {(["objective", "mains"] as TaxonomyType[]).map((tab) => (
               <button key={tab} onClick={() => setTaxonomyTab(tab)}
                 className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition ${
-                  taxonomyTab === tab ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
+                  taxonomyTab === tab ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"
                 }`}
               >
                 {TAXONOMY_LABELS[tab]}
@@ -254,7 +254,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
           </div>
 
           <select
-            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink focus:border-muted focus:outline-none"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-muted focus:outline-none"
             value={nodeType}
             onChange={(e) => setNodeType(e.target.value)}
           >
@@ -267,7 +267,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted/40 pointer-events-none" />
             <input
-              className="w-full rounded-lg border border-line bg-white py-2 pl-8 pr-8 text-xs text-ink placeholder:text-muted/40 focus:border-muted focus:outline-none"
+              className="w-full rounded-lg border border-line bg-surface py-2 pl-8 pr-8 text-xs text-ink placeholder:text-muted/40 focus:border-muted focus:outline-none"
               placeholder="Search categories by name…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -291,7 +291,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
                 const added = selectedKeys.has(itemKey(taxonomyTab, node.id));
                 return (
                   <div key={node.id}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 transition ${added ? "border-line/50 bg-paper" : "border-line/50 bg-white"}`}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 transition ${added ? "border-line/50 bg-paper" : "border-line/50 bg-surface"}`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold truncate ${added ? "text-muted/60" : "text-ink"}`}>{node.name}</p>
@@ -301,7 +301,7 @@ function ItemManager({ collection, token, onBack }: { collection: HomeCollection
                       onClick={() => !added && addNode(node)}
                       disabled={added}
                       className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition ${
-                        added ? "text-muted/50 cursor-default" : "border border-line bg-white text-muted hover:border-muted hover:text-ink"
+                        added ? "text-muted/50 cursor-default" : "border border-line bg-surface text-muted hover:border-muted hover:text-ink"
                       }`}
                     >
                       {added ? "Added" : <Plus className="h-3 w-3" />}
@@ -402,7 +402,7 @@ export function AdminHomeCollectionsManager() {
   return (
     <div className="space-y-5">
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-xs text-muted">
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-muted">
           <span className="flex-1">{error}</span>
           <button onClick={() => setError(null)} className="text-muted/50 hover:text-muted"><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -417,20 +417,20 @@ export function AdminHomeCollectionsManager() {
         </div>
         <button
           onClick={() => setShowCreate((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-ink bg-ink px-3 py-2 text-xs font-semibold text-white hover:bg-ink/90 transition shrink-0"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-midnight bg-midnight px-3 py-2 text-xs font-semibold text-white hover:bg-midnight/90 transition shrink-0"
         >
           <Plus className="h-3.5 w-3.5" /> New Collection
         </button>
       </div>
 
       {showCreate && (
-        <div className="rounded-xl border border-line bg-white p-5 space-y-4">
+        <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
           <h3 className="text-xs font-semibold text-ink uppercase tracking-wide">New Collection</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Title *</label>
               <input
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-surface focus:border-muted focus:outline-none"
                 placeholder="e.g. Previous Year Questions"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -439,7 +439,7 @@ export function AdminHomeCollectionsManager() {
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Subtitle</label>
               <input
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-surface focus:border-muted focus:outline-none"
                 placeholder="Short description (optional)"
                 value={form.subtitle}
                 onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
@@ -448,7 +448,7 @@ export function AdminHomeCollectionsManager() {
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Cover image URL</label>
               <input
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-surface focus:border-muted focus:outline-none"
                 placeholder="Optional — falls back to per-item covers"
                 value={form.cover_image_url}
                 onChange={(e) => setForm((f) => ({ ...f, cover_image_url: e.target.value }))}
@@ -459,13 +459,13 @@ export function AdminHomeCollectionsManager() {
             <button
               onClick={handleCreate}
               disabled={saving || !form.title.trim()}
-              className="rounded-lg border border-ink bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-ink/90 disabled:opacity-40 transition"
+              className="rounded-lg border border-midnight bg-midnight px-4 py-2 text-xs font-semibold text-white hover:bg-midnight/90 disabled:opacity-40 transition"
             >
               {saving ? "Creating…" : "Create & Add Items →"}
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="rounded-lg border border-line bg-white px-4 py-2 text-xs font-semibold text-muted hover:bg-paper transition"
+              className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-semibold text-muted hover:bg-paper transition"
             >
               Cancel
             </button>
@@ -482,7 +482,7 @@ export function AdminHomeCollectionsManager() {
       ) : (
         <div className="space-y-2">
           {collections.map((c) => (
-            <div key={c.id} className="rounded-xl border border-line bg-white px-5 py-4">
+            <div key={c.id} className="rounded-xl border border-line bg-surface px-5 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -502,7 +502,7 @@ export function AdminHomeCollectionsManager() {
                 <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                   <button
                     onClick={() => setManagingCollection(c)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-muted hover:text-ink transition"
+                    className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-muted hover:text-ink transition"
                   >
                     <Layers className="h-3.5 w-3.5" />
                     Manage
@@ -510,13 +510,13 @@ export function AdminHomeCollectionsManager() {
                   </button>
                   <button onClick={() => void toggleActive(c)}
                     className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                      c.is_active ? "border-line bg-white text-muted hover:bg-paper" : "border-ink bg-ink text-white hover:bg-ink/90"
+                      c.is_active ? "border-line bg-surface text-muted hover:bg-paper" : "border-midnight bg-midnight text-white hover:bg-midnight/90"
                     }`}
                   >
                     {c.is_active ? "Deactivate" : "Activate"}
                   </button>
                   <button onClick={() => void handleDelete(c.id)}
-                    className="rounded-lg border border-line/50 bg-white p-1.5 text-muted/40 hover:text-berry hover:border-berry/30 transition"
+                    className="rounded-lg border border-line/50 bg-surface p-1.5 text-muted/40 hover:text-berry hover:border-berry/30 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

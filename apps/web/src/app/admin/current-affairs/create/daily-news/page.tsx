@@ -13,7 +13,7 @@ export default function CADailyNewsCreatorPage() {
     <Suspense
       fallback={
         <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-sm text-center animate-pulse">
+          <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm text-center animate-pulse">
             <p className="text-sm font-semibold text-ink/50">Loading Daily News Creator...</p>
           </div>
         </main>

@@ -41,7 +41,7 @@ export function QuizCreatorAIParser({
   useKaTeX();
 
   return (
-    <div className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
+    <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
       <div>
         <h2 className="text-lg sm:text-xl font-black text-ink flex items-center gap-2">
           <FileText className="h-5 w-5 text-civic" />
@@ -97,7 +97,7 @@ export function QuizCreatorAIParser({
               type="button"
               onClick={() => setTab("write")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-bold transition-all ${
-                tab === "write" ? "bg-white text-civic shadow-xs" : "text-ink/65 hover:text-ink"
+                tab === "write" ? "bg-surface text-civic shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
               Write/Paste
@@ -106,7 +106,7 @@ export function QuizCreatorAIParser({
               type="button"
               onClick={() => setTab("preview")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-bold transition-all ${
-                tab === "preview" ? "bg-white text-civic shadow-xs" : "text-ink/65 hover:text-ink"
+                tab === "preview" ? "bg-surface text-civic shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
               Preview formulas
@@ -114,7 +114,7 @@ export function QuizCreatorAIParser({
           </div>
         </div>
 
-        <div className="rounded-xl border border-line overflow-hidden bg-white shadow-xs focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/10 transition-all">
+        <div className="rounded-xl border border-line overflow-hidden bg-surface shadow-xs focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/10 transition-all">
           {tab === "write" ? (
             <textarea
               value={parseInput}
@@ -138,7 +138,7 @@ export function QuizCreatorAIParser({
           <select
             value={selectedExamId}
             onChange={(e) => handleExamChange(e.target.value)}
-            className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-semibold"
+            className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-semibold"
             disabled={parseGenerating || uploadingFile}
           >
             <option value="">-- Choose Exam --</option>

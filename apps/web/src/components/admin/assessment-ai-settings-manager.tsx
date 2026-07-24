@@ -731,7 +731,7 @@ export function AssessmentAiSettingsManager() {
   };
 
   return (
-    <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden font-sans">
+    <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden font-sans">
       {/* Tab Selectors */}
       <div className="border-b border-line bg-slate-50/50 p-3">
         <div className={tabStripClass()}>
@@ -778,7 +778,7 @@ export function AssessmentAiSettingsManager() {
               <select
                 value={selectedContentType}
                 onChange={(e) => setSelectedContentType(e.target.value)}
-                className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-bold text-civic outline-none focus:border-civic"
+                className="h-10 rounded-xl border border-line bg-surface px-3 text-sm font-bold text-civic outline-none focus:border-civic"
               >
                 {ASSESSMENT_AI_TYPES.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
               </select>
@@ -811,7 +811,7 @@ export function AssessmentAiSettingsManager() {
                     value={styleGuide.source_text || ""}
                     onChange={(e) => setStyleGuide(prev => ({ ...prev, source_text: e.target.value }))}
                     placeholder="Paste reference text here..."
-                    className="w-full min-h-[100px] mt-1.5 rounded-lg border border-line p-3 text-xs bg-white outline-none focus:border-civic transition-all"
+                    className="w-full min-h-[100px] mt-1.5 rounded-lg border border-line p-3 text-xs bg-surface outline-none focus:border-civic transition-all"
                   />
                 </label>
                 <button
@@ -858,7 +858,7 @@ export function AssessmentAiSettingsManager() {
                   <textarea
                     value={inputSchema}
                     onChange={(e) => setInputSchema(e.target.value)}
-                    className="w-full min-h-[140px] mt-1.5 rounded-xl border border-line p-3 text-xs bg-white font-mono outline-none focus:border-civic transition-all"
+                    className="w-full min-h-[140px] mt-1.5 rounded-xl border border-line p-3 text-xs bg-surface font-mono outline-none focus:border-civic transition-all"
                   />
                 </label>
                 <label className="block text-xs font-bold text-ink">
@@ -867,7 +867,7 @@ export function AssessmentAiSettingsManager() {
                     type="text"
                     value={exampleInput}
                     onChange={(e) => setExampleInput(e.target.value)}
-                    className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-white outline-none focus:border-civic transition-all"
+                    className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-surface outline-none focus:border-civic transition-all"
                     placeholder="Provide an example input parameter..."
                   />
                 </label>
@@ -881,7 +881,7 @@ export function AssessmentAiSettingsManager() {
                     id="useCustomSchema"
                     checked={useCustomSchema}
                     onChange={(e) => setUseCustomSchema(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-civic focus:ring-civic"
+                    className="h-4 w-4 rounded border-slate-300 text-civic focus:ring-civic"
                   />
                   <label htmlFor="useCustomSchema" className="text-xs font-bold text-ink select-none cursor-pointer">
                     Use Custom Output Schema
@@ -895,7 +895,7 @@ export function AssessmentAiSettingsManager() {
                     onChange={(e) => setOutputSchema(e.target.value)}
                     disabled={!useCustomSchema}
                     className={`w-full min-h-[160px] mt-1.5 rounded-xl border border-line p-3 text-xs font-mono outline-none focus:border-civic transition-all ${
-                      !useCustomSchema ? "bg-paper/50 cursor-not-allowed text-ink/40" : "bg-white"
+                      !useCustomSchema ? "bg-paper/50 cursor-not-allowed text-ink/40" : "bg-surface"
                     }`}
                   />
                 </label>
@@ -906,7 +906,7 @@ export function AssessmentAiSettingsManager() {
                     onChange={(e) => setExampleOutput(e.target.value)}
                     disabled={!useCustomSchema}
                     className={`w-full min-h-[160px] mt-1.5 rounded-xl border border-line p-3 text-xs font-mono outline-none focus:border-civic transition-all ${
-                      !useCustomSchema ? "bg-paper/50 cursor-not-allowed text-ink/40" : "bg-white"
+                      !useCustomSchema ? "bg-paper/50 cursor-not-allowed text-ink/40" : "bg-surface"
                     }`}
                   />
                 </label>
@@ -949,7 +949,7 @@ export function AssessmentAiSettingsManager() {
                 ) : (
                   <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                     {styleProfiles.map(p => (
-                      <div key={p.id} className="bg-white border border-line rounded-xl p-3.5 shadow-sm space-y-2 flex flex-col justify-between hover:border-civic/50 transition-colors">
+                      <div key={p.id} className="bg-surface border border-line rounded-xl p-3.5 shadow-sm space-y-2 flex flex-col justify-between hover:border-civic/50 transition-colors">
                         <div>
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-extrabold text-sm text-ink truncate">{p.title}</span>
@@ -991,7 +991,7 @@ export function AssessmentAiSettingsManager() {
               </div>
 
               {/* Extraction Ingestion workspace */}
-              <div className="bg-white border border-line rounded-2xl p-5 space-y-4">
+              <div className="bg-surface border border-line rounded-2xl p-5 space-y-4">
                 <h4 className="text-xs font-black text-ink uppercase tracking-wider flex items-center gap-2">
                   <Brain className="h-4.5 w-4.5 text-civic" />
                   {editingProfileId ? "Edit Style Profile Workspace" : "New Style Profile Extraction"}
@@ -1004,7 +1004,7 @@ export function AssessmentAiSettingsManager() {
                       value={profileContentType}
                       onChange={(e) => setProfileContentType(e.target.value)}
                       disabled={saving}
-                      className="w-full h-10 mt-1.5 rounded-xl border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-civic"
+                      className="w-full h-10 mt-1.5 rounded-xl border border-line bg-surface px-3 text-sm font-semibold outline-none focus:border-civic"
                     >
                       {ASSESSMENT_AI_TYPES.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
                     </select>
@@ -1018,7 +1018,7 @@ export function AssessmentAiSettingsManager() {
                       onChange={(e) => setProfileExamples(e.target.value)}
                       disabled={saving}
                       placeholder="Q1. Consider the following statements...&#10;1. statement A...&#10;2. statement B...&#10;&#10;Q2. Which of the following is correct..."
-                      className="w-full min-h-[220px] mt-1.5 rounded-xl border border-line p-3 text-xs bg-white outline-none focus:border-civic font-mono"
+                      className="w-full min-h-[220px] mt-1.5 rounded-xl border border-line p-3 text-xs bg-surface outline-none focus:border-civic font-mono"
                     />
                   </label>
 
@@ -1057,7 +1057,7 @@ export function AssessmentAiSettingsManager() {
                       <Brain className="h-3.5 w-3.5 text-civic animate-pulse" />
                       View AI Extraction Prompt Instructions
                     </summary>
-                    <div className="mt-2 text-ink/80 leading-relaxed max-h-[220px] overflow-y-auto font-mono text-[10px] whitespace-pre-wrap bg-white border border-line p-3 rounded-lg">
+                    <div className="mt-2 text-ink/80 leading-relaxed max-h-[220px] overflow-y-auto font-mono text-[10px] whitespace-pre-wrap bg-surface border border-line p-3 rounded-lg">
                       {profileContentType === "mains_evaluation" ? EXTRACTION_INSTRUCTIONS_EVALUATION : EXTRACTION_INSTRUCTIONS_QUIZ}
                     </div>
                   </details>
@@ -1078,7 +1078,7 @@ export function AssessmentAiSettingsManager() {
               ) : (
                 <div className="space-y-6 animate-in fade-in duration-300">
                   {/* Extracted Profile Details Card */}
-                  <div className="bg-white border border-line rounded-2xl p-6 space-y-4">
+                  <div className="bg-surface border border-line rounded-2xl p-6 space-y-4">
                     <h4 className="text-xs font-black text-ink uppercase tracking-wider">Extracted Style profile Analysis</h4>
                     
                     <div className="space-y-3.5 text-sm">
@@ -1137,7 +1137,7 @@ export function AssessmentAiSettingsManager() {
                         <span className="text-[11px] font-black text-ink/65 uppercase tracking-wider">Example Breakdown Details ({extractedProfile.example_analyses.length})</span>
                         <div className="space-y-2 overflow-y-auto max-h-[220px] pr-1">
                           {extractedProfile.example_analyses.map((e: any, idx: number) => (
-                            <div key={idx} className="bg-white border border-line rounded-lg p-3 text-xs space-y-1.5">
+                            <div key={idx} className="bg-surface border border-line rounded-lg p-3 text-xs space-y-1.5">
                               <div className="flex justify-between items-center font-bold">
                                 <span className="text-civic">Example #{e.index || idx + 1}</span>
                                 <span className="text-[9px] bg-slate-100 px-1.5 py-0.5 rounded uppercase">{e.format || e.nature || "Standard"}</span>
@@ -1154,7 +1154,7 @@ export function AssessmentAiSettingsManager() {
                   </div>
 
                   {/* Refinement feedback box */}
-                  <div className="bg-white border border-line rounded-2xl p-5 space-y-3">
+                  <div className="bg-surface border border-line rounded-2xl p-5 space-y-3">
                     <h4 className="text-xs font-black text-ink uppercase tracking-wider">Refine Style Analysis with Feedback</h4>
                     <p className="text-[10px] text-ink/50 leading-tight">If the extracted instructions lack detail or got certain rules wrong, type your feedback to re-train the style guidelines.</p>
                     <textarea
@@ -1175,7 +1175,7 @@ export function AssessmentAiSettingsManager() {
                   </div>
 
                   {/* Save profile form */}
-                  <div className="bg-white border border-line rounded-2xl p-6 space-y-4">
+                  <div className="bg-surface border border-line rounded-2xl p-6 space-y-4">
                     <h4 className="text-xs font-black text-ink uppercase tracking-wider">Save Reusable Style Profile</h4>
                     
                     <div className="space-y-4">
@@ -1186,7 +1186,7 @@ export function AssessmentAiSettingsManager() {
                           value={profileTitle}
                           onChange={(e) => setProfileTitle(e.target.value)}
                           placeholder="e.g. UPSC Prelims Economy Statements (Strict)"
-                          className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-white outline-none focus:border-civic"
+                          className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-surface outline-none focus:border-civic"
                         />
                       </label>
 
@@ -1197,7 +1197,7 @@ export function AssessmentAiSettingsManager() {
                           value={profileDescription}
                           onChange={(e) => setProfileDescription(e.target.value)}
                           placeholder="Brief description of when to use this style guide..."
-                          className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-white outline-none focus:border-civic"
+                          className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-surface outline-none focus:border-civic"
                         />
                       </label>
 
@@ -1209,7 +1209,7 @@ export function AssessmentAiSettingsManager() {
                             value={profileTag1}
                             onChange={(e) => setProfileTag1(e.target.value)}
                             placeholder="e.g. Economy"
-                            className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-white outline-none focus:border-civic"
+                            className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-surface outline-none focus:border-civic"
                           />
                         </label>
                         <label className="block text-xs font-bold text-ink">
@@ -1219,7 +1219,7 @@ export function AssessmentAiSettingsManager() {
                             value={profileTag2}
                             onChange={(e) => setProfileTag2(e.target.value)}
                             placeholder="e.g. Banking"
-                            className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-white outline-none focus:border-civic"
+                            className="w-full h-10 mt-1.5 rounded-xl border border-line px-3 text-xs bg-surface outline-none focus:border-civic"
                           />
                         </label>
                       </div>

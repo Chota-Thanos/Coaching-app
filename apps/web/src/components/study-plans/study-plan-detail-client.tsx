@@ -55,7 +55,7 @@ function WeekStatusCircle({ done, isCurrent, locked }: { done: boolean; isCurren
   if (isCurrent) {
     return (
       <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-civic ring-4 ring-civic/25">
-        <div className="h-2 w-2 rounded-full bg-white" />
+        <div className="h-2 w-2 rounded-full bg-surface" />
       </div>
     );
   }
@@ -381,7 +381,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
           </div>
 
           <aside className="hidden lg:block">
-            <div className="sticky top-24 overflow-hidden rounded-lg border border-line bg-white text-ink shadow-soft">
+            <div className="sticky top-24 overflow-hidden rounded-lg border border-line bg-surface text-ink shadow-soft">
               <CourseArtwork plan={plan} />
               <PurchasePanel
                 busyAction={busyAction}
@@ -403,7 +403,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 pt-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-line bg-white p-5 shadow-card">
+          <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
             <h2 className="text-2xl !font-black text-ink">What you will get</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {[
@@ -420,7 +420,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             </div>
           </section>
 
-          <section className="rounded-lg border border-line bg-white shadow-card">
+          <section className="rounded-lg border border-line bg-surface shadow-card">
             <div className="border-b border-line p-5">
               <h2 className="text-2xl !font-black text-ink">Course content</h2>
               <p className="mt-2 text-sm font-semibold text-ink/55">
@@ -481,7 +481,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             </div>
           </section>
 
-          <section className="rounded-lg border border-line bg-white p-5 shadow-card">
+          <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
             <h2 className="text-2xl !font-black text-ink">Requirements</h2>
             <div className="mt-3 space-y-2 text-sm font-semibold leading-6 text-ink/70">
               <p>Follow the plan in week/day order and mark non-test tasks complete after studying.</p>
@@ -489,7 +489,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             </div>
           </section>
 
-          <section className="rounded-lg border border-line bg-white p-5 shadow-card">
+          <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
             <h2 className="text-2xl !font-black text-ink">Student Reviews</h2>
             
             {plan.has_access && token && (
@@ -513,7 +513,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
                   ))}
                 </div>
                 <textarea
-                  className="mt-3 w-full min-h-20 rounded-lg border border-slate-200 bg-white p-3 text-xs font-semibold leading-5 text-ink focus:border-indigo-500 focus:outline-none"
+                  className="mt-3 w-full min-h-20 rounded-lg border border-slate-200 bg-surface p-3 text-xs font-semibold leading-5 text-ink focus:border-indigo-500 focus:outline-none"
                   placeholder="Write your review about the study guide, tests quality, or mentor support..."
                   value={reviewForm.comment}
                   onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
@@ -560,7 +560,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
         </div>
 
         <aside className="lg:hidden">
-          <div className="overflow-hidden rounded-lg border border-line bg-white text-ink shadow-soft">
+          <div className="overflow-hidden rounded-lg border border-line bg-surface text-ink shadow-soft">
             <CourseArtwork plan={plan} />
             <PurchasePanel
               busyAction={busyAction}
@@ -623,7 +623,7 @@ function PurchasePanel({
               <span>Your progress</span>
               <span>{progress}%</span>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface">
               <div className="h-full rounded-full bg-civic" style={{ width: `${progress}%` }} />
             </div>
             <p className="mt-2 text-xs font-semibold text-slate-500">
@@ -717,7 +717,7 @@ function CurriculumItem({
   const resourceUrl = item.lecture_url || item.resource_url;
 
   return (
-    <article className={`flex flex-col gap-3 rounded-xl border bg-white px-4 py-3.5 md:flex-row md:items-start md:justify-between ${isFreeSample ? "border-civic/50" : "border-line"} ${locked ? "opacity-50" : ""}`}>
+    <article className={`flex flex-col gap-3 rounded-xl border bg-surface px-4 py-3.5 md:flex-row md:items-start md:justify-between ${isFreeSample ? "border-civic/50" : "border-line"} ${locked ? "opacity-50" : ""}`}>
       <div className="flex min-w-0 gap-3">
         <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${done ? "bg-emerald-600 text-white" : locked ? "bg-slate-100 text-slate-400" : "bg-indigo-50 border border-indigo-100/55 text-civic"}`}>
           {done ? <CheckCircle2 className="h-4 w-4" /> : itemIcon(item)}
@@ -769,7 +769,7 @@ function CurriculumItem({
           </button>
         ) : resourceUrl ? (
           <a
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic"
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-surface px-4 font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic"
             href={resourceUrl}
             rel="noreferrer"
             target="_blank"
@@ -778,7 +778,7 @@ function CurriculumItem({
           </a>
         ) : (
           <button
-            className="h-9 rounded-xl border border-slate-200 bg-white px-4 !font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic disabled:opacity-60"
+            className="h-9 rounded-xl border border-slate-200 bg-surface px-4 !font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic disabled:opacity-60"
             disabled={busyAction === `progress-${item.id}` || done}
             onClick={() => updateProgress(item, "completed")}
             type="button"
@@ -788,7 +788,7 @@ function CurriculumItem({
         )}
         {!locked && resourceUrl && !isTest && (
           <button
-            className="h-9 rounded-xl border border-slate-200 bg-white px-4 !font-heading text-xs !font-black text-slate-600 transition hover:border-civic hover:text-civic disabled:opacity-60"
+            className="h-9 rounded-xl border border-slate-200 bg-surface px-4 !font-heading text-xs !font-black text-slate-600 transition hover:border-civic hover:text-civic disabled:opacity-60"
             disabled={busyAction === `progress-${item.id}` || done}
             onClick={() => updateProgress(item, "completed")}
             type="button"

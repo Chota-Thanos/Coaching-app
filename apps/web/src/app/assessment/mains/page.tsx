@@ -98,7 +98,7 @@ export default function StudentMainsPage() {
         </div>
 
         <select
-          className="h-11 rounded-xl border border-line bg-white px-4 text-sm font-bold text-ink outline-none focus:border-civic"
+          className="h-11 rounded-xl border border-line bg-surface px-4 text-sm font-bold text-ink outline-none focus:border-civic"
           value={paperFilter}
           onChange={(e) => setPaperFilter(e.target.value)}
         >
@@ -117,7 +117,7 @@ export default function StudentMainsPage() {
           <span className="text-sm font-semibold text-ink/60">Loading Mains practice bank...</span>
         </div>
       ) : filteredQuestions.length === 0 ? (
-        <div className="py-16 text-center border border-dashed border-line rounded-2xl bg-white">
+        <div className="py-16 text-center border border-dashed border-line rounded-2xl bg-surface">
           <BookOpen className="h-10 w-10 text-ink/30 mx-auto mb-2" />
           <p className="text-sm font-bold text-ink/70">No Mains questions available</p>
           <p className="text-xs text-ink/50 mt-1">Check back later for updated subjective question sets.</p>
@@ -143,7 +143,7 @@ export default function StudentMainsPage() {
             return (
               <article
                 key={q.id}
-                className="bg-white border border-line rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row justify-between gap-5 relative overflow-hidden"
+                className="bg-surface border border-line rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row justify-between gap-5 relative overflow-hidden"
               >
                 <div className="space-y-4 flex-1">
                   <div className="flex flex-wrap items-center gap-3">

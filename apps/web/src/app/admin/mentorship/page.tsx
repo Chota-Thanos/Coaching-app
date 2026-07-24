@@ -365,7 +365,7 @@ export default function AdminMentorshipPage() {
             </p>
           </div>
 
-          <div className="inline-flex rounded-2xl bg-white p-1 border border-slate-200 shadow-sm flex-wrap">
+          <div className="inline-flex rounded-2xl bg-surface p-1 border border-slate-200 shadow-sm flex-wrap">
             {(["pending", "approved", "rejected", "more_info_required", "all", "engagements", "settings"] as const).map((filter) => (
               <button
                 key={filter}
@@ -404,7 +404,7 @@ export default function AdminMentorshipPage() {
                 value={promoteEmail}
                 onChange={(e) => setPromoteEmail(e.target.value)}
                 placeholder="user@email.com"
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 min-w-[220px]"
+                className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm outline-none focus:border-indigo-400 min-w-[220px]"
               />
               <button
                 onClick={handleDirectPromote}
@@ -426,7 +426,7 @@ export default function AdminMentorshipPage() {
                 <select
                   value={engagementStatusFilter}
                   onChange={(e) => setEngagementStatusFilter(e.target.value)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold outline-none"
+                  className="flex-1 rounded-xl border border-slate-200 bg-surface px-2.5 py-1.5 text-[11px] font-bold outline-none"
                 >
                   {["all", "requested", "accepted", "rejected", "completed", "cancelled", "expired"].map((s) => (
                     <option key={s} value={s}>{s === "all" ? "Any Status" : s}</option>
@@ -435,7 +435,7 @@ export default function AdminMentorshipPage() {
                 <select
                   value={engagementPaymentFilter}
                   onChange={(e) => setEngagementPaymentFilter(e.target.value)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold outline-none"
+                  className="flex-1 rounded-xl border border-slate-200 bg-surface px-2.5 py-1.5 text-[11px] font-bold outline-none"
                 >
                   {["all", "pending", "paid", "refunded", "failed"].map((s) => (
                     <option key={s} value={s}>{s === "all" ? "Any Payment" : s}</option>
@@ -449,11 +449,11 @@ export default function AdminMentorshipPage() {
 
               <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
                 {loadingEngagements ? (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-surface p-8 text-center text-xs text-slate-400">
                     Loading engagements...
                   </div>
                 ) : engagements.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-surface p-8 text-center text-xs text-slate-400">
                     No mentorship engagements match these filters.
                   </div>
                 ) : (
@@ -464,7 +464,7 @@ export default function AdminMentorshipPage() {
                       className={`w-full text-left rounded-3xl p-5 border transition-all ${
                         selectedEngagement?.id === eng.id
                           ? "border-indigo-600 bg-indigo-50/40 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          : "border-slate-200 bg-surface hover:border-slate-300"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -510,7 +510,7 @@ export default function AdminMentorshipPage() {
             {/* Engagement Detail view */}
             <div className="space-y-6">
               {selectedEngagement ? (
-                <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
+                <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm space-y-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-6">
                     <div>
                       <h2 className="text-xl font-black text-slate-900">
@@ -597,7 +597,7 @@ export default function AdminMentorshipPage() {
                   )}
                 </div>
               ) : (
-                <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-400">
+                <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-surface p-8 text-center text-slate-400">
                   <ShieldAlert className="h-12 w-12 text-slate-300 mb-3 animate-pulse" />
                   <p className="text-sm font-medium">Select an engagement to see its full lifecycle, agendas, and evaluation status.</p>
                 </div>
@@ -605,7 +605,7 @@ export default function AdminMentorshipPage() {
             </div>
           </div>
         ) : statusFilter === "settings" ? (
-          <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm">
             <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-indigo-600" /> Mentorship Settings Configuration
             </h2>
@@ -725,7 +725,7 @@ export default function AdminMentorshipPage() {
 
             <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
               {applications.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-surface p-8 text-center text-xs text-slate-400">
                   No applications found in this queue.
                 </div>
               ) : (
@@ -741,7 +741,7 @@ export default function AdminMentorshipPage() {
                     className={`w-full text-left rounded-3xl p-5 border transition-all ${
                       selectedApp?.id === app.id
                         ? "border-indigo-600 bg-indigo-50/40 shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300"
+                        : "border-slate-200 bg-surface hover:border-slate-300"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -786,7 +786,7 @@ export default function AdminMentorshipPage() {
           {/* Application Detail view */}
           <div className="space-y-6">
             {selectedApp ? (
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
                   <div className="flex items-center gap-4">
                     {selectedApp.details?.professional_headshot?.url ? (
@@ -1101,7 +1101,7 @@ export default function AdminMentorshipPage() {
                 )}
               </div>
             ) : (
-              <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-400">
+              <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-surface p-8 text-center text-slate-400">
                 <ShieldAlert className="h-12 w-12 text-slate-300 mb-3 animate-pulse" />
                 <p className="text-sm font-medium">Select an application from the queue to review credentials.</p>
               </div>

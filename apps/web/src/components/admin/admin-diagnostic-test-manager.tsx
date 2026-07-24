@@ -191,7 +191,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onBack}
-            className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition shrink-0"
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition shrink-0"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> All Tests
           </button>
@@ -210,7 +210,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 onBack();
               } catch (e) { setError(e instanceof Error ? e.message : "Failed to publish"); }
             }}
-              className="rounded-lg border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink/90 transition"
+              className="rounded-lg border border-midnight bg-midnight px-3 py-1.5 text-xs font-semibold text-white hover:bg-midnight/90 transition"
             >
               Publish
             </button>
@@ -222,7 +222,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 onBack();
               } catch (e) { setError(e instanceof Error ? e.message : "Failed to unpublish"); }
             }}
-              className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition"
+              className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition"
             >
               Unpublish
             </button>
@@ -231,7 +231,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs text-muted">
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">
           <span className="flex-1">{error}</span>
           <button onClick={() => setError(null)}><X className="h-3.5 w-3.5 text-muted/50" /></button>
         </div>
@@ -259,7 +259,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
           ) : (
             <div className="space-y-1.5 max-h-[580px] overflow-y-auto">
               {paperQuestions.map((q, i) => (
-                <div key={q.id} className="group flex items-start gap-2 rounded-lg border border-line/50 bg-white px-3 py-2.5">
+                <div key={q.id} className="group flex items-start gap-2 rounded-lg border border-line/50 bg-surface px-3 py-2.5">
                   <span className="mt-0.5 shrink-0 text-[10px] font-bold text-muted/40 w-4">{i + 1}</span>
                   <p className="flex-1 text-xs text-ink leading-relaxed line-clamp-2">
                     {stripHtml(q.question_version.question_statement)}
@@ -288,7 +288,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-bold transition ${
                   activeTab === tab
                     ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                    : "border-slate-300 bg-white text-muted hover:border-indigo-300 hover:text-ink"
+                    : "border-slate-300 bg-surface text-muted hover:border-indigo-300 hover:text-ink"
                 }`}
               >
                 {TAB_LABELS[tab]}
@@ -298,7 +298,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
 
           {/* Subject filter */}
           <select
-            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink focus:border-muted focus:outline-none disabled:text-muted/50"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-muted focus:outline-none disabled:text-muted/50"
             value={selectedSubject}
             onChange={e => setSelectedSubject(e.target.value)}
             disabled={loadingSubjects || subjects.length === 0}
@@ -315,7 +315,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted/40 pointer-events-none" />
             <input
-              className="w-full rounded-lg border border-line bg-white py-2 pl-8 pr-8 text-xs text-ink placeholder:text-muted/40 focus:border-muted focus:outline-none"
+              className="w-full rounded-lg border border-line bg-surface py-2 pl-8 pr-8 text-xs text-ink placeholder:text-muted/40 focus:border-muted focus:outline-none"
               placeholder="Filter by keyword…"
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -349,7 +349,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                 const isAdding = addingId === versionId;
                 return (
                   <div key={q.id}
-                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 transition ${added ? "border-line/50 bg-paper" : "border-line/50 bg-white"}`}
+                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 transition ${added ? "border-line/50 bg-paper" : "border-line/50 bg-surface"}`}
                   >
                     <p className={`flex-1 text-xs leading-relaxed line-clamp-2 ${added ? "text-muted/60" : "text-ink"}`}>
                       {stripHtml(q.current_version?.question_statement ?? "") || <em className="text-muted/40">No statement</em>}
@@ -360,7 +360,7 @@ function QuestionManager({ test, token, onBack }: { test: DiagnosticTest; token:
                       className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition ${
                         added
                           ? "text-muted/50 cursor-default"
-                          : "border border-line bg-white text-muted hover:border-muted hover:text-ink disabled:opacity-40"
+                          : "border border-line bg-surface text-muted hover:border-muted hover:text-ink disabled:opacity-40"
                       }`}
                     >
                       {added ? <Check className="h-3 w-3" /> : isAdding
@@ -469,7 +469,7 @@ export function AdminDiagnosticTestManager() {
   return (
     <div className="space-y-5">
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-xs text-muted">
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-muted">
           <span className="flex-1">{error}</span>
           <button onClick={() => setError(null)} className="text-muted/50 hover:text-muted"><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -485,7 +485,7 @@ export function AdminDiagnosticTestManager() {
         </div>
         <button
           onClick={() => setShowCreate(v => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-ink bg-ink px-3 py-2 text-xs font-semibold text-white hover:bg-ink/90 transition shrink-0"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-midnight bg-midnight px-3 py-2 text-xs font-semibold text-white hover:bg-midnight/90 transition shrink-0"
         >
           <Plus className="h-3.5 w-3.5" /> New Test
         </button>
@@ -493,13 +493,13 @@ export function AdminDiagnosticTestManager() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="rounded-xl border border-line bg-white p-5 space-y-4">
+        <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
           <h3 className="text-xs font-semibold text-ink uppercase tracking-wide">New Diagnostic Test</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Title *</label>
               <input
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-surface focus:border-muted focus:outline-none"
                 placeholder="e.g. UPSC Prelims Diagnostic Test 2025"
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -508,7 +508,7 @@ export function AdminDiagnosticTestManager() {
             <div>
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Exam *</label>
               <select
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-surface focus:border-muted focus:outline-none"
                 value={form.exam_id}
                 onChange={e => setForm(f => ({ ...f, exam_id: e.target.value, exam_level_id: "" }))}
               >
@@ -519,7 +519,7 @@ export function AdminDiagnosticTestManager() {
             <div>
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Level *</label>
               <select
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-surface focus:border-muted focus:outline-none"
                 value={form.exam_level_id}
                 onChange={e => setForm(f => ({ ...f, exam_level_id: e.target.value }))}
                 disabled={!form.exam_id}
@@ -532,7 +532,7 @@ export function AdminDiagnosticTestManager() {
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Duration (min) *</label>
               <input
                 type="number" min={5} max={180}
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink focus:bg-surface focus:border-muted focus:outline-none"
                 value={form.duration_minutes}
                 onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))}
               />
@@ -540,7 +540,7 @@ export function AdminDiagnosticTestManager() {
             <div>
               <label className="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Description</label>
               <input
-                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-white focus:border-muted focus:outline-none"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/40 focus:bg-surface focus:border-muted focus:outline-none"
                 placeholder="Short description (optional)"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -551,13 +551,13 @@ export function AdminDiagnosticTestManager() {
             <button
               onClick={handleCreate}
               disabled={saving || !form.title.trim() || !form.exam_id || !form.exam_level_id}
-              className="rounded-lg border border-ink bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-ink/90 disabled:opacity-40 transition"
+              className="rounded-lg border border-midnight bg-midnight px-4 py-2 text-xs font-semibold text-white hover:bg-midnight/90 disabled:opacity-40 transition"
             >
               {saving ? "Creating…" : "Create & Add Questions →"}
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="rounded-lg border border-line bg-white px-4 py-2 text-xs font-semibold text-muted hover:bg-paper transition"
+              className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-semibold text-muted hover:bg-paper transition"
             >
               Cancel
             </button>
@@ -575,7 +575,7 @@ export function AdminDiagnosticTestManager() {
       ) : (
         <div className="space-y-2">
           {tests.map(t => (
-            <div key={t.id} className="rounded-xl border border-line bg-white px-5 py-4">
+            <div key={t.id} className="rounded-xl border border-line bg-surface px-5 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -592,7 +592,7 @@ export function AdminDiagnosticTestManager() {
                 <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                   <button
                     onClick={() => setManagingTest(t)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-muted hover:text-ink transition"
+                    className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-muted hover:text-ink transition"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
                     Manage
@@ -600,21 +600,21 @@ export function AdminDiagnosticTestManager() {
                   </button>
                   {t.status === "draft" && (
                     <button onClick={() => void setStatus(t.id, "published")}
-                      className="rounded-lg border border-ink bg-ink px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-ink/90 transition"
+                      className="rounded-lg border border-midnight bg-midnight px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-midnight/90 transition"
                     >Publish</button>
                   )}
                   {t.status === "published" && (
                     <button onClick={() => void setStatus(t.id, "draft")}
-                      className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition"
+                      className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-paper transition"
                     >Unpublish</button>
                   )}
                   {t.status !== "archived" && (
                     <button onClick={() => void setStatus(t.id, "archived")}
-                      className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-muted/60 hover:bg-paper transition"
+                      className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted/60 hover:bg-paper transition"
                     >Archive</button>
                   )}
                   <button onClick={() => void handleDelete(t.id)}
-                    className="rounded-lg border border-line/50 bg-white p-1.5 text-muted/40 hover:text-berry hover:border-berry/30 transition"
+                    className="rounded-lg border border-line/50 bg-surface p-1.5 text-muted/40 hover:text-berry hover:border-berry/30 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

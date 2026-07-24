@@ -123,7 +123,7 @@ export function PricingCheckoutModal({ plan, selectedPrice, token, onClose, onSu
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-7 pt-7 pb-8 text-white">
           <div className="flex items-start justify-between">
@@ -230,7 +230,7 @@ export function PricingCheckoutModal({ plan, selectedPrice, token, onClose, onSu
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={onClose}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
+                  className="rounded-xl border border-slate-200 bg-surface px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>

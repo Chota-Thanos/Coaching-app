@@ -20,7 +20,7 @@ export function MobileFilterSheet(props: MobileFilterSheetProps) {
   return (
     <>
       <button
-        className="fixed bottom-4 left-4 right-4 z-20 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-bold text-white shadow-soft lg:hidden"
+        className="fixed bottom-4 left-4 right-4 z-20 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-midnight px-4 text-sm font-bold text-white shadow-soft lg:hidden"
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -31,7 +31,7 @@ export function MobileFilterSheet(props: MobileFilterSheetProps) {
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             aria-label="Close filters"
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-midnight/40"
             onClick={() => setOpen(false)}
             type="button"
           />
@@ -40,7 +40,7 @@ export function MobileFilterSheet(props: MobileFilterSheetProps) {
               <h2 className="text-lg font-extrabold text-ink">Filters</h2>
               <button
                 aria-label="Close filters"
-                className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white"
+                className="grid h-10 w-10 place-items-center rounded-md border border-line bg-surface"
                 onClick={() => setOpen(false)}
                 type="button"
               >

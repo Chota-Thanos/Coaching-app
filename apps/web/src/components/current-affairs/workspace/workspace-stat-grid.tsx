@@ -8,7 +8,7 @@ type WorkspaceStatGridProps = {
   dashboard: ReadingDashboard;
 };
 
-const statClasses = "rounded-lg border border-line bg-white p-4 shadow-sm";
+const statClasses = "rounded-lg border border-line bg-surface p-4 shadow-sm";
 
 export function WorkspaceStatGrid({ dashboard }: WorkspaceStatGridProps) {
   const stats = [

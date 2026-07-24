@@ -59,7 +59,7 @@ export function SourceArticleConnections({ article }: SourceArticleConnectionsPr
           <div className="mt-2 grid gap-2">
             {outgoing.map((relation) => (
               <Link
-                className="rounded-md border border-line bg-white p-2.5 text-sm font-semibold text-ink hover:border-civic"
+                className="rounded-md border border-line bg-surface p-2.5 text-sm font-semibold text-ink hover:border-civic"
                 href={articleHref(relation.target_article.slug)}
                 key={relation.id}
               >
@@ -78,7 +78,7 @@ export function SourceArticleConnections({ article }: SourceArticleConnectionsPr
           <div className="mt-2 grid gap-2">
             {incoming.map((relation) => (
               <Link
-                className="rounded-md border border-line bg-white p-2.5 text-sm font-semibold text-ink hover:border-civic"
+                className="rounded-md border border-line bg-surface p-2.5 text-sm font-semibold text-ink hover:border-civic"
                 href={articleHref(relation.source_article.slug)}
                 key={relation.id}
               >

@@ -281,7 +281,7 @@ export function OnboardingTour({ type, onClose }: OnboardingTourProps) {
       <div
         ref={tooltipRef}
         style={getTooltipStyle()}
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col transition-all duration-300"
+        className="bg-surface rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col transition-all duration-300"
       >
         {/* Header */}
         <div className={`px-4 py-3 flex items-center justify-between text-white shrink-0 ${type === "test" ? "bg-blue-600" : "bg-indigo-600"}`}>
@@ -335,7 +335,7 @@ export function OnboardingTour({ type, onClose }: OnboardingTourProps) {
             {stepIndex > 0 && (
               <button
                 onClick={handleBack}
-                className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-slate-500 hover:bg-white transition-colors flex items-center gap-1"
+                className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-slate-500 hover:bg-surface transition-colors flex items-center gap-1"
               >
                 <ArrowLeft className="h-3 w-3" />
                 Back

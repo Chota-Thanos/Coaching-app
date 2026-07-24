@@ -108,7 +108,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
       </div>
 
       {showCreateForm && (
-        <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createRepository}>
+        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createRepository}>
           <label className="grid gap-1 text-sm font-bold text-ink">
             Repository name
             <input
@@ -157,7 +157,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
               type="button"
               onClick={() => toggleFilterTag(tag)}
               className={`rounded-full px-2.5 py-1 text-xs font-bold transition-all ${
-                activeFilterTags.includes(tag) ? "bg-civic text-white" : "bg-white text-ink/65 border border-line hover:border-civic"
+                activeFilterTags.includes(tag) ? "bg-civic text-white" : "bg-surface text-ink/65 border border-line hover:border-civic"
               }`}
             >
               {tag}
@@ -177,17 +177,17 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
 
       <div className="grid gap-3">
         {collections.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">
+          <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">
             Create repositories for monthly revision, syllabus topics, interview prep, or PYQ practice.
           </p>
         ) : filteredCollections.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">
+          <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">
             No repositories match the selected tags.
           </p>
         ) : (
           filteredCollections.map((collection) => (
             <Link
-              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white p-4 hover:border-civic"
+              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface p-4 hover:border-civic"
               href={`/current-affairs/workspace/repositories/${collection.id}`}
               key={collection.id}
             >

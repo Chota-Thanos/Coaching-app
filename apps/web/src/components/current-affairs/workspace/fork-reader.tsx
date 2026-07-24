@@ -88,7 +88,7 @@ export function ForkReader({ forkId }: ForkReaderProps) {
       </Link>
 
       {error && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{error}</p>}
-      {loading && !fork && <p className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70">Loading article...</p>}
+      {loading && !fork && <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading article...</p>}
 
       {fork && (
         <>
@@ -108,7 +108,7 @@ export function ForkReader({ forkId }: ForkReaderProps) {
                 </Link>
               )}
               <button
-                className="ml-auto inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink disabled:opacity-60"
+                className="ml-auto inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
                 disabled={downloadingPdf}
                 onClick={downloadPdf}
                 type="button"
@@ -122,7 +122,7 @@ export function ForkReader({ forkId }: ForkReaderProps) {
 
           <ArticleAnnotator
             body={body}
-            className="article-body rounded-lg border border-line bg-white p-4 text-base text-ink shadow-sm md:p-6"
+            className="article-body rounded-lg border border-line bg-surface p-4 text-base text-ink shadow-sm md:p-6"
             forkId={fork.id}
             highlights={fork.highlights ?? []}
             notes={fork.notes ?? []}

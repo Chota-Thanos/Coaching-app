@@ -516,7 +516,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
   if (!isInitialized) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <p className="rounded-lg border border-line bg-white p-6 text-center text-sm font-bold text-ink/50">Verifying session...</p>
+        <p className="rounded-lg border border-line bg-surface p-6 text-center text-sm font-bold text-ink/50">Verifying session...</p>
       </main>
     );
   }
@@ -524,7 +524,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
   if (!token) {
     return (
       <main className="mx-auto max-w-xl px-4 pb-16 pt-6">
-        <section className="rounded-lg border border-line bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-line bg-surface p-6 shadow-sm">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-civic/10 text-civic">
               <ShieldCheck className="h-6 w-6" />
@@ -556,7 +556,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
 
   return (
     <div className="min-h-screen bg-paper lg:flex">
-      <aside className="w-full shrink-0 border-r border-line bg-white p-5 lg:w-72">
+      <aside className="w-full shrink-0 border-r border-line bg-surface p-5 lg:w-72">
         <Link className="mb-4 flex items-center gap-2 text-xs font-bold text-ink/50 hover:text-civic" href={initialPlanId ? "/admin/study-plans" : "/admin"}>
           &larr; {initialPlanId ? "Study Plans" : "All Modules"}
         </Link>
@@ -606,7 +606,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-ink/60">Selected Plan:</span>
               <select
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
                 value={selectedPlanId}
                 onChange={(event) => {
                   setSelectedPlanId(event.target.value);
@@ -621,11 +621,11 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
           )}
         </div>
 
-        {message && <p className="rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-civic">{message}</p>}
+        {message && <p className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-civic">{message}</p>}
 
         {/* Top read-only Plan Overview banner */}
         {selectedPlan && (
-          <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+          <div className="rounded-xl border border-line bg-surface p-6 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <h3 className="text-2xl font-black text-slate-900">{selectedPlan.title}</h3>
@@ -660,13 +660,13 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     });
                     setIsEditingPlanDetails(true);
                   }}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:bg-slate-50"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-black text-slate-700 hover:bg-slate-50"
                 >
                   <Edit3 className="h-3.5 w-3.5" />
                   Edit Plan Details
                 </button>
                 <Link
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-civic bg-white px-3 text-xs font-black text-civic hover:bg-civic/5"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-civic bg-surface px-3 text-xs font-black text-civic hover:bg-civic/5"
                   href={`/study-plans/${selectedPlan.id}`}
                   target="_blank"
                 >
@@ -692,7 +692,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
         {selectedPlan ? (
           <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             {/* Left Column: Timeline */}
-            <div className="rounded-lg border border-line bg-white p-5 shadow-sm space-y-4">
+            <div className="rounded-lg border border-line bg-surface p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-md bg-civic/10 text-civic">
                   <CalendarDays className="h-4 w-4" />
@@ -732,18 +732,18 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     })()}
                     <div className="divide-y divide-line">
                       {items.length === 0 ? (
-                        <p className="p-4 text-center text-xs font-bold text-ink/40 bg-white italic">
+                        <p className="p-4 text-center text-xs font-bold text-ink/40 bg-surface italic">
                           No steps added for this week yet. Use the form on the right to add steps.
                         </p>
                       ) : (
                         items.map((item) => (
                           <button
-                            className={`flex w-full items-start gap-3 p-3 text-left transition-colors ${selectedItemId === item.id ? "bg-emerald-50" : "bg-white hover:bg-paper"}`}
+                            className={`flex w-full items-start gap-3 p-3 text-left transition-colors ${selectedItemId === item.id ? "bg-emerald-50" : "bg-surface hover:bg-paper"}`}
                             key={item.id}
                             onClick={() => { setSelectedItemId(item.id); setIsEditingItem(false); }}
                             type="button"
                           >
-                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white text-civic ring-1 ring-line">
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface text-civic ring-1 ring-line">
                               {itemIcon(item.item_type)}
                             </span>
                             <span className="min-w-0 flex-1">
@@ -763,7 +763,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
             {/* Right Column: Add Step / Selected Step */}
             <div className="space-y-5">
               {!selectedItem ? (
-                <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
+                <div className="rounded-lg border border-line bg-surface p-5 shadow-sm">
                   <p className="text-xs font-black uppercase tracking-wide text-ink/50">Add step to plan</p>
                   <div className="mt-3 grid gap-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -815,7 +815,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     )}
 
                     {isTestStep(stepForm.item_type) && (
-                      <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
+                      <div className="grid gap-3 rounded-md border border-civic/20 bg-surface p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
                         {matchingExamLevels.length > 1 && (
                           <FieldReference label="Exam level" reference="Maps this test to an exam level.">
@@ -858,7 +858,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                   </div>
                 </div>
               ) : isEditingItem ? (
-                <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
+                <div className="rounded-lg border border-line bg-surface p-5 shadow-sm">
                   <p className="text-xs font-black uppercase tracking-wide text-ink/50">Edit step details</p>
                   <div className="mt-3 grid gap-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -896,7 +896,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     )}
 
                     {isTestStep(stepEditForm.item_type) && (
-                      <div className="grid gap-3 rounded-md border border-civic/20 bg-white p-3">
+                      <div className="grid gap-3 rounded-md border border-civic/20 bg-surface p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-civic">Test created inside this step</p>
                         {matchingEditExamLevels.length > 1 && (
                           <FieldReference label="Exam level" reference="Maps this test to an exam level.">
@@ -934,7 +934,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     </label>
                     <div className="flex gap-2">
                       <button
-                        className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white text-sm font-black text-ink hover:bg-paper"
+                        className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface text-sm font-black text-ink hover:bg-paper"
                         onClick={() => setIsEditingItem(false)}
                         type="button"
                       >
@@ -953,7 +953,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border border-line bg-white p-5 shadow-sm space-y-4">
+                <div className="rounded-lg border border-line bg-surface p-5 shadow-sm space-y-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-civic">Selected step</p>
@@ -963,7 +963,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedItem.is_preview && <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">Free preview</span>}
                       <button
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 disabled:opacity-50"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-surface px-2 text-xs font-black text-slate-700 disabled:opacity-50"
                         onClick={() => {
                           setStepEditForm({
                             week_no: String(selectedItem.week_no),
@@ -987,7 +987,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                         Edit step
                       </button>
                       <button
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2 text-xs font-black text-rose-700 disabled:opacity-50"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-surface px-2 text-xs font-black text-rose-700 disabled:opacity-50"
                         disabled={busy === `delete-step-${selectedItem.id}`}
                         onClick={() => deleteStep(selectedItem)}
                         type="button"
@@ -1012,7 +1012,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                   )}
 
                   {selectedItem.item_type === "live_lecture" && (
-                    <div className="mt-4 rounded-md border border-civic/20 bg-white p-4">
+                    <div className="mt-4 rounded-md border border-civic/20 bg-surface p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-civic">Live class</p>
                       {!selectedItem.live_class ? (
                         <p className="mt-2 text-sm font-bold text-ink/50">No session scheduled for this step yet. Delete and re-add it with a scheduled time to create one.</p>
@@ -1037,7 +1037,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                             )}
                             {selectedItem.live_class.status === "live" && (
                               <button
-                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 text-xs font-black text-rose-700 disabled:opacity-50"
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-surface px-3 text-xs font-black text-rose-700 disabled:opacity-50"
                                 disabled={busy === "live-class-end"}
                                 onClick={() => endLiveClassStep(selectedItem.live_class!.id)}
                                 type="button"
@@ -1097,7 +1097,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
       {/* Edit Plan Basics Modal (including TipTap RichTextMarkdownEditor) */}
       {isEditingPlanDetails && selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-xl border border-line bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
+          <div className="w-full max-w-3xl rounded-xl border border-line bg-surface p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
             <h3 className="text-xl font-black text-ink">Edit Plan Details</h3>
             <p className="text-xs font-semibold text-ink/50 mt-1">Update title, subtitle, subject scope, duration, pricing, and status.</p>
             <div className="mt-4 space-y-4 max-h-[70vh] overflow-y-auto pr-1">
@@ -1169,7 +1169,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
-                  className="h-9 rounded-md border border-line bg-white px-4 text-xs font-black text-ink/70 hover:bg-paper"
+                  className="h-9 rounded-md border border-line bg-surface px-4 text-xs font-black text-ink/70 hover:bg-paper"
                   onClick={() => setIsEditingPlanDetails(false)}
                   type="button"
                 >
@@ -1194,7 +1194,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
 
       {editingWeek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-line bg-white p-5 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-xl animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-lg font-black text-ink">Edit Overview for Week {editingWeek.weekNo}</h3>
             <p className="text-xs font-semibold text-ink/50 mt-1">Provide a high-level title and description for what will be covered this week.</p>
             <div className="mt-4 space-y-4">
@@ -1218,7 +1218,7 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
               </label>
               <div className="flex justify-end gap-2 pt-2">
                 <button
-                  className="h-9 rounded-md border border-line bg-white px-4 text-xs font-black text-ink/70 hover:bg-paper"
+                  className="h-9 rounded-md border border-line bg-surface px-4 text-xs font-black text-ink/70 hover:bg-paper"
                   onClick={() => setEditingWeek(null)}
                   type="button"
                 >

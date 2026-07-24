@@ -162,7 +162,7 @@ export function AdminIngestionManager() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-black text-ink">Ingestion jobs</h2>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
               disabled={loading}
               onClick={loadJobs}
               type="button"
@@ -172,15 +172,15 @@ export function AdminIngestionManager() {
             </button>
           </div>
 
-          {message && <p className="rounded-lg border border-line bg-white p-3 text-sm font-semibold text-civic">{message}</p>}
+          {message && <p className="rounded-lg border border-line bg-surface p-3 text-sm font-semibold text-civic">{message}</p>}
 
           <div className="grid gap-3">
             {jobs.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">No ingestion jobs found.</p>
+              <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">No ingestion jobs found.</p>
             ) : (
               jobs.map((job) => (
                 <article
-                  className={`rounded-lg border bg-white p-4 shadow-sm ${selectedJob?.id === job.id ? "border-civic" : "border-line"}`}
+                  className={`rounded-lg border bg-surface p-4 shadow-sm ${selectedJob?.id === job.id ? "border-civic" : "border-line"}`}
                   key={job.id}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -195,7 +195,7 @@ export function AdminIngestionManager() {
                       </p>
                     </div>
                     <button
-                      className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-civic"
+                      className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-civic"
                       onClick={() => void loadJobDetail(job.id)}
                       type="button"
                     >
@@ -215,13 +215,13 @@ export function AdminIngestionManager() {
           </div>
 
           {!selectedJob ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">Select a job to review items.</p>
+            <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">Select a job to review items.</p>
           ) : selectedJob.items.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">No items in this job.</p>
+            <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">No items in this job.</p>
           ) : (
             <div className="grid gap-3">
               {selectedJob.items.map((item) => (
-                <article className="rounded-lg border border-line bg-white p-4 shadow-sm" key={item.id}>
+                <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={item.id}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap gap-2">
@@ -239,7 +239,7 @@ export function AdminIngestionManager() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                       <button
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-civic"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-civic"
                         onClick={() => void patchItem(item.id, "approved")}
                         type="button"
                       >
@@ -247,7 +247,7 @@ export function AdminIngestionManager() {
                         Approve
                       </button>
                       <button
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
                         onClick={() => void patchItem(item.id, "rejected")}
                         type="button"
                       >
@@ -273,7 +273,7 @@ export function AdminIngestionManager() {
       </div>
 
       <aside className="lg:sticky lg:top-28 lg:self-start">
-        <form className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-sm" onSubmit={createJob}>
+        <form className="grid gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm" onSubmit={createJob}>
           <div className="flex items-center gap-2">
             <FileStack aria-hidden="true" className="h-5 w-5 text-civic" />
             <h2 className="text-lg font-black text-ink">Create ingestion job</h2>
@@ -283,7 +283,7 @@ export function AdminIngestionManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Parser
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => update("parserKind", event.target.value as IngestionParserKind)}
                 value={form.parserKind}
               >
@@ -298,7 +298,7 @@ export function AdminIngestionManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Default kind
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => update("contentKind", event.target.value as ContentKind)}
                 value={form.contentKind}
               >
@@ -314,7 +314,7 @@ export function AdminIngestionManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             Default category
             <select
-              className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+              className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
               onChange={(event) => update("categoryNodeId", event.target.value)}
               value={form.categoryNodeId}
             >
@@ -340,7 +340,7 @@ export function AdminIngestionManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Default status
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => update("status", event.target.value as MasterArticleStatus)}
                 value={form.status}
               >

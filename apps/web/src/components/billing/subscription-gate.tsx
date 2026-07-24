@@ -83,7 +83,7 @@ export function SubscriptionGateBanner({
         <div className="mt-7 flex flex-wrap gap-3">
           <Link
             href={pricingHref}
-            className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-black text-indigo-700 hover:bg-indigo-50 transition shadow-md"
+            className="inline-flex items-center gap-2 rounded-2xl bg-surface px-6 py-3 text-sm font-black text-indigo-700 hover:bg-indigo-50 transition shadow-md"
           >
             <Zap className="h-4 w-4" />
             {ctaLabel}
@@ -121,7 +121,7 @@ export function SubscriptionGateOverlay({
 
       {/* Overlay card */}
       <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
-        <div className="w-full max-w-sm rounded-3xl border border-indigo-100 bg-white/95 backdrop-blur-sm shadow-2xl p-7 text-center">
+        <div className="w-full max-w-sm rounded-3xl border border-indigo-100 bg-surface/95 backdrop-blur-sm shadow-2xl p-7 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 mb-5">
             <Lock className="h-7 w-7" />
           </div>

@@ -36,7 +36,7 @@ export function QuizCreatorAIWorkspace({
   setSelectedStyleProfileId
 }: AIWorkspaceProps) {
   return (
-    <div className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
+    <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
       <div>
         <h2 className="text-lg sm:text-xl font-black text-ink flex items-center gap-2">
           <Brain className="h-5 w-5 text-civic" />
@@ -66,7 +66,7 @@ export function QuizCreatorAIWorkspace({
               value={quizType}
               onChange={(e) => setQuizType(e.target.value)}
               disabled={generating}
-              className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-civic"
+              className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold outline-none focus:border-civic"
             >
               <option value="gk">General Knowledge (GK)</option>
               <option value="maths">Mathematical / LaTeX formulas</option>
@@ -93,7 +93,7 @@ export function QuizCreatorAIWorkspace({
               value={selectedStyleProfileId}
               onChange={(e) => setSelectedStyleProfileId(e.target.value)}
               disabled={generating}
-              className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-civic"
+              className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold outline-none focus:border-civic"
             >
               <option value="">None (Global Fallback)</option>
               {styleProfiles.map(p => (

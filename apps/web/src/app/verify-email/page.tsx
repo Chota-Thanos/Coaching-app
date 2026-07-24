@@ -46,7 +46,7 @@ function VerifyEmailInner() {
   }, [token]);
 
   return (
-    <div className="w-full rounded-lg border border-line bg-white p-6 text-center shadow-sm">
+    <div className="w-full rounded-lg border border-line bg-surface p-6 text-center shadow-sm">
       {state === "pending" && (
         <>
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-civic" />
@@ -97,7 +97,7 @@ export default function VerifyEmailPage() {
     <main className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-md items-center px-4 py-10">
       <Suspense
         fallback={
-          <div className="w-full rounded-lg border border-line bg-white p-6 text-sm text-ink/70 shadow-sm">
+          <div className="w-full rounded-lg border border-line bg-surface p-6 text-sm text-ink/70 shadow-sm">
             Loading…
           </div>
         }

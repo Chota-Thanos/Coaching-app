@@ -5,7 +5,7 @@ import { SignInPanel } from "../../auth/sign-in-panel";
 
 export function WorkspaceSignIn() {
   return (
-    <section className="mx-auto max-w-xl rounded-lg border border-line bg-white p-5 shadow-sm">
+    <section className="mx-auto max-w-xl rounded-lg border border-line bg-surface p-5 shadow-sm">
       <div className="flex items-start gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-civic/10 text-civic">
           <LockKeyhole aria-hidden="true" className="h-5 w-5" />

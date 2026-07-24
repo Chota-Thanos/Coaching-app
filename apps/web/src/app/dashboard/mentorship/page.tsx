@@ -396,7 +396,7 @@ export default function LearnerMentorshipPage() {
         </div>
 
         {requests.length === 0 ? (
-          <div className="rounded-[40px] border border-dashed border-slate-300 bg-white p-20 text-center">
+          <div className="rounded-[40px] border border-dashed border-slate-300 bg-surface p-20 text-center">
             <User className="mx-auto h-16 w-16 text-slate-300 mb-4 animate-pulse" />
             <h2 className="text-xl font-bold text-slate-800">No active requests</h2>
             <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
@@ -422,7 +422,7 @@ export default function LearnerMentorshipPage() {
                     className={`w-full text-left rounded-3xl p-5 border transition-all ${
                       selectedRequest?.id === req.id
                         ? "border-indigo-600 bg-indigo-50/40 shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300"
+                        : "border-slate-200 bg-surface hover:border-slate-300"
                     }`}
                   >
                     <div className="flex items-start gap-3 justify-between">
@@ -470,7 +470,7 @@ export default function LearnerMentorshipPage() {
             {selectedRequest && (
               <div className="space-y-6">
                 {/* Lifecycle tracker */}
-                <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-[32px] border border-slate-200 bg-surface p-5 shadow-sm">
                   <MentorshipLifecycleTracker
                     input={{
                       status: selectedRequest.status,
@@ -486,7 +486,7 @@ export default function LearnerMentorshipPage() {
                 </div>
 
                 {/* Status card */}
-                <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected Mentor</span>
                     <h2 className="text-xl font-black text-slate-900">{selectedRequest.mentor_name}</h2>
@@ -573,7 +573,7 @@ export default function LearnerMentorshipPage() {
                            href={selectedRequest.meta?.student_copy?.url}
                            target="_blank"
                            rel="noreferrer"
-                           className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                           className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                          >
                            View Uploaded PDF Submission
                          </a>
@@ -609,7 +609,7 @@ export default function LearnerMentorshipPage() {
                      ) : (
                        <div className="space-y-4">
                          <div className="grid gap-4 sm:grid-cols-3">
-                           <div className="bg-white rounded-2xl border border-slate-100 p-4 text-center">
+                           <div className="bg-surface rounded-2xl border border-slate-100 p-4 text-center">
                              <span className="text-[10px] font-bold text-slate-400 uppercase">Score Obtained</span>
                              <p className="text-2xl font-black text-slate-800 mt-1">
                                {customEvaluation.score} <span className="text-xs text-slate-500 font-semibold">/ {customEvaluation.max_score}</span>
@@ -674,7 +674,7 @@ export default function LearnerMentorshipPage() {
 
                  {/* Mentor Question Sets if evaluation_source === "own_questions" */}
                  {selectedRequest.mentor_meta?.evaluation_source === "own_questions" && (
-                   <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4 animate-in fade-in duration-200">
+                   <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4 animate-in fade-in duration-200">
                      <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                          <Sparkles className="h-4 w-4 text-indigo-600" />
@@ -742,7 +742,7 @@ export default function LearnerMentorshipPage() {
                     ) : (
                       <div className="space-y-4">
                         <div className="grid gap-4 sm:grid-cols-3">
-                          <div className="bg-white rounded-2xl border border-slate-100 p-4 text-center">
+                          <div className="bg-surface rounded-2xl border border-slate-100 p-4 text-center">
                             <span className="text-[10px] font-bold text-slate-400 uppercase">Score Obtained</span>
                             <p className="text-2xl font-black text-slate-800 mt-1">
                               {selectedRequest.evaluation_score} <span className="text-xs text-slate-500 font-semibold">/ {selectedRequest.evaluation_max_score}</span>

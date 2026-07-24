@@ -149,7 +149,7 @@ export function MentorshipLifecycleTracker({ input }: { input: MentorshipLifecyc
                       ? "border-emerald-500 bg-emerald-500 text-white"
                       : isCurrent
                         ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-slate-200 bg-white text-slate-300"
+                        : "border-slate-200 bg-surface text-slate-300"
                   }`}
                 >
                   {row.done ? <Check className="h-3.5 w-3.5" /> : null}
@@ -176,7 +176,7 @@ export function MentorshipLifecycleTracker({ input }: { input: MentorshipLifecyc
                     ? "border-emerald-500 bg-emerald-500 text-white"
                     : isCurrent
                       ? colors.nodeCurrent
-                      : `${colors.node} bg-white`
+                      : `${colors.node} bg-surface`
                 }`}
               >
                 {row.done ? <Check className="h-3.5 w-3.5" /> : null}
@@ -199,8 +199,8 @@ export function MentorshipLifecycleTracker({ input }: { input: MentorshipLifecyc
                         sub.done
                           ? "border-emerald-500 bg-emerald-500"
                           : sub.current
-                            ? `${colors.node} bg-white ring-[3px] ring-offset-0 ${row.color === "eval" ? "ring-indigo-100" : "ring-amber-100"}`
-                            : "border-slate-200 bg-white"
+                            ? `${colors.node} bg-surface ring-[3px] ring-offset-0 ${row.color === "eval" ? "ring-indigo-100" : "ring-amber-100"}`
+                            : "border-slate-200 bg-surface"
                       }`}
                     />
                     <span className={`text-[11.5px] font-bold ${sub.done || sub.current ? "text-slate-700" : "text-slate-400"}`}>

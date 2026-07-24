@@ -790,7 +790,7 @@ export function AdminAssessmentTaxonomyManager() {
       `}} />
 
       {/* Sticky Header (Exam selector + Tabs) */}
-      <div className="sticky top-[-24px] lg:top-[-32px] z-30 bg-white/95 backdrop-blur-md pb-4 pt-4 lg:pt-5 border-b border-line -mx-6 px-6 lg:-mx-8 lg:px-8 space-y-4 shadow-sm transition-all duration-200">
+      <div className="sticky top-[-24px] lg:top-[-32px] z-30 bg-surface/95 backdrop-blur-md pb-4 pt-4 lg:pt-5 border-b border-line -mx-6 px-6 lg:-mx-8 lg:px-8 space-y-4 shadow-sm transition-all duration-200">
         {/* Top Bar with Exam selection */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -800,7 +800,7 @@ export function AdminAssessmentTaxonomyManager() {
           <div className="flex flex-wrap items-center gap-3">
             <select
               aria-label="Select Exam"
-              className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-bold text-ink outline-none"
+              className="h-10 rounded-xl border border-line bg-surface px-3 text-sm font-bold text-ink outline-none"
               onChange={(e) => setSelectedExamId(e.target.value)}
               value={selectedExamId}
             >
@@ -870,7 +870,7 @@ export function AdminAssessmentTaxonomyManager() {
                 className={`shrink-0 rounded-xl border-2 py-2.5 px-4 text-center text-sm font-bold transition-all whitespace-nowrap ${
                   isActive
                     ? "border-civic bg-civic text-white shadow-sm"
-                    : "border-slate-300 bg-white text-ink/60 hover:border-civic/40 hover:text-civic"
+                    : "border-slate-300 bg-surface text-ink/60 hover:border-civic/40 hover:text-civic"
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
@@ -894,7 +894,7 @@ export function AdminAssessmentTaxonomyManager() {
       )}
 
       {/* Core Full-Width list panel */}
-      <div className="rounded-3xl border border-line bg-white shadow-sm overflow-hidden">
+      <div className="rounded-3xl border border-line bg-surface shadow-sm overflow-hidden">
         {activeTab === "natures" ? (
           <>
             <div className="bg-slate-50 border-b border-line px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -936,7 +936,7 @@ export function AdminAssessmentTaxonomyManager() {
                     ? "bg-rose-50/40 border-l-4 border-l-rose-400"
                     : editingNature?.id === nature.id
                     ? "bg-amber-50/60 border-l-4 border-l-amber-500"
-                    : "bg-white border-l-4 border-l-transparent hover:bg-slate-50/50";
+                    : "bg-surface border-l-4 border-l-transparent hover:bg-slate-50/50";
 
                   return (
                     <div
@@ -1049,7 +1049,7 @@ export function AdminAssessmentTaxonomyManager() {
                     ? "bg-rose-50/40 border-l-4 border-l-rose-400"
                     : editingNode?.id === node.id
                     ? "bg-amber-50/60 border-l-4 border-l-amber-500"
-                    : "bg-white border-l-4 border-l-transparent hover:bg-slate-50/50";
+                    : "bg-surface border-l-4 border-l-transparent hover:bg-slate-50/50";
 
                   return (
                     <div
@@ -1136,7 +1136,7 @@ export function AdminAssessmentTaxonomyManager() {
       {/* Modal 1: Single Node Creation/Editing */}
       {modalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-line shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+          <div className="bg-surface rounded-3xl border border-line shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <h3 className="text-lg font-black text-ink">
                 {editingNode ? "Edit Taxonomy Node" : "Add Taxonomy Node"}
@@ -1154,7 +1154,7 @@ export function AdminAssessmentTaxonomyManager() {
               <label className="grid gap-1 text-sm font-bold text-ink">
                 Internal Level Type
                 <select
-                  className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic"
+                  className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
                   onChange={(e) => updateForm("nodeType", e.target.value)}
                   value={form.nodeType}
                 >
@@ -1175,7 +1175,7 @@ export function AdminAssessmentTaxonomyManager() {
               <label className="grid gap-1 text-sm font-bold text-ink">
                 Parent Node (Reassign Taxonomy Link)
                 <select
-                  className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic"
+                  className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
                   onChange={(e) => updateForm("parentId", e.target.value)}
                   value={form.parentId}
                 >
@@ -1227,7 +1227,7 @@ export function AdminAssessmentTaxonomyManager() {
                 <div className="grid gap-2 text-sm font-bold text-ink">
                   Category Image
                   <div className="grid gap-3 sm:grid-cols-[112px,1fr]">
-                    <div className="h-28 w-28 overflow-hidden rounded-full border border-line bg-white">
+                    <div className="h-28 w-28 overflow-hidden rounded-full border border-line bg-surface">
                       {form.imageUrl ? (
                         <img
                           alt={form.name || "Category image preview"}
@@ -1304,7 +1304,7 @@ export function AdminAssessmentTaxonomyManager() {
                   {saving ? "Saving..." : editingNode ? "Update Node" : "Create Node"}
                 </button>
                 <button
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-white text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-surface text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
                   onClick={() => setModalOpen(false)}
                   type="button"
                 >
@@ -1319,7 +1319,7 @@ export function AdminAssessmentTaxonomyManager() {
       {/* Modal 2: Bulk Outline Import */}
       {bulkModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-line shadow-xl w-full max-w-xl p-6 max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+          <div className="bg-surface rounded-3xl border border-line shadow-xl w-full max-w-xl p-6 max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <h3 className="text-lg font-black text-ink flex items-center gap-2">
                 <UploadCloud className="h-5 w-5 text-civic" />
@@ -1338,7 +1338,7 @@ export function AdminAssessmentTaxonomyManager() {
               <div className="bg-slate-50 border border-line rounded-2xl p-4 text-xs space-y-2 text-slate-600">
                 <span className="font-bold text-slate-700 block">Indentation Rules:</span>
                 <p>Use spaces (e.g. 2 spaces per level) or tabs to define nesting. The importer verifies existing nodes to prevent duplication.</p>
-                <div className="font-mono bg-white border border-line/60 p-2.5 rounded-lg text-slate-500 whitespace-pre">
+                <div className="font-mono bg-surface border border-line/60 p-2.5 rounded-lg text-slate-500 whitespace-pre">
                   {activeTab === "mains" ? (
                     `GS Paper I\n  History\n    Modern History\n      Socio-Religious Movements\nGS Paper II\n  Polity`
                   ) : (
@@ -1375,7 +1375,7 @@ export function AdminAssessmentTaxonomyManager() {
                   {bulkImporting ? "Importing..." : "Start Bulk Import"}
                 </button>
                 <button
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-white text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-surface text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
                   onClick={() => setBulkModalOpen(false)}
                   type="button"
                   disabled={bulkImporting}
@@ -1391,7 +1391,7 @@ export function AdminAssessmentTaxonomyManager() {
       {/* Modal 3: Exam Creation/Editing */}
       {examModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-line shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+          <div className="bg-surface rounded-3xl border border-line shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <h3 className="text-lg font-black text-ink">
                 {editingExam ? "Edit Exam" : "Add Exam"}
@@ -1460,7 +1460,7 @@ export function AdminAssessmentTaxonomyManager() {
                   {saving ? "Saving..." : editingExam ? "Update Exam" : "Create Exam"}
                 </button>
                 <button
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-white text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-surface text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
                   onClick={() => setExamModalOpen(false)}
                   type="button"
                 >
@@ -1475,7 +1475,7 @@ export function AdminAssessmentTaxonomyManager() {
       {/* Modal 4: Question Nature Creation/Editing */}
       {natureModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-line shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+          <div className="bg-surface rounded-3xl border border-line shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
               <h3 className="text-lg font-black text-ink">
                 {editingNature ? "Edit Question Nature" : "Add Question Nature"}
@@ -1555,7 +1555,7 @@ export function AdminAssessmentTaxonomyManager() {
                   {saving ? "Saving..." : editingNature ? "Update Nature" : "Create Nature"}
                 </button>
                 <button
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-white text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-surface text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"
                   onClick={() => setNatureModalOpen(false)}
                   type="button"
                 >

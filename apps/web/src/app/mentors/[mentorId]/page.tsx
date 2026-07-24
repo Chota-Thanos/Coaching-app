@@ -155,7 +155,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
           {/* Main Info */}
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm">
               <div className="flex flex-col sm:flex-row items-start gap-6 border-b border-slate-100 pb-6 mb-6">
                 {mentor.profile_image_url ? (
                   <img
@@ -309,7 +309,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
 
             {/* Credentials Card */}
             {mentor.credentials && mentor.credentials.length > 0 && (
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm">
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">Credentials & Verification</h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {mentor.credentials.map((cred, idx) => (
@@ -325,7 +325,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
 
           {/* Sidebar Booking Request Widget */}
           <div className="sticky top-10">
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm">
               <div className="flex items-baseline justify-between mb-6">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-400">Consultation Fee</span>
                 <span className="text-3xl font-black text-slate-900">₹1,000 <span className="text-xs font-normal text-slate-500">/ Session</span></span>
@@ -341,7 +341,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                       className={`flex items-center justify-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition ${
                         preferredMode === "video"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       <Video className="h-4 w-4" />
@@ -353,7 +353,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                       className={`flex items-center justify-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition ${
                         preferredMode === "chat_only"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       Chat Triage
@@ -397,7 +397,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                           className={`flex-1 rounded-lg py-1.5 text-[10px] font-bold border transition ${
                             copySource === "upload"
                               ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                              : "bg-white border-slate-200 text-slate-600"
+                              : "bg-surface border-slate-200 text-slate-600"
                           }`}
                         >
                           Upload Copy (PDF/Img)
@@ -408,7 +408,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                           className={`flex-1 rounded-lg py-1.5 text-[10px] font-bold border transition ${
                             copySource === "platform"
                               ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                              : "bg-white border-slate-200 text-slate-600"
+                              : "bg-surface border-slate-200 text-slate-600"
                           }`}
                         >
                           Select Mains Attempt
@@ -421,7 +421,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                             Upload Answer Copy (PDF / Image) <span className="text-rose-500">*</span>
                           </label>
                           {studentCopy ? (
-                            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 text-xs">
+                            <div className="flex items-center justify-between bg-surface p-2.5 rounded-xl border border-slate-200 text-xs">
                               <span className="font-medium text-slate-700 truncate max-w-[200px]">{studentCopy.file_name}</span>
                               <button
                                 type="button"
@@ -432,7 +432,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                               </button>
                             </div>
                           ) : (
-                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-white hover:bg-slate-50 transition rounded-xl p-4 cursor-pointer">
+                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-surface hover:bg-slate-50 transition rounded-xl p-4 cursor-pointer">
                               <FileText className="h-5 w-5 text-slate-400 mb-1" />
                               <span className="text-[10px] font-bold text-slate-500">
                                 {uploadingCopy ? "Uploading..." : "Click to select File"}
@@ -477,7 +477,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                           {loadingAttempts ? (
                             <div className="text-[10px] text-slate-400">Loading copies...</div>
                           ) : attempts.length === 0 ? (
-                            <div className="text-[10px] text-rose-600 flex items-center gap-1 bg-white p-2 rounded-lg border border-rose-100">
+                            <div className="text-[10px] text-rose-600 flex items-center gap-1 bg-surface p-2 rounded-lg border border-rose-100">
                               <AlertCircle className="h-3 w-3 shrink-0" />
                               No Mains attempts found. Go submit an attempt in the mains module first.
                             </div>
@@ -489,7 +489,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                               <select
                                 value={selectedAttemptId}
                                 onChange={(e) => setSelectedAttemptId(e.target.value)}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs outline-none cursor-pointer"
+                                className="w-full rounded-xl border border-slate-200 bg-surface px-2 py-2 text-xs outline-none cursor-pointer"
                               >
                                 {attempts.map((att) => (
                                   <option key={att.id} value={att.id}>

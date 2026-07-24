@@ -141,7 +141,7 @@ export default function MentorsPage() {
 
       {/* Discovery Filters Workspace */}
       <main className="container mx-auto -mt-8 max-w-6xl px-6">
-        <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -151,7 +151,7 @@ export default function MentorsPage() {
                 placeholder="Search by name, subject, or GS paper..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-surface"
               />
             </div>
 
@@ -238,7 +238,7 @@ export default function MentorsPage() {
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                     selectedTag === null
                       ? "bg-slate-900 text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      : "border border-slate-200 bg-surface text-slate-600 hover:border-slate-300"
                   }`}
                 >
                   All Focus
@@ -250,7 +250,7 @@ export default function MentorsPage() {
                     className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                       selectedTag === tag
                         ? "bg-indigo-600 text-white shadow-sm"
-                        : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        : "border border-slate-200 bg-surface text-slate-600 hover:border-slate-300"
                     }`}
                   >
                     {tag}
@@ -266,11 +266,11 @@ export default function MentorsPage() {
           {loading ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="h-96 rounded-[32px] border border-slate-100 bg-white p-6 animate-pulse" />
+                <div key={n} className="h-96 rounded-[32px] border border-slate-100 bg-surface p-6 animate-pulse" />
               ))}
             </div>
           ) : filteredMentors.length === 0 ? (
-            <div className="rounded-[40px] border border-dashed border-slate-300 bg-white p-16 text-center">
+            <div className="rounded-[40px] border border-dashed border-slate-300 bg-surface p-16 text-center">
               <BookOpen className="mx-auto h-12 w-12 text-slate-300 mb-4 animate-bounce" />
               <h3 className="text-xl font-bold text-slate-800">No Mentors Found</h3>
               <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
@@ -295,7 +295,7 @@ export default function MentorsPage() {
               {filteredMentors.map((mentor) => (
                 <article
                   key={mentor.user_id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-xl hover:border-indigo-100"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm transition hover:shadow-xl hover:border-indigo-100"
                 >
                   <div>
                     {/* Header: Picture & Basic info */}

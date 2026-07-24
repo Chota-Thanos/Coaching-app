@@ -399,7 +399,7 @@ export function ArticleCreatorAiWorkspace({
       .filter((t) => t.trim().length > 0).length > 1;
 
   return (
-    <div className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6">
+    <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6">
       <div>
         <h2 className="text-lg sm:text-xl font-black text-ink flex items-center gap-2">
           <Brain className="h-5 w-5 text-civic" />
@@ -431,7 +431,7 @@ export function ArticleCreatorAiWorkspace({
                 value={contentKind}
                 onChange={(e) => setContentKind(e.target.value as ContentKind)}
                 disabled={generating || bulkRunning}
-                className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-civic"
+                className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold outline-none focus:border-civic"
               >
                 {ADMIN_CONTENT_KINDS.map((k) => (
                   <option key={k.value} value={k.value}>
@@ -447,7 +447,7 @@ export function ArticleCreatorAiWorkspace({
                 value={categoryNodeId}
                 onChange={(e) => setCategoryNodeId(e.target.value)}
                 disabled={generating || bulkRunning}
-                className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-civic"
+                className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold outline-none focus:border-civic"
               >
                 <option value="">Auto-Detect Category (AI Router)</option>
                 {categoryOptions.map((c) => (
@@ -497,7 +497,7 @@ export function ArticleCreatorAiWorkspace({
                 {queueItems.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex justify-between items-center bg-white border border-line rounded-lg p-2.5 shadow-sm text-xs"
+                    className="flex justify-between items-center bg-surface border border-line rounded-lg p-2.5 shadow-sm text-xs"
                   >
                     <span className="font-bold text-ink truncate max-w-[70%]">{item.topic}</span>
                     <span
@@ -532,7 +532,7 @@ export function ArticleCreatorAiWorkspace({
                     style={{ width: `${(genStep / 5) * 100}%` }}
                   />
                 </div>
-                <div className="rounded-lg bg-ink text-white p-3 font-mono text-[10px] space-y-1.5 max-h-[140px] overflow-y-auto">
+                <div className="rounded-lg bg-midnight text-white p-3 font-mono text-[10px] space-y-1.5 max-h-[140px] overflow-y-auto">
                   {genLogs.map((log, idx) => (
                     <div className="flex items-start gap-1.5" key={idx}>
                       <ChevronRight className="h-3 w-3 shrink-0 text-civic mt-0.5" />

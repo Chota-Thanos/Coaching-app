@@ -135,7 +135,7 @@ function ScoreGauge({ score, maxScore }: { score: number; maxScore: number }) {
     <div className="flex flex-col items-center">
       <div className="relative h-36 w-36">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="10" className="text-slate-200" />
           <circle
             cx="60"
             cy="60"

@@ -653,7 +653,7 @@ export function AdminQuizCreator({
             }}
             className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all ${
               creatorContentType === "gk"
-                ? "bg-white text-civic shadow-sm font-black"
+                ? "bg-surface text-civic shadow-sm font-black"
                 : "text-ink/60 hover:text-ink"
             }`}
           >
@@ -668,7 +668,7 @@ export function AdminQuizCreator({
             }}
             className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all ${
               creatorContentType === "aptitude"
-                ? "bg-white text-civic shadow-sm font-black"
+                ? "bg-surface text-civic shadow-sm font-black"
                 : "text-ink/60 hover:text-ink"
             }`}
           >
@@ -694,7 +694,7 @@ export function AdminQuizCreator({
             }}
             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold rounded-xl transition-all ${
               mode === key
-                ? "bg-white text-civic shadow-sm border border-line"
+                ? "bg-surface text-civic shadow-sm border border-line"
                 : "text-ink/65 hover:text-ink"
             }`}
           >
@@ -742,7 +742,7 @@ export function AdminQuizCreator({
 
       {/* MANUAL WORKSPACE ACTIONS CARD */}
       {mode === "manual" && quizData && (
-        <div className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-300">
+        <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-300">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-lg font-black text-ink flex items-center gap-2">
@@ -774,7 +774,7 @@ export function AdminQuizCreator({
               }}
               className={`py-2 text-center text-xs font-bold rounded-lg transition-all ${
                 quizData.passage_text === undefined
-                  ? "bg-white text-civic shadow-sm border border-line/40 font-black"
+                  ? "bg-surface text-civic shadow-sm border border-line/40 font-black"
                   : "text-ink/60 hover:text-ink"
               }`}
             >
@@ -799,7 +799,7 @@ export function AdminQuizCreator({
               }}
               className={`py-2 text-center text-xs font-bold rounded-lg transition-all ${
                 quizData.passage_text !== undefined
-                  ? "bg-white text-civic shadow-sm border border-line/40 font-black"
+                  ? "bg-surface text-civic shadow-sm border border-line/40 font-black"
                   : "text-ink/60 hover:text-ink"
               }`}
             >
@@ -852,7 +852,7 @@ export function AdminQuizCreator({
 
             {/* Select All Checkbox Bar */}
             {quizData.questions && quizData.questions.length > 0 && (
-              <div className="flex items-center justify-between bg-white border border-line px-5 py-3 rounded-2xl shadow-sm animate-in fade-in duration-300">
+              <div className="flex items-center justify-between bg-surface border border-line px-5 py-3 rounded-2xl shadow-sm animate-in fade-in duration-300">
                 <label className="flex items-center gap-2.5 text-xs font-bold text-ink cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -878,7 +878,7 @@ export function AdminQuizCreator({
 
             {/* Passage details if applicable */}
             {quizData.passage_text !== undefined && (
-              <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-3 relative">
+              <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-3 relative">
                 <button
                   type="button"
                   onClick={() => {
@@ -893,7 +893,7 @@ export function AdminQuizCreator({
                   Passage Title
                   <input
                     type="text"
-                    className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic w-[calc(100%-120px)]"
+                    className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic w-[calc(100%-120px)]"
                     value={quizData.passage_title || ""}
                     onChange={(e) => setQuizData({ ...quizData, passage_title: e.target.value })}
                   />

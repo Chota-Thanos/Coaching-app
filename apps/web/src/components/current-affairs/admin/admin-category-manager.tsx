@@ -231,7 +231,7 @@ function CategoryTreeItem({
   return (
     <div className={category.depth === 0 ? "space-y-2" : "space-y-2 border-l border-line pl-4"}>
       <article
-        className={`rounded-lg border bg-white shadow-sm ${
+        className={`rounded-lg border bg-surface shadow-sm ${
           category.node_type === "gs_paper" || category.node_type === "subject" ? "p-3" : "p-2.5"
         } ${
           category.node_type === "gs_paper" ? "border-berry/30" : category.node_type === "subject" ? "border-civic/25" : "border-line"
@@ -242,7 +242,7 @@ function CategoryTreeItem({
             <button
               aria-label={isSelected ? "Unselect category" : "Select category"}
               className={`mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-md border ${
-                isSelected ? "border-civic bg-civic text-white" : "border-line bg-white text-ink/55"
+                isSelected ? "border-civic bg-civic text-white" : "border-line bg-surface text-ink/55"
               }`}
               onClick={() => onToggleSelected(category.id)}
               type="button"
@@ -683,7 +683,7 @@ export function AdminCategoryManager() {
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_27rem]">
       <div className="space-y-4">
-        <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-line bg-surface p-4 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-wide text-civic">
@@ -698,7 +698,7 @@ export function AdminCategoryManager() {
             <div className="flex flex-wrap gap-2">
               <select
                 aria-label="Family filter"
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
                 onChange={(event) => setFamilyFilter(event.target.value as ContentFamily | "all")}
                 value={familyFilter}
               >
@@ -729,7 +729,7 @@ export function AdminCategoryManager() {
               Select visible
             </button>
             <button
-              className="inline-flex h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-bold text-ink hover:bg-paper disabled:opacity-60"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink hover:bg-paper disabled:opacity-60"
               disabled={selectedIds.size === 0}
               onClick={clearSelection}
               type="button"
@@ -740,11 +740,11 @@ export function AdminCategoryManager() {
           </div>
         </div>
 
-        {message && <p className="rounded-lg border border-line bg-white p-3 text-sm font-semibold text-civic">{message}</p>}
+        {message && <p className="rounded-lg border border-line bg-surface p-3 text-sm font-semibold text-civic">{message}</p>}
 
         <div className="grid gap-4">
           {familyGroups.every((group) => group.roots.length === 0) ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">No categories found.</p>
+            <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">No categories found.</p>
           ) : (
             familyGroups.map((group) => (
               <section className="rounded-lg border border-line bg-paper/40 p-3" key={group.family}>
@@ -755,7 +755,7 @@ export function AdminCategoryManager() {
                   </span>
                 </div>
                 {group.roots.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/60">
+                  <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/60">
                     No {formatFamily(group.family)} categories yet.
                   </p>
                 ) : (
@@ -780,7 +780,7 @@ export function AdminCategoryManager() {
       </div>
 
       <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
-        <form className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-sm" onSubmit={createCategory}>
+        <form className="grid gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm" onSubmit={createCategory}>
           <div className="flex items-center gap-2">
             <FolderPlus aria-hidden="true" className="h-5 w-5 text-civic" />
             <h2 className="text-lg font-black text-ink">Create category</h2>
@@ -790,7 +790,7 @@ export function AdminCategoryManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Family
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => handleFamilyChange(event.target.value as ContentFamily)}
                 value={form.contentFamily}
               >
@@ -802,7 +802,7 @@ export function AdminCategoryManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Node type
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => update("nodeType", event.target.value as CategoryNodeType)}
                 value={form.nodeType}
               >
@@ -818,7 +818,7 @@ export function AdminCategoryManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             Parent
             <select
-              className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+              className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
               onChange={(event) => handleParentChange(event.target.value)}
               value={form.parentId}
             >
@@ -894,7 +894,7 @@ export function AdminCategoryManager() {
           </button>
         </form>
 
-        <form className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-sm" onSubmit={bulkCreateCategories}>
+        <form className="grid gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm" onSubmit={bulkCreateCategories}>
           <div className="flex items-center gap-2">
             <Layers3 aria-hidden="true" className="h-5 w-5 text-civic" />
             <h2 className="text-lg font-black text-ink">Bulk create</h2>
@@ -907,7 +907,7 @@ export function AdminCategoryManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Family
               <select
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
                 onChange={(event) => handleBulkCreateFamilyChange(event.target.value as ContentFamily)}
                 value={bulkCreateForm.contentFamily}
               >
@@ -918,7 +918,7 @@ export function AdminCategoryManager() {
             <label className="grid gap-1 text-sm font-bold text-ink">
               Node type
               <select
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
                 onChange={(event) => updateBulkCreate("nodeType", event.target.value as CategoryNodeType)}
                 value={bulkCreateForm.nodeType}
               >
@@ -934,7 +934,7 @@ export function AdminCategoryManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             Parent
             <select
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
               onChange={(event) => handleBulkCreateParentChange(event.target.value)}
               value={bulkCreateForm.parentId}
             >
@@ -988,7 +988,7 @@ export function AdminCategoryManager() {
           </button>
         </form>
 
-        <form className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-sm" onSubmit={bulkReassignCategories}>
+        <form className="grid gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm" onSubmit={bulkReassignCategories}>
           <div className="flex items-center gap-2">
             <MoveRight aria-hidden="true" className="h-5 w-5 text-civic" />
             <h2 className="text-lg font-black text-ink">Bulk reassign</h2>
@@ -1005,7 +1005,7 @@ export function AdminCategoryManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             New parent
             <select
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
               disabled={!selectedFamily}
               onChange={(event) => handleBulkReassignParentChange(event.target.value)}
               value={bulkReassignForm.parentId}
@@ -1022,7 +1022,7 @@ export function AdminCategoryManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             New node type
             <select
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
               disabled={!selectedFamily}
               onChange={(event) => setBulkReassignForm((current) => ({ ...current, nodeType: event.target.value as CategoryNodeType }))}
               value={bulkReassignForm.nodeType}
@@ -1047,9 +1047,9 @@ export function AdminCategoryManager() {
       </aside>
 
       {editingCategory && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/55 px-4 py-8">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-midnight/55 px-4 py-8">
           <form
-            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-line bg-white p-5 shadow-2xl"
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-line bg-surface p-5 shadow-2xl"
             onSubmit={saveEditedCategory}
           >
             <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
@@ -1062,7 +1062,7 @@ export function AdminCategoryManager() {
               </div>
               <button
                 aria-label="Close edit category"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-ink hover:bg-paper"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-ink hover:bg-paper"
                 onClick={closeEditCategory}
                 type="button"
               >
@@ -1084,7 +1084,7 @@ export function AdminCategoryManager() {
                 <label className="grid gap-1 text-sm font-bold text-ink">
                   Node type
                   <select
-                    className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                    className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                     onChange={(event) => updateEdit("nodeType", event.target.value as CategoryNodeType)}
                     value={editForm.nodeType}
                   >
@@ -1100,7 +1100,7 @@ export function AdminCategoryManager() {
               <label className="grid gap-1 text-sm font-bold text-ink">
                 Parent
                 <select
-                  className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                  className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                   onChange={(event) => handleEditParentChange(event.target.value)}
                   value={editForm.parentId}
                 >
@@ -1165,7 +1165,7 @@ export function AdminCategoryManager() {
 
               <div className="flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end">
                 <button
-                  className="inline-flex h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-bold text-ink hover:bg-paper"
+                  className="inline-flex h-11 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-bold text-ink hover:bg-paper"
                   onClick={closeEditCategory}
                   type="button"
                 >

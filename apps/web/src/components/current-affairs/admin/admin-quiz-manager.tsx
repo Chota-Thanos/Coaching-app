@@ -141,8 +141,8 @@ function formatStatus(status: string) {
     case "draft": return { label: "Draft", class: "bg-amber-50 text-amber-700 border-amber-200" };
     case "in_review": return { label: "In Review", class: "bg-blue-50 text-blue-700 border-blue-200" };
     case "published": return { label: "Published", class: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-    case "archived": return { label: "Archived", class: "bg-gray-50 text-gray-700 border-gray-200" };
-    default: return { label: status, class: "bg-gray-50 text-gray-700 border-gray-200" };
+    case "archived": return { label: "Archived", class: "bg-slate-50 text-slate-700 border-slate-200" };
+    default: return { label: status, class: "bg-slate-50 text-slate-700 border-slate-200" };
   }
 }
 
@@ -353,7 +353,7 @@ export function AdminQuizManager({
     return (
       <div 
         key={`passage-group-${group.passageId}`}
-        className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-5 transition-all hover:shadow-md ${
+        className={`bg-surface border rounded-2xl p-6 shadow-sm flex flex-col gap-5 transition-all hover:shadow-md ${
           isAllSelected ? "border-civic bg-civic/5 ring-1 ring-civic/25" : "border-line hover:border-civic/30"
         }`}
       >
@@ -518,7 +518,7 @@ export function AdminQuizManager({
                         <span className={`h-5 w-5 rounded-md flex items-center justify-center text-[10.5px] font-black border uppercase shrink-0 ${
                           isCorrect 
                             ? "bg-emerald-500 border-emerald-600 text-white" 
-                            : "bg-white border-line text-ink/40"
+                            : "bg-surface border-line text-ink/40"
                         }`}>
                           {opt.key}
                         </span>
@@ -1247,7 +1247,7 @@ export function AdminQuizManager({
             onClick={() => setActiveRepo("gk")}
             className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all ${
               activeRepo === "gk"
-                ? "bg-white text-civic shadow-sm font-black"
+                ? "bg-surface text-civic shadow-sm font-black"
                 : "text-ink/65 hover:text-ink"
             }`}
           >
@@ -1258,7 +1258,7 @@ export function AdminQuizManager({
             onClick={() => setActiveRepo("aptitude")}
             className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all ${
               activeRepo === "aptitude"
-                ? "bg-white text-civic shadow-sm font-black"
+                ? "bg-surface text-civic shadow-sm font-black"
                 : "text-ink/65 hover:text-ink"
             }`}
           >
@@ -1269,7 +1269,7 @@ export function AdminQuizManager({
             onClick={() => setActiveRepo("mains")}
             className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all ${
               activeRepo === "mains"
-                ? "bg-white text-civic shadow-sm font-black"
+                ? "bg-surface text-civic shadow-sm font-black"
                 : "text-ink/65 hover:text-ink"
             }`}
           >
@@ -1292,7 +1292,7 @@ export function AdminQuizManager({
       )}
 
       {/* Filter and search parameters */}
-      <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h3 className="text-lg font-black text-ink capitalize">
@@ -1319,7 +1319,7 @@ export function AdminQuizManager({
           
           <label className="col-span-2 md:col-span-1 grid gap-1 text-[11px] font-bold text-ink">
             Search Text
-            <span className="flex h-10 items-center rounded-lg border border-line px-3 bg-paper focus-within:bg-white focus-within:border-civic transition-all">
+            <span className="flex h-10 items-center rounded-lg border border-line px-3 bg-paper focus-within:bg-surface focus-within:border-civic transition-all">
               <Search className="h-3.5 w-3.5 text-ink/40 mr-1.5" />
               <input
                 type="text"
@@ -1336,7 +1336,7 @@ export function AdminQuizManager({
             <select
               value={filters.examId}
               onChange={(e) => setFilters(prev => ({ ...prev, examId: e.target.value }))}
-              className="h-10 rounded-lg border border-line bg-paper px-2 text-xs font-medium outline-none focus:border-civic focus:bg-white transition-all"
+              className="h-10 rounded-lg border border-line bg-paper px-2 text-xs font-medium outline-none focus:border-civic focus:bg-surface transition-all"
             >
               <option value="">All Exams</option>
               {exams.map(e => (
@@ -1351,7 +1351,7 @@ export function AdminQuizManager({
               <select
                 value={filters.testType}
                 onChange={(e) => setFilters(prev => ({ ...prev, testType: e.target.value }))}
-                className="h-10 rounded-lg border border-line bg-paper px-2 text-xs font-medium outline-none focus:border-civic focus:bg-white transition-all"
+                className="h-10 rounded-lg border border-line bg-paper px-2 text-xs font-medium outline-none focus:border-civic focus:bg-surface transition-all"
               >
                 <option value="">All Types</option>
                 <option value="quick_test">Quick Test</option>
@@ -1373,7 +1373,7 @@ export function AdminQuizManager({
             <select
               value={filters.status}
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="h-10 rounded-lg border border-line bg-paper px-2 text-xs font-medium outline-none focus:border-civic focus:bg-white transition-all"
+              className="h-10 rounded-lg border border-line bg-paper px-2 text-xs font-medium outline-none focus:border-civic focus:bg-surface transition-all"
             >
               <option value="">All Statuses</option>
               <option value="draft">Draft</option>
@@ -1388,7 +1388,7 @@ export function AdminQuizManager({
 
       {/* Select All Checkbox Bar */}
       {((activeRepo === "mains" ? quizzes.length : questions.length) > 0) && (
-        <div className="flex items-center justify-between bg-white border border-line px-5 py-3 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between bg-surface border border-line px-5 py-3 rounded-2xl shadow-sm">
           <label className="flex items-center gap-2.5 text-xs font-bold text-ink cursor-pointer select-none">
             <input
               type="checkbox"
@@ -1410,14 +1410,14 @@ export function AdminQuizManager({
 
       {/* Main Content Render */}
       {loading ? (
-        <div className="bg-white border border-line rounded-2xl p-12 flex flex-col items-center justify-center gap-3 text-center">
+        <div className="bg-surface border border-line rounded-2xl p-12 flex flex-col items-center justify-center gap-3 text-center">
           <Loader2 className="h-7 w-7 text-civic animate-spin" />
           <p className="text-sm font-bold text-ink/70">Fetching assessments database records...</p>
         </div>
       ) : activeRepo === "mains" ? (
         // ── MAINS TEMPLATE RENDER ──
         quizzes.length === 0 ? (
-          <div className="bg-white border border-line rounded-2xl p-10 text-center space-y-2">
+          <div className="bg-surface border border-line rounded-2xl p-10 text-center space-y-2">
             <HelpCircle className="h-10 w-10 text-ink/20 mx-auto" />
             <p className="text-sm font-bold text-ink">No templates found in MAINS repository.</p>
           </div>
@@ -1429,7 +1429,7 @@ export function AdminQuizManager({
               return (
                 <div 
                   key={q.id}
-                  className={`bg-white border hover:border-civic/40 rounded-2xl p-5 shadow-sm flex flex-col justify-between gap-4 transition-all hover:shadow-md ${
+                  className={`bg-surface border hover:border-civic/40 rounded-2xl p-5 shadow-sm flex flex-col justify-between gap-4 transition-all hover:shadow-md ${
                     isSelected ? "border-civic bg-civic/5 ring-1 ring-civic/25" : "border-line"
                   }`}
                 >
@@ -1527,7 +1527,7 @@ export function AdminQuizManager({
           </div>
         )) : (
         questions.length === 0 ? (
-          <div className="bg-white border border-line rounded-2xl p-10 text-center space-y-2 animate-in fade-in">
+          <div className="bg-surface border border-line rounded-2xl p-10 text-center space-y-2 animate-in fade-in">
             <HelpCircle className="h-10 w-10 text-ink/20 mx-auto" />
             <p className="text-sm font-bold text-ink">No individual questions found in {activeRepo.toUpperCase()} library.</p>
             <p className="text-xs text-ink/50 max-w-sm mx-auto">Generate questions using AI or parse worksheets to ingest questions into the library pool.</p>
@@ -1561,7 +1561,7 @@ export function AdminQuizManager({
                 return (
                   <div 
                     key={q.id}
-                    className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md ${
+                    className={`bg-surface border rounded-2xl p-6 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md ${
                       isSelected ? "border-civic bg-civic/5 ring-1 ring-civic/25" : "border-line hover:border-civic/30"
                     }`}
                   >
@@ -1636,7 +1636,7 @@ export function AdminQuizManager({
                             <span className={`h-5 w-5 rounded-md flex items-center justify-center text-[10.5px] font-black border uppercase shrink-0 ${
                               isCorrect 
                                 ? "bg-emerald-500 border-emerald-600 text-white" 
-                                : "bg-white border-line text-ink/40"
+                                : "bg-surface border-line text-ink/40"
                             }`}>
                               {opt.key}
                             </span>
@@ -1721,8 +1721,8 @@ export function AdminQuizManager({
 
       {/* VIEW PREVIEW PAPER MODAL (MAINS TEMPLATES ONLY) */}
       {viewingQuizId !== null && (
-        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-3fr rounded-2xl shadow-xl flex flex-col max-h-[85vh] border border-line animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-midnight/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface w-full max-w-3fr rounded-2xl shadow-xl flex flex-col max-h-[85vh] border border-line animate-in zoom-in-95 duration-200">
             
             <div className="p-5 border-b border-line flex justify-between items-center bg-paper rounded-t-2xl">
               <div>
@@ -1731,7 +1731,7 @@ export function AdminQuizManager({
               </div>
               <button 
                 onClick={() => setViewingQuizId(null)}
-                className="h-8 w-8 rounded-full hover:bg-ink/5 flex items-center justify-center transition-all"
+                className="h-8 w-8 rounded-full hover:bg-midnight/5 flex items-center justify-center transition-all"
                 type="button"
               >
                 <X className="h-4.5 w-4.5 text-ink/60" />
@@ -1781,7 +1781,7 @@ export function AdminQuizManager({
                           : q.question_version.correct_answer;
 
                         return (
-                          <div key={q.id} className="border border-line rounded-xl p-5 space-y-4 bg-white hover:shadow-sm transition-all">
+                          <div key={q.id} className="border border-line rounded-xl p-5 space-y-4 bg-surface hover:shadow-sm transition-all">
                             <div className="flex items-start gap-2.5">
                               <span className="grid h-5.5 w-5.5 shrink-0 place-items-center rounded-full bg-paper border border-line text-[10px] font-black text-ink">
                                 {idx + 1}
@@ -1821,7 +1821,7 @@ export function AdminQuizManager({
                                     <span className={`h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-black border uppercase shrink-0 ${
                                       isCorrect 
                                         ? "bg-emerald-500 border-emerald-600 text-white" 
-                                        : "bg-white border-line text-ink/50"
+                                        : "bg-surface border-line text-ink/50"
                                     }`}>
                                       {opt.key}
                                     </span>
@@ -1849,7 +1849,7 @@ export function AdminQuizManager({
                       } else {
                         const { passage, questions } = item;
                         return (
-                          <div key={`passage-group-${passage.id}-${groupIdx}`} className="border border-line rounded-xl p-5 space-y-5 bg-white hover:shadow-sm transition-all">
+                          <div key={`passage-group-${passage.id}-${groupIdx}`} className="border border-line rounded-xl p-5 space-y-5 bg-surface hover:shadow-sm transition-all">
                             {/* Passage header */}
                             <div className="bg-amber-50/20 border border-amber-200/50 rounded-2xl p-5 space-y-2">
                               <h5 className="font-black text-sm text-ink flex items-center gap-1.5">
@@ -1910,7 +1910,7 @@ export function AdminQuizManager({
                                             <span className={`h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-black border uppercase shrink-0 ${
                                               isCorrect 
                                                 ? "bg-emerald-500 border-emerald-600 text-white" 
-                                                : "bg-white border-line text-ink/50"
+                                                : "bg-surface border-line text-ink/50"
                                             }`}>
                                               {opt.key}
                                             </span>
@@ -1949,7 +1949,7 @@ export function AdminQuizManager({
             <div className="p-4 border-t border-line flex justify-end gap-2 bg-paper rounded-b-2xl">
               <button
                 onClick={() => setViewingQuizId(null)}
-                className="h-10 px-6 bg-white border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
+                className="h-10 px-6 bg-surface border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
                 type="button"
               >
                 Close Inspect
@@ -1974,8 +1974,8 @@ export function AdminQuizManager({
 
       {/* EDIT MODAL DIALOG (MAINS TEMPLATES ONLY) */}
       {editingQuiz !== null && (
-        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-midnight/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface w-full max-w-lg rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
             
             <div className="p-5 border-b border-line flex justify-between items-center bg-paper rounded-t-2xl">
               <div>
@@ -1984,7 +1984,7 @@ export function AdminQuizManager({
               </div>
               <button 
                 onClick={() => setEditingQuiz(null)}
-                className="h-8 w-8 rounded-full hover:bg-ink/5 flex items-center justify-center transition-all"
+                className="h-8 w-8 rounded-full hover:bg-midnight/5 flex items-center justify-center transition-all"
                 type="button"
               >
                 <X className="h-4.5 w-4.5 text-ink/60" />
@@ -2028,7 +2028,7 @@ export function AdminQuizManager({
                   <select
                     value={editForm.test_type}
                     onChange={(e) => setEditForm(prev => ({ ...prev, test_type: e.target.value }))}
-                    className="h-10 rounded-lg border border-line bg-white px-2 text-xs font-medium outline-none focus:border-civic"
+                    className="h-10 rounded-lg border border-line bg-surface px-2 text-xs font-medium outline-none focus:border-civic"
                   >
                     <option value="quick_test">Quick Test</option>
                     <option value="sectional_test">Sectional Test</option>
@@ -2066,7 +2066,7 @@ export function AdminQuizManager({
                   <select
                     value={editForm.access_type}
                     onChange={(e) => setEditForm(prev => ({ ...prev, access_type: e.target.value }))}
-                    className="h-10 rounded-lg border border-line bg-white px-2 text-xs font-medium outline-none focus:border-civic"
+                    className="h-10 rounded-lg border border-line bg-surface px-2 text-xs font-medium outline-none focus:border-civic"
                   >
                     <option value="free">Free</option>
                     <option value="subscription">Subscription Required</option>
@@ -2080,7 +2080,7 @@ export function AdminQuizManager({
                   <select
                     value={editForm.status}
                     onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                    className="h-10 rounded-lg border border-line bg-white px-2 text-xs font-medium outline-none focus:border-civic"
+                    className="h-10 rounded-lg border border-line bg-surface px-2 text-xs font-medium outline-none focus:border-civic"
                   >
                     <option value="draft">Draft</option>
                     <option value="in_review">In Review</option>
@@ -2096,7 +2096,7 @@ export function AdminQuizManager({
                   <select
                     value={editForm.exam_id}
                     onChange={(e) => setEditForm(prev => ({ ...prev, exam_id: e.target.value, exam_level_id: "" }))}
-                    className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-medium outline-none focus:border-civic"
+                    className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-medium outline-none focus:border-civic"
                   >
                     <option value="">-- Choose Exam --</option>
                     {exams.map(e => (
@@ -2111,7 +2111,7 @@ export function AdminQuizManager({
                     value={editForm.exam_level_id}
                     onChange={(e) => setEditForm(prev => ({ ...prev, exam_level_id: e.target.value }))}
                     disabled={!editForm.exam_id}
-                    className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-medium outline-none focus:border-civic disabled:opacity-55"
+                    className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-medium outline-none focus:border-civic disabled:opacity-55"
                   >
                     <option value="">-- Choose Level --</option>
                     {editFormLevels.map(lvl => (
@@ -2126,7 +2126,7 @@ export function AdminQuizManager({
             <div className="p-4 border-t border-line flex justify-end gap-2 bg-paper rounded-b-2xl">
               <button
                 onClick={() => setEditingQuiz(null)}
-                className="h-10 px-5 bg-white border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
+                className="h-10 px-5 bg-surface border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
                 type="button"
               >
                 Cancel

@@ -108,7 +108,7 @@ const PLAN_STYLES: Record<string, {
     badge: null,
     badgeClass: "",
     border: "border-line",
-    headerBg: "bg-ink",
+    headerBg: "bg-midnight",
     buttonClass: "bg-civic hover:bg-civic/90 shadow-civic/20",
     iconBg: "bg-civic/10",
     iconText: "text-civic",
@@ -119,7 +119,7 @@ const PLAN_STYLES: Record<string, {
     badge: null,
     badgeClass: "",
     border: "border-emerald-100",
-    headerBg: "bg-ink",
+    headerBg: "bg-midnight",
     buttonClass: "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200",
     iconBg: "bg-emerald-50",
     iconText: "text-emerald-700",
@@ -130,7 +130,7 @@ const PLAN_STYLES: Record<string, {
     badge: "Most Popular",
     badgeClass: "bg-civic text-white",
     border: "border-civic/30 ring-2 ring-civic/20",
-    headerBg: "bg-ink",
+    headerBg: "bg-midnight",
     buttonClass: "bg-civic hover:bg-civic/90 shadow-civic/20",
     iconBg: "bg-civic/10",
     iconText: "text-civic",
@@ -216,7 +216,7 @@ export default function PricingPage() {
         />
       )}
 
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-surface">
         {/* Hero */}
         <section className="page-hero">
           <div className="page-hero-content mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
@@ -241,7 +241,7 @@ export default function PricingPage() {
                   onClick={() => setInterval(iv)}
                   className={`relative rounded-xl px-5 py-2 text-sm font-bold transition-all ${
                     interval === iv
-                      ? "bg-white text-ink shadow-sm"
+                      ? "bg-surface text-ink shadow-sm"
                       : "text-white/55 hover:text-white"
                   }`}
                 >
@@ -364,7 +364,7 @@ export default function PricingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
               {FREE_FEATURES.map((feat) => (
-                <div key={feat} className="flex items-center gap-3 rounded-2xl bg-white border border-slate-100 px-5 py-4 shadow-sm">
+                <div key={feat} className="flex items-center gap-3 rounded-2xl bg-surface border border-slate-100 px-5 py-4 shadow-sm">
                   <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
                   <span className="text-sm font-semibold text-slate-700">{feat}</span>
                 </div>
@@ -384,7 +384,7 @@ export default function PricingPage() {
         </section>
 
         {/* Trust Signals */}
-        <section className="border-t border-slate-100 py-12 bg-white">
+        <section className="border-t border-slate-100 py-12 bg-surface">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
               {[

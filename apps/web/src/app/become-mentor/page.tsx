@@ -49,7 +49,7 @@ export default function BecomeMentorPage() {
 
       {/* Program Details */}
       <main className="container mx-auto -mt-10 max-w-4xl px-6">
-        <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl md:p-12">
+        <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-xl md:p-12">
           <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
             <div className="space-y-6 md:w-3/5">
               <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">

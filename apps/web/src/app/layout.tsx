@@ -8,6 +8,7 @@ import { SignInPanel } from "../components/auth/sign-in-panel";
 import { HeaderNav } from "../components/app/header-nav";
 import { CURRENT_AFFAIRS_HUBS } from "../lib/current-affairs";
 import { WayToIASLogo } from "../components/app/logo";
+import { ThemeToggle } from "../components/app/theme-toggle";
 
 export const metadata: Metadata = {
   title: {
@@ -21,13 +22,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#4f46e5"
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#4f46e5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1120" }
+  ]
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen font-sans antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen font-sans antialiased" suppressHydrationWarning>
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
         <Providers>
           <header className="sticky top-0 z-30 border-b border-line/60 bg-surface/95 shadow-card backdrop-blur-md">
@@ -45,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <HeaderNav />
 
               <div className="flex items-center gap-3">
+                <ThemeToggle />
                 <SignInPanel compact />
               </div>
             </div>

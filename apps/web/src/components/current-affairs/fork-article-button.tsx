@@ -45,7 +45,7 @@ export function ForkArticleButton({ articleId, contentKind }: ForkArticleButtonP
         className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold ${
           isSaved
             ? "border-civic/30 bg-civic/10 text-civic"
-            : "border-line bg-white text-ink hover:border-civic"
+            : "border-line bg-surface text-ink hover:border-civic"
         } disabled:opacity-60`}
         disabled={pending || isSaved}
         onClick={saveArticle}

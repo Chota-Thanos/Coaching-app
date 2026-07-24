@@ -78,8 +78,8 @@ export function QuizManagerEditQuestionModal({
   if (!editingQuestion) return null;
 
   return (
-    <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-midnight/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-surface w-full max-w-2xl rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
         
         <div className="p-5 border-b border-line flex justify-between items-center bg-paper rounded-t-2xl">
           <div>
@@ -88,7 +88,7 @@ export function QuizManagerEditQuestionModal({
           </div>
           <button 
             onClick={onClose}
-            className="h-8 w-8 rounded-full hover:bg-ink/5 flex items-center justify-center transition-all"
+            className="h-8 w-8 rounded-full hover:bg-midnight/5 flex items-center justify-center transition-all"
             type="button"
           >
             <X className="h-4.5 w-4.5 text-ink/60" />
@@ -143,7 +143,7 @@ export function QuizManagerEditQuestionModal({
                     nextOpts[oIdx] = { ...opt, text: e.target.value };
                     setEditQuestionForm((prev: any) => ({ ...prev, options: nextOpts }));
                   }}
-                  className="h-9 rounded-lg border border-line px-3 text-xs bg-white outline-none focus:border-civic font-medium"
+                  className="h-9 rounded-lg border border-line px-3 text-xs bg-surface outline-none focus:border-civic font-medium"
                 />
               </label>
             ))}
@@ -155,7 +155,7 @@ export function QuizManagerEditQuestionModal({
               <select
                 value={editQuestionForm.correct_answer}
                 onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, correct_answer: e.target.value }))}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-medium outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-medium outline-none focus:border-civic"
               >
                 <option value="A">A</option>
                 <option value="B">B</option>
@@ -169,7 +169,7 @@ export function QuizManagerEditQuestionModal({
               <select
                 value={editQuestionForm.question_nature_id}
                 onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, question_nature_id: e.target.value }))}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-medium outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-medium outline-none focus:border-civic"
               >
                 <option value="">-- Choose Nature --</option>
                 {editQuestionNatures.map(nature => (
@@ -201,7 +201,7 @@ export function QuizManagerEditQuestionModal({
                 <select
                   value={editQuestionForm.exam_id}
                   onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, exam_id: e.target.value, exam_level_id: "", subject_node_id: "", source_node_id: "", topic_node_id: "", subtopic_node_id: "" }))}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-medium outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-medium outline-none focus:border-civic"
                 >
                   <option value="">-- Choose Exam --</option>
                   {exams.map(e => (
@@ -216,7 +216,7 @@ export function QuizManagerEditQuestionModal({
                   value={editQuestionForm.exam_level_id}
                   onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, exam_level_id: e.target.value }))}
                   disabled={!editQuestionForm.exam_id}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-medium outline-none focus:border-civic disabled:opacity-55"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-medium outline-none focus:border-civic disabled:opacity-55"
                 >
                   <option value="">-- Choose Level --</option>
                   {editQuestionLevels.map(lvl => (
@@ -232,7 +232,7 @@ export function QuizManagerEditQuestionModal({
                 <select
                   value={editQuestionForm.subject_node_id}
                   onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, subject_node_id: e.target.value, source_node_id: "", topic_node_id: "", subtopic_node_id: "" }))}
-                  className="h-9 rounded-lg border border-line bg-white px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
+                  className="h-9 rounded-lg border border-line bg-surface px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
                   disabled={!editQuestionForm.exam_id}
                 >
                   <option value="">-- Select Subject --</option>
@@ -247,7 +247,7 @@ export function QuizManagerEditQuestionModal({
                 <select
                   value={editQuestionForm.source_node_id}
                   onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, source_node_id: e.target.value, topic_node_id: "", subtopic_node_id: "" }))}
-                  className="h-9 rounded-lg border border-line bg-white px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
+                  className="h-9 rounded-lg border border-line bg-surface px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
                   disabled={!editQuestionForm.subject_node_id}
                 >
                   <option value="">-- Select Source Bucket --</option>
@@ -262,7 +262,7 @@ export function QuizManagerEditQuestionModal({
                 <select
                   value={editQuestionForm.topic_node_id}
                   onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, topic_node_id: e.target.value, subtopic_node_id: "" }))}
-                  className="h-9 rounded-lg border border-line bg-white px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
+                  className="h-9 rounded-lg border border-line bg-surface px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
                   disabled={!editQuestionForm.source_node_id}
                 >
                   <option value="">-- Select Topic --</option>
@@ -277,7 +277,7 @@ export function QuizManagerEditQuestionModal({
                 <select
                   value={editQuestionForm.subtopic_node_id}
                   onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, subtopic_node_id: e.target.value }))}
-                  className="h-9 rounded-lg border border-line bg-white px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
+                  className="h-9 rounded-lg border border-line bg-surface px-2 text-xs outline-none focus:border-civic disabled:opacity-50"
                   disabled={!editQuestionForm.topic_node_id}
                 >
                   <option value="">-- Select Subtopic --</option>
@@ -294,7 +294,7 @@ export function QuizManagerEditQuestionModal({
         <div className="p-4 border-t border-line flex justify-end gap-2 bg-paper rounded-b-2xl">
           <button
             onClick={onClose}
-            className="h-10 px-5 bg-white border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
+            className="h-10 px-5 bg-surface border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
             type="button"
           >
             Cancel

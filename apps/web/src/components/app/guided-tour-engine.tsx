@@ -270,7 +270,7 @@ export function GuidedTourEngine({ steps, onClose }: EngineProps) {
       {!elementRect && <div className="fixed inset-0 bg-slate-900/75 z-40" onClick={() => onClose(false)} />}
 
       {/* Tooltip Card */}
-      <div ref={tooltipRef} style={getTooltipStyle()} className="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+      <div ref={tooltipRef} style={getTooltipStyle()} className="bg-surface rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 flex items-center justify-between text-white shrink-0 bg-indigo-600">
           <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ export function GuidedTourEngine({ steps, onClose }: EngineProps) {
           <div className="flex items-center gap-1.5">
             {stepIndex > 0 && (
               <button onClick={() => setStepIndex((s) => s - 1)}
-                className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-slate-500 hover:bg-white flex items-center gap-1">
+                className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-slate-500 hover:bg-surface flex items-center gap-1">
                 <ArrowLeft className="h-3 w-3" /> Back
               </button>
             )}

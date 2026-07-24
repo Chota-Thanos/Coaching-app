@@ -44,7 +44,7 @@ export function PremiumSidePanel({
   return (
     <div className="space-y-4 flex flex-col h-[480px]">
       {/* Deliverables Progress Bar */}
-      <div className="rounded-2xl border border-indigo-105 bg-white p-4 shadow-sm space-y-2">
+      <div className="rounded-2xl border border-indigo-105 bg-surface p-4 shadow-sm space-y-2">
         <h4 className="text-[10px] font-black uppercase tracking-wider text-indigo-950">Deliverables Progress</h4>
         <div className="flex items-center justify-between text-xs font-bold text-slate-700">
           <span>Agendas Solved</span>
@@ -78,7 +78,7 @@ export function PremiumSidePanel({
       )}
 
       {/* Shared Resources Link Index */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 flex-1 flex flex-col overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm space-y-2 flex-1 flex flex-col overflow-hidden">
         <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 shrink-0">
           <Link2 className="h-3.5 w-3.5 text-indigo-500" />
           Shared Resources ({sharedLinks.length})
@@ -112,7 +112,7 @@ export function PremiumSidePanel({
       </div>
 
       {/* Active Workspace Scratchpad */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 shrink-0">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm space-y-2 shrink-0">
         <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-700">Scratchpad</h4>
         <textarea
           value={scratchpad}

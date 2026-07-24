@@ -123,7 +123,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
               href="/current-affairs/daily-news"
               className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
                 !isMains
-                  ? "bg-white text-civic shadow-sm border border-line/30"
+                  ? "bg-surface text-civic shadow-sm border border-line/30"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -133,7 +133,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
               href="/current-affairs/editorial-summary"
               className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
                 isMains
-                  ? "bg-white text-civic shadow-sm border border-line/30"
+                  ? "bg-surface text-civic shadow-sm border border-line/30"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -149,7 +149,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
                     hub.path === "daily-news"
                       ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-white text-muted hover:bg-paper"
+                      : "border-line bg-surface text-muted hover:bg-paper"
                   }`}
                 >
                   Daily News
@@ -159,7 +159,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
                     hub.path === "prelims-pyq"
                       ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-white text-muted hover:bg-paper"
+                      : "border-line bg-surface text-muted hover:bg-paper"
                   }`}
                 >
                   Prelims PYQ
@@ -169,7 +169,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
                     hub.path === "concepts"
                       ? "border-berry bg-berry/5 text-berry"
-                      : "border-line bg-white text-muted hover:bg-paper"
+                      : "border-line bg-surface text-muted hover:bg-paper"
                   }`}
                 >
                   Concepts
@@ -182,7 +182,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
                     hub.path === "editorial-summary"
                       ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-white text-muted hover:bg-paper"
+                      : "border-line bg-surface text-muted hover:bg-paper"
                   }`}
                 >
                   Summaries
@@ -192,7 +192,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
                     hub.path === "mains-topic-notes"
                       ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-white text-muted hover:bg-paper"
+                      : "border-line bg-surface text-muted hover:bg-paper"
                   }`}
                 >
                   Mains Notes
@@ -202,7 +202,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
                   className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
                     hub.path === "mains-pyq"
                       ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-white text-muted hover:bg-paper"
+                      : "border-line bg-surface text-muted hover:bg-paper"
                   }`}
                 >
                   Mains PYQ

@@ -172,12 +172,12 @@ export default function CustomTestDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
       {/* Header */}
-      <div className="border-b border-line bg-white px-4 py-4">
+      <div className="border-b border-line bg-surface px-4 py-4">
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
               href={`/assessment/custom-test?content_type=${contentParam}`}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 transition"
             >
               <ArrowLeft className="h-5 w-5 text-slate-655" />
             </Link>
@@ -210,7 +210,7 @@ export default function CustomTestDetailPage() {
           {/* Left Column: Metadata & Breakdown */}
           <div className="space-y-6">
             {/* Summary Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div className="bg-surface border border-slate-200 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 border rounded-md ${badgeColor}`}>
                   {typeLabel} Test
@@ -305,7 +305,7 @@ export default function CustomTestDetailPage() {
             </div>
 
             {/* Category Breakdown Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div className="bg-surface border border-slate-200 rounded-2xl p-5 shadow-sm">
               <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
                 <Layers className="h-4 w-4 text-slate-400" />
                 Category Breakdown
@@ -344,7 +344,7 @@ export default function CustomTestDetailPage() {
             </div>
 
             {!test.questions || test.questions.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center">
+              <div className="bg-surface border border-slate-200 rounded-2xl p-10 text-center">
                 <HelpCircle className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                 <h4 className="font-bold text-slate-800 text-sm">No questions in this test</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
@@ -382,7 +382,7 @@ export default function CustomTestDetailPage() {
                   }
 
                   return (
-                    <div key={q.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                    <div key={q.id} className="bg-surface border border-slate-200 rounded-2xl p-5 shadow-sm">
                       {/* Meta info */}
                       <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider pb-2 border-b border-slate-50">
                         <span>Question {index + 1}</span>

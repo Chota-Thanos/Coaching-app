@@ -279,7 +279,7 @@ export function AiSettingsManager() {
   const subjectCategories = categories.filter(c => c.is_active !== false);
 
   return (
-    <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden">
       {/* Tab Switcher */}
       <div className="border-b border-line bg-paper/50 p-3">
         <div className={tabStripClass()}>
@@ -351,7 +351,7 @@ export function AiSettingsManager() {
                 >
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-white border border-line shadow-xs">
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-surface border border-line shadow-xs">
                         {card.icon}
                       </span>
                       <h4 className="font-extrabold text-sm text-ink group-hover:text-civic transition-colors">{card.title}</h4>
@@ -393,7 +393,7 @@ export function AiSettingsManager() {
                         setSelectedQuizType(e.target.value);
                       }
                     }}
-                    className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-bold text-civic outline-none focus:border-civic"
+                    className="h-10 rounded-xl border border-line bg-surface px-3 text-sm font-bold text-civic outline-none focus:border-civic"
                   >
                     {activeSubTab === "articles" 
                       ? ARTICLE_KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)
@@ -429,7 +429,7 @@ export function AiSettingsManager() {
                         value={styleGuide.source_text || ""}
                         onChange={(e) => setStyleGuide(prev => ({ ...prev, source_text: e.target.value }))}
                         placeholder="Paste reference text here..."
-                        className="w-full min-h-[100px] mt-1.5 rounded-lg border border-line p-3 text-xs bg-white outline-none focus:border-civic transition-all"
+                        className="w-full min-h-[100px] mt-1.5 rounded-lg border border-line p-3 text-xs bg-surface outline-none focus:border-civic transition-all"
                       />
                     </label>
                     <button
@@ -503,7 +503,7 @@ export function AiSettingsManager() {
                     <select
                       value={selectedSubjectId}
                       onChange={(e) => setSelectedSubjectId(e.target.value)}
-                      className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       required
                     >
                       <option value="">-- Choose Subject Category --</option>
@@ -527,7 +527,7 @@ export function AiSettingsManager() {
                     />
                   </label>
 
-                  <div className="border border-line rounded-lg p-3.5 bg-white space-y-2.5 shadow-sm">
+                  <div className="border border-line rounded-lg p-3.5 bg-surface space-y-2.5 shadow-sm">
                     <span className="block text-[11px] font-bold text-indigo-700 flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5" />
                       AI Style Replicator (Optional)
@@ -539,7 +539,7 @@ export function AiSettingsManager() {
                       placeholder="Paste reference writing style sample here..."
                       value={subjectSampleText || ""}
                       onChange={(e) => setSubjectSampleText(e.target.value)}
-                      className="w-full min-h-[90px] rounded-lg border border-line p-2.5 text-xs bg-white outline-none focus:border-civic transition-all resize-y font-mono"
+                      className="w-full min-h-[90px] rounded-lg border border-line p-2.5 text-xs bg-surface outline-none focus:border-civic transition-all resize-y font-mono"
                     />
                     <button
                       type="button"
@@ -592,7 +592,7 @@ export function AiSettingsManager() {
                       {instructions.filter(i => i.scope === "subject").map(inst => {
                         const targetCategory = categories.find(c => c.id === inst.subject_node_id);
                         return (
-                          <div key={inst.id} className="border border-line bg-white rounded-xl p-4 shadow-sm hover:border-civic/50 transition-all flex justify-between items-start gap-4">
+                          <div key={inst.id} className="border border-line bg-surface rounded-xl p-4 shadow-sm hover:border-civic/50 transition-all flex justify-between items-start gap-4">
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold text-ink">{inst.title}</span>

@@ -57,7 +57,7 @@ function ScoreGauge({ score, maxScore }: { score: number; maxScore: number }) {
     <div className="flex flex-col items-center">
       <div className="relative h-36 w-36">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="10" className="text-slate-200" />
           <circle
             cx="60"
             cy="60"
@@ -103,7 +103,7 @@ function TabButton({
       className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold transition-all border ${
         active
           ? "bg-slate-900 text-white shadow-sm border-slate-900"
-          : "bg-white text-slate-650 hover:bg-slate-50 border-slate-200"
+          : "bg-surface text-slate-650 hover:bg-slate-50 border-slate-200"
       }`}
     >
       {children}
@@ -269,7 +269,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 max={manualMaxScore}
                 value={manualScore}
                 onChange={(e) => setManualScore(e.target.value)}
-                className="w-full rounded-xl border border-slate-205 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
                 placeholder="e.g. 6.5"
               />
             </div>
@@ -279,7 +279,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 type="number"
                 value={manualMaxScore}
                 onChange={(e) => setManualMaxScore(e.target.value)}
-                className="w-full rounded-xl border border-slate-205 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
                 placeholder="e.g. 10"
               />
             </div>
@@ -291,7 +291,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
               type="url"
               value={manualCheckedCopyUrl}
               onChange={(e) => setManualCheckedCopyUrl(e.target.value)}
-              className="w-full rounded-xl border border-slate-205 bg-white px-3 py-2 text-sm text-slate-850 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm text-slate-850 focus:border-indigo-500 focus:outline-none"
               placeholder="https://example.com/checked-copy.pdf"
             />
           </div>
@@ -303,7 +303,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 value={manualStrengths}
                 onChange={(e) => setManualStrengths(e.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-xl border border-emerald-200 bg-surface px-3 py-2 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
                 placeholder="e.g. Good introduction&#10;Addressed all core parts"
               />
             </div>
@@ -313,7 +313,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 value={manualWeaknesses}
                 onChange={(e) => setManualWeaknesses(e.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-rose-500 focus:outline-none"
+                className="w-full rounded-xl border border-rose-200 bg-surface px-3 py-2 text-xs text-slate-800 focus:border-rose-500 focus:outline-none"
                 placeholder="e.g. Improve conclusion&#10;Word limit exceeded"
               />
             </div>
@@ -325,7 +325,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
               value={manualFeedback}
               onChange={(e) => setManualFeedback(e.target.value)}
               rows={4}
-              className="w-full rounded-xl border border-slate-205 bg-white px-3 py-2 text-sm text-slate-855 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm text-slate-855 focus:border-indigo-500 focus:outline-none"
               placeholder="Write detailed review, structure analysis, verdict..."
             />
           </div>
@@ -334,7 +334,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
             <button
               type="button"
               onClick={cancelManualEvaluation}
-              className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
             >
               Cancel
             </button>
@@ -356,7 +356,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
       <div className="mt-5 space-y-4">
         {/* Student's answer submission */}
         {response.student_answer_text && (
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-xl border border-slate-200 bg-surface p-4">
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide mb-2">Submitted Answer Text</h4>
             <p className="text-sm text-slate-705 whitespace-pre-wrap leading-relaxed font-sans">
               {response.student_answer_text}
@@ -397,7 +397,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 href={response.checked_copy_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3.5 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-surface px-3.5 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50 transition-colors"
               >
                 <FileCheck2 className="h-3.5 w-3.5" />
                 Open Checked Copy with Notes
@@ -433,7 +433,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 <h5 className="text-[10px] font-black text-slate-450 uppercase tracking-wide">Detailed feedback report</h5>
                 <div
                   dangerouslySetInnerHTML={{ __html: response.feedback }}
-                  className="prose prose-sm max-h-[300px] overflow-y-auto pr-1 text-sm leading-relaxed text-slate-700 space-y-2 border border-slate-200/60 p-4 bg-white rounded-xl"
+                  className="prose prose-sm max-h-[300px] overflow-y-auto pr-1 text-sm leading-relaxed text-slate-700 space-y-2 border border-slate-200/60 p-4 bg-surface rounded-xl"
                 />
               </div>
             )}
@@ -444,7 +444,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 <button
                   type="button"
                   onClick={() => startManualEvaluation(question)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors"
                 >
                   Edit Manual Marks
                 </button>
@@ -453,7 +453,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 type="button"
                 onClick={() => triggerAiEvaluation(response.id, question.id)}
                 disabled={isEvaluating}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 {isEvaluating ? (
                   <>
@@ -491,7 +491,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                   <button
                     type="button"
                     onClick={() => startManualEvaluation(question)}
-                    className="h-10 rounded-xl border border-amber-300 bg-white hover:bg-amber-50 text-amber-850 font-bold text-xs px-4 shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                    className="h-10 rounded-xl border border-amber-300 bg-surface hover:bg-amber-50 text-amber-850 font-bold text-xs px-4 shadow-sm flex items-center justify-center gap-1.5 transition-colors"
                   >
                     Enter Manual Marks
                   </button>
@@ -779,7 +779,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
           <div className="flex gap-2">
             <Link
               href={assessmentHref("/dashboard")}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-650 hover:border-indigo-650 hover:text-indigo-650 transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-sm font-semibold text-slate-650 hover:border-indigo-650 hover:text-indigo-650 transition-colors"
             >
               Dashboard
             </Link>
@@ -793,7 +793,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-205 bg-white p-1.5 shadow-card">
+        <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-205 bg-surface p-1.5 shadow-card">
           <TabButton active={tab === "summary"} onClick={() => setTab("summary")}>
             <Trophy className="h-4 w-4" aria-hidden="true" />
             Summary
@@ -841,7 +841,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 </div>
               </div>
               {/* Mains Questions Evaluation Checklist */}
-              <div className="rounded-2xl border border-slate-205 bg-white p-5 shadow-card space-y-4">
+              <div className="rounded-2xl border border-slate-205 bg-surface p-5 shadow-card space-y-4">
                 <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Mains Answer Copies & Grading Checklist</h3>
                 <div className="divide-y divide-slate-100">
                   {review.questions.map((q, idx) => {
@@ -891,7 +891,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                     startManualEvaluation(q);
                                   }, 150);
                                 }}
-                                className="h-9 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+                                className="h-9 px-3.5 rounded-lg border border-slate-200 bg-surface hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
                               >
                                 {status === "evaluated" ? "Edit Marks" : "Manual Marks"}
                               </button>
@@ -966,7 +966,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
 
               {/* Diagnostic Test Category Accuracy Breakdown */}
               {review.test_template.test_type === "diagnostic_test" && review.topic_breakdowns && review.topic_breakdowns.length > 0 && (
-                <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm space-y-6">
+                <div className="rounded-2xl border border-indigo-100 bg-surface p-6 shadow-sm space-y-6">
                   <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                     <span className="text-2xl">🩺</span>
                     <div>
@@ -1128,7 +1128,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
       {tab === "questions" && (
         <div className="tab-content space-y-4">
           {/* Filter bar */}
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-card">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-surface p-3 shadow-card">
             <Filter className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
             {(["all", "correct", "incorrect", "unattempted"] as QuestionFilter[]).map((f) => (
               <button
@@ -1223,7 +1223,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                           className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
                             bookmarkedIds.has(question.question_version.question_id)
                               ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100/50"
-                              : "border-slate-200 bg-white text-slate-650 hover:bg-slate-50 hover:text-slate-800"
+                              : "border-slate-200 bg-surface text-slate-650 hover:bg-slate-50 hover:text-slate-800"
                           }`}
                           title={bookmarkedIds.has(question.question_version.question_id) ? "Remove Bookmark" : "Bookmark Question"}
                         >
@@ -1398,7 +1398,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                     className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
                                       bookmarkedIds.has(q.question_version.question_id)
                                         ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100/50"
-                                        : "border-slate-200 bg-white text-slate-650 hover:bg-slate-50 hover:text-slate-800"
+                                        : "border-slate-200 bg-surface text-slate-650 hover:bg-slate-50 hover:text-slate-800"
                                     }`}
                                     title={bookmarkedIds.has(q.question_version.question_id) ? "Remove Bookmark" : "Bookmark Question"}
                                   >

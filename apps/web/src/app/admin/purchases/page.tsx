@@ -206,7 +206,7 @@ export default function AdminPurchasesPage() {
           </div>
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
             target="_blank"
           >
             View Pricing Page
@@ -219,7 +219,7 @@ export default function AdminPurchasesPage() {
           {statCards.map((card) => {
             const Icon = card.icon;
             return (
-              <div key={card.label} className="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-5">
+              <div key={card.label} className="rounded-2xl bg-surface border border-slate-200/80 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-bold text-slate-500">{card.label}</p>
                   <div className={`h-8 w-8 rounded-xl ${card.cls} grid place-items-center`}>
@@ -242,7 +242,7 @@ export default function AdminPurchasesPage() {
               placeholder="Search by email or username..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full rounded-xl border border-slate-200 bg-surface pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
 
@@ -256,7 +256,7 @@ export default function AdminPurchasesPage() {
                 className={`rounded-xl px-3.5 py-2 text-xs font-bold transition capitalize ${
                   statusFilter === s
                     ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    : "bg-surface border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 {s === "all" ? "All" : s}
@@ -266,7 +266,7 @@ export default function AdminPurchasesPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-surface shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
@@ -370,7 +370,7 @@ export default function AdminPurchasesPage() {
                 <button
                   disabled={page === 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition"
+                  className="rounded-lg border border-slate-200 bg-surface p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -378,7 +378,7 @@ export default function AdminPurchasesPage() {
                 <button
                   disabled={subscriptions.length < PAGE_SIZE}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition"
+                  className="rounded-lg border border-slate-200 bg-surface p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition"
                 >
                   <ChevronRightIcon className="h-4 w-4" />
                 </button>

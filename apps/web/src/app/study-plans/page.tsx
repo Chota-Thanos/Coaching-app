@@ -42,7 +42,7 @@ function PlanArtwork({ plan, large = false }: { plan: StudyPlanSummary; large?: 
   return (
     <div className="relative">
       {inner}
-      <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 font-heading text-[10px] !font-black uppercase tracking-wide text-civic shadow-sm">
+      <span className="absolute left-2.5 top-2.5 rounded-full bg-surface/95 px-2.5 py-1 font-heading text-[10px] !font-black uppercase tracking-wide text-civic shadow-sm">
         {plan.level_label ?? "Prelims"}
       </span>
       {plan.price_amount_minor === 0 && (
@@ -111,7 +111,7 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
       </section>
 
       <div className="mx-auto max-w-7xl space-y-6 px-4 pt-6">
-        <form action="/study-plans" className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4 shadow-card md:flex-row md:items-end md:justify-between" method="get">
+        <form action="/study-plans" className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-card md:flex-row md:items-end md:justify-between" method="get">
           <div>
             <p className="inline-flex items-center gap-2 font-heading text-xs !font-black uppercase tracking-wide text-civic">
               <Filter className="h-3.5 w-3.5" />
@@ -121,7 +121,7 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
           </div>
           <label className="grid gap-1 text-sm font-bold text-slate-800 md:w-80">
             Exam
-            <select className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal text-slate-700" defaultValue={examId ?? ""} name="exam_id">
+            <select className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal text-slate-700" defaultValue={examId ?? ""} name="exam_id">
               <option value="">All exams</option>
               {exams.map((exam) => (
                 <option key={exam.id} value={exam.id}>{exam.name}</option>
@@ -132,12 +132,12 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
         </form>
 
         {plans.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-white p-8 text-center text-sm font-semibold text-slate-500">No published study plans found.</p>
+          <p className="rounded-lg border border-dashed border-line bg-surface p-8 text-center text-sm font-semibold text-slate-500">No published study plans found.</p>
         ) : (
           <div className="grid gap-5 lg:grid-cols-3">
             {plans.map((plan) => (
               <Link
-                className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-soft"
+                className="group overflow-hidden rounded-xl border border-slate-200 bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-soft"
                 href={studyPlanHref(`/${plan.id}`)}
                 key={plan.id}
               >

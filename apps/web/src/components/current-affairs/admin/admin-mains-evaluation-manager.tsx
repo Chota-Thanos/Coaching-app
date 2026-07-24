@@ -229,7 +229,7 @@ export function AdminMainsEvaluationManager() {
 
   return (
     <section className="space-y-5">
-      <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-civic">Manual Evaluation</span>
@@ -242,7 +242,7 @@ export function AdminMainsEvaluationManager() {
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value as QueueStatus)}
-              className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-civic"
+              className="h-10 rounded-xl border border-line bg-surface px-3 text-sm font-bold text-ink outline-none focus:border-civic"
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -252,7 +252,7 @@ export function AdminMainsEvaluationManager() {
               type="button"
               onClick={() => void loadQueue()}
               disabled={loading}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-ink transition hover:border-civic hover:text-civic disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-bold text-ink transition hover:border-civic hover:text-civic disabled:opacity-60"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Refresh
@@ -282,12 +282,12 @@ export function AdminMainsEvaluationManager() {
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-line bg-white p-10 text-center shadow-sm">
+        <div className="rounded-2xl border border-line bg-surface p-10 text-center shadow-sm">
           <Loader2 className="mx-auto h-7 w-7 animate-spin text-civic" />
           <p className="mt-3 text-sm font-bold text-ink/55">Loading submitted answer copies...</p>
         </div>
       ) : attempts.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-line bg-white p-10 text-center shadow-sm">
+        <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center shadow-sm">
           <ClipboardCheck className="mx-auto h-9 w-9 text-ink/30" />
           <h3 className="mt-3 text-base font-black text-ink">No answer copies found</h3>
           <p className="mt-1 text-sm font-semibold text-ink/55">Change the status filter or wait for students to submit written answers.</p>
@@ -304,7 +304,7 @@ export function AdminMainsEvaluationManager() {
               weaknesses: ""
             };
             return (
-              <article key={attempt.id} className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+              <article key={attempt.id} className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0 flex-1 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">

@@ -67,7 +67,7 @@ export function TimeChart({ questions, durationMinutes }: TimeChartProps) {
       </div>
 
       {/* Bar chart */}
-      <div className="overflow-hidden rounded-2xl border border-slate-205 bg-white shadow-card">
+      <div className="overflow-hidden rounded-2xl border border-slate-205 bg-surface shadow-card">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Time per Question</p>
         </div>
@@ -86,7 +86,7 @@ export function TimeChart({ questions, durationMinutes }: TimeChartProps) {
                     style={{ minWidth: "8px" }}
                   >
                     {/* Tooltip */}
-                    <div className="pointer-events-none absolute bottom-full mb-1 hidden rounded-lg bg-ink px-2 py-1 text-[10px] font-semibold text-white group-hover:block whitespace-nowrap">
+                    <div className="pointer-events-none absolute bottom-full mb-1 hidden rounded-lg bg-midnight px-2 py-1 text-[10px] font-semibold text-white group-hover:block whitespace-nowrap">
                       Q{item.index}: {formatTime(item.timeSpent)}
                     </div>
                     {/* Bar */}

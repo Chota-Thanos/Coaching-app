@@ -59,7 +59,7 @@ function ChildCategoryCard({ child, backTab }: { child: any; backTab: string }) 
   return (
     <Link
       href={`/assessment/dashboard/categories/${child.id}?tab=${backTab}`}
-      className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-650 hover:shadow-md"
+      className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-650 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -129,7 +129,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
   if (!token) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10">
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-surface p-6 shadow-sm">
           <h1 className="text-2xl font-black text-slate-900">Category Performance</h1>
           <p className="mt-2 text-sm text-slate-500">Sign in to inspect your category-wise attempts and question history.</p>
           <div className="mt-6">
@@ -151,7 +151,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
       <div className="mx-auto max-w-7xl space-y-6 px-4 pt-5">
         <Link
           href={`/assessment/dashboard?tab=${backTab}`}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Performance Dashboard
@@ -191,7 +191,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
         </section>
 
         {loading && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-400 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-surface p-8 text-center text-sm font-semibold text-slate-400 shadow-sm">
             Loading category records...
           </div>
         )}
@@ -199,7 +199,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
         {data && (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
             <div className="space-y-6">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-black text-slate-950">Outcome Split</h2>
@@ -242,7 +242,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                   .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
 
                 return (
-                  <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-6">
+                  <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm space-y-6">
                     <div>
                       <h2 className="text-lg font-black text-slate-950">Subcategory Performance</h2>
                       <p className="mt-1 text-sm font-medium text-slate-500">
@@ -298,7 +298,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                 );
               })()}
 
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-black text-slate-950">Question Record</h2>
@@ -318,7 +318,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                         className={`rounded-full border px-3 py-1.5 text-xs font-black ${
                           filter === value
                             ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                            : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                            : "border-slate-200 bg-surface text-slate-500 hover:bg-slate-50"
                         }`}
                       >
                         {label}
@@ -337,7 +337,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                       const outcome = outcomeConfig(question.outcome ?? "unattempted");
                       const Icon = outcome.icon;
                       return (
-                        <article key={`${question.attempt_id}-${question.question_version_id}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <article key={`${question.attempt_id}-${question.question_version_id}`} className="rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black ${outcome.className}`}>
                               <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -368,7 +368,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
                 <h2 className="text-sm font-black uppercase tracking-wider text-slate-950">Attempt Bars</h2>
                 <p className="mt-1 text-xs font-medium text-slate-500">Category accuracy inside each submitted test.</p>
                 <div className="mt-5 space-y-4">
@@ -394,7 +394,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
                 <h2 className="text-sm font-black uppercase tracking-wider text-slate-950">Improvement Focus</h2>
                 <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600">
                   <p className="flex items-start gap-2">

@@ -304,7 +304,7 @@ export function TestWizardModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-midnight/40 backdrop-blur-sm sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -392,7 +392,7 @@ export function TestWizardModal({ onClose }: { onClose: () => void }) {
                               setSelectedTopicId(e.target.value);
                               setSelectedSubtopicId("");
                             }}
-                            className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                            className="h-9 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
                           >
                             <option value="">All Topics</option>
                             {activeTopics.map(t => (
@@ -407,7 +407,7 @@ export function TestWizardModal({ onClose }: { onClose: () => void }) {
                             value={selectedSubtopicId}
                             onChange={(e) => setSelectedSubtopicId(e.target.value)}
                             disabled={!selectedTopicId}
-                            className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 disabled:opacity-50"
+                            className="h-9 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 disabled:opacity-50"
                           >
                             <option value="">All Subtopics</option>
                             {activeSubtopics.map(st => (
@@ -538,7 +538,7 @@ export function TestWizardModal({ onClose }: { onClose: () => void }) {
                       </p>
                     </div>
 
-                    <div className="grid gap-2 grid-cols-2 text-left bg-white/70 border border-indigo-100 p-4 rounded-xl text-xs font-bold text-slate-700">
+                    <div className="grid gap-2 grid-cols-2 text-left bg-surface/70 border border-indigo-100 p-4 rounded-xl text-xs font-bold text-slate-700">
                       <div>
                         <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Syllabus Path</span>
                         <span className="truncate block max-w-[180px]">
@@ -627,7 +627,7 @@ export function TestWizardModal({ onClose }: { onClose: () => void }) {
           <button
             onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
             disabled={starting}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100 bg-white disabled:opacity-40 transition-colors"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100 bg-surface disabled:opacity-40 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             {step === 1 ? "Cancel" : "Back"}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth, authenticatedGet, authenticatedPost } from "../components/auth/auth-context";
 import { useSubscription } from "../lib/use-subscription";
 import { browserBaseUrl, resolveMediaUrl } from "../lib/api";
+import { PerformanceConsoleSection } from "../components/marketing/performance-console";
 // Onboarding tours removed from dashboard
 import {
   Target,
@@ -413,14 +414,14 @@ export default function HomePage() {
   // ═══════════════════════════════════════════════════════════════════════════
   if (!token) {
     return (
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-surface">
 
         {/* Quiz modal removed — CTA buttons now link directly to real features */}
 
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 1 · HERO
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-ink text-white">
+        <section className="relative overflow-hidden bg-midnight text-white">
           {/* Ambient glow — CSS only, no external images */}
           <div className="absolute -top-32 -right-40 h-[600px] w-[600px] rounded-full bg-civic/10 blur-[140px] pointer-events-none" />
           <div className="absolute -bottom-20 -left-32 h-[350px] w-[350px] rounded-full bg-brand/8 blur-[100px] pointer-events-none" />
@@ -490,17 +491,17 @@ export default function HomePage() {
                 {/* Stats */}
                 <div className="flex items-center gap-6 pt-3 border-t border-white/8">
                   <div className="text-center">
-                    <p className="text-lg font-black text-white">10,000+</p>
+                    <p className="font-mono text-lg font-black tabular-nums text-white">10,000+</p>
                     <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Aspirants</p>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
                   <div className="text-center">
-                    <p className="text-lg font-black text-white">120+</p>
+                    <p className="font-mono text-lg font-black tabular-nums text-white">120+</p>
                     <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Verified Mentors</p>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
                   <div className="text-center">
-                    <p className="text-lg font-black text-white">50,000+</p>
+                    <p className="font-mono text-lg font-black tabular-nums text-white">50,000+</p>
                     <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Tests Taken</p>
                   </div>
                 </div>
@@ -548,6 +549,30 @@ export default function HomePage() {
                     ))}
                   </div>
 
+                  {/* OMR accuracy preview — ties into the Performance Console below */}
+                  <div className="space-y-1.5 pt-1 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Topic accuracy</span>
+                      <span className="text-[9px] font-mono text-indigo-300">OMR read</span>
+                    </div>
+                    {[{ label: "Polity", val: 88 }, { label: "Sci & Tech", val: 63 }].map((t) => (
+                      <div key={t.label} className="flex items-center gap-2">
+                        <span className="w-16 shrink-0 text-[9px] font-bold text-white/50">{t.label}</span>
+                        <span className="flex gap-0.5">
+                          {Array.from({ length: 10 }).map((_, i) => (
+                            <span
+                              key={i}
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                i < Math.round(t.val / 10) ? (t.val >= 70 ? "bg-emerald-400" : "bg-saffron") : "bg-white/15"
+                              }`}
+                            />
+                          ))}
+                        </span>
+                        <span className="ml-auto font-mono text-[9px] font-black tabular-nums text-white">{t.val}%</span>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Quick action row */}
                   <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/10">
                     {[{icon:Target,label:"GS Test"},{icon:Newspaper,label:"News"},{icon:NotebookPen,label:"Notes"}].map(({icon:Icon,label}) => (
@@ -566,11 +591,12 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 2 · SELF-PREPARATION
         ───────────────────────────────────────────────────────────────────── */}
-        <section id="self-prep" className="bg-white section-showcase">
+        <section id="self-prep" className="bg-surface section-showcase">
           <div className="mx-auto max-w-7xl">
             {/* Section header */}
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
               <div className="space-y-2">
+                <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Module 01</span>
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-lg bg-civic/10 flex items-center justify-center">
                     <Target className="h-3.5 w-3.5 text-civic" />
@@ -603,7 +629,7 @@ export default function HomePage() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Topics</p>
                   <div className="flex flex-wrap gap-2">
                     {["Polity","Economy","History","Geography","Environment","Science & Tech","Ethics"].map((t, i) => (
-                      <span key={t} className={`rounded-lg px-2.5 py-1 text-xs font-bold cursor-default ${i < 3 ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+                      <span key={t} className={`rounded-lg px-2.5 py-1 text-xs font-bold cursor-default ${i < 3 ? "bg-indigo-600 text-white" : "bg-surface border border-slate-200 text-slate-600"}`}>
                         {t} {i < 3 && "✓"}
                       </span>
                     ))}
@@ -699,6 +725,7 @@ export default function HomePage() {
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
               <div className="space-y-2">
+                <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Module 02</span>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="h-6 w-6 rounded-lg bg-emerald-50 flex items-center justify-center">
                     <Newspaper className="h-3.5 w-3.5 text-emerald-600" />
@@ -725,7 +752,7 @@ export default function HomePage() {
             {loadingArticles ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {[1,2,3].map(i => (
-                  <div key={i} className="animate-pulse rounded-2xl bg-white border border-slate-100 p-4 h-64 space-y-3">
+                  <div key={i} className="animate-pulse rounded-2xl bg-surface border border-slate-100 p-4 h-64 space-y-3">
                     <div className="bg-slate-200 h-36 rounded-xl" />
                     <div className="bg-slate-200 h-4 w-2/3 rounded" />
                     <div className="bg-slate-200 h-4 w-full rounded" />
@@ -744,11 +771,11 @@ export default function HomePage() {
                     <Link
                       key={article.id}
                       href={`/current-affairs/articles/${article.slug}`}
-                      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-200"
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-surface shadow-sm hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-200"
                     >
                       <div className="h-40 w-full overflow-hidden bg-slate-50 relative">
                         <img src={cover} alt={article.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                        <span className="absolute left-3 top-3 rounded-lg bg-ink/85 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">{catName}</span>
+                        <span className="absolute left-3 top-3 rounded-lg bg-midnight/85 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">{catName}</span>
                         <span className="absolute right-3 top-3 badge-free">Free</span>
                       </div>
                       <div className="flex-1 p-4 flex flex-col justify-between">
@@ -767,7 +794,7 @@ export default function HomePage() {
                 })}
 
                 {latestArticles.length === 0 && (
-                  <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+                  <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-surface p-10 text-center">
                     <Newspaper className="h-8 w-8 text-slate-300 mx-auto mb-3" />
                     <p className="text-sm font-semibold text-slate-400">Today's articles are being published. Check back shortly.</p>
                   </div>
@@ -786,10 +813,11 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 4 · NOTES-MAKING
         ───────────────────────────────────────────────────────────────────── */}
-        <section id="notes-making" className="bg-white section-showcase">
+        <section id="notes-making" className="bg-surface section-showcase">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
               <div className="space-y-2">
+                <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Module 03</span>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="h-6 w-6 rounded-lg bg-indigo-50 flex items-center justify-center">
                     <NotebookPen className="h-3.5 w-3.5 text-indigo-600" />
@@ -813,7 +841,7 @@ export default function HomePage() {
               {/* Left: Notes workspace mock */}
               <div className="rounded-2xl border border-slate-100 bg-slate-50 overflow-hidden">
                 {/* Header bar */}
-                <div className="bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+                <div className="bg-surface border-b border-slate-100 px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FolderOpen className="h-4 w-4 text-indigo-600" />
                     <span className="text-sm font-bold text-slate-800">My Repositories</span>
@@ -828,7 +856,7 @@ export default function HomePage() {
                     { name: "Environment & Ecology", count: 10, tag: "Both" },
                     { name: "International Relations", count: 3, tag: "Mains", locked: true },
                   ].map(repo => (
-                    <div key={repo.name} className={`flex items-center justify-between rounded-xl border px-3.5 py-3 bg-white ${repo.locked ? "opacity-60 border-dashed border-slate-200" : "border-slate-150"}`}>
+                    <div key={repo.name} className={`flex items-center justify-between rounded-xl border px-3.5 py-3 bg-surface ${repo.locked ? "opacity-60 border-dashed border-slate-200" : "border-slate-150"}`}>
                       <div className="flex items-center gap-3">
                         <span className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
                           <FolderOpen className="h-4 w-4 text-indigo-600" />
@@ -918,12 +946,18 @@ export default function HomePage() {
         </section>
 
         {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 4.5 · PERFORMANCE CONSOLE (flagship analytics showcase)
+        ───────────────────────────────────────────────────────────────────── */}
+        <PerformanceConsoleSection />
+
+        {/* ─────────────────────────────────────────────────────────────────────
             SECTION 5 · MENTORSHIP SPOTLIGHT (full-width dark band)
         ───────────────────────────────────────────────────────────────────── */}
         <section id="mentorship" className="spotlight-band text-white">
           <div className="mx-auto max-w-7xl">
             {/* Header */}
             <div className="text-center mb-10 space-y-3">
+              <span className="font-mono text-[10px] font-bold text-white/35 uppercase tracking-widest">Mentor Roster</span>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3.5 py-1 text-xs font-bold text-white/65">
                 <GraduationCap className="h-3.5 w-3.5" />
                 Mentorship &amp; Evaluations
@@ -966,7 +1000,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
                   <ShieldCheck className="h-8 w-8 text-emerald-400 shrink-0" />
                   <div>
-                    <p className="text-sm font-black text-white">120+ Verified Mentors</p>
+                    <p className="font-mono text-sm font-black tabular-nums text-white">120+ Verified Mentors</p>
                     <p className="text-xs text-indigo-300">IAS/IPS Officers, UPSC Interview Qualifiers &amp; Subject Experts</p>
                   </div>
                 </div>
@@ -977,7 +1011,7 @@ export default function HomePage() {
                     {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />)}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">4.9 / 5 avg rating</p>
+                    <p className="font-mono text-sm font-bold tabular-nums text-white">4.9 / 5 avg rating</p>
                     <p className="text-xs text-indigo-300">From 2,400+ mentor sessions</p>
                   </div>
                 </div>
@@ -985,7 +1019,7 @@ export default function HomePage() {
                 {/* Key CTAs */}
                 <Link
                   href="/mentorship/sample-evaluation"
-                  className="touch-target block w-full rounded-xl bg-white text-slate-900 px-5 py-3 text-sm font-bold hover:bg-indigo-50 transition-colors text-center"
+                  className="touch-target block w-full rounded-xl bg-surface text-slate-900 px-5 py-3 text-sm font-bold hover:bg-indigo-50 transition-colors text-center"
                   id="mentorship-sample-eval"
                 >
                   📄 View a Sample Evaluated Mains Answer
@@ -1081,13 +1115,13 @@ export default function HomePage() {
             <div className="snap-scroll-x lg:grid lg:grid-cols-4 lg:gap-5 lg:overflow-x-visible">
 
               {/* FREE */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-slate-150 bg-white p-6 shadow-sm flex flex-col">
+              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-slate-150 bg-surface p-6 shadow-sm flex flex-col">
                 <div className="space-y-1 mb-4">
                   <h3 className="text-base font-black text-slate-800">Free Tier</h3>
                   <p className="text-xs text-slate-500">Core features to get started</p>
                 </div>
                 <div className="flex items-baseline mb-5">
-                  <span className="text-3xl font-black text-slate-900">₹0</span>
+                  <span className="font-mono text-3xl font-black tabular-nums text-slate-900">₹0</span>
                   <span className="text-xs font-semibold text-slate-400 ml-1">/ month</span>
                 </div>
                 <div className="h-px bg-slate-100 mb-5" />
@@ -1113,7 +1147,7 @@ export default function HomePage() {
               </div>
 
               {/* SELF-PREP MODULE */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm flex flex-col">
+              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-blue-100 bg-surface p-6 shadow-sm flex flex-col">
                 <div className="space-y-1 mb-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-black text-slate-800">Self-Prep Plan</h3>
@@ -1122,7 +1156,7 @@ export default function HomePage() {
                   <p className="text-xs text-slate-500">For serious mock practice</p>
                 </div>
                 <div className="flex items-baseline mb-5">
-                  <span className="text-3xl font-black text-slate-900">₹499</span>
+                  <span className="font-mono text-3xl font-black tabular-nums text-slate-900">₹499</span>
                   <span className="text-xs font-semibold text-slate-400 ml-1">/ month</span>
                 </div>
                 <div className="h-px bg-slate-100 mb-5" />
@@ -1147,7 +1181,7 @@ export default function HomePage() {
               </div>
 
               {/* NOTES MODULE */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm flex flex-col">
+              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-indigo-100 bg-surface p-6 shadow-sm flex flex-col">
                 <div className="space-y-1 mb-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-black text-slate-800">Notes Plan</h3>
@@ -1156,7 +1190,7 @@ export default function HomePage() {
                   <p className="text-xs text-slate-500">For daily notes & workspace</p>
                 </div>
                 <div className="flex items-baseline mb-5">
-                  <span className="text-3xl font-black text-slate-900">₹299</span>
+                  <span className="font-mono text-3xl font-black tabular-nums text-slate-900">₹299</span>
                   <span className="text-xs font-semibold text-slate-400 ml-1">/ month</span>
                 </div>
                 <div className="h-px bg-slate-100 mb-5" />
@@ -1181,7 +1215,7 @@ export default function HomePage() {
               </div>
 
               {/* ALL-ACCESS PREMIUM */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border-2 border-indigo-600 bg-ink p-6 shadow-xl flex flex-col relative">
+              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border-2 border-indigo-600 bg-midnight p-6 shadow-xl flex flex-col relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider whitespace-nowrap">
                   Best Value
                 </div>
@@ -1190,7 +1224,7 @@ export default function HomePage() {
                   <p className="text-xs text-indigo-300">Everything, for serious UPSC prep</p>
                 </div>
                 <div className="flex items-baseline mb-5">
-                  <span className="text-3xl font-black text-white">₹699</span>
+                  <span className="font-mono text-3xl font-black tabular-nums text-white">₹699</span>
                   <span className="text-xs font-semibold text-indigo-400 ml-1">/ month</span>
                 </div>
                 <div className="h-px bg-white/10 mb-5" />
@@ -1226,8 +1260,9 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             SECTION 7 · TESTIMONIAL
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="bg-white py-16 px-4 sm:px-6 lg:px-8">
+        <section className="bg-surface py-16 px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center space-y-5">
+            <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">// Verified Outcome</p>
             <div className="flex justify-center gap-1 text-amber-400">
               {[1,2,3,4,5].map(i => <Star key={i} className="h-5 w-5 fill-current" />)}
             </div>
@@ -1242,10 +1277,53 @@ export default function HomePage() {
         </section>
 
         {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 7.5 · FAQ
+        ───────────────────────────────────────────────────────────────────── */}
+        <section className="bg-slate-50 section-showcase">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-2xl mb-10 space-y-2">
+              <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Frequently Asked</span>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                Questions aspirants ask us most.
+              </h2>
+            </div>
+            <div className="max-w-3xl space-y-3">
+              {[
+                {
+                  q: "Is current affairs really free forever?",
+                  a: "Yes — every daily brief, topic tag, and PYQ connection in the current affairs section is free with no login and no daily limit, on every plan including no plan at all.",
+                },
+                {
+                  q: "How are mentors verified?",
+                  a: "Mentors are verified UPSC-qualified officers or subject experts, each with a public track record shown on their profile before you book a session or evaluation.",
+                },
+                {
+                  q: "What happens to my analytics if I stay on the free plan?",
+                  a: "You still get topic-wise accuracy and the weak-area focus panel on every test you take — paid tiers add multi-week trend tracking and unlimited test volume.",
+                },
+                {
+                  q: "Can I cancel a paid plan anytime?",
+                  a: "Yes, plans are month-to-month with no lock-in. Your notes and past test records remain accessible even after downgrading.",
+                },
+              ].map(({ q, a }) => (
+                <details key={q} className="group rounded-2xl border border-slate-100 bg-surface px-5 py-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+                    <span className="text-sm font-bold text-slate-800">{q}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm text-slate-500 leading-relaxed">{a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────────────
             SECTION 8 · FINAL CTA
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="bg-ink py-16 px-4 sm:px-6 lg:px-8 text-center">
+        <section className="bg-midnight py-16 px-4 sm:px-6 lg:px-8 text-center">
           <div className="mx-auto max-w-2xl space-y-5">
+            <span className="font-mono text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Console access is free</span>
             <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
               Ready to Start Your UPSC Journey?
             </h2>
@@ -1266,7 +1344,7 @@ export default function HomePage() {
         {/* ─────────────────────────────────────────────────────────────────────
             STUDY PLANS — single line, footer placement only
         ───────────────────────────────────────────────────────────────────── */}
-        <div className="bg-ink border-t border-slate-800 pb-6 text-center">
+        <div className="bg-midnight border-t border-slate-800 pb-6 text-center">
           <p className="text-xs text-slate-500 italic">
             Prefer a guided path?{" "}
             <Link href="/study-plans" className="text-indigo-400 hover:underline font-semibold">
@@ -1296,7 +1374,7 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════
           DASHBOARD HEADER — greeting + status pills
       ══════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden bg-ink text-white">
+      <section className="relative overflow-hidden bg-midnight text-white">
         <div className="absolute inset-0 z-0 opacity-20 mix-blend-overlay">
           <img
             src="https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop"
@@ -1441,7 +1519,7 @@ export default function HomePage() {
             <Link
               key={label}
               href={href}
-              className="w-[140px] flex-shrink-0 group flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm hover:shadow-md transition-all"
+              className="w-[140px] flex-shrink-0 group flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-surface p-3 shadow-sm hover:shadow-md transition-all"
             >
               <span className={`h-9 w-9 rounded-xl flex items-center justify-center bg-${color}-50 text-${color}-600 group-hover:scale-105 transition-transform`}>
                 <Icon className="h-5 w-5" />
@@ -1458,7 +1536,7 @@ export default function HomePage() {
         ══════════════════════════════════════════════════════ */}
         {!loadingDashboard && !hasAnyActivity && (
           <section className="space-y-5">
-            <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-surface p-8 text-center shadow-sm">
               <h2 className="text-xl font-black text-slate-900">Welcome, let&rsquo;s set up your prep</h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
                 Pick a starting point below — your progress and focus areas will start showing up here once you do.
@@ -1474,7 +1552,7 @@ export default function HomePage() {
                 <Link
                   key={title}
                   href={href}
-                  className="group flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all"
+                  className="group flex flex-col rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all"
                 >
                   <span className="h-10 w-10 rounded-xl bg-civic/10 text-civic flex items-center justify-center mb-3">
                     <Icon className="h-5 w-5" />
@@ -1488,7 +1566,7 @@ export default function HomePage() {
               ))}
               <Link
                 href="/mentors"
-                className="group flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all sm:col-span-2"
+                className="group flex flex-col rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all sm:col-span-2"
               >
                 <span className="h-10 w-10 rounded-xl bg-civic/10 text-civic flex items-center justify-center mb-3">
                   <GraduationCap className="h-5 w-5" />
@@ -1528,7 +1606,7 @@ export default function HomePage() {
                 return (
                   <div
                     key={card.id}
-                    className="w-[240px] flex-shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                    className="w-[240px] flex-shrink-0 rounded-2xl border border-slate-100 bg-surface p-4 shadow-sm"
                   >
                     <div className={`h-1 w-8 rounded-full mb-3 ${accentClasses[card.accent]}`} />
                     <p className="text-sm font-black text-slate-800 line-clamp-2 leading-snug">{card.title}</p>
@@ -1588,7 +1666,7 @@ export default function HomePage() {
                   className={`group flex flex-col rounded-2xl p-4 border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
                     primary
                       ? `border-${color}-200 bg-${color}-50 hover:border-${color}-300`
-                      : "border-slate-100 bg-white hover:border-slate-200"
+                      : "border-slate-100 bg-surface hover:border-slate-200"
                   }`}
                 >
                   <span className={`h-8 w-8 rounded-lg flex items-center justify-center mb-2.5 ${
@@ -1611,28 +1689,28 @@ export default function HomePage() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-100 bg-surface p-4 shadow-sm">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">GK accuracy</p>
                     <p className="mt-1 text-2xl font-black text-slate-900">{gkAttempts > 0 ? `${gkAccuracy}%` : "—"}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-100 bg-surface p-4 shadow-sm">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">CSAT accuracy</p>
                     <p className="mt-1 text-2xl font-black text-slate-900">{csatAttempts > 0 ? `${csatAccuracy}%` : "—"}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-100 bg-surface p-4 shadow-sm">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Mains avg score</p>
                     <p className="mt-1 text-2xl font-black text-slate-900">
                       {mainsAvgScore !== null ? mainsAvgScore : "—"}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-100 bg-surface p-4 shadow-sm">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Evaluations pending</p>
                     <p className="mt-1 text-2xl font-black text-slate-900">{evaluationsPending}</p>
                   </div>
                 </div>
 
                 {(highestTopics.length > 0 || lowestTopics.length > 0) && (
-                  <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                  <div className="rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">
                       Category level extremes — lowest and highest performing topics
                     </p>
@@ -1681,7 +1759,7 @@ export default function HomePage() {
                   </div>
                 )}
 
-                <div id="tour-weak-focus" className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm space-y-3">
+                <div id="tour-weak-focus" className="rounded-2xl border border-rose-100 bg-surface p-5 shadow-sm space-y-3">
                   <div className="flex items-center gap-2">
                     <BrainCircuit className="h-4 w-4 text-rose-600" />
                     <h3 className="text-base font-black text-slate-800">Focus areas</h3>
@@ -1737,7 +1815,7 @@ export default function HomePage() {
             )}
 
             {/* Quick Custom Test Builder */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-5">
+            <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm space-y-5">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-indigo-600" />
                 <div>
@@ -1762,7 +1840,7 @@ export default function HomePage() {
                         onClick={() => setQuickTestType(tab.value as any)}
                         className={`text-center py-2 text-xs font-black rounded-lg transition-all ${
                           quickTestType === tab.value
-                            ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                            ? "bg-surface text-slate-900 shadow-sm border border-slate-100"
                             : "text-slate-500 hover:text-slate-700"
                         }`}
                       >
@@ -1793,7 +1871,7 @@ export default function HomePage() {
                               className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
                                 isChecked
                                   ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
-                                  : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50"
+                                  : "bg-surface border-slate-100 text-slate-600 hover:bg-slate-50"
                               }`}
                             >
                               {sub.name}
@@ -1822,7 +1900,7 @@ export default function HomePage() {
                               className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
                                 isChecked
                                   ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
-                                  : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50"
+                                  : "bg-surface border-slate-100 text-slate-600 hover:bg-slate-50"
                               }`}
                             >
                               {sub.name}
@@ -1851,7 +1929,7 @@ export default function HomePage() {
                               className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
                                 isChecked
                                   ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
-                                  : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50"
+                                  : "bg-surface border-slate-100 text-slate-600 hover:bg-slate-50"
                               }`}
                             >
                               {sub.name}
@@ -1877,8 +1955,8 @@ export default function HomePage() {
                           onClick={() => setQuickNumQuestions(count)}
                           className={`flex-1 py-2 rounded-xl border text-xs font-black transition-all ${
                             quickNumQuestions === count
-                              ? "bg-ink border-slate-900 text-white"
-                              : "bg-white border-slate-150 text-slate-600 hover:bg-slate-50"
+                              ? "bg-midnight border-slate-900 text-white"
+                              : "bg-surface border-slate-150 text-slate-600 hover:bg-slate-50"
                           }`}
                         >
                           {count}
@@ -1932,7 +2010,7 @@ export default function HomePage() {
           <div className="lg:col-span-1 space-y-5">
 
             {/* Current Affairs Daily Feed */}
-            <section id="tour-daily-feed" className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <section id="tour-daily-feed" className="rounded-2xl border border-slate-100 bg-surface shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
                 <h2 className="text-sm font-black text-slate-800 flex items-center gap-2">
                   <Newspaper className="h-4 w-4 text-emerald-600" />
@@ -1947,7 +2025,7 @@ export default function HomePage() {
                   <Link
                     key={cat}
                     href={`/current-affairs/${cat.toLowerCase().replace(" ", "-")}`}
-                    className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold border ${i === 0 ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300"}`}
+                    className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold border ${i === 0 ? "bg-emerald-600 text-white border-emerald-600" : "bg-surface text-slate-500 border-slate-200 hover:border-emerald-300"}`}
                   >
                     {cat}
                   </Link>
@@ -2004,7 +2082,7 @@ export default function HomePage() {
             </section>
 
             {/* Notes Workspace */}
-            <section id="tour-notes-workspace" className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <section id="tour-notes-workspace" className="rounded-2xl border border-slate-100 bg-surface shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
                 <h2 className="text-sm font-black text-slate-800 flex items-center gap-2">
                   <FolderOpen className="h-4 w-4 text-indigo-600" />
@@ -2078,7 +2156,7 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════
             EXPLORE MORE — feature discovery for areas not yet used
         ══════════════════════════════════════════════════════ */}
-        <section id="tour-study-plans" className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <section id="tour-study-plans" className="rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <span className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -2099,7 +2177,7 @@ export default function HomePage() {
               <Link
                 key={title}
                 href={href}
-                className="w-[85vw] sm:w-[300px] lg:w-auto flex-shrink-0 group flex flex-col justify-between rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50 hover:bg-white p-4 hover:shadow-sm transition-all duration-200"
+                className="w-[85vw] sm:w-[300px] lg:w-auto flex-shrink-0 group flex flex-col justify-between rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50 hover:bg-surface p-4 hover:shadow-sm transition-all duration-200"
               >
                 <div className="space-y-2">
                   <span className="h-8 w-8 rounded-lg bg-civic/10 text-civic flex items-center justify-center">

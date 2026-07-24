@@ -75,7 +75,7 @@ export function HeaderNav() {
 
         {assessmentOpen && (
           <div
-            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-white shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
+            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
             onMouseEnter={openAssessment}
             onMouseLeave={closeAssessment}
           >
@@ -180,7 +180,7 @@ export function HeaderNav() {
 
         {caOpen && (
           <div
-            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-white shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
+            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
             onMouseEnter={openCa}
             onMouseLeave={closeCa}
           >
@@ -251,7 +251,7 @@ export function HeaderNav() {
 
         {pyqOpen && (
           <div
-            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-white shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
+            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
             onMouseEnter={openPyq}
             onMouseLeave={closePyq}
           >
@@ -356,7 +356,7 @@ export function HeaderNav() {
           {/* Dropdown Panel */}
           {adminOpen && (
             <div
-              className="absolute right-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-white shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
+              className="absolute right-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl shadow-ink/10 animate-in fade-in slide-in-from-top-2 duration-150"
               onMouseEnter={openAdmin}
               onMouseLeave={closeAdmin}
             >

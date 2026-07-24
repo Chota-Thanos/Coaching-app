@@ -238,7 +238,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
   if (!token) {
     return (
       <main className="mx-auto max-w-xl px-4 pb-16 pt-8">
-        <section className="rounded-lg border border-line bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-line bg-surface p-6 shadow-sm">
           <h1 className="text-2xl font-black text-ink">Sign in required</h1>
           <p className="mt-2 text-sm text-ink/65">Sign in to continue your study plan test.</p>
           <div className="mt-5">
@@ -252,7 +252,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
   if (!paper || !activeQuestion) {
     return (
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-8">
-        <p className="rounded-lg border border-line bg-white p-6 text-center text-sm font-bold text-ink/50">
+        <p className="rounded-lg border border-line bg-surface p-6 text-center text-sm font-bold text-ink/50">
           {message ?? "Loading attempt..."}
         </p>
       </main>
@@ -279,7 +279,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
         </Link>
 
       {/* ── Status Bar ── */}
-      <section className="sticky top-16 z-20 rounded-2xl border border-line bg-white/95 backdrop-blur-md p-4 shadow-sm">
+      <section className="sticky top-16 z-20 rounded-2xl border border-line bg-surface/95 backdrop-blur-md p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <h1 className="truncate text-base font-extrabold text-slate-800">{paper.test_template.title}</h1>
@@ -307,7 +307,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
       <div className="grid gap-6 lg:grid-cols-[1fr_19rem]">
         
         {/* Left main panel: question statement + answering */}
-        <section className="bg-white border border-line rounded-3xl p-5 md:p-6 shadow-soft space-y-6">
+        <section className="bg-surface border border-line rounded-3xl p-5 md:p-6 shadow-soft space-y-6">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
             <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase text-slate-500">
               {activeQuestion.question_family === "mains_subjective" ? "Mains Subjective" : "Objective MCQ"}
@@ -353,7 +353,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
                         className={`flex min-h-14 items-start gap-3 rounded-2xl border p-3.5 text-left text-sm leading-relaxed transition-all ${
                           selected
                             ? "border-indigo-600 bg-indigo-50 text-slate-900 shadow-sm"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-indigo-500/50"
+                            : "border-slate-200 bg-surface text-slate-700 hover:border-indigo-500/50"
                         }`}
                         key={key}
                         onClick={() => void saveResponse(activeQuestion, { key }, "", "answered", activeResponse?.marked ?? false)}
@@ -438,7 +438,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
                             <div className="space-y-3">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {ocrFiles.map((file, idx) => (
-                                  <div key={file.id} className="flex items-center gap-3 bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
+                                  <div key={file.id} className="flex items-center gap-3 bg-surface p-2 rounded-lg border border-indigo-100 shadow-sm">
                                     <div className="w-10 h-12 bg-slate-100 rounded border overflow-hidden shrink-0">
                                       <img src={file.preview} alt="Preview" className="w-full h-full object-cover" />
                                     </div>
@@ -502,7 +502,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
                           className={`flex min-h-14 items-start gap-3 rounded-2xl border p-3.5 text-left text-sm leading-relaxed transition-all ${
                             selected
                               ? "border-indigo-600 bg-indigo-50 text-slate-900 shadow-sm"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-500/50"
+                              : "border-slate-200 bg-surface text-slate-700 hover:border-indigo-500/50"
                           }`}
                           key={key}
                           onClick={() => void saveResponse(activeQuestion, { key }, "", "answered", activeResponse?.marked ?? false)}
@@ -527,7 +527,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
           <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5 justify-between">
             <div className="flex gap-2">
               <button
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-700 disabled:opacity-50"
                 disabled={activeIndex === 0}
                 onClick={() => setActiveIndex((value) => Math.max(0, value - 1))}
                 type="button"
@@ -536,7 +536,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
                 Prev
               </button>
               <button
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-755"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-755"
                 onClick={() => {
                   if (isSubjective) {
                     void saveResponse(activeQuestion, null, currentTextVal, "skipped", false);
@@ -549,7 +549,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
                 Skip
               </button>
               <button
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-755"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-755"
                 onClick={() => void saveResponse(activeQuestion, activeResponse?.selectedAnswer ?? null, activeResponse?.answerText ?? "", activeResponse?.status ?? "not_visited", true)}
                 type="button"
               >
@@ -576,12 +576,12 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
 
         {/* Right palette sidebar */}
         <aside className="space-y-4 lg:sticky lg:top-[9.5rem] lg:self-start">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+          <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-black text-slate-800">Question Palette</h2>
             <div className="grid grid-cols-5 gap-1.5">
               {paper.questions.map((question, index) => {
                 const status = questionStatus(question);
-                let colorClass = "border-slate-200 bg-white text-slate-700 hover:border-indigo-500/50";
+                let colorClass = "border-slate-200 bg-surface text-slate-700 hover:border-indigo-500/50";
                 
                 if (index === activeIndex) {
                   colorClass = "border-slate-900 bg-slate-900 text-white shadow-sm";
@@ -624,7 +624,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
                   Skipped
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded-md border border-slate-200 bg-white shrink-0" />
+                  <span className="h-3 w-3 rounded-md border border-slate-200 bg-surface shrink-0" />
                   Not Visited
                 </div>
               </div>
@@ -644,7 +644,7 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
       </div>
 
       {/* Mobile action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white p-3 lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-surface p-3 lg:hidden">
         <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2">
           <button className="h-10 rounded-xl border border-slate-200 text-xs font-bold" onClick={() => setActiveIndex((value) => Math.max(0, value - 1))} type="button">Prev</button>
           <button className="h-10 rounded-xl border border-slate-200 text-xs font-bold" onClick={() => setActiveIndex((value) => Math.min(paper.questions.length - 1, value + 1))} type="button">Next</button>

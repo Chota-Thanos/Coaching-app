@@ -95,7 +95,7 @@ export default function AccountPage() {
       <p className="mt-1 text-sm text-ink/65">Manage your sign-in details and security.</p>
 
       {/* Profile summary */}
-      <section className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-sm">
+      <section className="mt-8 rounded-2xl border border-line bg-surface p-6 shadow-sm">
         <h2 className="text-base font-black text-ink">Profile</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between border-b border-line/60 pb-2">
@@ -144,7 +144,7 @@ export default function AccountPage() {
       </section>
 
       {/* Password */}
-      <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-sm">
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-black text-ink">
           <KeyRound className="h-4 w-4 text-civic" /> Change password
         </h2>
@@ -161,7 +161,7 @@ export default function AccountPage() {
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 h-11 w-full rounded-md border border-line bg-white px-3 outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+              className="mt-1 h-11 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -176,7 +176,7 @@ export default function AccountPage() {
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="mt-1 h-11 w-full rounded-md border border-line bg-white px-3 outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                className="mt-1 h-11 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
               />
             </div>
             <div>
@@ -190,7 +190,7 @@ export default function AccountPage() {
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 h-11 w-full rounded-md border border-line bg-white px-3 outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                className="mt-1 h-11 w-full rounded-md border border-line bg-surface px-3 outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
               />
             </div>
           </div>
@@ -221,7 +221,7 @@ export default function AccountPage() {
       </section>
 
       {/* Billing shortcut */}
-      <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-sm">
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-black text-ink">
           <CreditCard className="h-4 w-4 text-civic" /> Billing
         </h2>
@@ -230,7 +230,7 @@ export default function AccountPage() {
         </p>
         <Link
           href="/dashboard/purchases"
-          className="mt-4 inline-flex h-11 items-center rounded-md border border-line bg-white px-5 text-sm font-black text-ink hover:bg-slate-50"
+          className="mt-4 inline-flex h-11 items-center rounded-md border border-line bg-surface px-5 text-sm font-black text-ink hover:bg-slate-50"
         >
           Go to My Purchases
         </Link>

@@ -197,7 +197,7 @@ export default function AssessmentPage() {
               {/* General Studies */}
               <Link 
                 href="/assessment/gk"
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div>
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
@@ -217,7 +217,7 @@ export default function AssessmentPage() {
               {/* CSAT / Aptitude */}
               <Link 
                 href="/assessment/csat"
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div>
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
@@ -237,7 +237,7 @@ export default function AssessmentPage() {
               {/* Mains Writing */}
               <Link 
                 href="/assessment/mains-hub"
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div>
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
@@ -257,7 +257,7 @@ export default function AssessmentPage() {
               {/* Revision Bookmarks */}
               <Link 
                 href="/assessment/gk?view=revision"
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div>
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-100 transition-colors">
@@ -288,7 +288,7 @@ export default function AssessmentPage() {
               {/* Study Plans */}
               <Link
                 href="/study-plans"
-                className="group flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
+                className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
                 <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <Calendar className="h-5.5 w-5.5" />
@@ -304,7 +304,7 @@ export default function AssessmentPage() {
               {/* Mentors marketplace */}
               <Link
                 href="/mentors"
-                className="group flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
+                className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
                 <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <Users className="h-5.5 w-5.5" />
@@ -320,7 +320,7 @@ export default function AssessmentPage() {
               {/* Daily News Feed */}
               <Link
                 href="/current-affairs/daily-news"
-                className="group flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
+                className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
                 <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <Newspaper className="h-5.5 w-5.5" />
@@ -336,7 +336,7 @@ export default function AssessmentPage() {
               {/* Editorial Summary */}
               <Link
                 href="/current-affairs/editorial-summary"
-                className="group flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
+                className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
                 <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <BookOpen className="h-5.5 w-5.5" />
@@ -358,7 +358,7 @@ export default function AssessmentPage() {
         <div className="space-y-8">
           
           {/* Stats Radar Summary */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
               <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-indigo-650" />
@@ -418,7 +418,7 @@ export default function AssessmentPage() {
           </div>
 
           {/* Recent attempts checklist */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-indigo-650" />
@@ -525,7 +525,7 @@ export default function AssessmentPage() {
             ))}
           </div>
         ) : studyPlans.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-surface py-10 text-center">
             <p className="text-sm text-slate-400">No active study plans available right now.</p>
           </div>
         ) : (
@@ -535,7 +535,7 @@ export default function AssessmentPage() {
               return (
                 <div
                   key={plan.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all duration-200"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-surface shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <div>
                     {/* Header Image */}
@@ -545,7 +545,7 @@ export default function AssessmentPage() {
                         alt={plan.title}
                         className="h-full w-full object-cover group-hover:scale-103 transition-transform duration-350"
                       />
-                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-[10px] font-black uppercase text-indigo-700 shadow-sm backdrop-blur-sm">
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-md bg-surface/95 px-2 py-1 text-[10px] font-black uppercase text-indigo-700 shadow-sm backdrop-blur-sm">
                         {plan.level_label ?? "PRELIMS"}
                       </span>
                     </div>
@@ -610,7 +610,7 @@ export default function AssessmentPage() {
             ))}
           </div>
         ) : mentors.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-surface py-10 text-center">
             <p className="text-sm text-slate-400">No active mentors available right now.</p>
           </div>
         ) : (
@@ -620,7 +620,7 @@ export default function AssessmentPage() {
               return (
                 <div
                   key={mentor.id}
-                  className="group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200"
+                  className="group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   {/* Left Column avatar */}
                   <div className="relative shrink-0 h-16 w-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60">

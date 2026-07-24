@@ -70,7 +70,7 @@ export function ForkTagQuickEdit({ fork, availableTags, onChanged }: ForkTagQuic
             className={`inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition ${
               selected
                 ? "border-civic bg-civic text-white"
-                : "border-civic/30 bg-white text-civic hover:bg-civic/10"
+                : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
             }`}
             disabled={saving}
             key={tag}

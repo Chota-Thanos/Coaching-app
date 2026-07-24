@@ -286,7 +286,7 @@ export function AdminMainsTaxonomyManager() {
           <div className="flex gap-2">
             <select
               aria-label="Exam selector"
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
               onChange={(e) => {
                 setSelectedExamId(e.target.value);
                 update("examId", e.target.value);
@@ -301,7 +301,7 @@ export function AdminMainsTaxonomyManager() {
               ))}
             </select>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
               disabled={loading}
               onClick={loadNodes}
               type="button"
@@ -312,11 +312,11 @@ export function AdminMainsTaxonomyManager() {
           </div>
         </div>
 
-        {message && <p className="rounded-lg border border-line bg-white p-3 text-sm font-semibold text-civic">{message}</p>}
+        {message && <p className="rounded-lg border border-line bg-surface p-3 text-sm font-semibold text-civic">{message}</p>}
 
         <div className="grid gap-3">
           {nodes.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">
+            <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
               No taxonomy nodes defined for this exam. Use the side panel to add.
             </p>
           ) : (
@@ -324,7 +324,7 @@ export function AdminMainsTaxonomyManager() {
               const parent = nodes.find((item) => item.id === node.parent_id);
               const nodeDepth = nodeDepthMap.get(node.id) ?? 0;
               return (
-                <article className="rounded-lg border border-line bg-white p-4 shadow-sm" key={node.id}>
+                <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={node.id}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-3 min-w-0">
                       {nodeDepth <= 2 && node.image_url && (
@@ -357,7 +357,7 @@ export function AdminMainsTaxonomyManager() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-shrink-0">
                       <button
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-civic"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-civic"
                         onClick={() => handleEditClick(node)}
                         type="button"
                       >
@@ -365,14 +365,14 @@ export function AdminMainsTaxonomyManager() {
                         Edit
                       </button>
                       <button
-                        className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-civic"
+                        className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-civic"
                         onClick={() => void toggleNode(node)}
                         type="button"
                       >
                         {!node.is_active ? "Activate" : "Deactivate"}
                       </button>
                       <button
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
                         onClick={() => void deleteNode(node.id)}
                         type="button"
                       >
@@ -389,7 +389,7 @@ export function AdminMainsTaxonomyManager() {
       </div>
 
       <aside className="lg:sticky lg:top-28 lg:self-start">
-        <form className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-sm" onSubmit={handleSubmitNode}>
+        <form className="grid gap-4 rounded-lg border border-line bg-surface p-4 shadow-sm" onSubmit={handleSubmitNode}>
           <div className="flex items-center gap-2 border-b border-line/60 pb-2">
             <FolderPlus aria-hidden="true" className="h-5 w-5 text-civic" />
             <h2 className="text-lg font-black text-ink">{editingNode ? "Edit Taxonomy Node" : "Add Taxonomy Node"}</h2>
@@ -398,7 +398,7 @@ export function AdminMainsTaxonomyManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             Node type
             <select
-              className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+              className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
               onChange={(e) => update("nodeType", e.target.value as any)}
               value={form.nodeType}
             >
@@ -413,7 +413,7 @@ export function AdminMainsTaxonomyManager() {
           <label className="grid gap-1 text-sm font-bold text-ink">
             Parent Node
             <select
-              className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+              className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
               onChange={(e) => update("parentId", e.target.value)}
               value={form.parentId}
             >
@@ -462,7 +462,7 @@ export function AdminMainsTaxonomyManager() {
             <div className="grid gap-2 text-sm font-bold text-ink">
               Category Image
               <div className="grid gap-3 sm:grid-cols-[112px,1fr]">
-                <div className="h-28 w-28 overflow-hidden rounded-full border border-line bg-white">
+                <div className="h-28 w-28 overflow-hidden rounded-full border border-line bg-surface">
                   {form.imageUrl ? (
                     <img
                       alt={form.name || "Category image preview"}
@@ -541,7 +541,7 @@ export function AdminMainsTaxonomyManager() {
             </button>
             {editingNode && (
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-bold text-ink hover:bg-slate-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-sm font-bold text-ink hover:bg-slate-50"
                 onClick={cancelEdit}
                 type="button"
               >

@@ -60,7 +60,7 @@ export function RepositoryAttachControl({
     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
       <select
         aria-label="Repository"
-        className="h-10 min-w-0 rounded-md border border-line bg-white px-3 text-sm text-ink"
+        className="h-10 min-w-0 rounded-md border border-line bg-surface px-3 text-sm text-ink"
         onChange={(event) => setCollectionId(event.target.value)}
         value={selectedCollectionId}
       >

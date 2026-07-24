@@ -2,13 +2,39 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        ink: "#0f172a",
-        paper: "#f1f5fb",
-        line: "#dde6f0",
-        surface: "#ffffff",
+        // Fixed dark navy — NOT theme-aware, unlike `ink`. For decorative
+        // elements deliberately dark in both themes: modal backdrop scrims,
+        // filled dark buttons/tooltips/toasts, hero/CTA bands. `ink` itself
+        // flips (it's the primary text colour), so anything that needs a
+        // permanently-dark surface must reach for this instead.
+        midnight: "#0f172a",
+        // Semantic tokens — flip between light/dark via CSS variables in globals.css.
+        ink: "rgb(var(--c-ink) / <alpha-value>)",
+        paper: "rgb(var(--c-paper) / <alpha-value>)",
+        line: "rgb(var(--c-line) / <alpha-value>)",
+        surface: "rgb(var(--c-surface) / <alpha-value>)",
+        muted: "rgb(var(--c-muted) / <alpha-value>)",
+        // Neutral slate scale — variable-driven and INVERTED in dark mode, so
+        // bg-slate-50 becomes a dark surface and text-slate-600 becomes light,
+        // with no call-site changes. (2900+ usages across the app.)
+        slate: {
+          50: "rgb(var(--s-50) / <alpha-value>)",
+          100: "rgb(var(--s-100) / <alpha-value>)",
+          200: "rgb(var(--s-200) / <alpha-value>)",
+          300: "rgb(var(--s-300) / <alpha-value>)",
+          400: "rgb(var(--s-400) / <alpha-value>)",
+          500: "rgb(var(--s-500) / <alpha-value>)",
+          600: "rgb(var(--s-600) / <alpha-value>)",
+          700: "rgb(var(--s-700) / <alpha-value>)",
+          800: "rgb(var(--s-800) / <alpha-value>)",
+          900: "rgb(var(--s-900) / <alpha-value>)",
+          950: "rgb(var(--s-950) / <alpha-value>)"
+        },
+        // Brand colours — identical in both themes.
         civic: "#4f46e5",
         brand: "#2563eb",
         saffron: "#f59e0b",
@@ -26,8 +52,7 @@ const config: Config = {
           800: "#065f46",
           900: "#064e3b",
           950: "#022c22"
-        },
-        muted: "#64748b"
+        }
       },
       boxShadow: {
         soft: "0 8px 40px rgba(15, 23, 42, 0.08)",

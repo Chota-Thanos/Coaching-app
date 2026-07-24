@@ -86,7 +86,7 @@ export function AgendaPanel({
   const hasUnagreed = agendas.some((a) => a.status === "proposed");
 
   return (
-    <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+    <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4">
       <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
         <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
           {icon}
@@ -124,7 +124,7 @@ export function AgendaPanel({
           return (
             <div
               key={agenda.id}
-              className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3 transition hover:bg-white hover:border-slate-200 shadow-sm"
+              className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3 transition hover:bg-surface hover:border-slate-200 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

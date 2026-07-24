@@ -31,7 +31,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Page header */}
-      <div className="border-b border-line/60 bg-white px-4 py-4">
+      <div className="border-b border-line/60 bg-surface px-4 py-4">
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-ink">{label}</h1>
@@ -41,7 +41,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
           <div className="flex flex-wrap gap-2.5">
             <Link
               href={`/assessment/custom-test/create?content_type=${contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk'}`}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
             >
               <Plus className="h-4 w-4 text-indigo-650" />
               <span>Create Custom Test</span>
@@ -49,7 +49,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
             
             <Link
               href={`/assessment/custom-test?content_type=${contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk'}`}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
             >
               <ClipboardList className="h-4 w-4 text-indigo-650" />
               <span>My Custom Tests</span>
@@ -67,7 +67,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
       </div>
 
       {/* Main tabs */}
-      <div className="sticky top-[53px] z-20 border-b border-line/60 bg-white py-2">
+      <div className="sticky top-[53px] z-20 border-b border-line/60 bg-surface py-2">
         <div className="mx-auto max-w-7xl px-4">
           <div className={tabStripClass()}>
             <Link href={`?view=create`} className={tabButtonClass(view === 'create')}>
@@ -94,7 +94,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
         {view === 'performance' && (
           <div className="mx-auto max-w-7xl">
             {/* Performance sub-tabs */}
-            <div className="sticky top-[114px] z-10 border-b border-line/60 bg-white px-4 py-2">
+            <div className="sticky top-[114px] z-10 border-b border-line/60 bg-surface px-4 py-2">
               <div className={tabStripClass()}>
                 <Link href={`?view=performance&perf=summary`} className={tabButtonClass(perfTab === 'summary')}>
                   Summary
@@ -163,7 +163,7 @@ function MyTestsList({ contentType }: { contentType: string }) {
       <div>
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">My Custom Tests</h3>
         {customTests.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 bg-white">
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 bg-surface">
             No custom tests created yet. Use "Create Custom Test" above to build your own assessment!
           </div>
         ) : (
@@ -173,7 +173,7 @@ function MyTestsList({ contentType }: { contentType: string }) {
               const isCompleted = test.latest_attempt_status === "submitted" || test.latest_attempt_status === "completed";
               
               return (
-                <div key={test.id} className="rounded-xl border border-line bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div key={test.id} className="rounded-xl border border-line bg-surface p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -224,13 +224,13 @@ function MyTestsList({ contentType }: { contentType: string }) {
       <div>
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Attempt History</h3>
         {attempts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 bg-white">
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 bg-surface">
             No test attempts found.
           </div>
         ) : (
           <div className="space-y-3">
             {attempts.map((attempt: any) => (
-              <div key={attempt.id} className="rounded-xl border border-line bg-white p-4 shadow-sm">
+              <div key={attempt.id} className="rounded-xl border border-line bg-surface p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-ink truncate text-sm">{attempt.test_template?.title ?? 'Practice Session'}</p>

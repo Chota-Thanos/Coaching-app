@@ -404,7 +404,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
 
       {error && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{error}</p>}
       {loading && !repository && (
-        <p className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70">Loading repository...</p>
+        <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading repository...</p>
       )}
 
       {repository && (
@@ -429,7 +429,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 Add own article
               </button>
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-white px-4 text-sm font-bold text-civic hover:bg-civic/10"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-surface px-4 text-sm font-bold text-civic hover:bg-civic/10"
                 onClick={() => setImportOpen(true)}
                 type="button"
               >
@@ -437,7 +437,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 Import articles
               </button>
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-white px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-surface px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
                 disabled={repository.items.length === 0}
                 onClick={() => setFlashcardsOpen(true)}
                 type="button"
@@ -446,7 +446,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 Flashcards
               </button>
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-white px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-surface px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
                 disabled={repository.items.length === 0}
                 onClick={printRevisionSheet}
                 type="button"
@@ -455,7 +455,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 Print sheet
               </button>
               <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-white px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/35 bg-surface px-4 text-sm font-bold text-civic hover:bg-civic/10 disabled:opacity-50"
                 disabled={repository.items.length === 0 || downloadingPdf}
                 onClick={downloadRepositoryPdf}
                 type="button"
@@ -467,7 +467,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
           </section>
           {pdfError && <p className="text-sm font-semibold text-berry">{pdfError}</p>}
 
-          <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-civic/10 text-civic">
                 <Tags aria-hidden="true" className="h-5 w-5" />
@@ -509,7 +509,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                       {savingTags ? "Saving..." : "Save"}
                     </button>
                     <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
                       onClick={cancelRepositoryTags}
                       type="button"
                     >
@@ -535,7 +535,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
             </div>
           </section>
 
-          <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <div className="grid gap-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -552,7 +552,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                     className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold ${
                       revisionOnly
                         ? "border-civic bg-civic text-white"
-                        : "border-civic/30 bg-white text-civic hover:bg-civic/10"
+                        : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
                     }`}
                     onClick={() => setRevisionOnly((value) => !value)}
                     type="button"
@@ -565,7 +565,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                     className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold ${
                       pinnedOnly
                         ? "border-civic bg-civic text-white"
-                        : "border-civic/30 bg-white text-civic hover:bg-civic/10"
+                        : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
                     }`}
                     onClick={() => setPinnedOnly((value) => !value)}
                     type="button"
@@ -581,7 +581,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 <span className="sr-only">Search repository</span>
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/45" />
                 <input
-                  className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-ink outline-none focus:border-civic"
+                  className="h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-sm text-ink outline-none focus:border-civic"
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search title, notes, body, tags, or source"
                   value={searchQuery}
@@ -593,7 +593,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                   className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-bold ${
                     selectedTagFilter === "all"
                       ? "border-civic bg-civic text-white"
-                      : "border-civic/30 bg-white text-civic hover:bg-civic/10"
+                      : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
                   }`}
                   onClick={() => setSelectedTagFilter("all")}
                   type="button"
@@ -605,7 +605,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                     className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-bold ${
                       selectedTagFilter === tag
                         ? "border-civic bg-civic text-white"
-                        : "border-civic/30 bg-white text-civic hover:bg-civic/10"
+                        : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
                     }`}
                     key={tag}
                     onClick={() => setSelectedTagFilter(tag)}
@@ -619,11 +619,11 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
           </section>
 
           {repository.items.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">
+            <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
               Import institute articles or add your own article to start building this repository.
             </p>
           ) : filteredItems.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">
+            <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
               No repository items match this tag filter.
             </p>
           ) : (
@@ -679,7 +679,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 const studentTags = visibleWorkspaceTags(studentArticle?.personal_tags);
                 const bodyPreview = previewText(studentArticle?.body);
                 return (
-                  <article className="rounded-lg border border-line bg-white p-4 shadow-sm" key={item.id}>
+                  <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={item.id}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <span className="mb-2 inline-flex rounded-md bg-saffron/10 px-2 py-1 text-xs font-bold text-saffron">
@@ -772,8 +772,8 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
             onSaved={loadRepository}
           />
           {flashcardsOpen && (
-            <div className="fixed inset-0 z-50 grid place-items-center bg-ink/55 px-4 py-8">
-              <div className="w-full max-w-2xl rounded-lg border border-line bg-white shadow-2xl">
+            <div className="fixed inset-0 z-50 grid place-items-center bg-midnight/55 px-4 py-8">
+              <div className="w-full max-w-2xl rounded-lg border border-line bg-surface shadow-2xl">
                 <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
                   <div>
                     <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-civic">
@@ -787,7 +787,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                   </div>
                   <button
                     aria-label="Close flashcards"
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-ink hover:bg-paper"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-ink hover:bg-paper"
                     onClick={() => setFlashcardsOpen(false)}
                     type="button"
                   >
@@ -823,7 +823,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
 
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <button
-                        className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-bold text-ink hover:bg-paper disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-bold text-ink hover:bg-paper disabled:opacity-50"
                         disabled={flashcardIndex === 0}
                         onClick={() => setFlashcardIndex((value) => Math.max(0, value - 1))}
                         type="button"

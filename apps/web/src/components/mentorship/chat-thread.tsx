@@ -52,7 +52,7 @@ export function ChatThread({
   return (
     <div
       className={`rounded-[32px] border shadow-sm overflow-hidden flex flex-col animate-in fade-in duration-200 ${
-        isAmber ? "border-amber-250/70 bg-white" : "border-indigo-150 bg-white"
+        isAmber ? "border-amber-250/70 bg-surface" : "border-indigo-150 bg-surface"
       }`}
       style={{ height }}
     >
@@ -124,7 +124,7 @@ export function ChatThread({
           placeholder={inputPlaceholder}
           value={typedMessage}
           onChange={(e) => onTypedMessageChange(e.target.value)}
-          className={`flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none ${
+          className={`flex-1 rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-xs outline-none ${
             isAmber ? "focus:border-amber-500 focus:ring-1 focus:ring-amber-500" : "focus:border-indigo-500"
           }`}
         />

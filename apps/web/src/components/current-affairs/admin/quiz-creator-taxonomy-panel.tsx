@@ -85,7 +85,7 @@ export function QuizCreatorTaxonomyPanel({
   saving
 }: TaxonomyPanelProps) {
   return (
-    <div className="bg-white border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5 animate-in fade-in duration-300">
+    <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5 animate-in fade-in duration-300">
       <h4 className="font-extrabold text-base text-ink border-b border-line pb-2 flex items-center gap-2">
         <Sparkles className="h-4.5 w-4.5 text-civic" />
         Staging Bulk Actions
@@ -98,7 +98,7 @@ export function QuizCreatorTaxonomyPanel({
           <select
             value={selectedExamId}
             onChange={(e) => handleExamChange(e.target.value)}
-            className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+            className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
           >
             <option value="">-- Choose Exam --</option>
             {exams.map(ex => (
@@ -113,7 +113,7 @@ export function QuizCreatorTaxonomyPanel({
           <select
             value={selectedLevelId}
             onChange={(e) => setSelectedLevelId(e.target.value)}
-            className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+            className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
             disabled={!selectedExamId}
           >
             <option value="">-- Choose Level --</option>
@@ -129,7 +129,7 @@ export function QuizCreatorTaxonomyPanel({
           <select
             value={selectedNatureId}
             onChange={(e) => setSelectedNatureId(e.target.value)}
-            className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+            className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
             disabled={!selectedExamId}
           >
             <option value="">-- Choose Nature --</option>
@@ -148,7 +148,7 @@ export function QuizCreatorTaxonomyPanel({
             <select
               value={selectedSubjectId}
               onChange={(e) => handleSubjectChange(e.target.value)}
-              className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+              className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
               disabled={!selectedExamId}
             >
               <option value="">-- Select Subject --</option>
@@ -163,7 +163,7 @@ export function QuizCreatorTaxonomyPanel({
             <select
               value={selectedSourceBucketId}
               onChange={(e) => handleSourceBucketChange(e.target.value)}
-              className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+              className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
               disabled={!selectedSubjectId}
             >
               <option value="">-- Select Source Bucket --</option>
@@ -178,7 +178,7 @@ export function QuizCreatorTaxonomyPanel({
             <select
               value={selectedTopicId}
               onChange={(e) => handleTopicChange(e.target.value)}
-              className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+              className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
               disabled={!selectedSourceBucketId}
             >
               <option value="">-- Select Topic --</option>
@@ -193,7 +193,7 @@ export function QuizCreatorTaxonomyPanel({
             <select
               value={selectedSubtopicId}
               onChange={(e) => setSelectedSubtopicId(e.target.value)}
-              className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+              className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
               disabled={!selectedTopicId}
             >
               <option value="">-- Select Subtopic --</option>
@@ -208,7 +208,7 @@ export function QuizCreatorTaxonomyPanel({
           <button
             onClick={onApplyToSelected}
             disabled={selectedCount === 0}
-            className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-civic text-civic bg-white font-bold text-xs hover:bg-civic/5 transition-all disabled:opacity-50"
+            className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-civic text-civic bg-surface font-bold text-xs hover:bg-civic/5 transition-all disabled:opacity-50"
             type="button"
           >
             Apply to Checked ({selectedCount})

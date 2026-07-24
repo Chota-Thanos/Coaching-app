@@ -148,7 +148,7 @@ export default function StudentMainsPracticePage() {
 
   if (!question) {
     return (
-      <div className="mx-auto max-w-xl p-8 text-center mt-12 border border-line rounded-2xl bg-white space-y-4">
+      <div className="mx-auto max-w-xl p-8 text-center mt-12 border border-line rounded-2xl bg-surface space-y-4">
         <AlertCircle className="h-10 w-10 text-berry mx-auto" />
         <h2 className="text-lg font-black text-ink">Question Not Found</h2>
         <p className="text-sm text-ink/65">This subjective practice question does not exist or has been archived.</p>
@@ -169,7 +169,7 @@ export default function StudentMainsPracticePage() {
       <div className="flex items-center gap-3">
         <Link
           href="/assessment/mains"
-          className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-white hover:bg-paper transition-all"
+          className="h-10 w-10 grid place-items-center rounded-xl border border-line bg-surface hover:bg-paper transition-all"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -183,7 +183,7 @@ export default function StudentMainsPracticePage() {
         
         {/* Left Column: Question statement and answer sheet */}
         <div className="space-y-6">
-          <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center gap-2 border-b border-line pb-3">
               <span className="px-2 py-0.5 rounded bg-civic/10 text-civic text-[10px] font-extrabold uppercase">
                 {question.mains_details?.directive || "Discuss"}
@@ -214,7 +214,7 @@ export default function StudentMainsPracticePage() {
           </div>
 
           {/* Answering block */}
-          <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-ink flex items-center gap-1.5">
                 <FileEdit className="h-4 w-4 text-civic" />
@@ -292,7 +292,7 @@ export default function StudentMainsPracticePage() {
           
           {/* Evaluation output results */}
           {attempt && attempt.evaluation_status === "evaluated" && (
-            <div className="bg-white border border-line rounded-2xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
+            <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
               <div className="flex items-center justify-between border-b border-line/60 pb-4">
                 <div>
                   <h3 className="font-black text-base text-ink flex items-center gap-1.5">
@@ -367,7 +367,7 @@ export default function StudentMainsPracticePage() {
 
           {/* Model Answer Panel */}
           {question.mains_details?.model_answer && (
-            <div className="bg-white border border-line rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm space-y-4">
               <div className="border-b border-line pb-3">
                 <h3 className="font-black text-base text-ink">UPSC Reference Model Answer</h3>
                 <span className="text-[10px] text-ink/50 font-bold uppercase tracking-wider">Use this as an ideal framework blueprint</span>

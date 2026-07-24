@@ -13,6 +13,6 @@ export function tabButtonClass(active: boolean, extra?: string) {
   return `inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border-2 px-4 py-2.5 text-sm font-bold transition-colors ${
     active
       ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-      : "border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
+      : "border-slate-300 bg-surface text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
   } ${extra ?? ""}`.trim();
 }

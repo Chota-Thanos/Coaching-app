@@ -322,7 +322,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-black text-ink">Article library</h2>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-ink hover:border-civic transition-all disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-bold text-ink hover:border-civic transition-all disabled:opacity-60"
             disabled={loading}
             onClick={loadArticles}
             type="button"
@@ -333,7 +333,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
         </div>
 
         <form
-          className="grid gap-4 rounded-2xl border border-line bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.4fr]"
+          className="grid gap-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.4fr]"
           onSubmit={(event) => {
             event.preventDefault();
             void loadArticles();
@@ -389,7 +389,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
           <label className="grid gap-1.5 text-sm font-bold text-ink">
             Search
-            <span className="flex h-11 items-center rounded-xl border border-line bg-white px-3 focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/20 transition-all">
+            <span className="flex h-11 items-center rounded-xl border border-line bg-surface px-3 focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/20 transition-all">
               <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-civic" />
               <input
                 className="min-w-0 flex-1 border-0 bg-transparent px-2 text-base font-normal text-ink outline-none"
@@ -401,11 +401,11 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
           </label>
         </form>
 
-        {message && <p className="rounded-xl border border-line bg-white p-4 text-sm font-semibold text-civic shadow-sm">{message}</p>}
+        {message && <p className="rounded-xl border border-line bg-surface p-4 text-sm font-semibold text-civic shadow-sm">{message}</p>}
 
         {/* Select All Checkbox Bar */}
         {articles.length > 0 && (
-          <div className="flex items-center justify-between bg-white border border-line px-5 py-3 rounded-2xl shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between bg-surface border border-line px-5 py-3 rounded-2xl shadow-sm animate-in fade-in duration-200">
             <label className="flex items-center gap-2.5 text-xs font-bold text-ink cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -425,7 +425,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
         <div className="flex flex-col gap-3">
           {articles.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-dashed border-slate-200 bg-surface p-8 text-center text-sm text-slate-500">
               No current affairs articles found in library.
             </p>
           ) : (
@@ -433,7 +433,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
               const isSelected = selectedArticleIds.includes(Number(article.id));
               return (
                 <article
-                  className={`rounded-xl border p-4.5 shadow-sm transition-all hover:shadow hover:border-indigo-400 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white ${
+                  className={`rounded-xl border p-4.5 shadow-sm transition-all hover:shadow hover:border-indigo-400 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface ${
                     isSelected 
                       ? "border-indigo-600 bg-indigo-50/10 ring-1 ring-indigo-600/25" 
                       : selectedArticleId === article.id 
@@ -477,7 +477,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                   {/* Actions Column */}
                   <div className="flex flex-wrap items-center gap-1.5 shrink-0 border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0">
                     <button
-                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
                       onClick={() => void loadDetail(article.id)}
                       type="button"
                     >
@@ -485,7 +485,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                       View
                     </button>
                     <button
-                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
                       onClick={() => {
                         const getCreatorPath = (kind: string) => {
                           switch (kind) {
@@ -511,7 +511,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                       Edit
                     </button>
                     <button
-                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
                       onClick={() => handleOpenQuickEdit(article)}
                       type="button"
                     >
@@ -529,7 +529,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                       </button>
                     ) : (
                       <button
-                        className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-amber-500 hover:text-amber-600 transition-all"
+                        className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-amber-500 hover:text-amber-600 transition-all"
                         onClick={() => void archiveArticle(article.id)}
                         type="button"
                       >
@@ -538,7 +538,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                       </button>
                     )}
                     <button
-                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-rose-500 hover:text-rose-600 hover:bg-rose-50/50 transition-all"
+                      className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-rose-500 hover:text-rose-600 hover:bg-rose-50/50 transition-all"
                       onClick={() => void deleteArticle(article.id)}
                       type="button"
                     >
@@ -555,7 +555,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
       {/* Floating Bulk Actions Bar */}
       {selectedArticleIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 bg-ink text-white px-6 py-3.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 border border-white/10 backdrop-blur-md bg-opacity-95">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 bg-midnight text-white px-6 py-3.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 border border-white/10 backdrop-blur-md bg-opacity-95">
           <span className="text-xs font-black tracking-wider uppercase text-white/80">
             {selectedArticleIds.length} Article{selectedArticleIds.length > 1 ? "s" : ""} selected
           </span>
@@ -589,10 +589,10 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
       {/* Bulk Reassign Category Modal */}
       {bulkReassignOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-midnight/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-md bg-surface rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-white hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-surface hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
               onClick={() => {
                 setBulkReassignOpen(false);
                 setBulkReassignCategoryId("");
@@ -634,7 +634,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                     setBulkReassignOpen(false);
                     setBulkReassignCategoryId("");
                   }}
-                  className="px-4 py-2 text-sm font-bold text-ink/70 hover:text-ink border border-line bg-white hover:bg-paper rounded-xl transition-all"
+                  className="px-4 py-2 text-sm font-bold text-ink/70 hover:text-ink border border-line bg-surface hover:bg-paper rounded-xl transition-all"
                 >
                   Cancel
                 </button>
@@ -655,10 +655,10 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
       {/* Quick Edit Details Modal */}
       {quickEditingArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-midnight/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-surface rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-white hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-surface hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
               onClick={() => setQuickEditingArticle(null)}
               type="button"
             >
@@ -739,7 +739,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                   type="button"
                   disabled={savingQuickEdit}
                   onClick={() => setQuickEditingArticle(null)}
-                  className="px-4 py-2 text-sm font-bold text-ink/70 hover:text-ink border border-line bg-white hover:bg-paper rounded-xl transition-all"
+                  className="px-4 py-2 text-sm font-bold text-ink/70 hover:text-ink border border-line bg-surface hover:bg-paper rounded-xl transition-all"
                 >
                   Cancel
                 </button>

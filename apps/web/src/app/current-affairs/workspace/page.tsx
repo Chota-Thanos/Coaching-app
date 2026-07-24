@@ -13,7 +13,7 @@ export default function WorkspacePage() {
   return (
     <Suspense fallback={
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <p className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70">Loading Notes Space...</p>
+        <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading Notes Space...</p>
       </main>
     }>
       <WorkspaceDashboard />

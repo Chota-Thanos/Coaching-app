@@ -244,7 +244,7 @@ export default function ProfileApplyPage() {
     const status = activeApplication.status;
     return (
       <div className="mx-auto min-h-screen max-w-4xl px-6 py-16">
-        <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-xl">
+        <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-surface shadow-xl">
           <div
             className={`h-2.5 w-full ${
               status === "approved"
@@ -313,7 +313,7 @@ export default function ProfileApplyPage() {
               )}
               <Link
                 href="/become-mentor"
-                className="rounded-2xl border border-slate-200 bg-white px-6 py-3.5 font-bold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 bg-surface px-6 py-3.5 font-bold text-slate-700 transition hover:bg-slate-50"
               >
                 Back to Portal Info
               </Link>
@@ -327,7 +327,7 @@ export default function ProfileApplyPage() {
   // Onboarding Step Content
   return (
     <div className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-xl">
+      <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-surface shadow-xl">
         {/* Stepper Header */}
         <div className="border-b border-slate-100 bg-slate-50/50 px-8 py-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -450,7 +450,7 @@ export default function ProfileApplyPage() {
                       className="h-20 w-20 rounded-2xl object-cover border border-slate-200"
                     />
                   ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white text-xs font-bold text-slate-400">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-surface text-xs font-bold text-slate-400">
                       No Photo
                     </div>
                   )}
@@ -461,7 +461,7 @@ export default function ProfileApplyPage() {
                       type="button"
                       disabled={uploadingKind !== null}
                       onClick={() => void handleMockUpload("headshot", "headshot.jpg")}
-                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
                     >
                       <Upload className="h-3.5 w-3.5" />
                       {uploadingKind === "headshot" ? "Uploading..." : "Mock Upload Photo"}
@@ -534,7 +534,7 @@ export default function ProfileApplyPage() {
                   {proofs.map((proof, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs"
+                      className="flex items-center justify-between rounded-xl bg-surface border border-slate-200 px-4 py-2 text-xs"
                     >
                       <span className="flex items-center gap-2 text-slate-700">
                         <FileText className="h-4 w-4 text-indigo-500" />
@@ -551,7 +551,7 @@ export default function ProfileApplyPage() {
                   type="button"
                   disabled={uploadingKind !== null}
                   onClick={() => void handleMockUpload("proof", "marksheet_upsc.pdf")}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   {uploadingKind === "proof" ? "Uploading..." : "Mock Upload Proof"}
@@ -586,7 +586,7 @@ export default function ProfileApplyPage() {
                         className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold transition ${
                           active
                             ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                            : "border-slate-200 bg-surface text-slate-600 hover:border-slate-300"
                         }`}
                       >
                         {active && <Check className="h-3.5 w-3.5" />}
@@ -641,7 +641,7 @@ export default function ProfileApplyPage() {
                   Upload a PDF copy of an answer sheet you evaluated previously to demonstrate your feedback style.
                 </p>
                 {sampleEvaluation ? (
-                  <div className="mt-4 flex items-center justify-between rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs">
+                  <div className="mt-4 flex items-center justify-between rounded-xl bg-surface border border-slate-200 px-4 py-2 text-xs">
                     <span className="flex items-center gap-2 text-slate-700">
                       <FileText className="h-4 w-4 text-indigo-500" />
                       {sampleEvaluation.file_name}
@@ -655,7 +655,7 @@ export default function ProfileApplyPage() {
                   type="button"
                   disabled={uploadingKind !== null}
                   onClick={() => void handleMockUpload("sample", "sample_mains_evaluation.pdf")}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   {uploadingKind === "sample" ? "Uploading..." : "Mock Upload Sample"}
@@ -684,7 +684,7 @@ export default function ProfileApplyPage() {
               type="button"
               disabled={currentStep === 0}
               onClick={() => setCurrentStep((prev) => prev - 1)}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
             >
               <ArrowLeft className="h-4 w-4" />
               Previous
@@ -695,7 +695,7 @@ export default function ProfileApplyPage() {
                 type="button"
                 disabled={savingDraft || submitting}
                 onClick={handleSaveDraft}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 {savingDraft ? "Saving..." : "Save Draft"}
               </button>

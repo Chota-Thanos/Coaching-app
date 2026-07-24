@@ -1298,7 +1298,7 @@ export function AssessmentHomePage({
           </div>
         )}
         {!rootNodeId && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/50 px-3 py-1 text-xs font-bold text-indigo-700">
@@ -1324,7 +1324,7 @@ export function AssessmentHomePage({
                       setExamId(Number(event.target.value));
                       setCompiledItems([]);
                     }}
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                    className="h-11 rounded-xl border border-slate-300 bg-surface px-3 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
                   >
                     {exams.map((exam) => (
                       <option key={exam.id} value={exam.id}>
@@ -1343,7 +1343,7 @@ export function AssessmentHomePage({
                     <p className="text-xs font-bold text-slate-500">Total bookmarked questions</p>
                     <p className="mt-1 text-xl font-black text-slate-950">{loadingBookmarks ? "--" : bookmarkedQuestions.length}</p>
                   </div>
-                  <div className="rounded-xl border border-indigo-100 bg-white px-4 py-3">
+                  <div className="rounded-xl border border-indigo-100 bg-surface px-4 py-3">
                     <p className="text-xs font-bold text-slate-500">Filtered category</p>
                     <p className="mt-1 truncate text-xl font-black text-indigo-700">
                       {selectedRevisionNodeId 
@@ -1364,7 +1364,7 @@ export function AssessmentHomePage({
                     <p className="text-xs font-bold text-slate-500">Visible category pool</p>
                     <p className="mt-1 text-xl font-black text-slate-950">{loadingCounts ? "--" : availableTotal}</p>
                   </div>
-                  <div className="rounded-xl border border-indigo-100 bg-white px-4 py-3">
+                  <div className="rounded-xl border border-indigo-100 bg-surface px-4 py-3">
                     <p className="text-xs font-bold text-slate-500">Active section</p>
                     <p className="mt-1 truncate text-xl font-black text-indigo-700">{activeSection?.label ?? "GS"}</p>
                   </div>
@@ -1403,7 +1403,7 @@ export function AssessmentHomePage({
       )}
 
       <div className={activeTab === "bookmarks" ? "w-full" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"}>
-        <section className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5 ${activeTab === "bookmarks" ? "w-full" : ""}`}>
+        <section className={`rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm md:p-5 ${activeTab === "bookmarks" ? "w-full" : ""}`}>
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             {!contentTypeFilter && (
               <div className="grid gap-2 sm:grid-cols-4 xl:w-[42rem]">
@@ -1416,7 +1416,7 @@ export function AssessmentHomePage({
                     className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
                       activeTab === tab.id
                         ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-indigo-500/50 hover:text-indigo-600 hover:bg-indigo-50/20"
+                        : "border-slate-200 bg-surface text-slate-700 hover:border-indigo-500/50 hover:text-indigo-600 hover:bg-indigo-50/20"
                     }`}
                   >
                     <span
@@ -1450,7 +1450,7 @@ export function AssessmentHomePage({
                     setFilterText(event.target.value);
                     if (event.target.value.trim()) setDrillPath([]);
                   }}
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-surface pl-9 pr-3 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
                 />
               </div>
             )}
@@ -1473,7 +1473,7 @@ export function AssessmentHomePage({
                     key={action.label}
                     type="button"
                     onClick={action.onClick}
-                    className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm transition hover:border-indigo-650 hover:text-indigo-650"
+                    className="h-9 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 shadow-sm transition hover:border-indigo-650 hover:text-indigo-650"
                   >
                     {action.label}
                   </button>
@@ -1593,7 +1593,7 @@ export function AssessmentHomePage({
                         const qId = Number(bookmark.question_id);
                         const isSelected = selectedBookmarkIds.has(qId);
                         return (
-                          <div key={qId} className={`flex items-start gap-3 rounded-xl border p-3.5 transition-all bg-white hover:shadow-sm ${isSelected ? "border-indigo-200" : "border-slate-200"}`}>
+                          <div key={qId} className={`flex items-start gap-3 rounded-xl border p-3.5 transition-all bg-surface hover:shadow-sm ${isSelected ? "border-indigo-200" : "border-slate-200"}`}>
                             <input
                               type="checkbox"
                               className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
@@ -1673,7 +1673,7 @@ export function AssessmentHomePage({
                 <button
                   type="button"
                   onClick={() => setIsFilterModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-indigo-705 hover:text-indigo-800 bg-white hover:bg-slate-50 rounded-xl transition shadow-sm border border-indigo-150 shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-indigo-705 hover:text-indigo-800 bg-surface hover:bg-slate-50 rounded-xl transition shadow-sm border border-indigo-150 shrink-0"
                 >
                   Customize View
                 </button>
@@ -1691,7 +1691,7 @@ export function AssessmentHomePage({
                       className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-black transition ${
                         isActive
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300"
+                          : "border-slate-200 bg-surface text-slate-700 hover:border-indigo-300"
                       }`}
                     >
                       {subject.name}
@@ -1701,7 +1701,7 @@ export function AssessmentHomePage({
               </div>
 
               {effectiveDrillPath.length > 1 && (
-                <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">
+                <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-semibold">
                   {effectiveDrillPath.map((crumb, i) => (
                     <span key={crumb.id} className="flex items-center gap-1.5">
                       {i > 0 && <ChevronRight className="h-3 w-3 text-slate-400" aria-hidden="true" />}
@@ -1751,7 +1751,7 @@ export function AssessmentHomePage({
         </section>
 
         {activeTab !== "bookmarks" && (
-          <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24">
+          <aside className="rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm lg:sticky lg:top-24">
             <div className="flex items-start gap-3 border-b border-slate-200 pb-4">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700">
                 <ClipboardList className="h-5 w-5" aria-hidden="true" />
@@ -1833,7 +1833,7 @@ export function AssessmentHomePage({
 
     {promptNode && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-surface p-6 shadow-xl">
           <div className="flex items-center justify-between pb-4 border-b border-slate-200">
             <h3 className="text-base font-black text-slate-900">Select Test Format</h3>
             <button
@@ -1884,7 +1884,7 @@ export function AssessmentHomePage({
 
     {isFilterModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl flex flex-col max-h-[90vh]">
+        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-surface p-6 shadow-xl flex flex-col max-h-[90vh]">
           <div className="flex items-center justify-between pb-4 border-b border-slate-200 shrink-0">
             <div>
               <h3 className="text-base font-black text-slate-900">Customize Syllabus View</h3>
@@ -2006,7 +2006,7 @@ export function AssessmentHomePage({
 
     {isAddToExistingModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-        <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div className="relative w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
           <button
             onClick={() => setIsAddToExistingModalOpen(false)}
             className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
@@ -2034,7 +2034,7 @@ export function AssessmentHomePage({
                     key={t.id}
                     onClick={() => handleAddCartToExistingTest(t.id, t.title)}
                     disabled={addingToTestId !== null}
-                    className="w-full text-left p-2.5 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/20 transition flex items-center justify-between text-xs disabled:opacity-50"
+                    className="w-full text-left p-2.5 bg-surface border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/20 transition flex items-center justify-between text-xs disabled:opacity-50"
                   >
                     <span className="font-bold text-slate-800 truncate pr-2">{t.title}</span>
                     <span className="text-[10px] text-slate-400 font-bold shrink-0">
@@ -2051,7 +2051,7 @@ export function AssessmentHomePage({
 
     {isNewTestModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-        <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div className="relative w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
           <button
             onClick={() => setIsNewTestModalOpen(false)}
             className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
@@ -2152,7 +2152,7 @@ function TreeRow({
       {node.isUserNode ? (
         <div className="grid gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/20 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amber-250 bg-white text-amber-600">
+            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amber-250 bg-surface text-amber-600">
               <User className="h-4 w-4" aria-hidden="true" />
             </div>
             <div className="min-w-0">
@@ -2169,7 +2169,7 @@ function TreeRow({
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[auto_1fr] md:w-[22rem]">
-            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-white p-1">
+            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-surface p-1">
               <button
                 type="button"
                 aria-label={`Decrease questions for ${node.name}`}
@@ -2196,7 +2196,7 @@ function TreeRow({
                 type="button"
                 disabled={disabled}
                 onClick={() => onAddToTest(node)}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add
@@ -2214,7 +2214,7 @@ function TreeRow({
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 transition md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="grid gap-3 rounded-xl border border-slate-200 bg-surface p-3 transition md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-start gap-3">
             <button
               type="button"
@@ -2223,7 +2223,7 @@ function TreeRow({
               onClick={() => hasChildren && toggleExpand(node.id)}
               className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${
                 hasChildren
-                  ? "border-slate-200 bg-white text-slate-700 hover:border-indigo-500/50 hover:bg-indigo-50/20"
+                  ? "border-slate-200 bg-surface text-slate-700 hover:border-indigo-500/50 hover:bg-indigo-50/20"
                   : "border-transparent bg-transparent text-transparent"
               }`}
             >
@@ -2297,7 +2297,7 @@ function TreeRow({
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[auto_1fr] md:w-[22rem]">
-            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-white p-1">
+            <div className="inline-flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-surface p-1">
               <button
                 type="button"
                 aria-label={`Decrease questions for ${node.name}`}
@@ -2324,7 +2324,7 @@ function TreeRow({
                 type="button"
                 disabled={disabled}
                 onClick={() => onAddToTest(node)}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 transition hover:border-indigo-600 hover:text-indigo-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add

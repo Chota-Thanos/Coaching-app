@@ -147,7 +147,7 @@ export function CascadingCategorySelector({
         <label className="grid gap-1 text-sm font-bold text-ink">
           GS Paper
           <select
-            className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic"
+            className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
             value={selectedGsPaperId}
             onChange={(e) => handleGsPaperChange(e.target.value)}
           >
@@ -164,7 +164,7 @@ export function CascadingCategorySelector({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Subject
         <select
-          className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic disabled:opacity-50"
+          className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic disabled:opacity-50"
           value={selectedSubjectId}
           onChange={(e) => handleSubjectChange(e.target.value)}
           disabled={hasGsPapers && !selectedGsPaperId}
@@ -181,7 +181,7 @@ export function CascadingCategorySelector({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Topic
         <select
-          className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic disabled:opacity-50"
+          className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic disabled:opacity-50"
           value={selectedTopicId}
           onChange={(e) => handleTopicChange(e.target.value)}
           disabled={!selectedSubjectId}
@@ -198,7 +198,7 @@ export function CascadingCategorySelector({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Subtopic
         <select
-          className="h-10 rounded-md border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic disabled:opacity-50"
+          className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic disabled:opacity-50"
           value={selectedSubtopicId}
           onChange={(e) => handleSubtopicChange(e.target.value)}
           disabled={!selectedTopicId}

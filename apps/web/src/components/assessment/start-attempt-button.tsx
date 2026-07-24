@@ -57,7 +57,7 @@ export function StartAttemptButton({ testTemplateId, createdByUserId }: StartAtt
       {isOwner && (
         <Link
           href={`/assessment/ai-parser?test_template_id=${testTemplateId}`}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition active:scale-[0.98]"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition active:scale-[0.98]"
         >
           <Sparkles aria-hidden="true" className="h-5 w-5 text-indigo-650" />
           <span>Add Questions with AI</span>

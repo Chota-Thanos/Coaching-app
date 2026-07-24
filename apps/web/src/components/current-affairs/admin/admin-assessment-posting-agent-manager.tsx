@@ -255,7 +255,7 @@ export function AdminAssessmentPostingAgentManager() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-line bg-white p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-civic" />
           <h2 className="text-xl font-black text-ink">AI Posting Agent — Questions</h2>
@@ -293,7 +293,7 @@ export function AdminAssessmentPostingAgentManager() {
             type="button"
             onClick={() => setSourceType("file")}
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition ${
-              sourceType === "file" ? "bg-civic text-white" : "bg-paper text-ink/60 hover:bg-white"
+              sourceType === "file" ? "bg-civic text-white" : "bg-paper text-ink/60 hover:bg-surface"
             }`}
           >
             <Upload className="h-4 w-4" /> File
@@ -302,7 +302,7 @@ export function AdminAssessmentPostingAgentManager() {
             type="button"
             onClick={() => setSourceType("url")}
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition ${
-              sourceType === "url" ? "bg-civic text-white" : "bg-paper text-ink/60 hover:bg-white"
+              sourceType === "url" ? "bg-civic text-white" : "bg-paper text-ink/60 hover:bg-surface"
             }`}
           >
             <Link2 className="h-4 w-4" /> URL
@@ -361,7 +361,7 @@ export function AdminAssessmentPostingAgentManager() {
       {/* Review */}
       {result && candidates.length > 0 && (
         <div className="space-y-4">
-          <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+          <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface/95 px-4 py-3 shadow-sm backdrop-blur">
             <div className="flex items-center gap-3">
               <div>
                 <h3 className="text-lg font-black text-ink">
@@ -409,7 +409,7 @@ export function AdminAssessmentPostingAgentManager() {
           {candidates.map((c, index) => (
             <div
               key={index}
-              className={`rounded-2xl border bg-white p-5 shadow-sm space-y-3 ${
+              className={`rounded-2xl border bg-surface p-5 shadow-sm space-y-3 ${
                 selected.has(index) ? "border-line" : "border-line/50 opacity-55"
               }`}
             >
@@ -487,7 +487,7 @@ export function AdminAssessmentPostingAgentManager() {
 
       {/* Commit result */}
       {commitResult && (
-        <div className="rounded-2xl border border-line bg-white p-5 shadow-sm space-y-2">
+        <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm space-y-2">
           <div className="flex items-center gap-2 text-emerald-700">
             <CheckCircle2 className="h-5 w-5" />
             <span className="font-bold">

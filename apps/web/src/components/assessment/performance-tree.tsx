@@ -67,7 +67,7 @@ function TreeRow({
     <div className={depth > 0 ? "ml-3.5 border-l border-slate-150 pl-3" : ""}>
       <div
         className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
-          depth === 0 ? "border-slate-200 bg-white shadow-sm" : "border-slate-150 bg-slate-50/60"
+          depth === 0 ? "border-slate-200 bg-surface shadow-sm" : "border-slate-150 bg-slate-50/60"
         }`}
       >
         <button

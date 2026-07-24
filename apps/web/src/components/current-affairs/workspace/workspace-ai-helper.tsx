@@ -32,7 +32,7 @@ export function WorkspaceAiHelper() {
 
   if (!isInitialized) {
     return (
-      <div className="bg-white border border-line rounded-2xl p-6 text-center text-sm text-ink/50">
+      <div className="bg-surface border border-line rounded-2xl p-6 text-center text-sm text-ink/50">
         Verifying session...
       </div>
     );
@@ -40,7 +40,7 @@ export function WorkspaceAiHelper() {
 
   if (!token) {
     return (
-      <div className="bg-white border border-line rounded-2xl p-6 text-center text-sm text-ink/50">
+      <div className="bg-surface border border-line rounded-2xl p-6 text-center text-sm text-ink/50">
         Please sign in to access the AI Helper.
       </div>
     );
@@ -417,7 +417,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
       {activeTab === "notes" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_1.8fr]">
           {/* Controls */}
-          <div className="bg-white border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5">
+          <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5">
             <div>
               <h3 className="text-lg font-black text-ink flex items-center gap-1.5">
                 <Sparkles className="h-5 w-5 text-civic" />
@@ -446,7 +446,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                 <select
                   value={selectedSubjectId}
                   onChange={(e) => setSelectedSubjectId(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-normal outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-normal outline-none focus:border-civic"
                 >
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -461,7 +461,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                 <select
                   value={selectedCollectionId}
                   onChange={(e) => setSelectedCollectionId(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-normal outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-normal outline-none focus:border-civic"
                 >
                   <option value="">Personal articles only</option>
                   {collections.map((coll) => (
@@ -496,7 +496,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
           {/* Guide Display Panel */}
           <div className="space-y-4">
             {generatingGuide && (
-              <div className="bg-white border border-line rounded-2xl p-12 text-center shadow-sm space-y-4 animate-pulse">
+              <div className="bg-surface border border-line rounded-2xl p-12 text-center shadow-sm space-y-4 animate-pulse">
                 <Loader2 className="h-8 w-8 text-civic animate-spin mx-auto" />
                 <div>
                   <p className="text-sm font-bold text-ink">Compiling UPSC Study Note...</p>
@@ -506,14 +506,14 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
             )}
 
             {!generatingGuide && !generatedGuide && (
-              <div className="rounded-2xl border border-dashed border-line bg-white p-12 text-center text-sm text-ink/60 shadow-sm flex flex-col items-center justify-center gap-3">
+              <div className="rounded-2xl border border-dashed border-line bg-surface p-12 text-center text-sm text-ink/60 shadow-sm flex flex-col items-center justify-center gap-3">
                 <BookOpen className="h-8 w-8 text-ink/40" />
                 <p>No study notes generated yet. Enter a topic on the left to start.</p>
               </div>
             )}
 
             {!generatingGuide && generatedGuide && (
-              <div className="bg-white border border-line rounded-2xl p-6 shadow-sm space-y-5 animate-in fade-in duration-200">
+              <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm space-y-5 animate-in fade-in duration-200">
                 <div className="flex items-start justify-between border-b border-line pb-4 gap-4">
                   <div>
                     {generatedGuide.source === "ai" ? (
@@ -556,7 +556,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
       {activeTab === "assessment" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_1.8fr]">
           {/* Quiz controls */}
-          <div className="bg-white border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5">
+          <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5">
             <div>
               <h3 className="text-lg font-black text-ink flex items-center gap-1.5">
                 <Award className="h-5 w-5 text-civic" />
@@ -585,7 +585,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                 <select
                   value={quizType}
                   onChange={(e) => setQuizType(e.target.value as any)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs font-normal outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-normal outline-none focus:border-civic"
                 >
                   <option value="gk">General Knowledge Statements</option>
                   <option value="maths">Mathematical LaTeX equations</option>
@@ -617,7 +617,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
           {/* Quiz Play Interface */}
           <div className="space-y-4">
             {generatingQuiz && (
-              <div className="bg-white border border-line rounded-2xl p-12 text-center shadow-sm space-y-4 animate-pulse">
+              <div className="bg-surface border border-line rounded-2xl p-12 text-center shadow-sm space-y-4 animate-pulse">
                 <Loader2 className="h-8 w-8 text-civic animate-spin mx-auto" />
                 <div>
                   <p className="text-sm font-bold text-ink">Formulating assessment questions...</p>
@@ -627,7 +627,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
             )}
 
             {!generatingQuiz && !generatedQuiz && (
-              <div className="rounded-2xl border border-dashed border-line bg-white p-12 text-center text-sm text-ink/60 shadow-sm flex flex-col items-center justify-center gap-3">
+              <div className="rounded-2xl border border-dashed border-line bg-surface p-12 text-center text-sm text-ink/60 shadow-sm flex flex-col items-center justify-center gap-3">
                 <Award className="h-8 w-8 text-ink/40" />
                 <p>No assessment active. Type a topic on the left to generate a practice quiz.</p>
               </div>
@@ -651,7 +651,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
 
                 {/* Passage card if reading passage is selected */}
                 {quizType === "passage" && generatedQuiz.passage_text && (
-                  <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-3">
+                  <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-3">
                     <h4 className="font-black text-sm text-ink border-b border-line pb-2">
                       Passage: {generatedQuiz.passage_title || "Study Case Material"}
                     </h4>
@@ -680,7 +680,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                   if (!isCurrent && !quizSubmitted) return null;
 
                   return (
-                    <div key={qIdx} className={`bg-white border border-line rounded-2xl p-6 shadow-sm space-y-5 transition-all ${
+                    <div key={qIdx} className={`bg-surface border border-line rounded-2xl p-6 shadow-sm space-y-5 transition-all ${
                       !quizSubmitted ? "animate-in fade-in" : ""
                     }`}>
                       <div className="flex justify-between items-start gap-4">

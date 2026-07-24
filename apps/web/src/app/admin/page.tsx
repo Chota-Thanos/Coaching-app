@@ -13,7 +13,7 @@ export default function AdminHubPage() {
     <Suspense
       fallback={
         <main className="mx-auto max-w-5xl px-4 pb-16 pt-10">
-          <div className="rounded-2xl border border-line bg-white p-8 shadow-sm text-center animate-pulse">
+          <div className="rounded-2xl border border-line bg-surface p-8 shadow-sm text-center animate-pulse">
             <p className="text-sm font-semibold text-ink/50">Loading admin portal...</p>
           </div>
         </main>

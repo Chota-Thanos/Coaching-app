@@ -853,7 +853,7 @@ export default function MentorWorkspacePage() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Left Sidebar Navigation */}
-      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0 animate-in slide-in-from-left duration-200">
+      <aside className="w-72 bg-surface border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0 animate-in slide-in-from-left duration-200">
         <div className="p-6">
           {/* Brand header */}
           <div className="flex items-center gap-2 mb-8 border-b border-slate-100 pb-4">
@@ -974,7 +974,7 @@ export default function MentorWorkspacePage() {
           <div className="relative">
             <button
               onClick={() => setShowNotificationsPopover(!showNotificationsPopover)}
-              className="relative p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-650 hover:text-slate-850 transition shadow-sm"
+              className="relative p-2.5 rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 text-slate-650 hover:text-slate-850 transition shadow-sm"
               title="Notifications"
             >
               <Bell className="h-5 w-5" />
@@ -986,7 +986,7 @@ export default function MentorWorkspacePage() {
             </button>
             
             {showNotificationsPopover && (
-              <div className="absolute right-0 mt-3 w-96 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 mt-3 w-96 rounded-3xl border border-slate-200 bg-surface p-5 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
                   <h3 className="text-sm font-black text-slate-850">Notifications</h3>
                   {unreadCount > 0 && (
@@ -1042,7 +1042,7 @@ export default function MentorWorkspacePage() {
           {toasts.map((toast) => (
             <div
               key={toast.id}
-              className="w-96 pointer-events-auto rounded-2xl border border-indigo-100 bg-white p-4 shadow-2xl flex gap-3 animate-in slide-in-from-bottom-5 duration-300"
+              className="w-96 pointer-events-auto rounded-2xl border border-indigo-100 bg-surface p-4 shadow-2xl flex gap-3 animate-in slide-in-from-bottom-5 duration-300"
             >
               <div className="mt-1 shrink-0 p-1.5 rounded-lg bg-indigo-50 text-indigo-650">
                 <Sparkles className="h-5 w-5 animate-pulse" />
@@ -1097,7 +1097,7 @@ export default function MentorWorkspacePage() {
                 { label: "Defined Slots", value: mySlots.length },
                 { label: "Experience Years", value: `${yearsExp} Years` }
               ].map((card, idx) => (
-                <div key={idx} className="rounded-2xl border border-slate-200 p-5 bg-white shadow-sm flex flex-col justify-between h-28 hover:shadow-md transition">
+                <div key={idx} className="rounded-2xl border border-slate-200 p-5 bg-surface shadow-sm flex flex-col justify-between h-28 hover:shadow-md transition">
                   <span className="text-xs font-black uppercase tracking-wider text-slate-400">{card.label}</span>
                   <span className="text-2xl font-black text-slate-800 mt-2">{card.value}</span>
                 </div>
@@ -1106,7 +1106,7 @@ export default function MentorWorkspacePage() {
 
             {/* Quick Tasks Card */}
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4 hover:border-indigo-100 transition">
+              <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4 hover:border-indigo-100 transition">
                 <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
                   <ClipboardList className="h-5 w-5 text-indigo-600" />
                   Pending Student Reviews
@@ -1122,7 +1122,7 @@ export default function MentorWorkspacePage() {
                 </button>
               </div>
 
-              <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4 hover:border-indigo-100 transition">
+              <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4 hover:border-indigo-100 transition">
                 <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-indigo-600" />
                   Calendar Desk
@@ -1150,7 +1150,7 @@ export default function MentorWorkspacePage() {
               </h2>
               <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
                 {requests.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-surface p-8 text-center text-xs text-slate-400">
                     No active student requests.
                   </div>
                 ) : (
@@ -1161,7 +1161,7 @@ export default function MentorWorkspacePage() {
                       className={`w-full text-left rounded-3xl p-5 border transition-all ${
                         selectedRequest?.id === req.id
                           ? "border-indigo-600 bg-indigo-50/40 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          : "border-slate-200 bg-surface hover:border-slate-300"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1199,7 +1199,7 @@ export default function MentorWorkspacePage() {
             {selectedRequest ? (
               <div className="space-y-6">
                 {/* Lifecycle tracker */}
-                <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-[32px] border border-slate-200 bg-surface p-5 shadow-sm">
                   <MentorshipLifecycleTracker
                     input={{
                       status: selectedRequest.status,
@@ -1215,7 +1215,7 @@ export default function MentorWorkspacePage() {
                 </div>
 
                 {/* Profile Card Header */}
-                <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="space-y-1">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Request from Student</span>
@@ -1234,7 +1234,7 @@ export default function MentorWorkspacePage() {
                           </button>
                           <button
                             onClick={() => handleTriageStatus("rejected")}
-                            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                            className="rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
                           >
                             Reject
                           </button>
@@ -1288,7 +1288,7 @@ export default function MentorWorkspacePage() {
                               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                                 selected
                                   ? "bg-indigo-600 text-white shadow-sm"
-                                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                  : "border border-slate-200 bg-surface text-slate-600 hover:border-slate-300"
                               }`}
                             >
                               {new Date(slot.starts_at).toLocaleDateString()} ({new Date(slot.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
@@ -1314,7 +1314,7 @@ export default function MentorWorkspacePage() {
                 {/* Grader / Evaluation Form -- covers both a linked platform Mains attempt
                     and a directly-uploaded custom copy (meta.student_copy) */}
                 {(selectedRequest.mains_answer_attempt_id || selectedRequest.meta?.student_copy) && (
-                  <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+                  <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-6">
                     <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
                       <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
                         <FileText className="h-5 w-5 text-indigo-600" />
@@ -1341,13 +1341,13 @@ export default function MentorWorkspacePage() {
                               href={selectedRequest.attempt_answer_file_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                             >
                               <FileText className="h-4 w-4 text-indigo-600" />
                               View Student PDF Submission
                             </a>
                           ) : (
-                            <div className="text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                            <div className="text-xs text-slate-600 bg-surface p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
                               {selectedRequest.attempt_student_answer_text || "No response details."}
                             </div>
                           )}
@@ -1360,7 +1360,7 @@ export default function MentorWorkspacePage() {
                             href={selectedRequest.meta?.student_copy?.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                           >
                             <FileText className="h-4 w-4 text-indigo-600" />
                             View Student PDF Submission
@@ -1437,7 +1437,7 @@ export default function MentorWorkspacePage() {
                           {checkedCopyUrl && (
                             <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">Uploaded</span>
                           )}
-                          <label className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                          <label className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
                             <Upload className="h-3.5 w-3.5" />
                             {uploadingCopy ? "Uploading..." : checkedCopyUrl ? "Replace PDF" : "Upload Checked PDF"}
                             <input
@@ -1492,7 +1492,7 @@ export default function MentorWorkspacePage() {
                         <select
                           value={selectedAgendaQuestionIndex}
                           onChange={(e) => setSelectedAgendaQuestionIndex(e.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none cursor-pointer"
+                          className="w-full rounded-xl border border-slate-200 bg-surface px-2 py-1.5 text-xs outline-none cursor-pointer"
                         >
                           <option value="">-- Select Question PDF --</option>
                           {questionPdfs.map((q, qidx) => (
@@ -1583,7 +1583,7 @@ export default function MentorWorkspacePage() {
                 )}
               </div>
             ) : (
-              <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-white p-8 text-center text-slate-400">
+              <div className="flex h-[400px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-surface p-8 text-center text-slate-400">
                 <Calendar className="h-12 w-12 text-slate-300 mb-3 animate-pulse" />
                 <p className="text-sm font-medium">Select a student request from the list to begin triaging.</p>
               </div>
@@ -1594,7 +1594,7 @@ export default function MentorWorkspacePage() {
         {activeTab === "calendar" && (
           <div className="grid gap-8 lg:grid-cols-[380px_1fr] animate-in fade-in duration-200">
             {/* Create Availability Slots Form */}
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4 h-fit">
+            <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4 h-fit">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
                   <Plus className="h-4.5 w-4.5 text-indigo-600" />
@@ -1607,7 +1607,7 @@ export default function MentorWorkspacePage() {
                     onClick={() => setSlotType("single")}
                     className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-all ${
                       slotType === "single"
-                        ? "bg-white text-slate-900 shadow-sm"
+                        ? "bg-surface text-slate-900 shadow-sm"
                         : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
@@ -1618,7 +1618,7 @@ export default function MentorWorkspacePage() {
                     onClick={() => setSlotType("bulk")}
                     className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-all ${
                       slotType === "bulk"
-                        ? "bg-white text-slate-900 shadow-sm"
+                        ? "bg-surface text-slate-900 shadow-sm"
                         : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
@@ -1721,7 +1721,7 @@ export default function MentorWorkspacePage() {
                             className={`h-7 w-7 rounded-full text-xs font-black transition ${
                               active
                                 ? "bg-indigo-600 text-white shadow-sm"
-                                : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                : "border border-slate-200 bg-surface text-slate-600 hover:border-slate-300"
                             }`}
                           >
                             {d.label}
@@ -1822,7 +1822,7 @@ export default function MentorWorkspacePage() {
             </div>
 
             {/* Slots List Panel */}
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4">
               <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-3">
                 <Calendar className="h-4.5 w-4.5 text-indigo-600" />
                 Defined Availability Slots ({mySlots.length})
@@ -1831,7 +1831,7 @@ export default function MentorWorkspacePage() {
                 {mySlots.map((slot) => (
                   <div
                     key={slot.id}
-                    className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-xs hover:border-indigo-100 hover:bg-white transition shadow-sm"
+                    className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-xs hover:border-indigo-100 hover:bg-surface transition shadow-sm"
                   >
                     <div>
                       <p className="font-extrabold text-slate-800 text-sm">
@@ -1859,7 +1859,7 @@ export default function MentorWorkspacePage() {
                   </div>
                 ))}
                 {mySlots.length === 0 && (
-                  <div className="col-span-full py-12 text-center text-slate-400 italic text-xs border border-dashed border-slate-200 rounded-2xl bg-white">
+                  <div className="col-span-full py-12 text-center text-slate-400 italic text-xs border border-dashed border-slate-200 rounded-2xl bg-surface">
                     No slot configurations defined yet. Use the Availability Desk to add options.
                   </div>
                 )}
@@ -1869,7 +1869,7 @@ export default function MentorWorkspacePage() {
         )}
 
         {activeTab === "profile" && (
-          <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm max-w-3xl mx-auto animate-in fade-in duration-200">
+          <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm max-w-3xl mx-auto animate-in fade-in duration-200">
             <h2 className="text-xl font-black text-slate-800 mb-2">Edit Public Profile Details</h2>
             <p className="text-slate-500 text-xs mb-8">
               Update the educational, professional, and personal details shown to aspirants on the mentors search directory.
@@ -1896,7 +1896,7 @@ export default function MentorWorkspacePage() {
                     <button
                       type="button"
                       onClick={handleMockProfilePhoto}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
                     >
                       <Upload className="h-3.5 w-3.5" />
                       Mock Upload Photo
@@ -1905,7 +1905,7 @@ export default function MentorWorkspacePage() {
                       <button
                         type="button"
                         onClick={() => setProfileImage("")}
-                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-slate-50"
+                        className="rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-slate-50"
                       >
                         Remove
                       </button>
@@ -1935,7 +1935,7 @@ export default function MentorWorkspacePage() {
                   <select
                     value={mentorType}
                     onChange={(e) => setMentorType(e.target.value as any)}
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs bg-white outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs bg-surface outline-none focus:border-indigo-500"
                   >
                     <option value="evaluation_mentorship">Evaluation + Mentorship</option>
                     <option value="only_mentorship">Only Mentorship</option>
@@ -1949,7 +1949,7 @@ export default function MentorWorkspacePage() {
                       <select
                         value={evaluationSource}
                         onChange={(e) => setEvaluationSource(e.target.value as any)}
-                        className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs bg-white outline-none focus:border-indigo-500"
+                        className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs bg-surface outline-none focus:border-indigo-500"
                       >
                         <option value="any_source">Evaluate copies from any source</option>
                         <option value="own_questions">Evaluate only on my own questions</option>
@@ -1963,7 +1963,7 @@ export default function MentorWorkspacePage() {
                         </label>
                         <div className="space-y-1.5">
                           {questionPdfs.map((pdf, pidx) => (
-                            <div key={pidx} className="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-200 text-xs">
+                            <div key={pidx} className="flex items-center justify-between bg-surface p-2 rounded-xl border border-slate-200 text-xs">
                               <span className="font-semibold text-slate-700 truncate max-w-[150px]">{pdf.file_name}</span>
                               <button
                                 type="button"
@@ -1974,7 +1974,7 @@ export default function MentorWorkspacePage() {
                               </button>
                             </div>
                           ))}
-                          <label className="flex items-center justify-center border border-dashed border-slate-300 rounded-xl p-2.5 bg-white hover:bg-slate-50 cursor-pointer text-[10px] font-bold text-slate-500 transition">
+                          <label className="flex items-center justify-center border border-dashed border-slate-300 rounded-xl p-2.5 bg-surface hover:bg-slate-50 cursor-pointer text-[10px] font-bold text-slate-500 transition">
                             {uploadingQuestion ? "Uploading..." : "+ Add Question PDF"}
                             <input
                               type="file"
@@ -2019,7 +2019,7 @@ export default function MentorWorkspacePage() {
                   <select
                     value={specializationType}
                     onChange={(e) => setSpecializationType(e.target.value as any)}
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs bg-white outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs bg-surface outline-none focus:border-indigo-500"
                   >
                     <option value="all_areas">Expert in all areas</option>
                     <option value="specific_field">Expert in specific field</option>
@@ -2039,7 +2039,7 @@ export default function MentorWorkspacePage() {
                     placeholder="e.g. GS4 Ethics, Essay, Public Administration, Geography"
                     value={specializationTags}
                     onChange={(e) => setSpecializationTags(e.target.value)}
-                    className="w-full rounded-xl border border-indigo-200 bg-white px-3.5 py-2.5 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-xl border border-indigo-200 bg-surface px-3.5 py-2.5 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   />
                   <p className="text-[10px] text-indigo-600/80 mt-1.5">Please list the specific subjects or topics you can mentor students in.</p>
                 </div>
@@ -2254,7 +2254,7 @@ export default function MentorWorkspacePage() {
         )}
 
         {activeTab === "settings" && (
-          <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm max-w-xl mx-auto animate-in fade-in duration-200">
+          <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm max-w-xl mx-auto animate-in fade-in duration-200">
             <h2 className="text-xl font-black text-slate-800 mb-2">Workspace Settings</h2>
             <p className="text-slate-500 text-xs mb-8">
               Configure your visibility options and request acceptance preferences.

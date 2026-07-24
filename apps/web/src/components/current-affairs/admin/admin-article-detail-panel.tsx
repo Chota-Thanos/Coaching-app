@@ -335,7 +335,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
 
   if (!article) {
     return (
-      <section className="rounded-lg border border-dashed border-line bg-white p-5 text-sm text-ink/65">
+      <section className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
         Select an article to manage sections and assets.
       </section>
     );
@@ -406,7 +406,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
 
   return (
     <section className="space-y-6">
-      <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-line bg-surface p-4 shadow-sm">
         <p className="text-sm font-bold uppercase tracking-wide text-civic">Selected article</p>
         <h2 className="mt-2 text-xl font-black leading-snug text-ink">{article.title}</h2>
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
@@ -427,7 +427,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 disabled={roleSaving}
                 onClick={() => void toggleArticleRole("event")}
                 className={`h-8 rounded-md px-4 text-xs font-bold transition-all disabled:opacity-60 ${
-                  article.article_role === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                  article.article_role === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                 }`}
               >
                 Event
@@ -437,7 +437,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 disabled={roleSaving}
                 onClick={() => void toggleArticleRole("concept")}
                 className={`h-8 rounded-md px-4 text-xs font-bold transition-all disabled:opacity-60 ${
-                  article.article_role === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                  article.article_role === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                 }`}
               >
                 Concept
@@ -447,7 +447,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         )}
 
         {article.status === "published" && (
-          <Link className="mt-4 inline-flex h-10 items-center rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-civic" href={articleHref(article.slug)}>
+          <Link className="mt-4 inline-flex h-10 items-center rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-civic" href={articleHref(article.slug)}>
             Open public page
           </Link>
         )}
@@ -458,7 +458,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
           <Layers3 aria-hidden="true" className="h-5 w-5 text-civic" />
           <h3 className="text-lg font-black text-ink">Sections</h3>
         </div>
-        <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createSection}>
+        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createSection}>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1 text-sm font-bold text-ink">
               Heading
@@ -508,17 +508,17 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
 
         <div className="grid gap-3">
           {article.sections.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">No sections added.</p>
+            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">No sections added.</p>
           ) : (
             article.sections.map((item) => (
-              <article className="rounded-lg border border-line bg-white p-4 shadow-sm" key={item.id}>
+              <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={item.id}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <h4 className="text-base font-extrabold leading-snug text-ink">{item.heading}</h4>
                     <p className="mt-1 text-sm text-ink/65">{sectionSummary(item)}</p>
                   </div>
                   <button
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
                     onClick={() => void deleteSection(item.id)}
                     type="button"
                   >
@@ -537,12 +537,12 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
           <ImagePlus aria-hidden="true" className="h-5 w-5 text-civic" />
           <h3 className="text-lg font-black text-ink">Assets</h3>
         </div>
-        <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createAsset}>
+        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createAsset}>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1 text-sm font-bold text-ink">
               Asset type
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => setAsset((current) => ({ ...current, assetType: event.target.value as ArticleAssetType }))}
                 value={asset.assetType}
               >
@@ -611,10 +611,10 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
 
         <div className="grid gap-3">
           {article.assets.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">No assets added.</p>
+            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">No assets added.</p>
           ) : (
             article.assets.map((item: ArticleAsset) => (
-              <article className="rounded-lg border border-line bg-white p-4 shadow-sm" key={item.id}>
+              <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={item.id}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <h4 className="truncate text-base font-extrabold leading-snug text-ink">{item.file_name}</h4>
@@ -622,7 +622,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     <p className="mt-1 text-xs font-bold text-civic">{item.asset_type.replace(/_/g, " ")}</p>
                   </div>
                   <button
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
                     onClick={() => void deleteAsset(item.id)}
                     type="button"
                   >
@@ -656,7 +656,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                   disabled={relationPending}
                   onClick={() => void addRelation(Number(candidate.id), "related_reference")}
                   title={reason}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-civic/30 bg-white px-3 py-1.5 text-xs font-bold text-civic transition-all hover:bg-civic hover:text-white disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-civic/30 bg-surface px-3 py-1.5 text-xs font-bold text-civic transition-all hover:bg-civic hover:text-white disabled:opacity-50"
                 >
                   <Plus className="h-3 w-3" />
                   {candidate.title}
@@ -667,13 +667,13 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         )}
 
         {/* Form to Add Relation */}
-        <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createRelation}>
+        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createRelation}>
           <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/40" />
               <input
                 type="text"
-                className="h-9 w-full rounded-md border border-line bg-white pl-8 pr-3 text-xs outline-none focus:border-civic"
+                className="h-9 w-full rounded-md border border-line bg-surface pl-8 pr-3 text-xs outline-none focus:border-civic"
                 placeholder="Search articles by title..."
                 value={relationSearchQuery}
                 onChange={(e) => setRelationSearchQuery(e.target.value)}
@@ -693,7 +693,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
             <label className="grid gap-1 text-sm font-bold text-ink">
               Related Article ({filteredRelationTargets.length} match{filteredRelationTargets.length === 1 ? "" : "es"})
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => setTargetArticleId(event.target.value)}
                 required
                 value={targetArticleId}
@@ -709,7 +709,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
             <label className="grid gap-1 text-sm font-bold text-ink">
               Relation Type
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-base font-normal"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
                 onChange={(event) => setRelationType(event.target.value)}
                 required
                 value={relationType}
@@ -763,13 +763,13 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         <div className="space-y-2">
           <h4 className="text-sm font-bold text-ink">Outgoing Relations (Referenced by this article)</h4>
           {article.outgoing_relations.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-4 text-xs text-ink/65">
+            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-xs text-ink/65">
               This article does not reference any other articles.
             </p>
           ) : (
             <div className="grid gap-3">
               {article.outgoing_relations.map((rel) => (
-                <div key={rel.id} className="rounded-lg border border-line bg-white p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div key={rel.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[10px] font-bold text-civic uppercase">
@@ -793,7 +793,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     {onSelectArticleId && (
                       <button
                         onClick={() => onSelectArticleId(Number(rel.target_article.id))}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-bold text-ink hover:border-civic transition-all"
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-all"
                         type="button"
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -802,7 +802,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     )}
                     <button
                       onClick={() => openReferenceModal("import", Number(rel.target_article.id), rel.target_article.title, rel.target_article.slug, rel.target_article.seo_description)}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-bold text-civic hover:border-civic transition-all"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-civic hover:border-civic transition-all"
                       type="button"
                     >
                       <ArrowDownToLine className="h-3 w-3" />
@@ -818,7 +818,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     </button>
                     <button
                       onClick={() => deleteRelation(rel.id)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink hover:border-berry hover:text-berry"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink hover:border-berry hover:text-berry"
                       type="button"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -834,13 +834,13 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         <div className="space-y-2 mt-4">
           <h4 className="text-sm font-bold text-ink">Incoming Relations (Referencing this article)</h4>
           {article.incoming_relations.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-white p-4 text-xs text-ink/65">
+            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-xs text-ink/65">
               No other articles reference this article.
             </p>
           ) : (
             <div className="grid gap-3">
               {article.incoming_relations.map((rel) => (
-                <div key={rel.id} className="rounded-lg border border-line bg-white p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div key={rel.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[10px] font-bold text-civic uppercase">
@@ -864,7 +864,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     {onSelectArticleId && (
                       <button
                         onClick={() => onSelectArticleId(Number(rel.source_article.id))}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-bold text-ink hover:border-civic transition-all"
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-all"
                         type="button"
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -873,7 +873,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     )}
                     <button
                       onClick={() => openReferenceModal("import", Number(rel.source_article.id), rel.source_article.title, rel.source_article.slug, rel.source_article.seo_description)}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-bold text-civic hover:border-civic transition-all"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-civic hover:border-civic transition-all"
                       type="button"
                     >
                       <ArrowDownToLine className="h-3 w-3" />
@@ -889,7 +889,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                     </button>
                     <button
                       onClick={() => deleteRelation(rel.id)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink hover:border-berry hover:text-berry"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink hover:border-berry hover:text-berry"
                       type="button"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -912,7 +912,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
             Add dated updates as new developments touch this concept, instead of creating a duplicate article. Every article linking here shows the latest update automatically.
           </p>
 
-          <div className="grid gap-2 rounded-lg border border-line bg-white p-4">
+          <div className="grid gap-2 rounded-lg border border-line bg-surface p-4">
             <textarea
               className="min-h-20 rounded-md border border-line px-3 py-2 text-sm font-normal leading-6"
               onChange={(event) => setNewUpdateBody(event.target.value)}
@@ -934,10 +934,10 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
             {loadingConceptUpdates ? (
               <p className="text-xs text-ink/50 italic">Loading updates...</p>
             ) : conceptUpdates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-white p-3 text-xs text-ink/65">No updates yet.</p>
+              <p className="rounded-lg border border-dashed border-line bg-surface p-3 text-xs text-ink/65">No updates yet.</p>
             ) : (
               conceptUpdates.map((upd) => (
-                <div key={upd.id} className="rounded-lg border border-line bg-white p-3 shadow-xs flex items-start justify-between gap-3">
+                <div key={upd.id} className="rounded-lg border border-line bg-surface p-3 shadow-xs flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] font-bold text-berry uppercase">
                       {new Date(upd.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
@@ -960,13 +960,13 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
 
       {/* Reference Insert Modal Overlay */}
       {refModalOpen && refOtherArticle && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight/60 backdrop-blur-sm p-4 overflow-y-auto">
           <form
             onSubmit={submitReference}
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200 space-y-4"
+            className="relative w-full max-w-lg bg-surface rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200 space-y-4"
           >
             <button
-              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-white hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-surface hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
               onClick={() => {
                 setRefModalOpen(false);
                 setRefOtherArticle(null);
@@ -1005,7 +1005,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 <select
                   value={refSelectedSectionId}
                   onChange={(e) => setRefSelectedSectionId(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                 >
                   <option value="">Main Body (Append to end)</option>
                   {refTargetSections.map(sec => (
@@ -1055,7 +1055,7 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         </div>
       )}
 
-      {message && <p className="rounded-lg border border-line bg-white p-3 text-sm font-semibold text-civic">{message}</p>}
+      {message && <p className="rounded-lg border border-line bg-surface p-3 text-sm font-semibold text-civic">{message}</p>}
     </section>
   );
 }

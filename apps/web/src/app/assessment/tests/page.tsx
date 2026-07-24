@@ -71,7 +71,7 @@ export default async function AssessmentTestsPage({ searchParams }: TestsPagePro
       />
 
       {tests.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white p-6 text-center text-sm text-ink/65">
+        <p className="rounded-lg border border-dashed border-line bg-surface p-6 text-center text-sm text-ink/65">
           No published tests match these filters.
         </p>
       ) : (

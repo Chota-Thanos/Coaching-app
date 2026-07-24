@@ -71,7 +71,7 @@ export function InteractivePrelimsPyq({ data }: InteractivePrelimsPyqProps) {
 
         {data.supp_question_statement && (
           <div 
-            className="rounded-xl border border-line/40 bg-white p-4 text-sm md:text-base text-ink/80 whitespace-pre-line leading-relaxed font-semibold font-serif"
+            className="rounded-xl border border-line/40 bg-surface p-4 text-sm md:text-base text-ink/80 whitespace-pre-line leading-relaxed font-semibold font-serif"
             dangerouslySetInnerHTML={renderMathAndMarkdown(data.supp_question_statement)}
           />
         )}
@@ -90,7 +90,7 @@ export function InteractivePrelimsPyq({ data }: InteractivePrelimsPyqProps) {
             const isCorrectOption = opt.label.toUpperCase() === correctAnswer;
             const isAnswered = selectedLabel !== null;
 
-            let buttonStyles = "border-line bg-white text-ink hover:border-civic hover:bg-civic/5";
+            let buttonStyles = "border-line bg-surface text-ink hover:border-civic hover:bg-civic/5";
             let badgeStyles = "bg-paper text-ink/70";
 
             if (isAnswered) {
@@ -101,7 +101,7 @@ export function InteractivePrelimsPyq({ data }: InteractivePrelimsPyqProps) {
                 buttonStyles = "border-rose-500 bg-rose-50 text-rose-950 font-semibold ring-2 ring-rose-500/20";
                 badgeStyles = "bg-rose-500 text-white";
               } else {
-                buttonStyles = "border-line bg-white text-ink/50 opacity-70";
+                buttonStyles = "border-line bg-surface text-ink/50 opacity-70";
                 badgeStyles = "bg-paper text-ink/40";
               }
             }
@@ -134,7 +134,7 @@ export function InteractivePrelimsPyq({ data }: InteractivePrelimsPyqProps) {
 
       {/* Explanation Section */}
       {showExplanation && (
-        <div className="rounded-2xl border border-line bg-white p-5 shadow-sm md:p-6 space-y-4 animate-in slide-in-from-top-4 duration-300">
+        <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm md:p-6 space-y-4 animate-in slide-in-from-top-4 duration-300">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <h3 className="flex items-center gap-2 text-base font-black text-ink">
               <BookOpen className="h-5 w-5 text-civic" />
@@ -200,7 +200,7 @@ export function InteractiveMainsPyq({ data }: InteractiveMainsPyqProps) {
       </div>
 
       {/* Accordion Approach & Model Answer */}
-      <div className="rounded-2xl border border-line bg-white shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex w-full items-center justify-between bg-paper/50 px-5 py-4 text-left font-black text-ink hover:bg-paper transition-all select-none border-b border-line"

@@ -474,12 +474,12 @@ function AiParserInner() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
-      <div className="border-b border-line bg-white px-4 py-4">
+      <div className="border-b border-line bg-surface px-4 py-4">
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/assessment"
-              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 transition"
             >
               <ArrowLeft className="h-5 w-5 text-slate-600" />
             </Link>
@@ -508,7 +508,7 @@ function AiParserInner() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Panel - Configurations & Upload */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
+            <div className="rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm space-y-4">
               <h2 className="text-sm font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
                 <BrainCircuit className="h-4 w-4 text-indigo-650" />
                 <span>Upload & Parse Setup</span>
@@ -525,7 +525,7 @@ function AiParserInner() {
                       className={`h-10 rounded-xl border text-[11px] font-bold transition ${
                         contentType === "gk"
                           ? "border-indigo-650 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       GS
@@ -536,7 +536,7 @@ function AiParserInner() {
                       className={`h-10 rounded-xl border text-[11px] font-bold transition ${
                         contentType === "aptitude"
                           ? "border-indigo-650 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       CSAT
@@ -547,7 +547,7 @@ function AiParserInner() {
                       className={`h-10 rounded-xl border text-[11px] font-bold transition ${
                         contentType === "mains"
                           ? "border-indigo-650 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       Mains
@@ -564,7 +564,7 @@ function AiParserInner() {
                       className={`h-10 rounded-xl border font-bold transition ${
                         parseMode === "file"
                           ? "border-indigo-650 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       Upload File (PDF/Doc)
@@ -575,7 +575,7 @@ function AiParserInner() {
                       className={`h-10 rounded-xl border font-bold transition ${
                         parseMode === "text"
                           ? "border-indigo-650 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       Paste Raw Text
@@ -615,7 +615,7 @@ function AiParserInner() {
                         {selectedFiles.map((file, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2 text-xs font-semibold text-slate-705"
+                            className="flex items-center justify-between rounded-lg border border-slate-200 bg-surface p-2 text-xs font-semibold text-slate-705"
                           >
                             <span className="truncate max-w-[12rem]">
                               {idx + 1}. {file.name}
@@ -658,7 +658,7 @@ function AiParserInner() {
                       value={rawText}
                       onChange={(e) => setRawText(e.target.value)}
                       rows={8}
-                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                      className="w-full rounded-xl border border-slate-300 bg-surface p-3 text-sm font-medium text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
                     />
                   </label>
                 )}
@@ -670,7 +670,7 @@ function AiParserInner() {
                     placeholder="e.g. Set difficulty high / exclude answers"
                     value={instructions}
                     onChange={(e) => setInstructions(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                    className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-sm font-medium text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
                   />
                 </label>
 
@@ -698,7 +698,7 @@ function AiParserInner() {
           {/* Right Panel - Parse Preview & Save */}
           <div className="lg:col-span-2 space-y-6">
             {parsedResult ? (
-              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-6">
+              <div className="rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm space-y-6">
                 <div className="flex items-start justify-between flex-wrap gap-4 border-b border-slate-150 pb-3">
                   <div>
                     <h2 className="text-base font-black text-slate-900">Parsed Questions Preview</h2>
@@ -739,7 +739,7 @@ function AiParserInner() {
                                 setSelectedTemplateId(e.target.value ? Number(e.target.value) : null);
                               }
                             }}
-                            className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                            className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
                           >
                             <option value="">— Select Target Test —</option>
                             {testTemplates.map((template) => (
@@ -759,7 +759,7 @@ function AiParserInner() {
                               placeholder="e.g. History Test revision"
                               value={newTestTitle}
                               onChange={(e) => setNewTestTitle(e.target.value)}
-                              className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                              className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
                             />
                           </label>
                         )}
@@ -771,7 +771,7 @@ function AiParserInner() {
                       <select
                         value={selectedExamId ?? ""}
                         onChange={(e) => setSelectedExamId(Number(e.target.value))}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
                       >
                         {exams.map((exam) => (
                           <option key={exam.id} value={exam.id}>
@@ -786,7 +786,7 @@ function AiParserInner() {
                       <select
                         value={selectedLevelId ?? ""}
                         onChange={(e) => setSelectedLevelId(Number(e.target.value))}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
                       >
                         {levels.map((lvl) => (
                           <option key={lvl.id} value={lvl.id}>
@@ -801,7 +801,7 @@ function AiParserInner() {
                       <select
                         value={selectedSubjectId ?? ""}
                         onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
                       >
                         <option value="">Select Subject</option>
                         {subjects.map((sub) => (
@@ -817,7 +817,7 @@ function AiParserInner() {
                       <select
                         value={selectedTopicId ?? ""}
                         onChange={(e) => setSelectedTopicId(e.target.value ? Number(e.target.value) : null)}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
                       >
                         <option value="">Select Topic</option>
                         {topics.map((top) => (
@@ -936,7 +936,7 @@ function AiParserInner() {
                 </div>
 
                 {/* Save Questions Action - Sticky Footer */}
-                <div className="sticky bottom-0 bg-white pb-1 pt-4 border-t border-slate-150 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] -mx-5 px-5 z-10">
+                <div className="sticky bottom-0 bg-surface pb-1 pt-4 border-t border-slate-150 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] -mx-5 px-5 z-10">
                   <button
                     type="button"
                     onClick={handleSaveQuestions}
@@ -953,7 +953,7 @@ function AiParserInner() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white py-32 text-center shadow-sm">
+              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-surface py-32 text-center shadow-sm">
                 <FileText className="mx-auto h-12 w-12 text-slate-350" />
                 <p className="mt-4 text-sm font-black text-slate-800">No questions parsed yet</p>
                 <p className="text-xs text-slate-450 mt-1 max-w-sm mx-auto">

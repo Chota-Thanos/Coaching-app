@@ -137,7 +137,7 @@ export function TestCard({ test }: TestCardProps) {
           </Link>
           <Link
             href={assessmentHref(`/tests/${test.id}`)}
-            className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-600 hover:text-indigo-600"
+            className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-surface px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-600 hover:text-indigo-600"
           >
             Preview
             <ArrowRight aria-hidden="true" className="h-3 w-3" />
@@ -149,14 +149,14 @@ export function TestCard({ test }: TestCardProps) {
           <div className="mt-2.5 flex gap-2 border-t border-line/60 pt-2.5">
             <button
               onClick={() => setIsEditing(true)}
-              className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-600 hover:bg-indigo-50/20 hover:text-indigo-600 cursor-pointer select-none"
+              className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-600 hover:bg-indigo-50/20 hover:text-indigo-600 cursor-pointer select-none"
             >
               Edit Test
             </button>
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-rose-600 hover:text-white hover:bg-rose-600 cursor-pointer select-none disabled:opacity-50"
+              className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-rose-600 hover:text-white hover:bg-rose-600 cursor-pointer select-none disabled:opacity-50"
             >
               {deleting ? "Deleting..." : "Delete Test"}
             </button>
@@ -169,10 +169,10 @@ export function TestCard({ test }: TestCardProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 backdrop-blur-sm p-4 overflow-y-auto">
           <form
             onSubmit={handleEditSubmit}
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left"
+            className="relative w-full max-w-md bg-surface rounded-2xl shadow-xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left"
           >
             <button
-              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold text-sm transition-all"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-slate-200 bg-surface hover:bg-slate-100 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold text-sm transition-all"
               onClick={() => setIsEditing(false)}
               type="button"
             >
@@ -186,7 +186,7 @@ export function TestCard({ test }: TestCardProps) {
               <input
                 type="text"
                 required
-                className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-normal bg-white outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-normal bg-surface outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
               />
@@ -195,7 +195,7 @@ export function TestCard({ test }: TestCardProps) {
             <label className="grid gap-1.5 text-xs font-bold text-ink">
               Description (Optional)
               <textarea
-                className="h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm font-normal bg-white outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 resize-none"
+                className="h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm font-normal bg-surface outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 resize-none"
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
               />
@@ -208,7 +208,7 @@ export function TestCard({ test }: TestCardProps) {
                   type="number"
                   required
                   min="1"
-                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-normal bg-white outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-normal bg-surface outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
                   value={editDuration}
                   onChange={(e) => setEditDuration(Number(e.target.value))}
                 />
@@ -220,7 +220,7 @@ export function TestCard({ test }: TestCardProps) {
                   type="number"
                   required
                   min="0"
-                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-normal bg-white outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-normal bg-surface outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
                   value={editMarks}
                   onChange={(e) => setEditMarks(Number(e.target.value))}
                 />
@@ -231,7 +231,7 @@ export function TestCard({ test }: TestCardProps) {
               <label className="grid gap-1.5 text-xs font-bold text-ink">
                 Access Type
                 <select
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                  className="h-10 rounded-xl border border-slate-200 bg-surface px-3 text-xs font-normal outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
                   value={editAccessType}
                   onChange={(e) => setEditAccessType(e.target.value as any)}
                 >
@@ -245,7 +245,7 @@ export function TestCard({ test }: TestCardProps) {
               <label className="grid gap-1.5 text-xs font-bold text-ink">
                 Status
                 <select
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                  className="h-10 rounded-xl border border-slate-200 bg-surface px-3 text-xs font-normal outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value as any)}
                 >

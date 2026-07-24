@@ -14,7 +14,7 @@ export function AdminModuleHub() {
   if (!isInitialized) {
     return (
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-10">
-        <div className="rounded-2xl border border-line bg-white p-8 shadow-sm text-center animate-pulse">
+        <div className="rounded-2xl border border-line bg-surface p-8 shadow-sm text-center animate-pulse">
           <p className="text-sm font-semibold text-ink/50">Verifying session...</p>
         </div>
       </main>
@@ -24,7 +24,7 @@ export function AdminModuleHub() {
   if (!token) {
     return (
       <main className="mx-auto max-w-xl px-4 pb-16 pt-10">
-        <section className="rounded-2xl border border-line bg-white p-8 shadow-sm">
+        <section className="rounded-2xl border border-line bg-surface p-8 shadow-sm">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-civic/10 text-civic">
               <ShieldCheck className="h-6 w-6" />
@@ -68,7 +68,7 @@ export function AdminModuleHub() {
       {/* Module Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Current Affairs Module */}
-        <div className="bg-white border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
+        <div className="bg-surface border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
           {/* Color bar */}
           <div className="h-2 bg-gradient-to-r from-emerald-500 to-teal-400" />
           <div className="p-8">
@@ -115,7 +115,7 @@ export function AdminModuleHub() {
         </div>
 
         {/* Assessment Module */}
-        <div className="bg-white border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
+        <div className="bg-surface border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
           {/* Color bar */}
           <div className="h-2 bg-gradient-to-r from-civic to-blue-500" />
           <div className="p-8">
@@ -163,7 +163,7 @@ export function AdminModuleHub() {
         </div>
 
         {/* Study Plans Module */}
-        <div className="bg-white border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
+        <div className="bg-surface border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
           <div className="h-2 bg-gradient-to-r from-emerald-600 to-civic" />
           <div className="p-8">
             <div className="flex items-start justify-between mb-6">
@@ -208,7 +208,7 @@ export function AdminModuleHub() {
         </div>
 
         {/* Onboarding Tours Module */}
-        <div className={`bg-white border rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group md:col-span-3 ${showToursManager ? "border-indigo-300" : "border-line"}`}>
+        <div className={`bg-surface border rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group md:col-span-3 ${showToursManager ? "border-indigo-300" : "border-line"}`}>
           <div className="h-2 bg-gradient-to-r from-indigo-500 to-violet-500" />
           <div className="p-8">
             <div className="flex items-start justify-between">

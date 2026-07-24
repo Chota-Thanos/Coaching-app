@@ -431,7 +431,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               setEditingArticleDetail(null);
               setFormState(initialForm(defaultKind));
             }}
-            className="text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-lg font-bold shadow-xs transition-all"
+            className="text-xs bg-surface hover:bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-lg font-bold shadow-xs transition-all"
           >
             Cancel Edit & Create New
           </button>
@@ -444,7 +444,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
         <div className="lg:col-span-3 space-y-6">
           
           {/* 1st - DRAFT FORM EDITOR (Kept at the top as requested) */}
-          <form className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6" onSubmit={handleFormSubmit}>
+          <form className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm space-y-6" onSubmit={handleFormSubmit}>
             <div className="flex items-center justify-between border-b border-line pb-4">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-ink">
@@ -501,7 +501,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                     type="button"
                     onClick={() => updateField("articleRole", "event")}
                     className={`h-9 rounded-lg text-sm font-bold transition-all ${
-                      formState.articleRole === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                      formState.articleRole === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                     }`}
                   >
                     Event (dated news)
@@ -510,7 +510,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                     type="button"
                     onClick={() => updateField("articleRole", "concept")}
                     className={`h-9 rounded-lg text-sm font-bold transition-all ${
-                      formState.articleRole === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                      formState.articleRole === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                     }`}
                   >
                     Concept (reusable primer)
@@ -573,7 +573,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Exam Year
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("year", event.target.value)}
                       type="text"
                       value={formState.year}
@@ -582,7 +582,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Correct Answer Key
                     <select
-                      className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("correctAnswer", event.target.value)}
                       value={formState.correctAnswer}
                     >
@@ -606,7 +606,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 <label className="grid gap-1.5 text-xs font-bold text-ink">
                   Supplementary Facts / List (Optional)
                   <textarea
-                    className="min-h-20 rounded-lg border border-line px-3 py-2 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    className="min-h-20 rounded-lg border border-line px-3 py-2 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                     onChange={(event) => updateField("suppQuestionStatement", event.target.value)}
                     placeholder="e.g. 1. It is a constitutional body...\n2. It meets twice a year..."
                     value={formState.suppQuestionStatement || ""}
@@ -616,7 +616,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 <label className="grid gap-1.5 text-xs font-bold text-ink">
                   Question Prompt (Optional)
                   <input
-                    className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                     onChange={(event) => updateField("questionPrompt", event.target.value)}
                     placeholder="e.g. Which of the statements given above is/are correct?"
                     value={formState.questionPrompt}
@@ -627,7 +627,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Option A *
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("optionA", event.target.value)}
                       required
                       value={formState.optionA}
@@ -636,7 +636,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Option B *
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("optionB", event.target.value)}
                       required
                       value={formState.optionB}
@@ -645,7 +645,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Option C *
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("optionC", event.target.value)}
                       required
                       value={formState.optionC}
@@ -654,7 +654,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Option D *
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("optionD", event.target.value)}
                       required
                       value={formState.optionD}
@@ -679,7 +679,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Exam Year
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("year", event.target.value)}
                       type="text"
                       value={formState.year}
@@ -688,7 +688,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Max Marks
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("maxMarks", event.target.value)}
                       type="number"
                       value={formState.maxMarks}
@@ -697,7 +697,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                   <label className="grid gap-1.5 text-xs font-bold text-ink">
                     Word Limit
                     <input
-                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                      className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                       onChange={(event) => updateField("wordLimit", event.target.value)}
                       type="number"
                       value={formState.wordLimit}
@@ -753,7 +753,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               <label className="grid gap-1.5 text-xs font-bold text-ink">
                 Source Name
                 <input
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
                   onChange={(event) => updateField("sourceName", event.target.value)}
                   placeholder="e.g. The Hindu"
                   type="text"
@@ -763,7 +763,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               <label className="grid gap-1.5 text-xs font-bold text-ink">
                 Source URL
                 <input
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
                   onChange={(event) => updateField("sourceUrl", event.target.value)}
                   placeholder="https://..."
                   type="url"
@@ -773,7 +773,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               <label className="grid gap-1.5 text-xs font-bold text-ink">
                 Tags (comma-separated)
                 <input
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal text-ink outline-none focus:border-civic focus:ring-2 focus:ring-civic/20 transition-all"
                   onChange={(event) => updateField("tags", event.target.value)}
                   placeholder="data-privacy, cyber-security"
                   type="text"
@@ -791,7 +791,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 <label className="grid gap-1.5 text-xs font-bold text-ink">
                   SEO Title Override
                   <input
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                     onChange={(event) => updateField("seoTitle", event.target.value)}
                     placeholder="Defaults to article title"
                     value={formState.seoTitle}
@@ -800,7 +800,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 <label className="grid gap-1.5 text-xs font-bold text-ink">
                   Canonical URL
                   <input
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                     onChange={(event) => updateField("canonicalUrl", event.target.value)}
                     placeholder="https://yourdomain.com/..."
                     value={formState.canonicalUrl}
@@ -809,7 +809,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 <label className="grid gap-1.5 text-xs font-bold text-ink md:col-span-2">
                   SEO Meta Description
                   <textarea
-                    className="min-h-16 rounded-lg border border-line bg-white px-3 py-2 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    className="min-h-16 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                     onChange={(event) => updateField("seoDescription", event.target.value)}
                     placeholder="Brief summary for search engine results — also reused as the default blurb when this article is referenced elsewhere"
                     value={formState.seoDescription || ""}
@@ -818,7 +818,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 <label className="grid gap-1.5 text-xs font-bold text-ink md:col-span-2">
                   Meta Keywords (comma-separated)
                   <input
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                     onChange={(event) => updateField("keywords", event.target.value)}
                     placeholder="e.g. data-privacy, upsc-notes"
                     value={formState.keywords}
@@ -872,7 +872,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
           {/* 1.5th - Sections, assets, connections & concept updates — unlocked once the article is saved */}
           {editingDraftId && editingArticleDetail && (
-            <div className="bg-white border border-line rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm">
               <AdminArticleDetailPanel
                 article={editingArticleDetail}
                 onRefresh={refreshEditingArticleDetail}
@@ -898,7 +898,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
         {/* Right Column - Drafts sidebar list */}
         <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6">
-          <div className="bg-white border border-line rounded-2xl p-4 shadow-sm">
+          <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <h3 className="text-sm font-black text-ink flex items-center gap-1.5">
                 <FileText className="h-4 w-4 text-civic" />
@@ -964,7 +964,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                       <button
                         type="button"
                         onClick={() => handleEditDraft(art.id)}
-                        className="flex-1 bg-white hover:bg-civic/5 border border-line text-ink hover:text-civic py-1 rounded font-bold text-center transition-all"
+                        className="flex-1 bg-surface hover:bg-civic/5 border border-line text-ink hover:text-civic py-1 rounded font-bold text-center transition-all"
                       >
                         Edit
                       </button>

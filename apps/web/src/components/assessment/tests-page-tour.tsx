@@ -45,7 +45,7 @@ export function TestsPageTour() {
           startFullTour();
           setSegmentKey((k) => k + 1);
         }}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2.5 text-xs font-bold text-ink/70 shadow-sm hover:bg-paper transition"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-bold text-ink/70 shadow-sm hover:bg-paper transition"
       >
         <Map className="h-4 w-4 text-civic" />
         Take a Tour

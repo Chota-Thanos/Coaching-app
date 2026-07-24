@@ -124,7 +124,7 @@ export function AdminMainsQuestionManager({ onEdit, onCreateNew }: AdminMainsQue
         {/* Status filters */}
         <div className="flex gap-2">
           <select
-            className="h-11 rounded-xl border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-civic"
+            className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-bold text-ink outline-none focus:border-civic"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -136,7 +136,7 @@ export function AdminMainsQuestionManager({ onEdit, onCreateNew }: AdminMainsQue
           </select>
 
           <button
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white text-ink disabled:opacity-60"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface text-ink disabled:opacity-60"
             disabled={loading}
             onClick={loadQuestions}
             title="Refresh list"
@@ -156,7 +156,7 @@ export function AdminMainsQuestionManager({ onEdit, onCreateNew }: AdminMainsQue
           <span className="text-sm font-medium text-ink/60">Fetching Mains library...</span>
         </div>
       ) : filteredQuestions.length === 0 ? (
-        <div className="py-16 text-center border border-dashed border-line rounded-2xl bg-white">
+        <div className="py-16 text-center border border-dashed border-line rounded-2xl bg-surface">
           <FileText className="h-10 w-10 text-ink/30 mx-auto mb-2" />
           <p className="text-sm font-bold text-ink/70">No questions found</p>
           <p className="text-xs text-ink/50 mt-1">Try resetting your filters or write a new subjective question.</p>
@@ -166,7 +166,7 @@ export function AdminMainsQuestionManager({ onEdit, onCreateNew }: AdminMainsQue
           {filteredQuestions.map((q) => (
             <article
               key={q.id}
-              className="bg-white border border-line rounded-2xl p-5 shadow-xs transition-all hover:shadow-md flex flex-col sm:flex-row sm:items-start justify-between gap-4"
+              className="bg-surface border border-line rounded-2xl p-5 shadow-xs transition-all hover:shadow-md flex flex-col sm:flex-row sm:items-start justify-between gap-4"
             >
               <div className="space-y-3 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

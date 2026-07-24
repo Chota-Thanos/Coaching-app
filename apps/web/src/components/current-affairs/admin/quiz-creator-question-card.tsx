@@ -96,7 +96,7 @@ export function QuizCreatorQuestionCard({
 
   return (
     <div 
-      className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md ${
+      className={`bg-surface border rounded-2xl p-6 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md ${
         isSelected ? "border-civic bg-civic/5 ring-1 ring-civic/25" : "border-line hover:border-civic/30"
       }`}
     >
@@ -226,7 +226,7 @@ export function QuizCreatorQuestionCard({
             <label className="grid gap-1 text-xs font-bold text-ink">
               Question Statement (Core directive) *
               <textarea
-                className="w-full rounded-lg border border-line p-3 text-sm font-normal bg-white outline-none focus:border-civic min-h-[60px]"
+                className="w-full rounded-lg border border-line p-3 text-sm font-normal bg-surface outline-none focus:border-civic min-h-[60px]"
                 value={q.question_statement}
                 onChange={(e) => updateQuestion(idx, "question_statement", e.target.value)}
                 placeholder="e.g. Consider the following statements regarding the RBI Monetary Policy:"
@@ -244,7 +244,7 @@ export function QuizCreatorQuestionCard({
               Question Prompt (e.g. 'Which of the statements given above is/are correct?', optional)
               <input
                 type="text"
-                className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-white outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line px-3 text-sm font-normal bg-surface outline-none focus:border-civic"
                 value={q.question_prompt || ""}
                 placeholder="Select the correct answer using the code given below:"
                 onChange={(e) => updateQuestion(idx, "question_prompt", e.target.value)}
@@ -261,7 +261,7 @@ export function QuizCreatorQuestionCard({
                     className={`h-10 rounded-lg border px-3 text-sm font-normal outline-none focus:border-civic ${
                       opt.label === q.correct_answer
                         ? "bg-emerald-50/50 border-emerald-300"
-                        : "bg-white border-line"
+                        : "bg-surface border-line"
                     }`}
                     value={opt.text}
                     onChange={(e) => updateOption(idx, optIdx, e.target.value)}
@@ -275,7 +275,7 @@ export function QuizCreatorQuestionCard({
               <label className="grid gap-1 text-xs font-bold text-ink">
                 Correct Answer Key
                 <select
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
                   value={q.correct_answer}
                   onChange={(e) => onAnswerChange(idx, e.target.value)}
                 >
@@ -290,7 +290,7 @@ export function QuizCreatorQuestionCard({
               <label className="grid gap-1 text-xs font-bold text-ink">
                 Question Nature
                 <select
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-normal outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
                   value={q.question_nature_id || ""}
                   onChange={(e) => updateQuestion(idx, "question_nature_id", e.target.value ? Number(e.target.value) : "")}
                 >

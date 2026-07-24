@@ -184,7 +184,7 @@ function MainsCategoryTrendSection({ categories }: { categories: any[] }) {
   const items = Array.isArray(categories) ? categories.slice(0, 8) : [];
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-900">
@@ -217,7 +217,7 @@ function MainsCategoryTrendSection({ categories }: { categories: any[] }) {
             return (
               <div
                 key={`${category.node_type}-${category.category_id}`}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -282,7 +282,7 @@ function MainsMistakesPanel({ mistakes }: { mistakes: any[] }) {
   const items = Array.isArray(mistakes) ? mistakes.slice(0, 8) : [];
 
   return (
-    <section className="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border border-rose-100 bg-surface p-4 shadow-sm">
       <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-900">
         <AlertCircle className="h-4.5 w-4.5 text-rose-600" aria-hidden="true" />
         Consistent mistakes
@@ -318,7 +318,7 @@ function MainsMistakesPanel({ mistakes }: { mistakes: any[] }) {
                 </div>
 
                 <div className="mt-3 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
                     <div className={`h-full rounded-full ${scoreTone(percent)}`} style={{ width: `${Math.max(4, percent)}%` }} />
                   </div>
                   <span className="text-[10px] font-black text-slate-500">
@@ -329,7 +329,7 @@ function MainsMistakesPanel({ mistakes }: { mistakes: any[] }) {
                 {categories.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {categories.map((name: string, idx: number) => (
-                      <span key={`${name}-${idx}`} className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                      <span key={`${name}-${idx}`} className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-bold text-slate-500">
                         {name}
                       </span>
                     ))}
@@ -427,7 +427,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
     return (
       <div className="min-h-screen bg-slate-50 py-10">
         <main className="mx-auto max-w-3xl px-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-center">
+          <div className="rounded-2xl border border-slate-200 bg-surface p-6 shadow-sm text-center">
             <p className="text-sm font-semibold text-slate-400">Verifying session...</p>
           </div>
         </main>
@@ -439,7 +439,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
     return (
       <div className="min-h-screen bg-slate-50 py-10">
         <main className="mx-auto max-w-3xl px-4">
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-sm">
             <div className="h-1.5 bg-gradient-to-r from-indigo-600 to-emerald-500" />
             <div className="p-6 md:p-8 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-2xl">
@@ -479,7 +479,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
       <main className="mx-auto max-w-7xl space-y-6 px-4 pt-5">
         {/* ── Top Dashboard Header ── */}
         {!contentTypeFilter && (
-          <div id="tour-dashboard-header" className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div id="tour-dashboard-header" className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-surface px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-650">
                 <BarChart3 className="h-4 w-4" aria-hidden="true" />
@@ -490,7 +490,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
             </div>
             <div className="flex items-center gap-2">
               <button
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 disabled:opacity-60 hover:bg-slate-50"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 text-sm font-bold text-slate-700 disabled:opacity-60 hover:bg-slate-50"
                 disabled={loading}
                 onClick={loadData}
                 type="button"
@@ -524,7 +524,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
               className={`flex-1 rounded-xl border-2 py-2.5 text-center text-sm font-bold transition-all ${
                 activeTab === "gk"
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                  : "border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
+                  : "border-slate-300 bg-surface text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
               }`}
               href="/assessment/dashboard?tab=gk"
             >
@@ -534,7 +534,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
               className={`flex-1 rounded-xl border-2 py-2.5 text-center text-sm font-bold transition-all ${
                 activeTab === "aptitude"
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                  : "border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
+                  : "border-slate-300 bg-surface text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
               }`}
               href="/assessment/dashboard?tab=aptitude"
             >
@@ -544,7 +544,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
               className={`flex-1 rounded-xl border-2 py-2.5 text-center text-sm font-bold transition-all ${
                 activeTab === "mains"
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                  : "border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
+                  : "border-slate-300 bg-surface text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700"
               }`}
               href="/assessment/dashboard?tab=mains"
             >
@@ -561,22 +561,22 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {activeTab === "mains" ? (
               <>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">✍️</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">{currentTabStats.summary.attempts}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wide">Total Answers Written</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">✅</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">{currentTabStats.summary.evaluated_count}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wide">Evaluated Answers</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">⏳</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">{currentTabStats.summary.pending_count}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wide">Pending Evaluation</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">📈</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">
                     {formatMarks(currentTabStats.summary.avg_score)} / 15
@@ -586,22 +586,22 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
               </>
             ) : (
               <>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">📋</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">{currentTabStats.summary.attempts}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wide">Tests Completed</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">🎯</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">{formatMarks(currentTabStats.summary.avg_score)}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wide">Average Score</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                   <span className="text-xl">📊</span>
                   <p className="mt-2 text-2xl font-black text-slate-900">{formatPercent(currentTabStats.summary.avg_accuracy)}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wide">Average Accuracy</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center gap-4 justify-between">
+                <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm flex items-center gap-4 justify-between">
                   <div>
                     <p className="text-2xl font-black text-slate-900">{currentTabStats.summary.correct_count}</p>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Correct MCQs</p>
@@ -616,7 +616,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
           </div>
 
           {activeTab !== "mains" && (
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-650">
@@ -662,7 +662,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                       <Link
                         key={`${topic.taxonomy_node_id}-${topic.question_nature_id ?? "all"}-${idx}`}
                         href={`/assessment/dashboard/categories/${topic.taxonomy_node_id}?tab=${activeTab}`}
-                        className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                        className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -693,7 +693,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
           )}
 
           {activeTab !== "mains" && (
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
               <div>
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-650">
                   <Layers3 className="h-4 w-4" aria-hidden="true" />
@@ -721,7 +721,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
             <div className="space-y-6">
               
               {/* Trend Chart */}
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                 <h2 className="mb-4 flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wider">
                   <TrendingUp className="h-4.5 w-4.5 text-indigo-600" aria-hidden="true" />
                   Performance score trend
@@ -751,7 +751,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
 
               {activeTab === "mains" ? (
                 currentTabStats.weak_topics.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-surface p-6 text-center">
                     <p className="text-2xl">🏆</p>
                     <p className="mt-2 text-xs font-bold text-slate-400 uppercase">Syllabus node strengths verified!</p>
                   </div>
@@ -765,7 +765,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                       return (
                         <div
                           key={`${topic.taxonomy_name}-${i}`}
-                          className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm hover:border-slate-300 transition-colors"
+                          className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-3.5 shadow-sm hover:border-slate-300 transition-colors"
                         >
                           <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-black ${
                             severity === "rose"
@@ -798,7 +798,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                   </div>
                 )
               ) : weakPerformanceNodes.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center">
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-surface p-6 text-center">
                   <p className="text-2xl">🏆</p>
                   <p className="mt-2 text-xs font-bold text-slate-400 uppercase">Syllabus node strengths verified!</p>
                 </div>
@@ -812,7 +812,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                       <Link
                         key={node.id}
                         href={categoryHref(node.id)}
-                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm hover:border-slate-300 transition-colors"
+                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-3.5 shadow-sm hover:border-slate-300 transition-colors"
                       >
                         <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-black ${
                           severity === "rose"
@@ -864,7 +864,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm font-semibold text-slate-400 flex flex-col items-center justify-center gap-2 animate-pulse">
+        <div className="rounded-2xl border border-slate-200 bg-surface p-12 text-center text-sm font-semibold text-slate-400 flex flex-col items-center justify-center gap-2 animate-pulse">
           <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
           <span>Synchronizing student metrics radar...</span>
         </div>

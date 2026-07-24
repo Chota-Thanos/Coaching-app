@@ -79,8 +79,8 @@ export function QuizManagerBulkReassign({
   if (!bulkModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-midnight/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-surface w-full max-w-md rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
         
         <div className="p-5 border-b border-line flex justify-between items-center bg-paper rounded-t-2xl">
           <div>
@@ -91,7 +91,7 @@ export function QuizManagerBulkReassign({
           </div>
           <button 
             onClick={onClose}
-            className="h-8 w-8 rounded-full hover:bg-ink/5 flex items-center justify-center transition-all"
+            className="h-8 w-8 rounded-full hover:bg-midnight/5 flex items-center justify-center transition-all"
             type="button"
           >
             <X className="h-4.5 w-4.5 text-ink/60" />
@@ -104,7 +104,7 @@ export function QuizManagerBulkReassign({
             <select
               value={bulkForm.exam_id}
               onChange={(e) => setBulkForm((prev: any) => ({ ...prev, exam_id: e.target.value, exam_level_id: "", subject_node_id: "", source_node_id: "", topic_node_id: "", subtopic_node_id: "" }))}
-              className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+              className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
             >
               <option value="">-- Choose Exam --</option>
               {exams.map(e => (
@@ -119,7 +119,7 @@ export function QuizManagerBulkReassign({
               value={bulkForm.exam_level_id}
               onChange={(e) => setBulkForm((prev: any) => ({ ...prev, exam_level_id: e.target.value }))}
               disabled={!bulkForm.exam_id}
-              className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-55"
+              className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-55"
             >
               <option value="">-- Choose Level --</option>
               {bulkFormLevels.map(lvl => (
@@ -133,7 +133,7 @@ export function QuizManagerBulkReassign({
             <select
               value={bulkForm.status}
               onChange={(e) => setBulkForm((prev: any) => ({ ...prev, status: e.target.value }))}
-              className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+              className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
             >
               <option value="">-- No Change --</option>
               <option value="draft">Draft</option>
@@ -158,7 +158,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.subject_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, subject_node_id: e.target.value, topic_node_id: "", subtopic_node_id: "" }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.exam_id}
                   >
                     <option value="">-- Select Paper --</option>
@@ -173,7 +173,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.topic_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, topic_node_id: e.target.value, subtopic_node_id: "" }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.subject_node_id}
                   >
                     <option value="">-- Select Subject Area --</option>
@@ -189,7 +189,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.subtopic_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, subtopic_node_id: e.target.value }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.topic_node_id}
                   >
                     <option value="">-- Select Theme --</option>
@@ -207,7 +207,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.subject_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, subject_node_id: e.target.value, source_node_id: "", topic_node_id: "", subtopic_node_id: "" }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.exam_id}
                   >
                     <option value="">-- Select Subject --</option>
@@ -222,7 +222,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.source_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, source_node_id: e.target.value, topic_node_id: "", subtopic_node_id: "" }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.subject_node_id}
                   >
                     <option value="">-- Select Source Bucket --</option>
@@ -238,7 +238,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.topic_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, topic_node_id: e.target.value, subtopic_node_id: "" }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.source_node_id}
                   >
                     <option value="">-- Select Topic --</option>
@@ -254,7 +254,7 @@ export function QuizManagerBulkReassign({
                   <select
                     value={bulkForm.subtopic_node_id}
                     onChange={(e) => setBulkForm((prev: any) => ({ ...prev, subtopic_node_id: e.target.value }))}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic disabled:opacity-50"
                     disabled={!bulkForm.topic_node_id}
                   >
                     <option value="">-- Select Subtopic --</option>
@@ -274,7 +274,7 @@ export function QuizManagerBulkReassign({
               <select
                 value={bulkForm.question_nature_id}
                 onChange={(e) => setBulkForm((prev: any) => ({ ...prev, question_nature_id: e.target.value }))}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
               >
                 <option value="">-- No Change --</option>
                 <option value="null">-- Clear Nature --</option>
@@ -289,7 +289,7 @@ export function QuizManagerBulkReassign({
         <div className="p-4 border-t border-line flex justify-end gap-2 bg-paper rounded-b-2xl">
           <button
             onClick={onClose}
-            className="h-10 px-5 bg-white border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
+            className="h-10 px-5 bg-surface border border-line rounded-xl text-xs font-bold text-ink hover:border-civic transition-all"
             type="button"
           >
             Cancel

@@ -49,7 +49,7 @@ export function TopicHeatmap({ topics }: { topics: TopicRow[] }) {
   const sorted = [...topics].sort((a, b) => Number(a.accuracy) - Number(b.accuracy));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-205 bg-white shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-slate-205 bg-surface shadow-card">
       {/* Table header */}
       <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_6rem_4rem] gap-2 bg-slate-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
         <span>Topic</span>

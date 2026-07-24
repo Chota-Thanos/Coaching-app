@@ -179,7 +179,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
             className={`w-full text-left rounded-xl border px-3 py-3 transition-all ${
               selectedKey === t.key
                 ? "border-indigo-300 bg-indigo-50"
-                : "border-slate-100 bg-white hover:border-slate-200"
+                : "border-slate-100 bg-surface hover:border-slate-200"
             }`}
           >
             <p className={`text-xs font-black ${selectedKey === t.key ? "text-indigo-800" : "text-slate-800"}`}>{t.name}</p>
@@ -197,7 +197,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
       {selectedKey && tourMeta ? (
         <div className="lg:col-span-3 space-y-4">
           {/* Tour meta controls */}
-          <div className="rounded-xl border border-slate-100 bg-white p-4 space-y-3">
+          <div className="rounded-xl border border-slate-100 bg-surface p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-black text-slate-800">{tourMeta.name}</p>
@@ -251,7 +251,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
             )}
 
             {steps.map((step, idx) => (
-              <div key={idx} className={`rounded-xl border bg-white overflow-hidden transition-all ${expandedStep === idx ? "border-indigo-200 shadow-sm" : "border-slate-100"}`}>
+              <div key={idx} className={`rounded-xl border bg-surface overflow-hidden transition-all ${expandedStep === idx ? "border-indigo-200 shadow-sm" : "border-slate-100"}`}>
                 {/* Step header */}
                 <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer" onClick={() => setExpandedStep(expandedStep === idx ? null : idx)}>
                   <GripVertical className="h-4 w-4 text-slate-300 shrink-0" />
@@ -288,7 +288,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
                           value={step.selector}
                           onChange={e => updateStep(idx, "selector", e.target.value)}
                           placeholder="#tour-content-type or .my-class"
-                          className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400"
+                          className="w-full h-8 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400"
                         />
                         <p className="text-[10px] text-slate-400">CSS selector of the element to spotlight</p>
                       </div>
@@ -298,7 +298,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
                           value={step.badge}
                           onChange={e => updateStep(idx, "badge", e.target.value)}
                           placeholder="Step 1 of 5 · Content Type"
-                          className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
+                          className="w-full h-8 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
                         />
                       </div>
                     </div>
@@ -308,7 +308,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
                         value={step.title}
                         onChange={e => updateStep(idx, "title", e.target.value)}
                         placeholder="Select a Content Type"
-                        className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-400"
+                        className="w-full h-8 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-400"
                       />
                     </div>
                     <div className="space-y-1">
@@ -318,7 +318,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
                         onChange={e => updateStep(idx, "body", e.target.value)}
                         rows={3}
                         placeholder="Explain what the user should understand and do at this step..."
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-400 resize-none"
+                        className="w-full rounded-lg border border-slate-200 bg-surface px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-400 resize-none"
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -327,7 +327,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
                         <select
                           value={step.action_trigger}
                           onChange={e => updateStep(idx, "action_trigger", e.target.value)}
-                          className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
+                          className="w-full h-8 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
                         >
                           <option value="">None (free next)</option>
                           <option value="click">click — must click the element</option>
@@ -341,7 +341,7 @@ export function AdminOnboardingToursManager({ token }: { token: string }) {
                           value={step.action_text}
                           onChange={e => updateStep(idx, "action_text", e.target.value)}
                           placeholder="Click the button above to continue"
-                          className="w-full h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
+                          className="w-full h-8 rounded-lg border border-slate-200 bg-surface px-2.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
                           disabled={!step.action_trigger}
                         />
                       </div>

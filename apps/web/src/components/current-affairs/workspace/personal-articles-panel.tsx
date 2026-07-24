@@ -69,7 +69,7 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
         <h2 className="text-lg font-black text-ink">Personal articles</h2>
       </div>
 
-      <form className="grid gap-3 rounded-lg border border-line bg-white p-4" onSubmit={createDraft}>
+      <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createDraft}>
         <label className="grid gap-1 text-sm font-bold text-ink">
           Title
           <input
@@ -121,12 +121,12 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
 
       <div className="grid gap-3">
         {articles.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-white p-4 text-sm text-ink/65">
+          <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">
             Your own notes and article drafts will appear here.
           </p>
         ) : (
           articles.map((article) => (
-            <article className="rounded-lg border border-line bg-white p-4" key={article.id}>
+            <article className="rounded-lg border border-line bg-surface p-4" key={article.id}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <h3 className="text-base font-extrabold leading-snug text-ink">{article.title}</h3>

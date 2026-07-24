@@ -20,7 +20,7 @@ export function FilterChips({ hub, category, month, year }: FilterChipsProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {chips.map((chip) => (
-        <a className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink" href={chip.href} key={chip.label}>
+        <a className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-semibold text-ink" href={chip.href} key={chip.label}>
           {chip.label} x
         </a>
       ))}

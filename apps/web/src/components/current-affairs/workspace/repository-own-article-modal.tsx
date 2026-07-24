@@ -97,8 +97,8 @@ export function RepositoryOwnArticleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/55 px-4 py-8">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-lg border border-line bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-midnight/55 px-4 py-8">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-civic">
@@ -111,7 +111,7 @@ export function RepositoryOwnArticleModal({
           </div>
           <button
             aria-label="Close"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-ink hover:bg-paper"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-ink hover:bg-paper"
             onClick={onClose}
             type="button"
           >
@@ -168,7 +168,7 @@ export function RepositoryOwnArticleModal({
                         className={`inline-flex h-8 items-center rounded-full border px-3 text-xs font-bold transition-all ${
                           isSelected
                             ? "border-civic bg-civic text-white"
-                            : "border-civic/30 bg-white text-civic hover:bg-civic/10"
+                            : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
                         }`}
                         key={tag}
                         onClick={() => toggleTag(tag)}
@@ -194,7 +194,7 @@ export function RepositoryOwnArticleModal({
 
             <div className="flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end">
               <button
-                className="inline-flex h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-bold text-ink hover:bg-paper"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-bold text-ink hover:bg-paper"
                 onClick={onClose}
                 type="button"
               >

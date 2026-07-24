@@ -24,7 +24,7 @@ export function LoginForm() {
 
   if (user) {
     return (
-      <div className="rounded-lg border border-line bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-line bg-surface p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <CheckCircle2 aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-civic" />
           <div>
@@ -36,7 +36,7 @@ export function LoginForm() {
           <Link className="inline-flex h-12 items-center justify-center rounded-md bg-civic px-4 text-sm font-black text-white" href="/assessment/dashboard">
             Dashboard
           </Link>
-          <Link className="inline-flex h-12 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink" href="/assessment/tests">
+          <Link className="inline-flex h-12 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-black text-ink" href="/assessment/tests">
             Browse tests
           </Link>
         </div>
@@ -46,7 +46,7 @@ export function LoginForm() {
 
   return (
     <form
-      className="rounded-lg border border-line bg-white p-5 shadow-sm"
+      className="rounded-lg border border-line bg-surface p-5 shadow-sm"
       onSubmit={async (event) => {
         event.preventDefault();
         setError(null);
@@ -76,7 +76,7 @@ export function LoginForm() {
           <label className="block text-sm font-bold text-ink" htmlFor="login-email">Email</label>
           <input
             autoComplete="email"
-            className="mt-1 h-12 w-full rounded-md border border-line bg-white px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+            className="mt-1 h-12 w-full rounded-md border border-line bg-surface px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
             id="login-email"
             onChange={(event) => setEmail(event.target.value)}
             required
@@ -94,7 +94,7 @@ export function LoginForm() {
           </div>
           <input
             autoComplete="current-password"
-            className="mt-1 h-12 w-full rounded-md border border-line bg-white px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+            className="mt-1 h-12 w-full rounded-md border border-line bg-surface px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
             id="login-password"
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -120,7 +120,7 @@ export function LoginForm() {
           <div className="w-full border-t border-line" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-ink/50 font-semibold">Or continue with</span>
+          <span className="bg-surface px-2 text-ink/50 font-semibold">Or continue with</span>
         </div>
       </div>
 

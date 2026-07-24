@@ -140,12 +140,12 @@ function CustomTestsListInner() {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
       {/* Header */}
-      <div className="border-b border-line bg-white px-4 py-4">
+      <div className="border-b border-line bg-surface px-4 py-4">
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
               href={backUrl}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 transition"
             >
               <ArrowLeft className="h-5 w-5 text-slate-655" />
             </Link>
@@ -157,7 +157,7 @@ function CustomTestsListInner() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-white hover:bg-paper px-4 py-2.5 text-xs font-bold text-ink/70 shadow-sm transition shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface hover:bg-paper px-4 py-2.5 text-xs font-bold text-ink/70 shadow-sm transition shrink-0"
             >
               <Plus className="h-4 w-4 text-civic" />
               <span>New Test</span>
@@ -181,7 +181,7 @@ function CustomTestsListInner() {
         )}
 
         {tests.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-2xl bg-white max-w-md mx-auto mt-12 px-6">
+          <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-2xl bg-surface max-w-md mx-auto mt-12 px-6">
             <BookOpen className="mx-auto h-12 w-12 text-slate-300" />
             <h3 className="mt-4 text-base font-black text-slate-800">No custom tests found</h3>
             <p className="mt-2 text-xs text-slate-500 leading-relaxed">
@@ -216,7 +216,7 @@ function CustomTestsListInner() {
               return (
                 <div
                   key={test.id}
-                  className="group relative flex flex-col justify-between border border-slate-200 rounded-2xl bg-white p-5 hover:shadow-md hover:border-slate-300 transition duration-150"
+                  className="group relative flex flex-col justify-between border border-slate-200 rounded-2xl bg-surface p-5 hover:shadow-md hover:border-slate-300 transition duration-150"
                 >
                   <Link href={`/assessment/custom-test/${test.id}?content_type=${contentParam}`} className="block flex-1">
                     {/* Header: Badge & Date */}
@@ -339,7 +339,7 @@ function CustomTestsListInner() {
       {/* Create Test Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-line animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl border border-line animate-in fade-in zoom-in-95 duration-150">
             <button
               onClick={() => setIsModalOpen(false)}
               className="absolute right-4 top-4 text-muted hover:text-ink"

@@ -212,7 +212,7 @@ export function WorkspaceArticleRow({
 
   if (compact) {
     return (
-      <article className="rounded-lg border border-line bg-white p-3 shadow-sm">
+      <article className="rounded-lg border border-line bg-surface p-3 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <h3 className="text-base font-extrabold leading-snug text-ink">
@@ -263,7 +263,7 @@ export function WorkspaceArticleRow({
               {markingRead ? "Saving..." : "Mark read"}
             </button>
             <button
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink disabled:opacity-60"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink disabled:opacity-60"
               disabled={downloadingPdf}
               onClick={downloadPdf}
               type="button"
@@ -305,7 +305,7 @@ export function WorkspaceArticleRow({
               {editingSummary ? (
                 <div className="mt-2">
                   <textarea
-                    className="min-h-16 w-full rounded-md border border-saffron/30 bg-white px-3 py-2 text-sm leading-6 text-ink"
+                    className="min-h-16 w-full rounded-md border border-saffron/30 bg-surface px-3 py-2 text-sm leading-6 text-ink"
                     onChange={(event) => setSummary(event.target.value)}
                     placeholder="Add your own summary, reminder, or revision cue."
                     value={summary || ""}
@@ -320,7 +320,7 @@ export function WorkspaceArticleRow({
                       <Save aria-hidden="true" className="h-3.5 w-3.5" />
                       {savingSummary ? "Saving..." : "Save"}
                     </button>
-                    <button className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink" onClick={cancelSummary} type="button">
+                    <button className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink" onClick={cancelSummary} type="button">
                       <X aria-hidden="true" className="h-3.5 w-3.5" />
                       Cancel
                     </button>
@@ -357,7 +357,7 @@ export function WorkspaceArticleRow({
             {editingTags ? (
               <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <input
-                  className="h-9 rounded-md border border-line bg-white px-3 text-sm text-ink"
+                  className="h-9 rounded-md border border-line bg-surface px-3 text-sm text-ink"
                   onChange={(event) => setTagsDraft(event.target.value)}
                   placeholder="Difficult, Revise before mock"
                   value={tagsDraft}
@@ -366,7 +366,7 @@ export function WorkspaceArticleRow({
                   <Save aria-hidden="true" className="h-3.5 w-3.5" />
                   Save
                 </button>
-                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink" onClick={cancelTags} type="button">
+                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink" onClick={cancelTags} type="button">
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>
@@ -397,7 +397,7 @@ export function WorkspaceArticleRow({
           {editingCopy ? (
             <div className="mt-3 grid gap-2">
               <input
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
                 onChange={(event) => setArticleTitle(event.target.value)}
                 value={articleTitle}
               />
@@ -417,7 +417,7 @@ export function WorkspaceArticleRow({
                   <Save aria-hidden="true" className="h-3.5 w-3.5" />
                   {savingCopy ? "Saving..." : "Save article copy"}
                 </button>
-                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink" onClick={cancelArticleCopy} type="button">
+                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink" onClick={cancelArticleCopy} type="button">
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>
@@ -441,7 +441,7 @@ export function WorkspaceArticleRow({
   }
 
   return (
-    <article className="rounded-lg border border-line bg-white p-4 shadow-sm">
+    <article className="rounded-lg border border-line bg-surface p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="text-base font-extrabold leading-snug text-ink">
@@ -476,7 +476,7 @@ export function WorkspaceArticleRow({
             {markingRead ? "Saving..." : "Mark read"}
           </button>
           <button
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink disabled:opacity-60"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
             disabled={downloadingPdf}
             onClick={downloadPdf}
             type="button"
@@ -523,7 +523,7 @@ export function WorkspaceArticleRow({
           {editingTags ? (
             <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
               <input
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm text-ink"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
                 onChange={(event) => setTagsDraft(event.target.value)}
                 placeholder="Difficult, Revise before mock"
                 value={tagsDraft}
@@ -532,7 +532,7 @@ export function WorkspaceArticleRow({
                 <Save aria-hidden="true" className="h-4 w-4" />
                 Save
               </button>
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink" onClick={cancelTags} type="button">
+              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink" onClick={cancelTags} type="button">
                 <X aria-hidden="true" className="h-4 w-4" />
                 Cancel
               </button>
@@ -569,7 +569,7 @@ export function WorkspaceArticleRow({
           {editingSummary ? (
             <div className="mt-3">
               <textarea
-                className="min-h-20 w-full rounded-md border border-line bg-white px-3 py-2 text-sm leading-6 text-ink"
+                className="min-h-20 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm leading-6 text-ink"
                 onChange={(event) => setSummary(event.target.value)}
                 placeholder="Add your own summary, reminder, or revision cue."
                 value={summary || ""}
@@ -584,7 +584,7 @@ export function WorkspaceArticleRow({
                   <Save aria-hidden="true" className="h-3.5 w-3.5" />
                   {savingSummary ? "Saving..." : "Save note"}
                 </button>
-                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink" onClick={cancelSummary} type="button">
+                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink" onClick={cancelSummary} type="button">
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>
@@ -614,7 +614,7 @@ export function WorkspaceArticleRow({
           {editingCopy ? (
             <div className="mt-3 grid gap-2">
               <input
-                className="h-10 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink"
+                className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
                 onChange={(event) => setArticleTitle(event.target.value)}
                 value={articleTitle}
               />
@@ -634,7 +634,7 @@ export function WorkspaceArticleRow({
                   <Save aria-hidden="true" className="h-3.5 w-3.5" />
                   {savingCopy ? "Saving..." : "Save article copy"}
                 </button>
-                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-bold text-ink" onClick={cancelArticleCopy} type="button">
+                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink" onClick={cancelArticleCopy} type="button">
                   <X aria-hidden="true" className="h-3.5 w-3.5" />
                   Cancel
                 </button>

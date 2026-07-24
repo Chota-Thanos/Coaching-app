@@ -189,7 +189,7 @@ function RepositorySuggestionPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-line bg-white p-4 shadow-sm">
+    <section className="space-y-4 rounded-lg border border-line bg-surface p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-civic">
@@ -213,7 +213,7 @@ function RepositorySuggestionPanel({
             Target repository
             <select
               id="tour-target-repo-select"
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink"
               onChange={(event) => setCollectionId(event.target.value)}
               value={collectionId}
             >
@@ -429,7 +429,7 @@ export function WorkspaceDashboard() {
   if (!isInitialized) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <p className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70">Verifying Notes Space session...</p>
+        <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Verifying Notes Space session...</p>
       </main>
     );
   }
@@ -502,7 +502,7 @@ export function WorkspaceDashboard() {
       {downloadAllError && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{downloadAllError}</p>}
       {error && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{error}</p>}
       {loading && !state.dashboard && (
-        <p className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70">Loading Notes Space...</p>
+        <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading Notes Space...</p>
       )}
 
       {state.dashboard && (
@@ -538,14 +538,14 @@ export function WorkspaceDashboard() {
             />
           </div>
 
-          <details id="tour-bulk-import" className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <details id="tour-bulk-import" className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <summary className="cursor-pointer text-base font-black text-ink">Bulk import articles</summary>
             <div className="mt-4">
               <BulkImportPanel collections={state.collections} onChanged={loadWorkspace} />
             </div>
           </details>
 
-          <details id="tour-personal-notes" className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <details id="tour-personal-notes" className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <summary className="cursor-pointer text-base font-black text-ink">Write your own note</summary>
             <div className="mt-4">
               <PersonalArticlesPanel

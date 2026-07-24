@@ -44,7 +44,7 @@ export function TrendGraph({ trend }: { trend: TrendPoint[] }) {
           return (
             <div key={point.result_date} className="group relative flex flex-1 flex-col items-center justify-end">
               {/* Tooltip */}
-              <div className="pointer-events-none absolute bottom-full mb-2 hidden rounded-lg bg-ink px-2.5 py-1.5 text-center group-hover:block">
+              <div className="pointer-events-none absolute bottom-full mb-2 hidden rounded-lg bg-midnight px-2.5 py-1.5 text-center group-hover:block">
                 <p className="text-xs font-black text-white">{accPct}%</p>
                 <p className="text-[10px] text-white/70">{point.attempts} attempt{point.attempts !== 1 ? "s" : ""}</p>
               </div>

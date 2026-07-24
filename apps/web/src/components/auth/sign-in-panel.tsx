@@ -92,7 +92,7 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
         {/* Dropdown Menu */}
         {menuOpen && (
           <div 
-            className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-100 animate-in fade-in slide-in-from-top-2 duration-150"
+            className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-xl shadow-slate-100 animate-in fade-in slide-in-from-top-2 duration-150"
             onMouseEnter={openMenu}
             onMouseLeave={closeMenu}
           >
@@ -224,7 +224,7 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
                   logout();
                 }}
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-rose-600 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-bold text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-rose-600 transition-all"
               >
                 <LogOut className="h-4 w-4" />
                 Sign out

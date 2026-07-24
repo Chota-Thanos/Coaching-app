@@ -15,7 +15,7 @@ export function StudentArticleActions({ article }: { article: ArticleDetail }) {
 
   if (!token) {
     return (
-      <aside className="rounded-lg border border-line bg-white p-4 shadow-sm">
+      <aside className="rounded-lg border border-line bg-surface p-4 shadow-sm">
         <h2 className="text-base font-extrabold text-ink">Student tools</h2>
         <p className="mt-2 text-sm leading-6 text-ink/70">Sign in to save this article, track reading progress, and schedule revision.</p>
         <div className="mt-4">
@@ -62,11 +62,11 @@ export function StudentArticleActions({ article }: { article: ArticleDetail }) {
   }
 
   return (
-    <aside className="rounded-lg border border-line bg-white p-4 shadow-sm">
+    <aside className="rounded-lg border border-line bg-surface p-4 shadow-sm">
       <h2 className="text-base font-extrabold text-ink">Student tools</h2>
       <div className="mt-4 grid gap-2">
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-bold text-ink disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-sm font-bold text-ink disabled:opacity-60"
           disabled={pending}
           onClick={saveArticle}
           type="button"

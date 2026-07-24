@@ -312,7 +312,7 @@ function QuestionPreview({
           {options.map((option) => {
             const correct = option.label === readAnswer(question.correct_answer) || option.is_correct;
             return (
-              <div className={`rounded-md border px-3 py-2 text-xs font-semibold ${correct ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-line bg-white text-ink/70"}`} key={option.label}>
+              <div className={`rounded-md border px-3 py-2 text-xs font-semibold ${correct ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-line bg-surface text-ink/70"}`} key={option.label}>
                 <span className="font-black">{option.label}.</span>{" "}
                 <span dangerouslySetInnerHTML={renderMathAndMarkdown(option.text)} />
               </div>
@@ -637,13 +637,13 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
   };
 
   if (!isInitialized) {
-    return <main className="mx-auto max-w-6xl px-4 py-8"><p className="rounded-lg border border-line bg-white p-6 text-center text-sm font-bold text-ink/50">Verifying session...</p></main>;
+    return <main className="mx-auto max-w-6xl px-4 py-8"><p className="rounded-lg border border-line bg-surface p-6 text-center text-sm font-bold text-ink/50">Verifying session...</p></main>;
   }
 
   if (!token) {
     return (
       <main className="mx-auto max-w-xl px-4 py-8">
-        <section className="rounded-lg border border-line bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-line bg-surface p-6 shadow-sm">
           <h1 className="text-2xl font-black text-ink">Study Plan Test Content</h1>
           <p className="mt-2 text-sm text-ink/70">Sign in with an admin or editor account.</p>
           <div className="mt-6"><SignInPanel /></div>
@@ -675,7 +675,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
         </button>
       </section>
 
-      {message && <p className="rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-civic">{message}</p>}
+      {message && <p className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-civic">{message}</p>}
 
       {test && (
         <>
@@ -684,7 +684,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
               Saved type is {formatStudyPlanItemType(test.test_type)}, but this page is using {formatStudyPlanItemType(effectiveTestType)} based on the exam level. Save test settings before adding or saving questions.
             </p>
           )}
-          <section className="grid gap-4 rounded-lg border border-line bg-white p-5 shadow-sm lg:grid-cols-5">
+          <section className="grid gap-4 rounded-lg border border-line bg-surface p-5 shadow-sm lg:grid-cols-5">
             <Field label="Test title" note="Shown on plan step, attempt screen, and result screen.">
               <input className="h-10 rounded-md border border-line px-3 text-sm" value={testForm.title} onChange={(event) => setTestForm({ ...testForm, title: event.target.value })} />
             </Field>
@@ -737,7 +737,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
           </section>
 
           <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="space-y-4 rounded-lg border border-line bg-white p-5 shadow-sm">
+            <div className="space-y-4 rounded-lg border border-line bg-surface p-5 shadow-sm">
               {effectiveTestType === "mains_test" ? (
                 <>
                   <div>
@@ -828,7 +828,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
             </div>
 
             <div className="space-y-4">
-              <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
+              <section className="rounded-lg border border-line bg-surface p-5 shadow-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-civic">Parse or create</p>
@@ -837,7 +837,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
                 </div>
                 <div className="mt-4 inline-flex rounded-md border border-line bg-paper p-1">
                   <button
-                    className={`inline-flex h-9 items-center gap-2 rounded px-3 text-xs font-black ${workspaceMode === "manual" ? "bg-white text-civic shadow-sm" : "text-ink/55"}`}
+                    className={`inline-flex h-9 items-center gap-2 rounded px-3 text-xs font-black ${workspaceMode === "manual" ? "bg-surface text-civic shadow-sm" : "text-ink/55"}`}
                     onClick={() => setWorkspaceMode("manual")}
                     type="button"
                   >
@@ -845,7 +845,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
                     Manual create
                   </button>
                   <button
-                    className={`inline-flex h-9 items-center gap-2 rounded px-3 text-xs font-black ${workspaceMode === "parse" ? "bg-white text-civic shadow-sm" : "text-ink/55"}`}
+                    className={`inline-flex h-9 items-center gap-2 rounded px-3 text-xs font-black ${workspaceMode === "parse" ? "bg-surface text-civic shadow-sm" : "text-ink/55"}`}
                     onClick={() => setWorkspaceMode("parse")}
                     type="button"
                   >
@@ -858,7 +858,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {contentModeOptions.map((mode) => (
                       <button
-                        className="flex min-h-28 flex-col items-start justify-between rounded-lg border border-line bg-white p-4 text-left shadow-sm hover:border-civic/40 hover:bg-civic/5"
+                        className="flex min-h-28 flex-col items-start justify-between rounded-lg border border-line bg-surface p-4 text-left shadow-sm hover:border-civic/40 hover:bg-civic/5"
                         key={mode}
                         onClick={() => addBlankDraft(mode)}
                         type="button"
@@ -912,7 +912,7 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
                 <section className="space-y-3">
                   <h2 className="text-lg font-black text-ink">Draft output preview</h2>
                   {drafts.map((draft, index) => (
-                    <div className="rounded-lg border border-line bg-white p-4 shadow-sm" key={index}>
+                    <div className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={index}>
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <label className="flex items-center gap-2 text-xs font-black text-ink/60">
                           <input checked={selectedDrafts.includes(index)} onChange={(event) => setSelectedDrafts((current) => event.target.checked ? [...current, index] : current.filter((item) => item !== index))} type="checkbox" />
@@ -941,10 +941,10 @@ export function AdminStudyPlanTestContent({ testTemplateId }: { testTemplateId: 
               <h2 className="text-xl font-black text-ink">Saved questions</h2>
             </div>
             {savedQuestions.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-white p-8 text-center text-sm font-bold text-ink/50">No saved questions yet.</p>
+              <p className="rounded-lg border border-dashed border-line bg-surface p-8 text-center text-sm font-bold text-ink/50">No saved questions yet.</p>
             ) : (
               savedQuestions.map((question, index) => (
-                <div className="rounded-lg border border-line bg-white p-4 shadow-sm" key={question.id}>
+                <div className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={question.id}>
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-black uppercase tracking-wide text-ink/45">Saved question #{question.id}</p>
                     <div className="flex gap-2">
@@ -1042,7 +1042,7 @@ function QuestionEditor({
   return (
     <div className="space-y-4 rounded-md border border-line bg-paper p-4">
       <Field label="Content subtype" note="Saved with the question and used for segregation.">
-        <div className="flex h-10 items-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink">{contentModeLabel(questionContentMode)}</div>
+        <div className="flex h-10 items-center rounded-md border border-line bg-surface px-3 text-sm font-black text-ink">{contentModeLabel(questionContentMode)}</div>
       </Field>
       <Field label="Question statement" note="Main question visible to students.">
         <textarea className="min-h-24 rounded-md border border-line p-3 text-sm" value={question.question_statement} onChange={(event) => update({ question_statement: event.target.value })} />

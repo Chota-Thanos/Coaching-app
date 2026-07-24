@@ -82,7 +82,7 @@ export function GoogleSignInButton({ nextPath }: { nextPath: string }) {
               "Google Client ID is not configured.\n\nTo configure Google Login:\n1. Create OAuth 2.0 credentials in Google Cloud Developer Console.\n2. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID inside apps/web/.env file."
             );
           }}
-          className="flex h-11 w-full max-w-[320px] items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-slate-350 hover:bg-slate-50 transition-all focus:outline-none"
+          className="flex h-11 w-full max-w-[320px] items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-surface px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-slate-350 hover:bg-slate-50 transition-all focus:outline-none"
         >
           {/* Simple SVG Google Icon */}
           <svg className="h-5 w-5" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">

@@ -131,7 +131,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-line bg-white p-4 shadow-sm">
+    <section className="space-y-4 rounded-xl border border-line bg-surface p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-civic">
@@ -158,7 +158,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
         <label className="grid gap-1 text-xs font-bold text-ink/70">
           Section
           <select
-            className="h-10 rounded-md border border-line bg-white px-3 text-sm text-ink"
+            className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
             onChange={(event) => void changeHub(event.target.value)}
             value={hubPath}
           >
@@ -172,7 +172,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
         <label className="grid gap-1 text-xs font-bold text-ink/70">
           Subject
           <select
-            className="h-10 rounded-md border border-line bg-white px-3 text-sm text-ink"
+            className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
             onFocus={() => {
               if (!filters) void loadFilters(activeHub);
             }}
@@ -191,7 +191,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
           <label className="grid gap-1 text-xs font-bold text-ink/70">
             Month
             <select
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm text-ink"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
               onFocus={() => {
                 if (!filters) void loadFilters(activeHub);
               }}
@@ -210,7 +210,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
           <label className="grid gap-1 text-xs font-bold text-ink/70">
             Year
             <select
-              className="h-10 rounded-md border border-line bg-white px-3 text-sm text-ink"
+              className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
               onFocus={() => {
                 if (!filters) void loadFilters(activeHub);
               }}
@@ -229,7 +229,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
         <label className="grid gap-1 text-xs font-bold text-ink/70 md:col-span-2">
           Save into
           <select
-            className="h-10 rounded-md border border-line bg-white px-3 text-sm text-ink"
+            className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
             onChange={(event) => setCollectionId(event.target.value)}
             value={collectionId}
           >

@@ -656,7 +656,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_1.8fr]">
           {/* Left Panel: Cascading Taxonomy & Release */}
-          <div className="bg-white border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5">
+          <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm h-fit space-y-5">
             <h4 className="font-extrabold text-base text-ink border-b border-line pb-2 flex items-center gap-2">
               <Sparkles className="h-4.5 w-4.5 text-civic" />
               Staging Bulk Actions
@@ -668,7 +668,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 <select
                   value={selectedExamId}
                   onChange={(e) => handleExamChange(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 >
                   <option value="">-- Choose Exam --</option>
                   {exams.map(ex => (
@@ -682,7 +682,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 <select
                   value={selectedLevelId}
                   onChange={(e) => setSelectedLevelId(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                   disabled={!selectedExamId}
                 >
                   <option value="">-- Choose Level --</option>
@@ -697,7 +697,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 <select
                   value={selectedNatureId}
                   onChange={(e) => setSelectedNatureId(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                   disabled={!selectedExamId}
                 >
                   <option value="">-- Choose Nature --</option>
@@ -715,7 +715,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                   <select
                     value={selectedPaperId}
                     onChange={(e) => handlePaperChange(e.target.value)}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                     disabled={!selectedExamId}
                   >
                     <option value="">-- Choose Paper --</option>
@@ -730,7 +730,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                   <select
                     value={selectedSubjectAreaId}
                     onChange={(e) => handleSubjectAreaChange(e.target.value)}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                     disabled={!selectedPaperId}
                   >
                     <option value="">-- Choose Subject Area --</option>
@@ -745,7 +745,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                   <select
                     value={selectedThemeId}
                     onChange={(e) => handleThemeChange(e.target.value)}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                     disabled={!selectedSubjectAreaId}
                   >
                     <option value="">-- Choose Theme --</option>
@@ -760,7 +760,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                   <select
                     value={selectedTopicId}
                     onChange={(e) => handleTopicChange(e.target.value)}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                     disabled={!selectedThemeId}
                   >
                     <option value="">-- Choose Topic --</option>
@@ -775,7 +775,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                   <select
                     value={selectedSubtopicId}
                     onChange={(e) => setSelectedSubtopicId(e.target.value)}
-                    className="h-9 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                    className="h-9 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                     disabled={!selectedTopicId}
                   >
                     <option value="">-- Choose Subtopic --</option>
@@ -790,7 +790,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 <button
                   onClick={handleApplyBulkTaxonomy}
                   disabled={selectedIndices.length === 0}
-                  className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-civic text-civic bg-white font-bold text-xs hover:bg-civic/5 transition-all disabled:opacity-50"
+                  className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-civic text-civic bg-surface font-bold text-xs hover:bg-civic/5 transition-all disabled:opacity-50"
                   type="button"
                 >
                   Apply to Checked ({selectedIndices.length})
@@ -818,7 +818,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
 
             {/* Select All Checkbox Bar */}
             {draftedQuestions.length > 0 && (
-              <div className="flex items-center justify-between bg-white border border-line px-5 py-3 rounded-2xl shadow-sm">
+              <div className="flex items-center justify-between bg-surface border border-line px-5 py-3 rounded-2xl shadow-sm">
                 <label className="flex items-center gap-2.5 text-xs font-bold text-ink cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -871,7 +871,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 return (
                   <div 
                     key={idx}
-                    className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md ${
+                    className={`bg-surface border rounded-2xl p-6 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md ${
                       isSelected ? "border-civic bg-civic/5 ring-1 ring-civic/25" : "border-line hover:border-civic/30"
                     }`}
                   >
@@ -1002,7 +1002,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                             <select
                               value={q.directive}
                               onChange={(e) => updateDraftQuestion(idx, "directive", e.target.value)}
-                              className="h-10 rounded-lg border border-line bg-white px-3 text-xs"
+                              className="h-10 rounded-lg border border-line bg-surface px-3 text-xs"
                             >
                               <option value="Discuss">Discuss</option>
                               <option value="Analyze">Analyze</option>
@@ -1019,7 +1019,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                               type="number"
                               value={q.marks}
                               onChange={(e) => updateDraftQuestion(idx, "marks", Number(e.target.value))}
-                              className="h-10 rounded-lg border border-line bg-white px-3 text-xs"
+                              className="h-10 rounded-lg border border-line bg-surface px-3 text-xs"
                             />
                           </label>
 
@@ -1029,7 +1029,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                               type="number"
                               value={q.word_limit}
                               onChange={(e) => updateDraftQuestion(idx, "word_limit", Number(e.target.value))}
-                              className="h-10 rounded-lg border border-line bg-white px-3 text-xs"
+                              className="h-10 rounded-lg border border-line bg-surface px-3 text-xs"
                             />
                           </label>
                         </div>
@@ -1075,7 +1075,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                           <select
                             value={q.question_nature_id || ""}
                             onChange={(e) => updateDraftQuestion(idx, "question_nature_id", e.target.value ? Number(e.target.value) : undefined)}
-                            className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none"
+                            className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none"
                           >
                             <option value="">-- Choose Nature --</option>
                             {natures.map(n => (
@@ -1173,7 +1173,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
             onClick={() => setSourceMode(key)}
             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold rounded-xl transition-all ${
               sourceMode === key
-                ? "bg-white text-civic shadow-sm border border-line"
+                ? "bg-surface text-civic shadow-sm border border-line"
                 : "text-ink/65 hover:text-ink"
             }`}
           >
@@ -1201,7 +1201,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 placeholder="e.g. GST and federal cooperation in India"
                 value={aiDraftTopic}
                 onChange={(e) => setAiDraftTopic(e.target.value)}
-                className="h-9 rounded-lg border border-line px-3 text-xs bg-white focus:border-indigo-500 outline-none"
+                className="h-9 rounded-lg border border-line px-3 text-xs bg-surface focus:border-indigo-500 outline-none"
               />
             </label>
             <label className="grid gap-1 text-[11px] font-bold text-indigo-900">
@@ -1211,7 +1211,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
                 placeholder="e.g. Focus on Article 279A, 15 marks"
                 value={aiDraftInstructions}
                 onChange={(e) => setAiDraftInstructions(e.target.value)}
-                className="h-9 rounded-lg border border-line px-3 text-xs bg-white focus:border-indigo-500 outline-none"
+                className="h-9 rounded-lg border border-line px-3 text-xs bg-surface focus:border-indigo-500 outline-none"
               />
             </label>
           </div>
@@ -1232,7 +1232,7 @@ export function AdminMainsQuestionCreator({ questionId, onBack, onSaved }: Admin
 
       {/* AI PARSE MODE */}
       {sourceMode === "parse" && (
-        <div className="border border-line bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <div className="border border-line bg-surface rounded-2xl p-6 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <h3 className="text-base font-black text-ink flex items-center gap-2">
@@ -1304,7 +1304,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
         <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[2fr_1fr]">
 
           {/* Left Side: Question Text & Rubric */}
-        <div className="space-y-6 bg-white border border-line rounded-2xl p-6 shadow-sm">
+        <div className="space-y-6 bg-surface border border-line rounded-2xl p-6 shadow-sm">
           
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -1313,7 +1313,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="h-11 rounded-lg border border-line bg-white px-3 text-sm font-semibold"
+                className="h-11 rounded-lg border border-line bg-surface px-3 text-sm font-semibold"
               >
                 <option value="draft">Draft</option>
                 <option value="in_review">In Review</option>
@@ -1327,7 +1327,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={directive}
                 onChange={(e) => setDirective(e.target.value)}
-                className="h-11 rounded-lg border border-line bg-white px-3 text-sm font-semibold"
+                className="h-11 rounded-lg border border-line bg-surface px-3 text-sm font-semibold"
               >
                 <option value="Discuss">Discuss</option>
                 <option value="Analyze">Analyze</option>
@@ -1404,7 +1404,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
             {keyPoints.length > 0 && (
               <div className="space-y-2 border border-line/60 p-3 rounded-lg bg-paper/20">
                 {keyPoints.map((point, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs bg-white border border-line p-2.5 rounded-lg">
+                  <div key={idx} className="flex items-center justify-between text-xs bg-surface border border-line p-2.5 rounded-lg">
                     <span className="font-semibold text-ink">{point}</span>
                     <button
                       type="button"
@@ -1424,7 +1424,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
         <div className="space-y-6">
           
           {/* Question metrics card */}
-          <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-black text-ink border-b border-line pb-2">Grading parameters</h3>
             
             <div className="grid gap-3 grid-cols-2">
@@ -1434,7 +1434,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
                   type="number"
                   value={marks}
                   onChange={(e) => setMarks(Number(e.target.value))}
-                  className="h-10 rounded-lg border border-line px-3 text-sm font-semibold bg-white"
+                  className="h-10 rounded-lg border border-line px-3 text-sm font-semibold bg-surface"
                   required
                 />
               </label>
@@ -1445,7 +1445,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
                   type="number"
                   value={wordLimit}
                   onChange={(e) => setWordLimit(Number(e.target.value))}
-                  className="h-10 rounded-lg border border-line px-3 text-sm font-semibold bg-white"
+                  className="h-10 rounded-lg border border-line px-3 text-sm font-semibold bg-surface"
                   required
                 />
               </label>
@@ -1463,7 +1463,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
           </div>
 
           {/* Cascading Mains Taxonomy selector */}
-          <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-black text-ink border-b border-line pb-2">UPSC Mains Syllabus Mapping</h3>
 
             <label className="grid gap-1 text-xs font-bold text-ink">
@@ -1471,7 +1471,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedExamId}
                 onChange={(e) => handleExamChange(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 required
               >
                 <option value="">-- Choose Exam --</option>
@@ -1486,7 +1486,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedLevelId}
                 onChange={(e) => setSelectedLevelId(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedExamId}
                 required
               >
@@ -1504,7 +1504,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedPaperId}
                 onChange={(e) => handlePaperChange(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedExamId}
               >
                 <option value="">-- Choose Paper (e.g. GS1) --</option>
@@ -1519,7 +1519,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedSubjectAreaId}
                 onChange={(e) => handleSubjectAreaChange(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedPaperId}
               >
                 <option value="">-- Choose Subject Area --</option>
@@ -1534,7 +1534,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedThemeId}
                 onChange={(e) => handleThemeChange(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedSubjectAreaId}
               >
                 <option value="">-- Choose Theme --</option>
@@ -1549,7 +1549,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedTopicId}
                 onChange={(e) => handleTopicChange(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedThemeId}
               >
                 <option value="">-- Choose Topic --</option>
@@ -1564,7 +1564,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedSubtopicId}
                 onChange={(e) => setSelectedSubtopicId(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedTopicId}
               >
                 <option value="">-- Choose Subtopic --</option>
@@ -1581,7 +1581,7 @@ Q2. Critically examine the role of self-help groups in rural India. (10 marks, 1
               <select
                 value={selectedNatureId}
                 onChange={(e) => setSelectedNatureId(e.target.value)}
-                className="h-10 rounded-lg border border-line bg-white px-3 text-xs outline-none focus:border-civic"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs outline-none focus:border-civic"
                 disabled={!selectedExamId}
               >
                 <option value="">-- Choose Nature --</option>

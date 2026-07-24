@@ -217,8 +217,8 @@ export function RepositoryBulkImportModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8">
-      <div className="w-full max-w-5xl rounded-lg border border-line bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="repository-import-title">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-midnight/40 px-4 py-8">
+      <div className="w-full max-w-5xl rounded-lg border border-line bg-surface shadow-xl" role="dialog" aria-modal="true" aria-labelledby="repository-import-title">
         <div className="flex items-start justify-between gap-4 border-b border-line p-5">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-civic">
@@ -233,7 +233,7 @@ export function RepositoryBulkImportModal({
             </p>
           </div>
           <button
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-white text-ink hover:border-civic hover:text-civic"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-ink hover:border-civic hover:text-civic"
             onClick={onClose}
             type="button"
             aria-label="Close import modal"
@@ -247,7 +247,7 @@ export function RepositoryBulkImportModal({
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
               1. Section
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink"
                 onChange={(event) => void changeHub(event.target.value)}
                 value={hubPath}
               >
@@ -263,7 +263,7 @@ export function RepositoryBulkImportModal({
               <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
                 2. GS Paper
                 <select
-                  className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+                  className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink"
                   onChange={(event) => changeGsPaper(event.target.value)}
                   value={gsPaperId}
                 >
@@ -280,7 +280,7 @@ export function RepositoryBulkImportModal({
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
               {hasGsPapers ? "3" : "2"}. Subject
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
                 disabled={hasGsPapers && !gsPaperId}
                 onChange={(event) => changeSubject(event.target.value)}
                 value={subjectId}
@@ -297,7 +297,7 @@ export function RepositoryBulkImportModal({
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
               {hasGsPapers ? "4" : "3"}. Topic
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
                 disabled={!subjectId}
                 onChange={(event) => changeTopic(event.target.value)}
                 value={topicId}
@@ -314,7 +314,7 @@ export function RepositoryBulkImportModal({
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
               {hasGsPapers ? "5" : "4"}. Subtopic
               <select
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
+                className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink disabled:bg-paper disabled:text-ink/45"
                 disabled={!topicId}
                 onChange={(event) => changeSubtopic(event.target.value)}
                 value={subtopicId}
@@ -332,7 +332,7 @@ export function RepositoryBulkImportModal({
               <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
                 {hasGsPapers ? "6" : "5"}. Month
                 <select
-                  className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+                  className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink"
                   onChange={(event) => setMonth(event.target.value)}
                   value={month}
                 >
@@ -348,7 +348,7 @@ export function RepositoryBulkImportModal({
               <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
                 {hasGsPapers ? "6" : "5"}. Year
                 <select
-                  className="h-11 rounded-md border border-line bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ink"
+                  className="h-11 rounded-md border border-line bg-surface px-3 text-sm font-semibold normal-case tracking-normal text-ink"
                   onChange={(event) => setYear(event.target.value)}
                   value={year}
                 >
@@ -375,7 +375,7 @@ export function RepositoryBulkImportModal({
             </div>
           </div>
 
-          <section className="rounded-lg border border-line bg-white">
+          <section className="rounded-lg border border-line bg-surface">
             <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-base font-black text-ink">6. Select articles</h3>
@@ -418,7 +418,7 @@ export function RepositoryBulkImportModal({
                       className={`flex items-start gap-3 rounded-lg border p-3 ${
                         alreadyAdded
                           ? "border-line bg-paper/60 text-ink/45"
-                          : "cursor-pointer border-line bg-white hover:border-civic"
+                          : "cursor-pointer border-line bg-surface hover:border-civic"
                       }`}
                       key={article.id}
                     >

@@ -263,7 +263,7 @@ export function AdminPostingAgentManager() {
   return (
     <div className="space-y-6">
       {/* INPUT */}
-      <div className="rounded-2xl border border-line bg-white p-6 shadow-sm space-y-5">
+      <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm space-y-5">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
             <Sparkles className="h-5 w-5" />
@@ -311,7 +311,7 @@ export function AdminPostingAgentManager() {
                 type="button"
                 onClick={() => setArticleRole("event")}
                 className={`rounded-md px-3 py-1.5 font-bold transition ${
-                  articleRole === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                  articleRole === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                 }`}
               >
                 Event (dated news)
@@ -320,7 +320,7 @@ export function AdminPostingAgentManager() {
                 type="button"
                 onClick={() => setArticleRole("concept")}
                 className={`rounded-md px-3 py-1.5 font-bold transition ${
-                  articleRole === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                  articleRole === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                 }`}
               >
                 Concept (reusable primer)
@@ -329,7 +329,7 @@ export function AdminPostingAgentManager() {
                 type="button"
                 onClick={() => setArticleRole("auto")}
                 className={`rounded-md px-3 py-1.5 font-bold transition ${
-                  articleRole === "auto" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-white"
+                  articleRole === "auto" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
                 }`}
               >
                 Auto-detect
@@ -433,7 +433,7 @@ export function AdminPostingAgentManager() {
       {/* REVIEW */}
       {result && candidates.length > 0 && (
         <div className="space-y-4">
-          <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+          <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface/95 px-4 py-3 shadow-sm backdrop-blur">
             <div>
               <h3 className="text-lg font-black text-ink">
                 {selected.size} of {candidates.length} selected
@@ -454,7 +454,7 @@ export function AdminPostingAgentManager() {
           {candidates.map((candidate, index) => (
             <div
               key={index}
-              className={`rounded-2xl border bg-white p-5 shadow-sm space-y-3 ${
+              className={`rounded-2xl border bg-surface p-5 shadow-sm space-y-3 ${
                 selected.has(index) ? "border-line" : "border-line/50 opacity-55"
               }`}
             >
@@ -498,7 +498,7 @@ export function AdminPostingAgentManager() {
                       className={`rounded px-2 py-1 font-bold transition ${
                         (candidate.article_role ?? "event") === "event"
                           ? "bg-civic text-white"
-                          : "text-ink/60 hover:bg-white"
+                          : "text-ink/60 hover:bg-surface"
                       }`}
                     >
                       Event
@@ -509,7 +509,7 @@ export function AdminPostingAgentManager() {
                       className={`rounded px-2 py-1 font-bold transition ${
                         candidate.article_role === "concept"
                           ? "bg-civic text-white"
-                          : "text-ink/60 hover:bg-white"
+                          : "text-ink/60 hover:bg-surface"
                       }`}
                     >
                       Concept
@@ -582,7 +582,7 @@ export function AdminPostingAgentManager() {
           ))}
 
           {/* COMMIT BAR */}
-          <div className="sticky bottom-4 rounded-2xl border border-line bg-white p-4 shadow-lg">
+          <div className="sticky bottom-4 rounded-2xl border border-line bg-surface p-4 shadow-lg">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex gap-2">
                 <button

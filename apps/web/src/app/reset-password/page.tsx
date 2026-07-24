@@ -53,7 +53,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="w-full rounded-lg border border-line bg-white p-6 text-center shadow-sm">
+      <div className="w-full rounded-lg border border-line bg-surface p-6 text-center shadow-sm">
         <h1 className="text-xl font-black text-ink">Missing reset link</h1>
         <p className="mt-2 text-sm text-ink/65">
           This page needs a valid reset link from your email.
@@ -67,7 +67,7 @@ function ResetPasswordForm() {
 
   if (done) {
     return (
-      <div className="w-full rounded-lg border border-line bg-white p-6 text-center shadow-sm">
+      <div className="w-full rounded-lg border border-line bg-surface p-6 text-center shadow-sm">
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-600">
           <CheckCircle2 className="h-6 w-6" />
         </span>
@@ -81,7 +81,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={submit} className="w-full rounded-lg border border-line bg-white p-6 shadow-sm">
+    <form onSubmit={submit} className="w-full rounded-lg border border-line bg-surface p-6 shadow-sm">
       <h1 className="text-2xl font-black leading-tight text-ink">Set a new password</h1>
       <p className="mt-1 text-sm leading-6 text-ink/65">Choose a password of at least 8 characters.</p>
 
@@ -95,7 +95,7 @@ function ResetPasswordForm() {
         autoComplete="new-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="mt-1 h-12 w-full rounded-md border border-line bg-white px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+        className="mt-1 h-12 w-full rounded-md border border-line bg-surface px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
       />
 
       <label className="mt-4 block text-sm font-bold text-ink" htmlFor="rp-confirm">
@@ -108,7 +108,7 @@ function ResetPasswordForm() {
         autoComplete="new-password"
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
-        className="mt-1 h-12 w-full rounded-md border border-line bg-white px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+        className="mt-1 h-12 w-full rounded-md border border-line bg-surface px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
       />
 
       {error && (
@@ -133,7 +133,7 @@ export default function ResetPasswordPage() {
     <main className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-md items-center px-4 py-10">
       <Suspense
         fallback={
-          <div className="w-full rounded-lg border border-line bg-white p-6 text-sm text-ink/70 shadow-sm">
+          <div className="w-full rounded-lg border border-line bg-surface p-6 text-sm text-ink/70 shadow-sm">
             Loading…
           </div>
         }

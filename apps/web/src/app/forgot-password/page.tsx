@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-md items-center px-4 py-10">
-      <div className="w-full rounded-lg border border-line bg-white p-6 shadow-sm">
+      <div className="w-full rounded-lg border border-line bg-surface p-6 shadow-sm">
         {sent ? (
           <div className="text-center">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-civic/10 text-civic">
@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 h-12 w-full rounded-md border border-line bg-white px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+              className="mt-1 h-12 w-full rounded-md border border-line bg-surface px-3 text-base outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
             />
 
             {error && (

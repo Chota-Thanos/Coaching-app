@@ -241,7 +241,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
 
       {toolbar && (
         <div
-          className="fixed z-40 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-md border border-line bg-ink px-2 py-1.5 shadow-xl"
+          className="fixed z-40 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-md border border-line bg-midnight px-2 py-1.5 shadow-xl"
           style={{ left: toolbar.x, top: toolbar.y }}
         >
           {HIGHLIGHT_COLORS.map((entry) => (
@@ -269,7 +269,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
 
       {noteDraft && (
         <div
-          className="fixed z-40 w-72 -translate-x-1/2 -translate-y-full rounded-lg border border-line bg-white p-3 shadow-xl"
+          className="fixed z-40 w-72 -translate-x-1/2 -translate-y-full rounded-lg border border-line bg-surface p-3 shadow-xl"
           style={{ left: noteDraft.x, top: noteDraft.y }}
         >
           <p className="text-xs font-black uppercase tracking-wide text-civic">Add a note</p>
@@ -283,7 +283,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
           />
           <div className="mt-2 flex justify-end gap-2">
             <button
-              className="inline-flex h-8 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-bold text-ink"
+              className="inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink"
               onClick={() => {
                 setNoteDraft(null);
                 window.getSelection()?.removeAllRanges();
@@ -307,7 +307,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
 
       {activeAnnotation && (
         <div
-          className="fixed z-40 w-72 rounded-lg border border-line bg-white p-3 shadow-xl"
+          className="fixed z-40 w-72 rounded-lg border border-line bg-surface p-3 shadow-xl"
           style={{ left: activeAnnotation.x, top: activeAnnotation.y }}
         >
           <div className="flex items-center justify-between">
@@ -358,7 +358,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
           </p>
           <div className="mt-2 grid gap-2">
             {highlights.map((highlight) => (
-              <div className="flex items-start justify-between gap-2 rounded-md border border-line bg-white p-2.5" key={`highlight-${highlight.id}`}>
+              <div className="flex items-start justify-between gap-2 rounded-md border border-line bg-surface p-2.5" key={`highlight-${highlight.id}`}>
                 <button className="min-w-0 flex-1 text-left" onClick={() => jumpTo("highlight", highlight.id)} type="button">
                   <span className={`mr-2 inline-block h-3 w-3 rounded-full align-middle ${colorSwatch(highlight.color)}`} />
                   <span className="text-sm italic text-ink/70">"{(highlight.anchor_json as TextAnchor).quote}"</span>

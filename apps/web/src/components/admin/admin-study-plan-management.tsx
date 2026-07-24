@@ -107,7 +107,7 @@ export function AdminStudyPlanManagement() {
   if (!isInitialized) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <p className="rounded-lg border border-line bg-white p-6 text-center text-sm font-bold text-ink/50">Verifying session...</p>
+        <p className="rounded-lg border border-line bg-surface p-6 text-center text-sm font-bold text-ink/50">Verifying session...</p>
       </main>
     );
   }
@@ -115,7 +115,7 @@ export function AdminStudyPlanManagement() {
   if (!token) {
     return (
       <main className="mx-auto max-w-xl px-4 pb-16 pt-6">
-        <section className="rounded-lg border border-line bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-line bg-surface p-6 shadow-sm">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-civic/10 text-civic">
               <ShieldCheck className="h-6 w-6" />
@@ -164,9 +164,9 @@ export function AdminStudyPlanManagement() {
         </button>
       </section>
 
-      {message && <p className="mt-4 rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-civic">{message}</p>}
+      {message && <p className="mt-4 rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-civic">{message}</p>}
 
-      <section className="mt-6 overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+      <section className="mt-6 overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
         <div className="grid grid-cols-[minmax(0,1.5fr)_120px_120px_120px_140px] gap-3 border-b border-line bg-paper px-4 py-3 text-[11px] font-black uppercase tracking-wide text-ink/50 max-lg:hidden">
           <span>Plan</span>
           <span>Weeks</span>
@@ -205,14 +205,14 @@ export function AdminStudyPlanManagement() {
       </section>
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-line bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-midnight/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-line bg-surface shadow-xl">
             <div className="flex items-start justify-between border-b border-line bg-paper p-5">
               <div>
                 <h2 className="text-xl font-black text-ink">Create New Study Plan</h2>
                 <p className="mt-1 text-sm text-ink/60">Add the parent plan first. Timeline, contents, and tests are managed after creation.</p>
               </div>
-              <button className="grid h-8 w-8 place-items-center rounded-md hover:bg-white" onClick={() => setShowCreate(false)} type="button">
+              <button className="grid h-8 w-8 place-items-center rounded-md hover:bg-surface" onClick={() => setShowCreate(false)} type="button">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -256,7 +256,7 @@ export function AdminStudyPlanManagement() {
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-line bg-paper p-4">
-              <button className="h-10 rounded-md border border-line bg-white px-4 text-sm font-bold text-ink" onClick={() => setShowCreate(false)} type="button">Cancel</button>
+              <button className="h-10 rounded-md border border-line bg-surface px-4 text-sm font-bold text-ink" onClick={() => setShowCreate(false)} type="button">Cancel</button>
               <button className="inline-flex h-10 items-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-black text-white disabled:opacity-60" disabled={busy || !form.title || !form.exam_id} onClick={createPlan} type="button">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 Create and open

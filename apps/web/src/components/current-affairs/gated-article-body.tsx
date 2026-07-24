@@ -130,7 +130,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </div>
         )}
         {heroAsset && (
-          <figure className="overflow-hidden rounded-lg border border-line bg-white">
+          <figure className="overflow-hidden rounded-lg border border-line bg-surface">
             <img alt={heroAsset.alt_text ?? article.title} className="max-h-[28rem] w-full object-cover" src={heroAsset.file_url} />
             {heroAsset.caption && <figcaption className="p-3 text-sm text-ink/65">{heroAsset.caption}</figcaption>}
           </figure>
@@ -145,7 +145,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
             <InteractiveMainsPyq data={article.body_json} />
           </div>
         ) : (
-          <section className="article-body mt-5 rounded-lg border border-line bg-white p-4 text-base text-ink shadow-sm md:p-6">
+          <section className="article-body mt-5 rounded-lg border border-line bg-surface p-4 text-base text-ink shadow-sm md:p-6">
             <RenderedContent content={article.body} />
             {article.sections.map((section) => (
               <section id={section.slug} key={section.id} className="mt-6 border-t border-line/40 pt-5">
@@ -157,7 +157,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
         )}
 
         {article.updates.length > 0 && (
-          <section className="mt-5 rounded-lg border border-line bg-white p-4 shadow-sm md:p-6">
+          <section className="mt-5 rounded-lg border border-line bg-surface p-4 shadow-sm md:p-6">
             <h2 className="text-lg font-extrabold text-ink">Updates</h2>
             <ol className="mt-3 space-y-4 border-l-2 border-berry/20 pl-4">
               {article.updates.map((update) => (
@@ -176,7 +176,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
       <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
         <StudentArticleActions article={article} />
         {article.sections.length > 0 && (
-          <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <h2 className="flex items-center gap-2 text-base font-extrabold text-ink">
               <Layers3 aria-hidden="true" className="h-4 w-4 text-civic" />
               In this article
@@ -193,7 +193,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
         {article.outgoing_relations.length > 0 && (
-          <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <h2 className="text-base font-extrabold text-ink">Related reading</h2>
             <div className="mt-3 grid gap-3">
               {article.outgoing_relations.map((relation) => (
@@ -205,7 +205,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
         {article.incoming_relations.length > 0 && (
-          <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <h2 className="text-base font-extrabold text-ink">
               Appears in {article.appearance_count} article{article.appearance_count === 1 ? "" : "s"}
             </h2>

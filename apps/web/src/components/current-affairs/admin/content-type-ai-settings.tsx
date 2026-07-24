@@ -279,7 +279,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/current-affairs/ai-settings"
-            className="grid h-10 w-10 place-items-center border border-line rounded-xl bg-white text-ink hover:text-civic transition-colors shadow-sm"
+            className="grid h-10 w-10 place-items-center border border-line rounded-xl bg-surface text-ink hover:text-civic transition-colors shadow-sm"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -307,7 +307,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
       )}
 
       {loading ? (
-        <div className="bg-white border border-line rounded-2xl p-16 flex flex-col items-center justify-center gap-3 text-ink/50 shadow-xs">
+        <div className="bg-surface border border-line rounded-2xl p-16 flex flex-col items-center justify-center gap-3 text-ink/50 shadow-xs">
           <Loader2 className="h-8 w-8 text-civic animate-spin" />
           <span className="text-sm font-bold">Loading settings workspace...</span>
         </div>
@@ -317,7 +317,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
           <div className="lg:col-span-2 space-y-6">
             
             {/* ── TOP SECTION: GENERAL STYLE & PROMPT CONFIG ── */}
-            <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-line/60">
+            <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-line/60">
               {/* Card Header */}
               <div className="p-5 bg-paper/30">
                 <span className="text-[10px] font-bold text-civic uppercase tracking-wider">Default Directives</span>
@@ -349,7 +349,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
                           value={styleGuide.source_text}
                           onChange={(e) => setStyleGuide(prev => ({ ...prev, source_text: e.target.value }))}
                           placeholder="Paste reference writing style example text..."
-                          className="w-full min-h-[90px] mt-1.5 rounded-lg border border-line p-2.5 text-[10px] bg-white outline-none focus:border-civic transition-all"
+                          className="w-full min-h-[90px] mt-1.5 rounded-lg border border-line p-2.5 text-[10px] bg-surface outline-none focus:border-civic transition-all"
                         />
                       </label>
                       <button
@@ -418,7 +418,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
 
               {/* OVERRIDE CREATOR FORM */}
               {showOverrideForm && (
-                <form onSubmit={handleSaveOverride} className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4 animate-in slide-in-from-top duration-300">
+                <form onSubmit={handleSaveOverride} className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4 animate-in slide-in-from-top duration-300">
                   <h4 className="font-black text-sm text-ink border-b border-line pb-2 flex items-center gap-2">
                     <Plus className="h-4 w-4 text-civic" />
                     Create Category Instruction Override
@@ -430,7 +430,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
                       <select
                         value={selectedSubjectId}
                         onChange={(e) => setSelectedSubjectId(e.target.value)}
-                        className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-semibold outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
+                        className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-semibold outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
                         required
                       >
                         <option value="">-- Choose Category --</option>
@@ -468,7 +468,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
                       placeholder="Paste reference category article style sample..."
                       value={overrideSampleText}
                       onChange={(e) => setOverrideSampleText(e.target.value)}
-                      className="w-full min-h-[90px] rounded-lg border border-line p-2.5 text-[10px] bg-white outline-none focus:border-civic transition-all resize-y font-mono"
+                      className="w-full min-h-[90px] rounded-lg border border-line p-2.5 text-[10px] bg-surface outline-none focus:border-civic transition-all resize-y font-mono"
                     />
                     <button
                       type="button"
@@ -524,7 +524,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
 
               {/* LIST OVERRIDES */}
               {activeOverrides.length === 0 ? (
-                <div className="bg-white border border-line rounded-2xl p-12 text-center text-xs text-ink/50 shadow-sm">
+                <div className="bg-surface border border-line rounded-2xl p-12 text-center text-xs text-ink/50 shadow-sm">
                   No category-specific overrides configured for this content type. Articles will generate based on general prompt settings.
                 </div>
               ) : (
@@ -534,7 +534,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
                     return (
                       <div 
                         key={inst.id} 
-                        className="border border-line bg-white rounded-xl p-4 shadow-sm hover:border-civic/40 transition-all flex justify-between items-start gap-4 group"
+                        className="border border-line bg-surface rounded-xl p-4 shadow-sm hover:border-civic/40 transition-all flex justify-between items-start gap-4 group"
                       >
                         <div className="space-y-2 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -570,7 +570,7 @@ export function ContentTypeAiSettings({ subView }: ContentTypeAiSettingsProps) {
 
           {/* Right Column: Best Practices */}
           <div className="space-y-6">
-            <div className="bg-white border border-line rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm space-y-4">
               <h3 className="font-black text-sm text-ink flex items-center gap-1.5 pb-2 border-b border-line">
                 <HelpCircle className="h-4 w-4 text-civic" />
                 Prompt Guidelines & Best Practices

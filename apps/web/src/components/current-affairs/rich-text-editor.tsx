@@ -195,7 +195,7 @@ export function RichTextMarkdownEditor({
             type="button"
             onClick={() => setTab("visual")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-bold transition-all ${
-              tab === "visual" ? "bg-white text-civic shadow-xs" : "text-ink/65 hover:text-ink"
+              tab === "visual" ? "bg-surface text-civic shadow-xs" : "text-ink/65 hover:text-ink"
             }`}
           >
             <Edit3 className="h-3.5 w-3.5" />
@@ -205,7 +205,7 @@ export function RichTextMarkdownEditor({
             type="button"
             onClick={() => setTab("html")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-bold transition-all ${
-              tab === "html" ? "bg-white text-civic shadow-xs" : "text-ink/65 hover:text-ink"
+              tab === "html" ? "bg-surface text-civic shadow-xs" : "text-ink/65 hover:text-ink"
             }`}
           >
             <Code className="h-3.5 w-3.5" />
@@ -215,7 +215,7 @@ export function RichTextMarkdownEditor({
             type="button"
             onClick={() => setTab("preview")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-bold transition-all ${
-              tab === "preview" ? "bg-white text-civic shadow-xs" : "text-ink/65 hover:text-ink"
+              tab === "preview" ? "bg-surface text-civic shadow-xs" : "text-ink/65 hover:text-ink"
             }`}
           >
             <Eye className="h-3.5 w-3.5" />
@@ -224,14 +224,14 @@ export function RichTextMarkdownEditor({
         </div>
       </div>
 
-      <div className="rounded-xl border border-line overflow-hidden bg-white shadow-xs focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/10 transition-all w-full flex flex-col">
+      <div className="rounded-xl border border-line overflow-hidden bg-surface shadow-xs focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/10 transition-all w-full flex flex-col">
         {/* Tiptap Toolbar (Visual only) */}
         {tab === "visual" && editor && (
           <div className="flex flex-wrap items-center gap-1 bg-paper/40 border-b border-line/60 px-2 py-1.5 select-none rte-toolbar">
             
             {/* Heading Level */}
             <select
-              className="rte-select h-8 border border-line rounded-lg px-2 text-xs text-ink outline-none bg-white font-semibold cursor-pointer"
+              className="rte-select h-8 border border-line rounded-lg px-2 text-xs text-ink outline-none bg-surface font-semibold cursor-pointer"
               value={
                 editor.isActive("heading", { level: 2 }) ? "h2" :
                 editor.isActive("heading", { level: 3 }) ? "h3" :
@@ -414,7 +414,7 @@ export function RichTextMarkdownEditor({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().unsetHighlight().run()}
-                  className="w-3.5 h-3.5 rounded-full border border-line bg-white hover:bg-rose-50 flex items-center justify-center text-[8px] font-bold text-rose-500 hover:scale-110 active:scale-95 transition-all"
+                  className="w-3.5 h-3.5 rounded-full border border-line bg-surface hover:bg-rose-50 flex items-center justify-center text-[8px] font-bold text-rose-500 hover:scale-110 active:scale-95 transition-all"
                   title="Clear Highlight"
                 >
                   ✕
@@ -450,7 +450,7 @@ export function RichTextMarkdownEditor({
                 <ChevronDown className="h-3 w-3" />
               </button>
               {rewordMenu && (
-                <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-line bg-white py-1 shadow-lg">
+                <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-line bg-surface py-1 shadow-lg">
                   {REWORD_MODES.map((m) => (
                     <button
                       key={m.value}
@@ -525,7 +525,7 @@ export function RichTextMarkdownEditor({
 
         {/* Edit / Code / Preview areas */}
         {tab === "visual" && (
-          <div className="flex-1 w-full bg-white outline-none">
+          <div className="flex-1 w-full bg-surface outline-none">
             <EditorContent
               editor={editor}
               className={`w-full p-4 font-normal text-sm text-ink outline-none resize-y overflow-y-auto article-body prose prose-civic max-w-none tiptap-prosemirror ${minHeightClass}`}

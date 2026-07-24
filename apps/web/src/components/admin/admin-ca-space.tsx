@@ -144,7 +144,7 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
   if (!isInitialized) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-sm text-center animate-pulse">
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm text-center animate-pulse">
           <p className="text-sm font-semibold text-ink/50">Verifying session...</p>
         </div>
       </main>
@@ -154,7 +154,7 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
   if (!token) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <section className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 shadow-sm">
+        <section className="mx-auto max-w-xl rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-civic/10 text-civic">
               <ShieldCheck className="h-6 w-6" />
@@ -189,7 +189,7 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
   return (
     <div className="min-h-screen bg-paper flex flex-col lg:flex-row">
       {/* ── Left Sidebar ── */}
-      <aside className="w-full lg:w-72 shrink-0 bg-white border-r border-line p-5 flex flex-col justify-between">
+      <aside className="w-full lg:w-72 shrink-0 bg-surface border-r border-line p-5 flex flex-col justify-between">
         <div className="space-y-6">
           {/* Module Header */}
           <div>
@@ -298,7 +298,7 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
                 { label: "Pending Ingestion", value: stats.pendingIngestions, icon: <Inbox className="h-5 w-5" /> },
                 { label: "AI Generated", value: stats.aiGenerated, icon: <Brain className="h-5 w-5" /> },
               ].map(({ label, value, icon }) => (
-                <div key={label} className="bg-white border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                <div key={label} className="bg-surface border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
                   <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600">{icon}</span>
                   <div>
                     <span className="text-xs font-bold text-ink/50 block">{label}</span>
@@ -311,7 +311,7 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-3">
                 <h3 className="text-base font-black text-ink">Recently Added Articles</h3>
-                <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-line/60">
+                <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-line/60">
                   {recentArticles.length === 0 ? (
                     <div className="p-6 text-center text-sm text-ink/50">No articles yet.</div>
                   ) : (
@@ -348,7 +348,7 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
                     <Link
                       key={href}
                       href={href}
-                      className="bg-white border border-line hover:border-emerald-400 rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
+                      className="bg-surface border border-line hover:border-emerald-400 rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
                     >
                       <div>
                         <h4 className="font-black text-sm text-ink group-hover:text-emerald-700 transition-colors">{title}</h4>
@@ -456,10 +456,10 @@ export function AdminCASpace({ overrideTab, overrideSubView }: AdminCASpaceProps
                   <Link
                     key={href}
                     href={href}
-                    className={`bg-white border border-line rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between text-left group min-h-[190px] ${bg}`}
+                    className={`bg-surface border border-line rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between text-left group min-h-[190px] ${bg}`}
                   >
                     <div className="space-y-4">
-                      <span className="grid h-12 w-12 place-items-center rounded-xl bg-paper group-hover:bg-white group-hover:scale-110 transition-all shrink-0 shadow-xs border border-line/45">
+                      <span className="grid h-12 w-12 place-items-center rounded-xl bg-paper group-hover:bg-surface group-hover:scale-110 transition-all shrink-0 shadow-xs border border-line/45">
                         {icon}
                       </span>
                       <div>

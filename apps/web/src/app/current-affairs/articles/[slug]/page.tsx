@@ -89,7 +89,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         <span className="line-clamp-1">{article.title}</span>
       </nav>
 
-      <header className="rounded-lg border border-line bg-white p-4 shadow-sm md:p-6 mb-5">
+      <header className="rounded-lg border border-line bg-surface p-4 shadow-sm md:p-6 mb-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <div className="flex flex-wrap gap-2">
             <span className="rounded-md bg-civic/10 px-2 py-1 text-xs font-bold text-civic">{contentKindLabel(article.content_kind)}</span>

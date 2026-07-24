@@ -188,7 +188,7 @@ export default function AdminPaymentsPage() {
                 sub: "subs / plans / mentorship"
               }
             ].map((card) => (
-              <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div key={card.label} className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{card.label}</p>
                 <p className="mt-2 text-2xl font-black text-slate-900">{card.value}</p>
                 <p className="mt-1 text-xs text-slate-500">{card.sub}</p>
@@ -212,7 +212,7 @@ export default function AdminPaymentsPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search email, username, payment id, order id…"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-400"
+              className="w-full rounded-xl border border-slate-200 bg-surface py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-400"
             />
           </form>
 
@@ -222,7 +222,7 @@ export default function AdminPaymentsPage() {
               setPage(0);
               setProductFilter(e.target.value as any);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none"
+            className="rounded-xl border border-slate-200 bg-surface px-3 py-2.5 text-sm font-bold outline-none"
           >
             <option value="all">All products</option>
             <option value="subscription">Subscriptions</option>
@@ -236,7 +236,7 @@ export default function AdminPaymentsPage() {
               setPage(0);
               setStatusFilter(e.target.value as any);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none"
+            className="rounded-xl border border-slate-200 bg-surface px-3 py-2.5 text-sm font-bold outline-none"
           >
             <option value="all">Any status</option>
             <option value="paid">Paid</option>
@@ -247,7 +247,7 @@ export default function AdminPaymentsPage() {
 
           <button
             onClick={() => void fetchData()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -255,7 +255,7 @@ export default function AdminPaymentsPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-500">
@@ -337,14 +337,14 @@ export default function AdminPaymentsPage() {
             <button
               disabled={page === 0}
               onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-surface px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
             >
               <ChevronLeft className="h-3.5 w-3.5" /> Prev
             </button>
             <button
               disabled={payments.length < PAGE_SIZE}
               onClick={() => setPage((p) => p + 1)}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-surface px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
             >
               Next <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -356,7 +356,7 @@ export default function AdminPaymentsPage() {
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40" onClick={() => setSelected(null)}>
           <div
-            className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"
+            className="h-full w-full max-w-md overflow-y-auto bg-surface p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-start justify-between">
@@ -414,7 +414,7 @@ export default function AdminPaymentsPage() {
                   href={`https://dashboard.razorpay.com/app/payments/${selected.provider_payment_id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Open in Razorpay

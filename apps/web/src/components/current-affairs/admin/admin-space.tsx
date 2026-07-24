@@ -151,7 +151,7 @@ export function AdminSpace() {
   if (!isInitialized) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-sm text-center">
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm text-center">
           <p className="text-sm font-semibold text-ink/50">Verifying session...</p>
         </div>
       </main>
@@ -161,7 +161,7 @@ export function AdminSpace() {
   if (!token) {
     return (
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <section className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 shadow-sm">
+        <section className="mx-auto max-w-xl rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-civic/10 text-civic">
               <ShieldCheck aria-hidden="true" className="h-6 w-6" />
@@ -194,7 +194,7 @@ export function AdminSpace() {
   return (
     <div className="min-h-screen bg-paper flex flex-col lg:flex-row">
       {/* ── Left Sidebar Navigation ── */}
-      <aside className="w-full lg:w-72 shrink-0 bg-white border-r border-line p-6 flex flex-col justify-between">
+      <aside className="w-full lg:w-72 shrink-0 bg-surface border-r border-line p-6 flex flex-col justify-between">
         <div className="space-y-8">
           {/* Logo & Brand Header */}
           <div className="flex items-center gap-3 px-2">
@@ -367,7 +367,7 @@ export function AdminSpace() {
 
             {/* Quick Metrics Cards */}
             <div className="grid gap-5 grid-cols-2 lg:grid-cols-4">
-              <div className="bg-white border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
+              <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-civic/10 text-civic">
                   <Newspaper className="h-6 w-6" />
                 </span>
@@ -377,7 +377,7 @@ export function AdminSpace() {
                 </div>
               </div>
 
-              <div className="bg-white border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
+              <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-civic/10 text-civic">
                   <FolderTree className="h-6 w-6" />
                 </span>
@@ -387,7 +387,7 @@ export function AdminSpace() {
                 </div>
               </div>
 
-              <div className="bg-white border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
+              <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-civic/10 text-civic">
                   <FileStack className="h-6 w-6" />
                 </span>
@@ -397,7 +397,7 @@ export function AdminSpace() {
                 </div>
               </div>
 
-              <div className="bg-white border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
+              <div className="bg-surface border border-line rounded-2xl p-5 shadow-sm flex items-center gap-4">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-civic/10 text-civic">
                   <Brain className="h-6 w-6" />
                 </span>
@@ -413,7 +413,7 @@ export function AdminSpace() {
               {/* Left Column: Recent Articles */}
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-lg font-black text-ink">Recently Added Articles</h3>
-                <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-line/60">
+                <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-line/60">
                   {recentArticles.length === 0 ? (
                     <div className="p-6 text-center text-sm text-ink/50">No articles available. Clean and seed database to populate items.</div>
                   ) : (
@@ -445,7 +445,7 @@ export function AdminSpace() {
                 <div className="grid gap-3">
                   <Link
                     href="/current-affairs/admin/create_article"
-                    className="bg-white border border-line hover:border-civic rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
+                    className="bg-surface border border-line hover:border-civic rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
                   >
                     <div>
                       <h4 className="font-black text-sm text-ink group-hover:text-civic transition-colors">Write Manual Article</h4>
@@ -458,7 +458,7 @@ export function AdminSpace() {
  
                   <Link
                     href="/current-affairs/admin/create_article"
-                    className="bg-white border border-line hover:border-civic rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
+                    className="bg-surface border border-line hover:border-civic rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
                   >
                     <div>
                       <h4 className="font-black text-sm text-ink group-hover:text-civic transition-colors">Generate via AI Creator</h4>
@@ -471,7 +471,7 @@ export function AdminSpace() {
  
                   <Link
                     href="/current-affairs/admin/categories"
-                    className="bg-white border border-line hover:border-civic rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
+                    className="bg-surface border border-line hover:border-civic rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-all flex items-center justify-between gap-3 group"
                   >
                     <div>
                       <h4 className="font-black text-sm text-ink group-hover:text-civic transition-colors">Manage Taxonomies</h4>

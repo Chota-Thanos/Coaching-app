@@ -34,7 +34,7 @@ export default function LoginPage() {
             { Icon: BookOpenCheck, title: "Review", copy: "Check solutions and reports." },
             { Icon: BarChart3, title: "Analytics", copy: "Track topic signals." }
           ].map(({ Icon, title, copy }) => (
-            <div className="rounded-lg border border-line bg-white p-4 shadow-sm" key={title}>
+            <div className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={title}>
               <Icon aria-hidden="true" className="h-5 w-5 text-civic" />
               <h3 className="mt-3 text-base font-black text-ink">{title}</h3>
               <p className="mt-1 text-sm leading-6 text-ink/65">{copy}</p>
@@ -49,7 +49,7 @@ export default function LoginPage() {
       </section>
 
       <section className="order-1 lg:order-2">
-        <Suspense fallback={<div className="rounded-lg border border-line bg-white p-5 text-sm font-semibold text-ink/70 shadow-sm">Loading sign in...</div>}>
+        <Suspense fallback={<div className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70 shadow-sm">Loading sign in...</div>}>
           <LoginForm />
         </Suspense>
       </section>
