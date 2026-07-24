@@ -18,6 +18,7 @@ import type { FormEvent } from "react";
 import type { CategoryNode, CreateCategoryPayload } from "../../../lib/api";
 import type { ContentFamily } from "../../../lib/current-affairs";
 import { CATEGORY_NODE_TYPES, adminSlug, type CategoryNodeType } from "../../../lib/admin-current-affairs";
+import { CascadingParentCategorySelector } from "./cascading-parent-category-selector";
 import {
   authenticatedDelete,
   authenticatedGet,
@@ -139,11 +140,14 @@ function buildCategoryTree(categories: CategoryNode[]): CategoryTreeNode[] {
 function flattenTree(nodes: CategoryTreeNode[]): ParentOption[] {
   const options: ParentOption[] = [];
   function walk(items: CategoryTreeNode[]): void {
-    items.forEach((item) => {
+    items.forEach((item, index) => {
+      const isLast = index === items.length - 1;
+      const prefix = item.depth === 0 ? "" : isLast ? "\u00A0\u00A0└─ " : "\u00A0\u00A0├─ ";
+      const indent = "\u00A0\u00A0\u00A0\u00A0".repeat(Math.max(0, item.depth - 1));
       options.push({
         category: item,
         depth: item.depth,
-        label: `${"  ".repeat(item.depth)}${item.name} (${formatNodeType(item.node_type)})`
+        label: `${indent}${prefix}${item.name} (${formatNodeType(item.node_type)})`
       });
       walk(item.children);
     });
@@ -815,21 +819,13 @@ export function AdminCategoryManager() {
             </label>
           </div>
 
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            Parent
-            <select
-              className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
-              onChange={(event) => handleParentChange(event.target.value)}
-              value={form.parentId}
-            >
-              <option value="">{rootParentLabel(form.contentFamily)}</option>
-              {parentOptions.map((option) => (
-                <option key={option.category.id} value={option.category.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CascadingParentCategorySelector
+            categories={categories}
+            contentFamily={form.contentFamily}
+            label="Parent category"
+            onChange={handleParentChange}
+            value={form.parentId}
+          />
 
           <label className="grid gap-1 text-sm font-bold text-ink">
             Name
@@ -931,21 +927,13 @@ export function AdminCategoryManager() {
             </label>
           </div>
 
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            Parent
-            <select
-              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
-              onChange={(event) => handleBulkCreateParentChange(event.target.value)}
-              value={bulkCreateForm.parentId}
-            >
-              <option value="">{rootParentLabel(bulkCreateForm.contentFamily)}</option>
-              {bulkCreateParentOptions.map((option) => (
-                <option key={option.category.id} value={option.category.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CascadingParentCategorySelector
+            categories={categories}
+            contentFamily={bulkCreateForm.contentFamily}
+            label="Parent category"
+            onChange={handleBulkCreateParentChange}
+            value={bulkCreateForm.parentId}
+          />
 
           <label className="grid gap-1 text-sm font-bold text-ink">
             Category lines
@@ -1002,22 +990,15 @@ export function AdminCategoryManager() {
             {selectedFamily ? ` - ${formatFamily(selectedFamily)}` : selectedIds.size > 0 ? " - mixed families" : ""}
           </p>
 
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            New parent
-            <select
-              className="h-10 rounded-md border border-line bg-surface px-3 text-sm font-normal"
-              disabled={!selectedFamily}
-              onChange={(event) => handleBulkReassignParentChange(event.target.value)}
-              value={bulkReassignForm.parentId}
-            >
-              <option value="">{rootParentLabel(selectedFamily)}</option>
-              {bulkReassignParentOptions.map((option) => (
-                <option key={option.category.id} value={option.category.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CascadingParentCategorySelector
+            categories={categories}
+            contentFamily={selectedFamily ?? "prelims"}
+            disabled={!selectedFamily}
+            excludedIds={excludedReassignIds}
+            label="New parent"
+            onChange={handleBulkReassignParentChange}
+            value={bulkReassignForm.parentId}
+          />
 
           <label className="grid gap-1 text-sm font-bold text-ink">
             New node type
@@ -1097,21 +1078,20 @@ export function AdminCategoryManager() {
                 </label>
               </div>
 
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Parent
-                <select
-                  className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
-                  onChange={(event) => handleEditParentChange(event.target.value)}
-                  value={editForm.parentId}
-                >
-                  <option value="">{rootParentLabel(editForm.contentFamily)}</option>
-                  {editParentOptions.map((option) => (
-                    <option key={option.category.id} value={option.category.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <CascadingParentCategorySelector
+                categories={categories}
+                contentFamily={editForm.contentFamily}
+                excludedIds={
+                  new Set(
+                    editingCategory
+                      ? [editingCategory.id, ...Array.from(descendantIds(categories, new Set([editingCategory.id])))]
+                      : []
+                  )
+                }
+                label="Parent category"
+                onChange={handleEditParentChange}
+                value={editForm.parentId}
+              />
 
               <label className="grid gap-1 text-sm font-bold text-ink">
                 Name
