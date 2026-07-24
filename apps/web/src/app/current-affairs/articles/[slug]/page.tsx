@@ -33,6 +33,9 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     const article = await getArticleBySlug(slug);
     const description = articleDescription(article.body);
     const image = article.assets.find((asset) => ["thumbnail", "image"].includes(asset.asset_type))?.file_url;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
+    const articleUrl = `${baseUrl}${articleHref(article.slug)}`;
+
     return {
       title: article.title,
       description,
@@ -41,8 +44,16 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
         title: article.title,
         description,
         type: "article",
+        url: articleUrl,
+        siteName: "WayToIAS — UPSC Current Affairs",
         publishedTime: article.publication_date ?? undefined,
         images: image ? [{ url: image }] : undefined
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: article.title,
+        description,
+        images: image ? [image] : undefined
       }
     };
   } catch {
@@ -61,20 +72,65 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   const hub = CURRENT_AFFAIRS_HUBS.find((item) => item.contentKind === article.content_kind);
   const heroAsset = article.assets.find((asset) => ["thumbnail", "image"].includes(asset.asset_type));
-  const jsonLd = {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
+  const articleUrl = `${baseUrl}${articleHref(article.slug)}`;
+
+  const jsonLdArticle = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "NewsArticle",
     headline: article.title,
+    description: articleDescription(article.body),
     datePublished: article.publication_date,
-    articleSection: article.category?.name,
-    keywords: article.institute_tags,
-    image: heroAsset?.file_url,
-    mainEntityOfPage: articleHref(article.slug)
+    dateModified: article.publication_date,
+    articleSection: article.category?.name || "General Studies",
+    keywords: article.institute_tags ? article.institute_tags.join(", ") : "UPSC, Current Affairs, WayToIAS",
+    image: heroAsset?.file_url ? [heroAsset.file_url] : undefined,
+    mainEntityOfPage: articleUrl,
+    author: {
+      "@type": "Organization",
+      name: "WayToIAS Research Team",
+      url: baseUrl
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "WayToIAS",
+      url: baseUrl,
+      logo: {
+        "@type": "ImageObject",
+        url: `${baseUrl}/icon.png`
+      }
+    }
+  };
+
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: baseUrl
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: hub?.shortLabel ?? "Current Affairs",
+        item: `${baseUrl}${hub ? `/current-affairs/${hub.path}` : "/current-affairs/daily-news"}`
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: article.title,
+        item: articleUrl
+      }
+    ]
   };
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-12 pt-5">
-      <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} type="application/ld+json" />
+      <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdArticle) }} type="application/ld+json" />
+      <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }} type="application/ld+json" />
       <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1 text-sm text-ink/65">
         <Link className="font-semibold text-civic" href={hub ? `/current-affairs/${hub.path}` : "/current-affairs/daily-news"}>
           {hub?.shortLabel ?? "Current Affairs"}

@@ -47,7 +47,11 @@ import {
   Clock,
   Zap,
   AlertCircle,
-  Loader2
+  Loader2,
+  Download,
+  Edit3,
+  FolderInput,
+  Compass
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +87,13 @@ export default function HomePage() {
 
   // Quiz state removed — 'Start a Free Test' now goes directly to the real custom test builder
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [previewSelectedTopics, setPreviewSelectedTopics] = useState<string[]>(["Polity", "Economy", "History"]);
+
+  const togglePreviewTopic = (topic: string) => {
+    setPreviewSelectedTopics(prev =>
+      prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
+    );
+  };
 
   // Loading
   const [loadingArticles, setLoadingArticles] = useState(true);
@@ -414,904 +425,1085 @@ export default function HomePage() {
   // ═══════════════════════════════════════════════════════════════════════════
   if (!token) {
     return (
-      <main className="min-h-screen bg-surface">
-
-        {/* Quiz modal removed — CTA buttons now link directly to real features */}
+      <main className="min-h-screen bg-[var(--bg)] text-[var(--ink)] antialiased transition-colors duration-150">
 
         {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 1 · HERO
+            SECTION 1 · HERO (Command Deck Console)
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-midnight text-white">
-          {/* Ambient glow — CSS only, no external images */}
-          <div className="absolute -top-32 -right-40 h-[600px] w-[600px] rounded-full bg-civic/10 blur-[140px] pointer-events-none" />
-          <div className="absolute -bottom-20 -left-32 h-[350px] w-[350px] rounded-full bg-brand/8 blur-[100px] pointer-events-none" />
+        <section className="relative overflow-hidden py-12 lg:py-20 omr-tex">
+          <div className="absolute -top-32 -right-40 h-[520px] w-[520px] rounded-full bg-[#4a3fe0]/10 dark:bg-[#5b5bf5]/15 blur-[120px] pointer-events-none" />
+          
+          <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
 
-          <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-22 lg:py-28">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-
-              {/* ── Copy ── */}
-              <div className="lg:col-span-7 space-y-7">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-bold text-white/60">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  India's Complete UPSC Preparation Platform
+              {/* ── Copy & CTAs ── */}
+              <div className="lg:col-span-7 space-y-6">
+                <div className="eyebrow-cmd">
+                  <span className="dot-blip" />
+                  <span>India's UPSC Preparation Console</span>
                 </div>
 
-                <h1 className="text-4xl font-black sm:text-5xl md:text-6xl tracking-tight text-white leading-[1.1]">
-                  Prepare Smarter.<br />
-                  <span className="text-indigo-400">Clear UPSC.</span>
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-[var(--ink)]">
+                  Every attempt,{" "}
+                  <span className="text-[#4a3fe0] dark:text-[#5b5bf5]">scored, mapped,</span>{" "}
+                  and turned into your next move.
                 </h1>
 
-                <p className="text-sm sm:text-base text-white/55 max-w-xl leading-relaxed">
-                  Free daily current affairs · Custom practice tests by topic · Smart notes workspace · 1:1 mentorship from verified UPSC toppers.
+                <p className="text-base text-[var(--ink-soft)] max-w-xl leading-relaxed">
+                  Free daily current affairs, a custom test builder, a notes workspace, and 1:1 mentorship from verified officers — feeding one live performance console that tracks accuracy down to the topic.
                 </p>
 
-                {/* Trust badges */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-md">
-                  {[
-                    "Current Affairs — Always Free",
-                    "3 Free Practice Tests / Month",
-                    "10 Notes Free per Repository",
-                    "Verified Topper Mentorship",
-                  ].map(item => (
-                    <div key={item} className="flex items-center gap-2.5">
-                      <div className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                        <Check className="h-3 w-3 text-white" />
-                      </div>
-                      <span className="text-xs font-semibold text-white/65">{item}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTAs */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Link
-                    href={diagnosticTestId ? `/assessment/tests/${diagnosticTestId}` : "/assessment/custom-test/create"}
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl bg-civic px-7 font-bold text-white hover:bg-civic/85 transition gap-2 text-sm shadow-lg shadow-civic/20"
-                    id="hero-start-free-test"
+                    href={diagnosticTestId ? `/assessment/tests/${diagnosticTestId}` : "/assessment/gk"}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 hover:brightness-110 transition-transform active:scale-[0.98]"
+                    id="hero-diagnostic-test"
                   >
                     <Target className="h-4 w-4" />
-                    Take Free Diagnostic Test
+                    Take the free diagnostic test
                   </Link>
                   <Link
-                    href="/assessment/custom-test/create"
-                    className="touch-target inline-flex w-full sm:w-auto h-12 items-center justify-center rounded-xl border border-white/15 bg-white/6 px-6 font-bold text-white hover:bg-white/12 transition gap-2 text-sm"
-                    id="hero-build-custom"
+                    href="/assessment/gk?view=builder"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] px-6 py-3.5 text-sm font-bold text-[var(--ink)] hover:border-[#c9c4f9] hover:bg-[var(--panel-2)] transition"
+                    id="hero-custom-test"
                   >
                     <BookOpen className="h-4 w-4" />
-                    Build Custom Test
+                    Build a custom test
                   </Link>
                 </div>
-                <p className="text-xs text-white/35 pt-1">
+
+                <p className="text-xs text-[var(--ink-faint)]">
                   No account needed for the diagnostic test ·{" "}
-                  <Link href="/register" className="text-white/55 hover:text-white underline underline-offset-2 transition">
+                  <Link href="/register" className="text-[#4a3fe0] dark:text-[#5b5bf5] font-semibold hover:underline">
                     Create free account →
                   </Link>
                 </p>
 
-                {/* Stats */}
-                <div className="flex items-center gap-6 pt-3 border-t border-white/8">
-                  <div className="text-center">
-                    <p className="font-mono text-lg font-black tabular-nums text-white">10,000+</p>
-                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Aspirants</p>
-                  </div>
-                  <div className="h-8 w-px bg-white/10" />
-                  <div className="text-center">
-                    <p className="font-mono text-lg font-black tabular-nums text-white">120+</p>
-                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Verified Mentors</p>
-                  </div>
-                  <div className="h-8 w-px bg-white/10" />
-                  <div className="text-center">
-                    <p className="font-mono text-lg font-black tabular-nums text-white">50,000+</p>
-                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Tests Taken</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── App Preview Panel ── */}
-              <div className="lg:col-span-5 relative hidden lg:block">
-                <div className="absolute -inset-4 rounded-3xl bg-civic/12 blur-2xl z-0" />
-                <div className="relative rounded-2xl border border-white/8 bg-white/4 p-5 backdrop-blur-md shadow-2xl z-10 space-y-4">
-                  {/* Window chrome */}
-                  <div className="flex items-center gap-1.5 border-b border-white/10 pb-3">
-                    <div className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-                    <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    <span className="ml-auto text-[10px] font-bold text-white/45 bg-white/8 px-2.5 py-0.5 rounded-md uppercase tracking-wider">Live Dashboard</span>
-                  </div>
-
-                  {/* Radar mock */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white/60">UPSC Subject Radar</span>
-                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">88% Avg</span>
-                  </div>
-                  <div className="flex justify-center">
-                    <svg width="110" height="110" viewBox="0 0 110 110" className="overflow-visible">
-                      <polygon points="55,8 92,30 92,80 55,102 18,80 18,30" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1"/>
-                      <polygon points="55,22 78,37 78,73 55,88 32,73 32,37" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-                      <polygon points="55,14 86,38 80,78 55,96 30,76 24,38" fill="rgba(79,70,229,0.28)" stroke="rgba(129,140,248,0.75)" strokeWidth="2"/>
-                      {[{cx:55,cy:14},{cx:86,cy:38},{cx:80,cy:78},{cx:55,cy:96},{cx:30,cy:76},{cx:24,cy:38}].map((p,i) => (
-                        <circle key={i} cx={p.cx} cy={p.cy} r="3" fill="rgba(129,140,248,0.75)"/>
-                      ))}
-                    </svg>
-                  </div>
-
-                  {/* Progress bars */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {[{label:"Polity",val:85,color:"bg-civic"},{label:"Economy",val:78,color:"bg-emerald-500"},{label:"History",val:72,color:"bg-saffron"},{label:"Geography",val:90,color:"bg-brand"}].map(s => (
-                      <div key={s.label} className="rounded-lg bg-white/5 border border-white/5 p-2.5 space-y-1">
-                        <div className="flex justify-between items-center text-[10px] text-white/50 font-bold">
-                          <span>{s.label}</span><span>{s.val}%</span>
-                        </div>
-                        <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                          <div className={`h-full ${s.color} rounded-full`} style={{width:`${s.val}%`}} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* OMR accuracy preview — ties into the Performance Console below */}
-                  <div className="space-y-1.5 pt-1 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Topic accuracy</span>
-                      <span className="text-[9px] font-mono text-indigo-300">OMR read</span>
-                    </div>
-                    {[{ label: "Polity", val: 88 }, { label: "Sci & Tech", val: 63 }].map((t) => (
-                      <div key={t.label} className="flex items-center gap-2">
-                        <span className="w-16 shrink-0 text-[9px] font-bold text-white/50">{t.label}</span>
-                        <span className="flex gap-0.5">
-                          {Array.from({ length: 10 }).map((_, i) => (
-                            <span
-                              key={i}
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                i < Math.round(t.val / 10) ? (t.val >= 70 ? "bg-emerald-400" : "bg-saffron") : "bg-white/15"
-                              }`}
-                            />
-                          ))}
-                        </span>
-                        <span className="ml-auto font-mono text-[9px] font-black tabular-nums text-white">{t.val}%</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Quick action row */}
-                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/10">
-                    {[{icon:Target,label:"GS Test"},{icon:Newspaper,label:"News"},{icon:NotebookPen,label:"Notes"}].map(({icon:Icon,label}) => (
-                      <div key={label} className="flex flex-col items-center gap-1 rounded-xl bg-white/5 p-2 border border-white/5">
-                        <Icon className="h-4 w-4 text-white/45" />
-                        <span className="text-[9px] font-bold text-white/45">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 2 · SELF-PREPARATION
-        ───────────────────────────────────────────────────────────────────── */}
-        <section id="self-prep" className="bg-surface section-showcase">
-          <div className="mx-auto max-w-7xl">
-            {/* Section header */}
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
-              <div className="space-y-2">
-                <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Module 01</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-civic/10 flex items-center justify-center">
-                    <Target className="h-3.5 w-3.5 text-civic" />
-                  </div>
-                  <span className="text-xs font-black text-civic uppercase tracking-widest">Self-Preparation</span>
-                  <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">3 Free Tests / Month</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                  Practice Smart. Track Deeper.
-                </h2>
-                <p className="text-sm text-slate-500 max-w-lg">
-                  Build custom GS &amp; CSAT tests, track topic-wise accuracy, and identify your weak areas with intelligent analytics.
-                </p>
-              </div>
-              <Link href="/assessment/custom-test/create?start_tour=true" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-civic px-5 py-2.5 text-sm font-bold text-white hover:bg-civic/90 transition-colors">
-                Start Practising Free <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              {/* Left: Mock dashboard */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-700">Custom Test Builder</h3>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Free</span>
-                </div>
-
-                {/* Topic chip selector mock */}
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Topics</p>
-                  <div className="flex flex-wrap gap-2">
-                    {["Polity","Economy","History","Geography","Environment","Science & Tech","Ethics"].map((t, i) => (
-                      <span key={t} className={`rounded-lg px-2.5 py-1 text-xs font-bold cursor-default ${i < 3 ? "bg-indigo-600 text-white" : "bg-surface border border-slate-200 text-slate-600"}`}>
-                        {t} {i < 3 && "✓"}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Q count */}
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Number of Questions</p>
-                  <div className="flex items-center gap-2">
-                    {[5,10,20,30,50].map(n => (
-                      <span key={n} className={`rounded-lg px-3 py-1.5 text-xs font-bold cursor-default ${n === 10 ? "bg-indigo-600 text-white" : n > 10 ? "bg-slate-100 text-slate-400 relative" : "bg-slate-100 text-slate-600"}`}>
-                        {n}
-                        {n > 10 && <Lock className="h-2.5 w-2.5 absolute -top-1 -right-1 text-slate-400" />}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-400">Free tier: up to 10 questions · Upgrade for unlimited</p>
-                </div>
-
-                <Link
-                  href="/assessment/custom-test/create"
-                  className="w-full h-10 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  Build My Custom Test →
-                </Link>
-
-                {/* Tag for revision row */}
-                <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
-                  <Tag className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                  <span className="text-xs text-amber-700 font-semibold">Tag questions for a revision test later</span>
-                </div>
-              </div>
-
-              {/* Right: Features + premium preview */}
-              <div className="space-y-5">
-                {/* Feature list */}
-                <div className="space-y-3">
-                  {[
-                    { icon: Target, title: "Topic-wise Practice", desc: "Questions mapped to every UPSC syllabus topic for Prelims & Mains", free: true },
-                    { icon: BarChart3, title: "Performance Analytics", desc: "Track strong/weak areas with accuracy graphs per subject", free: true },
-                    { icon: Tag, title: "Tag & Revise", desc: "Tag difficult questions and generate a focused revision test", free: true },
-                    { icon: TrendingUp, title: "Advanced AI Tracking", desc: "Deep topic-wise trend analysis across GS papers", free: false },
-                    { icon: FileCode, title: "Photo/PDF Import", desc: "Add questions from photos or PDFs via OCR (5 imports/month free)", free: false },
-                  ].map(({ icon: Icon, title, desc, free }) => (
-                    <div key={title} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                      <span className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${free ? "bg-civic/10 text-civic" : "bg-slate-100 text-slate-400"}`}>
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-slate-800">{title}</p>
-                          {free
-                            ? <span className="badge-free">Free</span>
-                            : <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Premium</span>
-                          }
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Premium teaser */}
-                <div className="relative rounded-xl overflow-hidden border border-slate-100">
-                  <div className="p-4 bg-gradient-to-br from-slate-900 to-ink text-white space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-indigo-300 uppercase tracking-widest">Premium Analytics</span>
-                      <Lock className="h-3.5 w-3.5 text-indigo-400" />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mt-2 opacity-60 blur-[2px] pointer-events-none select-none">
-                      {["Polity 6-Month Trend","GS1 Topic Map","Weak Area Drill"].map(l => (
-                        <div key={l} className="bg-white/10 rounded-lg p-2 text-center">
-                          <div className="text-[9px] font-bold text-indigo-300">{l}</div>
-                          <div className="h-8 bg-indigo-500/30 rounded mt-1" />
-                        </div>
-                      ))}
-                    </div>
-                    <Link href="/register" className="mt-3 w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white transition-colors">
-                      <Zap className="h-3.5 w-3.5" /> Unlock Premium Analytics
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 3 · CURRENT AFFAIRS (ALWAYS FREE)
-        ───────────────────────────────────────────────────────────────────── */}
-        <section id="current-affairs" className="bg-slate-50 section-showcase">
-          <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
-              <div className="space-y-2">
-                <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Module 02</span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="h-6 w-6 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <Newspaper className="h-3.5 w-3.5 text-emerald-600" />
-                  </div>
-                  <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">Current Affairs</span>
-                  <span className="badge-free">
-                    <Unlock className="h-3 w-3" />
-                    Always Free · No Daily Limit
-                  </span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                  Stay Current. Stay Ahead.
-                </h2>
-                <p className="text-sm text-slate-500 max-w-lg">
-                  Subject &amp; topic-tagged daily current affairs for Prelims and Mains. De-duplicated. Connected topics linked. <strong>No login required. No daily limit. Always free.</strong>
-                </p>
-              </div>
-              <Link href="/current-affairs/daily-news" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 transition-colors">
-                Read Today's News <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            {/* Live articles preview */}
-            {loadingArticles ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {[1,2,3].map(i => (
-                  <div key={i} className="animate-pulse rounded-2xl bg-surface border border-slate-100 p-4 h-64 space-y-3">
-                    <div className="bg-slate-200 h-36 rounded-xl" />
-                    <div className="bg-slate-200 h-4 w-2/3 rounded" />
-                    <div className="bg-slate-200 h-4 w-full rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {latestArticles.map((article, idx) => {
-                  const cover = resolveMediaUrl(article.primary_asset?.file_url) || coverFallbacks[idx % coverFallbacks.length];
-                  const catName = article.category?.name ?? "General Studies";
-                  const articleDate = article.publication_date
-                    ? new Date(article.publication_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
-                    : "Latest";
-                  return (
-                    <Link
-                      key={article.id}
-                      href={`/current-affairs/articles/${article.slug}`}
-                      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-surface shadow-sm hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-200"
-                    >
-                      <div className="h-40 w-full overflow-hidden bg-slate-50 relative">
-                        <img src={cover} alt={article.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                        <span className="absolute left-3 top-3 rounded-lg bg-midnight/85 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">{catName}</span>
-                        <span className="absolute right-3 top-3 badge-free">Free</span>
-                      </div>
-                      <div className="flex-1 p-4 flex flex-col justify-between">
-                        <div>
-                          <p className="text-[10px] font-bold text-emerald-600 mb-1">{articleDate}</p>
-                          <h3 className="text-sm font-extrabold text-slate-800 leading-snug line-clamp-2 group-hover:text-emerald-800 transition-colors">{article.title}</h3>
-                          <p className="mt-2 text-xs text-slate-500 line-clamp-2 leading-relaxed">{article.seo_description || article.body?.replace(/<[^>]*>/g, '').substring(0, 100)}...</p>
-                        </div>
-                        <div className="mt-3 flex items-center gap-1.5 text-xs font-black text-emerald-600 group-hover:text-emerald-800">
-                          <span>Read free brief</span>
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-
-                {latestArticles.length === 0 && (
-                  <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-surface p-10 text-center">
-                    <Newspaper className="h-8 w-8 text-slate-300 mx-auto mb-3" />
-                    <p className="text-sm font-semibold text-slate-400">Today's articles are being published. Check back shortly.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="mt-8 text-center">
-              <Link href="/current-affairs/daily-news" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline">
-                Browse all current affairs — always free <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 4 · NOTES-MAKING
-        ───────────────────────────────────────────────────────────────────── */}
-        <section id="notes-making" className="bg-surface section-showcase">
-          <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
-              <div className="space-y-2">
-                <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Module 03</span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="h-6 w-6 rounded-lg bg-indigo-50 flex items-center justify-center">
-                    <NotebookPen className="h-3.5 w-3.5 text-indigo-600" />
-                  </div>
-                  <span className="text-xs font-black text-indigo-600 uppercase tracking-widest">Notes-Making</span>
-                  <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Free: 10 Articles / Repo</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                  Build Your Personal Knowledge Base
-                </h2>
-                <p className="text-sm text-slate-500 max-w-lg">
-                  Import current affairs articles into organized repositories. Add revision notes. Tag by exam category. Recall fast on exam day.
-                </p>
-              </div>
-              <Link href="/register" className="shrink-0 touch-target inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition-colors">
-                Build Your First Repo <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              {/* Left: Notes workspace mock */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 overflow-hidden">
-                {/* Header bar */}
-                <div className="bg-surface border-b border-slate-100 px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FolderOpen className="h-4 w-4 text-indigo-600" />
-                    <span className="text-sm font-bold text-slate-800">My Repositories</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400">2 / 1 active (free)</span>
-                </div>
-
-                {/* Repo list */}
-                <div className="p-4 space-y-2">
-                  {[
-                    { name: "Polity & Governance", count: 8, tag: "Prelims" },
-                    { name: "Environment & Ecology", count: 10, tag: "Both" },
-                    { name: "International Relations", count: 3, tag: "Mains", locked: true },
-                  ].map(repo => (
-                    <div key={repo.name} className={`flex items-center justify-between rounded-xl border px-3.5 py-3 bg-surface ${repo.locked ? "opacity-60 border-dashed border-slate-200" : "border-slate-150"}`}>
-                      <div className="flex items-center gap-3">
-                        <span className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                          <FolderOpen className="h-4 w-4 text-indigo-600" />
-                        </span>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">{repo.name}</p>
-                          <p className="text-[10px] text-slate-400">{repo.count} articles · {repo.tag}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{repo.tag}</span>
-                        {repo.locked && <Lock className="h-3.5 w-3.5 text-slate-400" />}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Import button */}
-                  <div className="flex items-center gap-2 rounded-xl border border-dashed border-indigo-300 px-3.5 py-3 bg-indigo-50/30 cursor-default">
-                    <span className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                      <Plus className="h-4 w-4 text-indigo-600" />
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-xs font-bold text-indigo-700">Import from Current Affairs</p>
-                      <p className="text-[10px] text-indigo-400">Click any article → "Add to Notes"</p>
-                    </div>
-                  </div>
-
-                  {/* Bulk import — premium locked */}
-                  <div className="relative rounded-xl border border-dashed border-slate-200 px-3.5 py-3 bg-slate-50 overflow-hidden">
-                    <div className="opacity-40 flex items-center gap-3">
-                      <span className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                        <Layers className="h-4 w-4 text-purple-600" />
-                      </span>
-                      <div>
-                        <p className="text-xs font-bold text-slate-700">Bulk Import All Articles</p>
-                        <p className="text-[10px] text-slate-400">Import entire category at once</p>
-                      </div>
-                    </div>
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1">
-                      <Lock className="h-2.5 w-2.5" /> Premium
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Feature list */}
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  {[
-                    { icon: FolderOpen, title: "Multiple Repositories", desc: "Organize notes into separate repos by exam, subject, or time period", free: true },
-                    { icon: Import, title: "Import Articles", desc: "One-click import from current affairs into your chosen repository", free: true },
-                    { icon: NotebookPen, title: "Quick Revision Lines", desc: "Add 3–5 revision bullets per article for exam-day quick recall", free: true },
-                    { icon: Tag, title: "Tag Filtering", desc: "Tag repos by Prelims, Mains, or custom labels for rapid filtering", free: true },
-                    { icon: Layers, title: "Bulk Import", desc: "Import an entire category of articles at once into any repo", free: false },
-                    { icon: BrainCircuit, title: "Auto-Connected Topics", desc: "AI auto-links related topics across all your repositories", free: false },
-                  ].map(({ icon: Icon, title, desc, free }) => (
-                    <div key={title} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                      <span className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${free ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-400"}`}>
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-slate-800">{title}</p>
-                          {free
-                            ? <span className="badge-free">Free</span>
-                            : <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Premium</span>
-                          }
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between gap-3">
+                {/* Stat Ticker */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-5 border-t border-[var(--panel-border-soft)]">
                   <div>
-                    <p className="text-sm font-bold text-indigo-800">Free tier: 10 articles per repository</p>
-                    <p className="text-xs text-indigo-500 mt-0.5">Upgrade to Module Plan for unlimited notes &amp; bulk imports</p>
+                    <span className="block font-mono text-xl font-bold tabular-nums text-[var(--ink)]">10,000+</span>
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Aspirants</span>
                   </div>
-                  <Link href="/register" className="shrink-0 text-xs font-bold text-indigo-600 hover:underline whitespace-nowrap">
-                    Start Free →
-                  </Link>
+                  <div>
+                    <span className="block font-mono text-xl font-bold tabular-nums text-[var(--ink)]">120+</span>
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Verified Mentors</span>
+                  </div>
+                  <div>
+                    <span className="block font-mono text-xl font-bold tabular-nums text-[var(--ink)]">50,000+</span>
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Tests Taken</span>
+                  </div>
+                  <div>
+                    <span className="block font-mono text-xl font-bold tabular-nums text-[var(--ink)]">4.9/5</span>
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Mentor Rating</span>
+                  </div>
                 </div>
               </div>
+
+              {/* ── Console Dashboard Widget ── */}
+              <div className="lg:col-span-5 relative">
+                <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] overflow-hidden shadow-2xl">
+                  {/* Console bar */}
+                  <div className="flex items-center gap-2 border-b border-[var(--panel-border)] px-4 py-3 bg-[var(--panel-2)]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#fb7185]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#10b981]" />
+                    <span className="ml-2 font-mono text-[10.5px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                      Performance Console — Live
+                    </span>
+                  </div>
+
+                  {/* Console grid */}
+                  <div className="grid grid-cols-2 divide-x divide-y divide-[var(--panel-border)] bg-[var(--panel-border)]">
+                    {/* Cell 1: Subject Radar */}
+                    <div className="bg-[var(--panel)] p-4 space-y-2">
+                      <h4 className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                        Subject Radar
+                      </h4>
+                      <svg viewBox="0 0 200 150" className="w-full">
+                        <polygon points="100,10 175,50 175,110 100,145 25,110 25,50" fill="none" stroke="var(--panel-border)" strokeWidth="1"/>
+                        <polygon points="100,42 148,66 148,98 100,120 52,98 52,66" fill="none" stroke="var(--panel-border-soft)" strokeWidth="1"/>
+                        <polygon points="100,22 162,54 156,104 100,132 46,100 38,54" fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth="2"/>
+                        <circle cx="100" cy="22" r="3" fill="var(--accent)"/>
+                        <circle cx="162" cy="54" r="3" fill="var(--accent)"/>
+                        <circle cx="156" cy="104" r="3" fill="var(--accent)"/>
+                        <circle cx="100" cy="132" r="3" fill="var(--accent)"/>
+                        <circle cx="46" cy="100" r="3" fill="var(--accent)"/>
+                        <circle cx="38" cy="54" r="3" fill="var(--accent)"/>
+                      </svg>
+                    </div>
+
+                    {/* Cell 2: 8-Week Trend */}
+                    <div className="bg-[var(--panel)] p-4 space-y-2">
+                      <h4 className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                        8-Week Trend
+                      </h4>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-mono text-xl font-bold text-[var(--ink)]">76%</span>
+                        <span className="font-mono text-xs font-bold text-[var(--positive)]">▲ 8pt</span>
+                      </div>
+                      <svg viewBox="0 0 200 90" className="w-full" preserveAspectRatio="none">
+                        <path d="M0,70 L28,64 L56,60 L84,50 L112,46 L140,34 L168,26 L200,18 L200,90 L0,90 Z" fill="var(--accent-soft)"/>
+                        <path d="M0,70 L28,64 L56,60 L84,50 L112,46 L140,34 L168,26 L200,18" fill="none" stroke="var(--accent)" strokeWidth="2.5"/>
+                        <circle cx="200" cy="18" r="4" fill="var(--accent)" stroke="var(--panel)" strokeWidth="2"/>
+                      </svg>
+                    </div>
+
+                    {/* Cell 3: Topic accuracy — OMR read */}
+                    <div className="col-span-2 bg-[var(--panel)] p-4 space-y-2.5">
+                      <h4 className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                        Topic accuracy — OMR read
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-16 shrink-0 text-xs font-semibold text-[var(--ink-soft)]">Polity</span>
+                          <span className="flex gap-1">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                              <span key={i} className={`bubble ${i < 9 ? "f" : ""}`} />
+                            ))}
+                          </span>
+                          <span className="ml-auto font-mono text-xs font-bold text-[var(--ink)]">88%</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-16 shrink-0 text-xs font-semibold text-[var(--ink-soft)]">Sci &amp; Tech</span>
+                          <span className="flex gap-1">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                              <span key={i} className={`bubble ${i < 6 ? "f warn" : ""}`} />
+                            ))}
+                          </span>
+                          <span className="ml-auto font-mono text-xs font-bold text-[var(--ink)]">63%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
 
         {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 4.5 · PERFORMANCE CONSOLE (flagship analytics showcase)
+            QUICK NAVIGATION BAR (Directly below Hero)
         ───────────────────────────────────────────────────────────────────── */}
-        <PerformanceConsoleSection />
+        <div className="py-3.5 border-y border-[var(--panel-border-soft)] bg-[var(--panel-2)]/90 backdrop-blur-md sticky top-0 z-20 shadow-sm">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
+            <span className="text-[11px] font-mono font-bold text-[var(--ink-faint)] uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-amber-500" /> Quick Navigation:
+            </span>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <Link href="#roadmap" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-[#4a3fe0] hover:text-[#4a3fe0] transition flex items-center gap-1.5 shadow-xs">
+                <Compass className="h-3.5 w-3.5 text-indigo-500" /> 3-Stage Roadmap
+              </Link>
+              <Link href="/assessment/gk" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-[#4a3fe0] hover:text-[#4a3fe0] transition flex items-center gap-1.5 shadow-xs">
+                <Target className="h-3.5 w-3.5 text-[#4a3fe0]" /> Self-Prep Mocks
+              </Link>
+              <Link href="/current-affairs/daily-news" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-emerald-500 hover:text-emerald-500 transition flex items-center gap-1.5 shadow-xs">
+                <Newspaper className="h-3.5 w-3.5 text-emerald-500" /> Daily News
+              </Link>
+              <Link href="/current-affairs/workspace" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-indigo-500 hover:text-indigo-500 transition flex items-center gap-1.5 shadow-xs">
+                <FolderOpen className="h-3.5 w-3.5 text-indigo-500" /> Notes Workspace
+              </Link>
+              <Link href="/study-plans" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-amber-500 hover:text-amber-500 transition flex items-center gap-1.5 shadow-xs">
+                <BookOpenCheck className="h-3.5 w-3.5 text-amber-500" /> Study Plans
+              </Link>
+              <Link href="/mentors" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-blue-500 hover:text-blue-500 transition flex items-center gap-1.5 shadow-xs">
+                <Users className="h-3.5 w-3.5 text-blue-500" /> 1:1 Mentors
+              </Link>
+              <Link href="#pricing" className="px-3 py-1.5 rounded-lg bg-[var(--panel)] border border-[var(--panel-border)] text-xs font-bold text-[var(--ink)] hover:border-purple-500 hover:text-purple-500 transition flex items-center gap-1.5 shadow-xs">
+                <ShieldCheck className="h-3.5 w-3.5 text-purple-500" /> Pricing
+              </Link>
+            </div>
+          </div>
+        </div>
 
         {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 5 · MENTORSHIP SPOTLIGHT (full-width dark band)
+            PROCESS GRAPHIC 1 · THE 3 INCREMENTAL STAGES ROADMAP (High Contrast Band)
         ───────────────────────────────────────────────────────────────────── */}
-        <section id="mentorship" className="spotlight-band text-white">
-          <div className="mx-auto max-w-7xl">
-            {/* Header */}
-            <div className="text-center mb-10 space-y-3">
-              <span className="font-mono text-[10px] font-bold text-white/35 uppercase tracking-widest">Mentor Roster</span>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3.5 py-1 text-xs font-bold text-white/65">
-                <GraduationCap className="h-3.5 w-3.5" />
-                Mentorship &amp; Evaluations
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
-                Real Guidance from Verified UPSC Toppers
+        <section id="roadmap" className="py-16 bg-slate-900 dark:bg-slate-950 text-white relative overflow-hidden border-b border-slate-800">
+          <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-emerald-600/10 blur-[120px] pointer-events-none" />
+
+          <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3.5 py-1 rounded-full inline-block">
+                Preparation Roadmap
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                The 3 Incremental Stages of UPSC Mastery
               </h2>
-              <p className="text-sm text-indigo-200/80 max-w-xl mx-auto">
-                Connect with 120+ verified mentors across India. Get Mains answer evaluations, study strategy guidance, and 1:1 sessions.
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+                A structured, step-by-step pathway designed to take you from targeted self-practice to structured guided learning and direct officer mentorship.
               </p>
             </div>
 
-            {/* Flow diagram */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-12">
-              {[
-                { icon: MessageSquare, label: "Set Agenda", desc: "Tell your mentor your goals" },
-                { icon: CheckCircle, label: "Agree Terms", desc: "Define scope & deliverables" },
-                { icon: CreditCard, label: "Safe Payment", desc: "Escrow-protected transaction" },
-                { icon: GraduationCap, label: "Connect", desc: "Zoom session or async eval" },
-              ].map(({ icon: Icon, label, desc }, idx, arr) => (
-                <div key={label} className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                  <div className="flow-step">
-                    <div className="flow-step-icon">
-                      <Icon className="h-5 w-5 text-white" />
-                    </div>
-                    <p className="text-xs font-black text-white">{label}</p>
-                    <p className="text-[10px] text-indigo-300 max-w-[80px]">{desc}</p>
+            {/* 3 Stage Grid Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+              {/* Stage 1 Card */}
+              <Link
+                href="/assessment/gk"
+                className="group rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col justify-between hover:border-indigo-400 transition-all shadow-xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 h-24 w-24 bg-indigo-500/10 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-indigo-300 bg-indigo-500/20 border border-indigo-400/30 px-3 py-1 rounded-full uppercase tracking-wider">
+                      Stage 01
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-400/30">
+                      Free &amp; Unlimited
+                    </span>
                   </div>
-                  {idx < arr.length - 1 && (
-                    <ArrowRight className="h-4 w-4 text-white/30 rotate-90 sm:rotate-0 flex-shrink-0" />
-                  )}
+
+                  <div className="h-12 w-12 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold">
+                    <Target className="h-6 w-6" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition leading-snug">
+                      Self Preparation
+                    </h3>
+                    <p className="text-xs font-mono text-slate-400 mt-1">
+                      GK · CSAT · Mains Mocks
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Build custom topic-wise GS &amp; CSAT tests. Combine targeted question drills with your daily reading to get maximum retention and error recall.
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Topic Tests</span>
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Tag &amp; Revise</span>
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Analytics</span>
+                  </div>
                 </div>
-              ))}
+
+                <div className="pt-5 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:underline">
+                  <span>Start Self Prep</span>
+                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+
+              {/* Stage 2 Card */}
+              <Link
+                href="/study-plans"
+                className="group rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col justify-between hover:border-amber-400 transition-all shadow-xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 h-24 w-24 bg-amber-500/10 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-400/30 px-3 py-1 rounded-full uppercase tracking-wider">
+                      Stage 02
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-400/30">
+                      Guided Learning
+                    </span>
+                  </div>
+
+                  <div className="h-12 w-12 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
+                    <BookOpenCheck className="h-6 w-6" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition leading-snug">
+                      Guided Learning
+                    </h3>
+                    <p className="text-xs font-mono text-slate-400 mt-1">
+                      Structured Subject Study Plans
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Follow structured, syllabus-aligned study plans across all GS subjects. Get daily milestones, recommended sources, and integrated progress checks.
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Subject Roadmaps</span>
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Timelines</span>
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Test Schedules</span>
+                  </div>
+                </div>
+
+                <div className="pt-5 flex items-center justify-between text-xs font-bold text-amber-400 group-hover:underline">
+                  <span>Explore Study Plans</span>
+                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+
+              {/* Stage 3 Card */}
+              <Link
+                href="/mentors"
+                className="group rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col justify-between hover:border-emerald-400 transition-all shadow-xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 h-24 w-24 bg-emerald-500/10 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full uppercase tracking-wider">
+                      Stage 03
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-400/30">
+                      1:1 Officer Guidance
+                    </span>
+                  </div>
+
+                  <div className="h-12 w-12 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold">
+                    <Users className="h-6 w-6" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold text-white group-hover:text-emerald-300 transition leading-snug">
+                      Connect With Mentors
+                    </h3>
+                    <p className="text-xs font-mono text-slate-400 mt-1">
+                      Direct Officer &amp; Topper Consultation
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Ask any query or doubt directly with verified available mentors. Receive line-by-line Mains answer evaluations and strategic 1:1 mentorship calls.
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Mains Eval</span>
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">Strategy Calls</span>
+                    <span className="text-[10px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">1:1 Doubt Solving</span>
+                  </div>
+                </div>
+
+                <div className="pt-5 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:underline">
+                  <span>Connect With Mentors</span>
+                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 2 · MODULE 01 — PRACTICE & TEST BUILDER
+        ───────────────────────────────────────────────────────────────────── */}
+        <section id="modules" className="py-16 border-t border-[var(--panel-border-soft)]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+              <div className="space-y-2 max-w-2xl">
+                <span className="pill-cmd pill-cmd-accent">Module 01 — Self-Prep</span>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight">
+                  Practice smart. Track deeper.
+                </h2>
+                <p className="text-sm sm:text-base text-[var(--ink-soft)] leading-relaxed">
+                  Build custom GS &amp; CSAT tests by topic, tag hard questions for revision, and feed every attempt straight into the performance console.
+                </p>
+              </div>
+              <Link
+                href="/assessment/gk"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-5 py-3 text-sm font-bold text-white hover:brightness-110 transition whitespace-nowrap shrink-0"
+              >
+                Start practising free →
+              </Link>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-              {/* Left: Sample eval CTA + social proof */}
-              <div className="lg:col-span-2 space-y-5">
-                {/* Trust block */}
-                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
-                  <ShieldCheck className="h-8 w-8 text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="font-mono text-sm font-black tabular-nums text-white">120+ Verified Mentors</p>
-                    <p className="text-xs text-indigo-300">IAS/IPS Officers, UPSC Interview Qualifiers &amp; Subject Experts</p>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Custom Test Builder Card */}
+              <div className="lg:col-span-7 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold block mb-3">
+                    Custom Test Builder
+                  </span>
+                  
+                  {/* Interactive Chip Selection Preview */}
+                  <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--bg-2)] p-4 mb-5 space-y-3">
+                    <p className="text-xs font-semibold text-[var(--ink-faint)]">Select topics to include:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Polity", "Economy", "History", "Geography", "Environment"].map((topic) => {
+                        const isSelected = previewSelectedTopics.includes(topic);
+                        return (
+                          <button
+                            key={topic}
+                            type="button"
+                            onClick={() => togglePreviewTopic(topic)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                              isSelected
+                                ? "bg-[#4a3fe0] dark:bg-[#5b5bf5] border-[#4a3fe0] text-white shadow-sm"
+                                : "bg-[var(--panel)] border-[var(--panel-border)] text-[var(--ink-soft)] hover:border-[var(--accent-line)]"
+                            }`}
+                          >
+                            {topic} {isSelected ? "✓" : "+"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-[var(--ink-faint)] pt-1">
+                      Free tier: up to 10 questions per test · {previewSelectedTopics.length} topics selected
+                    </p>
                   </div>
+
+                  <ul className="space-y-3 font-medium text-xs text-[var(--ink-soft)]">
+                    {[
+                      { title: "Topic-wise practice", paid: false },
+                      { title: "Performance analytics", paid: false },
+                      { title: "Tag & revise weak items", paid: false },
+                      { title: "Advanced AI trend tracking", paid: true },
+                      { title: "Photo/PDF question import (OCR)", paid: true },
+                    ].map((feat) => (
+                      <li key={feat.title} className="flex items-center justify-between border-b border-[var(--panel-border-soft)] pb-2.5 last:border-none last:pb-0">
+                        <span className="font-bold text-[var(--ink)]">{feat.title}</span>
+                        {feat.paid ? (
+                          <span className="font-mono text-[9px] uppercase tracking-wider font-bold bg-[var(--panel-2)] text-[var(--ink-faint)] border border-[var(--panel-border)] px-2 py-0.5 rounded-full">
+                            Self-Prep
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[9px] uppercase tracking-wider font-bold bg-[var(--positive-soft)] text-[var(--positive)] px-2 py-0.5 rounded-full">
+                            Free
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Why it works card */}
+              <div className="lg:col-span-5 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 flex flex-col justify-center space-y-4">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                  Why it works
+                </span>
+                <h3 className="text-xl font-bold text-[var(--ink)] leading-snug">
+                  Every question is topic-tagged.
+                </h3>
+                <p className="text-sm text-[var(--ink-soft)] leading-relaxed">
+                  So every attempt writes to the same record — there's no separate "practice mode" that doesn't count toward your analytics.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 3 · MODULE 02 — ALWAYS FREE CURRENT AFFAIRS & PIPELINE
+        ───────────────────────────────────────────────────────────────────── */}
+        <section id="current-affairs" className="py-16 border-t-2 border-emerald-500/30 bg-emerald-950/10 dark:bg-emerald-950/25 omr-tex">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="space-y-2 max-w-2xl">
+                <span className="pill-cmd pill-cmd-pos">Module 02 — Always free</span>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight">
+                  Stay current. Stay ahead.
+                </h2>
+                <p className="text-sm sm:text-base text-[var(--ink-soft)] leading-relaxed">
+                  Subject and topic-tagged daily current affairs for Prelims and Mains — de-duplicated, cross-linked, free forever, no login required.
+                </p>
+              </div>
+              <Link
+                href="/current-affairs/daily-news"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-5 py-3 text-sm font-bold text-white hover:brightness-110 transition whitespace-nowrap shrink-0"
+              >
+                Read today's news →
+              </Link>
+            </div>
+
+            {/* Visual 5-Step Pipeline Graphic (Above Articles) */}
+            <div className="rounded-2xl border border-emerald-500/20 bg-[var(--panel)] p-6 space-y-6 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--panel-border-soft)] pb-4">
+                <div>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--positive)] font-bold block mb-1">
+                    Visual Workflow Pipeline
+                  </span>
+                  <h3 className="text-xl font-bold text-[var(--ink)]">
+                    Current Affairs to Revision Notes Workflow
+                  </h3>
+                </div>
+                <p className="text-xs text-[var(--ink-faint)]">
+                  5 simple steps from daily reading to offline exam-day recall
+                </p>
+              </div>
+
+              {/* 5 Step Visual Pipeline Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Step 1 */}
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--bg-2)] p-4 flex flex-col justify-between space-y-3 hover:border-emerald-500/40 transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="h-6 w-6 rounded-md bg-[var(--positive-soft)] text-[var(--positive)] font-mono text-xs font-black flex items-center justify-center border border-[var(--positive)]/20">
+                        01
+                      </span>
+                      <Newspaper className="h-4 w-4 text-[var(--positive)]" />
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--ink)]">Read Daily News</h4>
+                    <p className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
+                      Best possible presentation with topic tags, PYQ links &amp; key facts.
+                    </p>
+                  </div>
+                  <span className="font-mono text-[9px] font-bold text-[var(--positive)] uppercase tracking-wider bg-[var(--positive-soft)] border border-[var(--positive)]/20 px-2 py-0.5 rounded w-max">
+                    Reading
+                  </span>
                 </div>
 
-                {/* Star rating */}
-                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-4">
-                  <div className="flex gap-0.5">
-                    {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />)}
+                {/* Step 2 */}
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--bg-2)] p-4 flex flex-col justify-between space-y-3 hover:border-emerald-500/40 transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="h-6 w-6 rounded-md bg-[#4a3fe0]/10 dark:bg-[#5b5bf5]/15 text-[#4a3fe0] dark:text-[#5b5bf5] font-mono text-xs font-black flex items-center justify-center border border-[#4a3fe0]/20">
+                        02
+                      </span>
+                      <FolderInput className="h-4 w-4 text-[#4a3fe0] dark:text-[#5b5bf5]" />
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--ink)]">Save to Repos</h4>
+                    <p className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
+                      Organize into subject repos (Polity, Econ) &amp; add filter tags.
+                    </p>
                   </div>
-                  <div>
-                    <p className="font-mono text-sm font-bold tabular-nums text-white">4.9 / 5 avg rating</p>
-                    <p className="text-xs text-indigo-300">From 2,400+ mentor sessions</p>
-                  </div>
+                  <span className="font-mono text-[9px] font-bold text-[#4a3fe0] dark:text-[#5b5bf5] uppercase tracking-wider bg-[#4a3fe0]/10 border border-[#4a3fe0]/20 px-2 py-0.5 rounded w-max">
+                    Repositories
+                  </span>
                 </div>
 
-                {/* Key CTAs */}
-                <Link
-                  href="/mentorship/sample-evaluation"
-                  className="touch-target block w-full rounded-xl bg-surface text-slate-900 px-5 py-3 text-sm font-bold hover:bg-indigo-50 transition-colors text-center"
-                  id="mentorship-sample-eval"
-                >
-                  📄 View a Sample Evaluated Mains Answer
-                </Link>
-                <Link
-                  href="/mentors"
-                  className="touch-target block w-full rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white hover:bg-white/20 transition-colors text-center"
-                >
-                  Browse All Mentors <ArrowRight className="h-4 w-4 inline ml-1" />
+                {/* Step 3 */}
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--bg-2)] p-4 flex flex-col justify-between space-y-3 hover:border-emerald-500/40 transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="h-6 w-6 rounded-md bg-amber-500/10 text-[#b8730a] dark:text-[#f59e0b] font-mono text-xs font-black flex items-center justify-center border border-amber-500/20">
+                        03
+                      </span>
+                      <Edit3 className="h-4 w-4 text-[#b8730a] dark:text-[#f59e0b]" />
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--ink)]">Edit &amp; Add Notes</h4>
+                    <p className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
+                      Add 3–5 quick revision bullets per article for rapid recall.
+                    </p>
+                  </div>
+                  <span className="font-mono text-[9px] font-bold text-[#b8730a] dark:text-[#f59e0b] uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded w-max">
+                    Revision Lines
+                  </span>
+                </div>
+
+                {/* Step 4 */}
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--bg-2)] p-4 flex flex-col justify-between space-y-3 hover:border-emerald-500/40 transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="h-6 w-6 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-mono text-xs font-black flex items-center justify-center border border-purple-500/20">
+                        04
+                      </span>
+                      <PlusCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--ink)]">Add Own News</h4>
+                    <p className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
+                      Insert your own news clips, personal notes, or external editorials.
+                    </p>
+                  </div>
+                  <span className="font-mono text-[9px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded w-max">
+                    User Notes
+                  </span>
+                </div>
+
+                {/* Step 5 */}
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--bg-2)] p-4 flex flex-col justify-between space-y-3 hover:border-emerald-500/40 transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="h-6 w-6 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-black flex items-center justify-center border border-emerald-500/20">
+                        05
+                      </span>
+                      <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--ink)]">Revise &amp; Download</h4>
+                    <p className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
+                      Filter by tag, recall rapidly, and download your repo offline.
+                    </p>
+                  </div>
+                  <span className="font-mono text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded w-max">
+                    Download &amp; Read
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Articles Grid (Below Pipeline) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                  Today's Featured News Briefs
+                </span>
+                <Link href="/current-affairs/daily-news" className="text-xs font-bold text-[#4a3fe0] dark:text-[#5b5bf5] hover:underline">
+                  View all news →
                 </Link>
               </div>
 
-              {/* Right: Mentor cards */}
-              <div className="lg:col-span-3 snap-scroll-x lg:grid lg:grid-cols-3 gap-4 lg:overflow-x-visible">
-                {mentors.length > 0 ? mentors.map((mentor, idx) => {
-                  const avatarFallbacks = [
-                    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop",
-                    "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop",
-                    "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&auto=format&fit=crop",
-                  ];
-                  const avatar = mentor.profile_image_url || avatarFallbacks[idx % avatarFallbacks.length];
-                  return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {latestArticles.length > 0 ? (
+                  latestArticles.map((article: any) => (
                     <Link
-                      key={mentor.id}
-                      href={`/mentors/${mentor.id}`}
-                      className="w-[260px] lg:w-auto flex-shrink-0 flex flex-col rounded-2xl bg-white/8 border border-white/10 p-4 hover:bg-white/12 transition-colors"
+                      key={article.id}
+                      href={`/current-affairs/articles/${article.slug}`}
+                      className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 flex flex-col justify-between hover:border-[var(--accent-line)] transition space-y-4 group shadow-xs"
                     >
-                      <div className="flex items-center gap-3 mb-3">
-                        <img src={avatar} alt={mentor.display_name} className="h-12 w-12 rounded-xl object-cover border border-white/20 shrink-0" loading="lazy" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-bold text-white truncate">{mentor.display_name}</p>
-                            {mentor.is_verified && <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
-                          </div>
-                          <p className="text-[10px] font-bold text-indigo-300 truncate">{mentor.years_experience > 0 ? `${mentor.years_experience} Yrs Exp.` : "UPSC Expert"}</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-[var(--positive)] font-bold">
+                          <span>{article.category_name || "General Studies"}</span>
+                          <span className="text-[var(--ink-faint)]">
+                            {article.published_at ? new Date(article.published_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "Today"}
+                          </span>
                         </div>
+                        <h4 className="text-base font-bold text-[var(--ink)] group-hover:text-[#4a3fe0] dark:group-hover:text-[#5b5bf5] transition line-clamp-2">
+                          {article.title}
+                        </h4>
+                        <p className="text-xs text-[var(--ink-soft)] line-clamp-3 leading-relaxed">
+                          {article.summary || article.excerpt || "Click to read full exam brief, key facts & PYQ connections."}
+                        </p>
                       </div>
-                      <p className="text-xs text-indigo-200/70 line-clamp-2 italic flex-1">"{mentor.headline || "IAS Coach & Mentor for UPSC CSE Mains & Interview."}"</p>
-                      <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-indigo-300">1:1 Sessions</span>
-                        <span className="text-[10px] font-bold text-white bg-white/10 px-2 py-0.5 rounded">Book →</span>
-                      </div>
+                      <span className="text-xs font-bold text-[#4a3fe0] dark:text-[#5b5bf5] group-hover:underline">
+                        Read free brief →
+                      </span>
                     </Link>
-                  );
-                }) : (
-                  // Placeholder mentor cards
-                  [{name:"Aditya Sharma",role:"IAS 2023 · AIR 12",exp:"2 Yrs"},{name:"Priya Mehta",role:"IPS 2022 · Mains Expert",exp:"3 Yrs"},{name:"Rohan Gupta",role:"UPSC Prelims Topper",exp:"1 Yr"}].map(m => (
-                    <div key={m.name} className="w-[260px] lg:w-auto flex-shrink-0 flex flex-col rounded-2xl bg-white/8 border border-white/10 p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shrink-0">
-                          <span className="text-white font-black text-lg">{m.name[0]}</span>
+                  ))
+                ) : (
+                  [
+                    {
+                      category: "Polity",
+                      date: "24 Jul",
+                      title: "Parliamentary Committee Recommends Reforms to the Anti-Defection Law",
+                      snippet: "A joint committee report proposes narrowing the Speaker's discretionary role in disqualification cases.",
+                    },
+                    {
+                      category: "Economy",
+                      date: "24 Jul",
+                      title: "RBI's Monetary Policy Committee Holds Repo Rate, Cites Core Inflation",
+                      snippet: "MPC minutes reveal a 4–2 split on the growth-versus-inflation trade-off for FY27.",
+                    },
+                    {
+                      category: "Environment",
+                      date: "23 Jul",
+                      title: "Western Ghats ESA Notification Faces Fresh Pushback",
+                      snippet: "State governments seek a review of buffer-zone boundaries ahead of the final gazette notification.",
+                    }
+                  ].map((art) => (
+                    <Link
+                      key={art.title}
+                      href="/current-affairs/daily-news"
+                      className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 flex flex-col justify-between hover:border-[var(--accent-line)] transition space-y-4 group shadow-xs"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-[var(--positive)] font-bold">
+                          <span>{art.category}</span>
+                          <span className="text-[var(--ink-faint)]">{art.date}</span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-bold text-white">{m.name}</p>
-                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                          </div>
-                          <p className="text-[10px] font-bold text-indigo-300">{m.exp} Experience</p>
-                        </div>
+                        <h4 className="text-base font-bold text-[var(--ink)] group-hover:text-[#4a3fe0] dark:group-hover:text-[#5b5bf5] transition leading-snug">
+                          {art.title}
+                        </h4>
+                        <p className="text-xs text-[var(--ink-soft)] leading-relaxed">
+                          {art.snippet}
+                        </p>
                       </div>
-                      <p className="text-xs text-indigo-200/70 italic">{m.role}</p>
-                      <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-indigo-300">1:1 Sessions</span>
-                        <Link href="/mentors" className="text-[10px] font-bold text-white bg-white/10 px-2 py-0.5 rounded hover:bg-white/20 transition-colors">View →</Link>
-                      </div>
-                    </div>
+                      <span className="text-xs font-bold text-[#4a3fe0] dark:text-[#5b5bf5] group-hover:underline">
+                        Read free brief →
+                      </span>
+                    </Link>
                   ))
                 )}
               </div>
             </div>
+
           </div>
         </section>
 
         {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 6 · SUBSCRIPTION PRICING MATRIX
+            SECTION 4 · MODULE 03 — NOTES WORKSPACE
         ───────────────────────────────────────────────────────────────────── */}
-        <section id="pricing" className="bg-slate-50 section-showcase">
-          <div className="mx-auto max-w-7xl">
-            <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3.5 py-1 text-xs font-bold text-indigo-600">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Transparent Pricing — Always
+        <section className="py-16 border-t-2 border-indigo-500/30 bg-indigo-950/10 dark:bg-indigo-950/25">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+              <div className="space-y-2 max-w-2xl">
+                <span className="pill-cmd pill-cmd-accent">Module 03 — Notes Workspace</span>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight">
+                  Build your personal knowledge base.
+                </h2>
+                <p className="text-sm sm:text-base text-[var(--ink-soft)] leading-relaxed">
+                  Import current affairs into organised repositories, add revision lines, tag by exam category, recall fast on exam day.
+                </p>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Plans for Every Stage of Your Journey
+              <Link
+                href="/current-affairs/workspace"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-5 py-3 text-sm font-bold text-white hover:brightness-110 transition whitespace-nowrap shrink-0 shadow-md"
+              >
+                Go to Notes Workspace →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Bento: Repositories Mock */}
+              <div className="lg:col-span-7 rounded-2xl border border-indigo-500/20 bg-[var(--panel)] p-6 space-y-4 shadow-md">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-bold">
+                    My Repositories — 2 / 1 active (free)
+                  </span>
+                  <Link href="/current-affairs/workspace" className="text-xs font-bold text-[#4a3fe0] dark:text-[#5b5bf5] hover:underline">
+                    Manage workspace →
+                  </Link>
+                </div>
+                <div className="space-y-2.5">
+                  <Link href="/current-affairs/workspace" className="flex items-center justify-between rounded-xl border border-[var(--panel-border)] p-3.5 bg-[var(--panel-2)] hover:border-indigo-500/40 transition group">
+                    <span className="text-sm font-bold text-[var(--ink)] group-hover:text-[#4a3fe0] dark:group-hover:text-[#5b5bf5]">Polity &amp; Governance</span>
+                    <span className="font-mono text-xs font-semibold text-[var(--ink-faint)]">8 articles</span>
+                  </Link>
+                  <Link href="/current-affairs/workspace" className="flex items-center justify-between rounded-xl border border-[var(--panel-border)] p-3.5 bg-[var(--panel-2)] hover:border-indigo-500/40 transition group">
+                    <span className="text-sm font-bold text-[var(--ink)] group-hover:text-[#4a3fe0] dark:group-hover:text-[#5b5bf5]">Environment &amp; Ecology</span>
+                    <span className="font-mono text-xs font-semibold text-[var(--ink-faint)]">10 articles</span>
+                  </Link>
+                  <div className="flex items-center justify-between rounded-xl border border-dashed border-[var(--panel-border)] p-3.5 bg-[var(--panel)] opacity-55">
+                    <span className="text-sm font-bold text-[var(--ink)]">International Relations</span>
+                    <span className="font-mono text-xs font-semibold text-[var(--ink-faint)]">locked</span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/current-affairs/workspace"
+                  className="w-full h-10 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-bold hover:bg-indigo-600 hover:text-white transition flex items-center justify-center gap-2 mt-2"
+                >
+                  <FolderOpen className="h-4 w-4" /> Open Personal Notes Workspace →
+                </Link>
+              </div>
+
+              {/* Right Bento: Feature Matrix */}
+              <div className="lg:col-span-5 rounded-2xl border border-indigo-500/20 bg-[var(--panel)] p-6 space-y-4 shadow-md">
+                <ul className="space-y-3 font-medium text-xs text-[var(--ink-soft)]">
+                  {[
+                    { title: "Multiple repositories", paid: false },
+                    { title: "One-click import from news", paid: false },
+                    { title: "Quick revision lines", paid: false },
+                    { title: "Bulk import categories", paid: true },
+                    { title: "Auto-connected topics", paid: true },
+                  ].map((feat) => (
+                    <li key={feat.title} className="flex items-center justify-between border-b border-[var(--panel-border-soft)] pb-2.5 last:border-none last:pb-0">
+                      <span className="font-bold text-[var(--ink)]">{feat.title}</span>
+                      {feat.paid ? (
+                        <span className="font-mono text-[9px] uppercase tracking-wider font-bold bg-[var(--panel-2)] text-[var(--ink-faint)] border border-[var(--panel-border)] px-2 py-0.5 rounded-full">
+                          Notes Plan
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[9px] uppercase tracking-wider font-bold bg-[var(--positive-soft)] text-[var(--positive)] px-2 py-0.5 rounded-full">
+                          Free
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 5 · PERFORMANCE CONSOLE (FLAGSHIP ANALYTICS)
+        ───────────────────────────────────────────────────────────────────── */}
+        <PerformanceConsoleSection />
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 6 · MENTORSHIP ROSTER
+        ───────────────────────────────────────────────────────────────────── */}
+        <section id="mentorship" className="py-16 border-t-2 border-amber-500/30 bg-amber-950/10 dark:bg-amber-950/25">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+              <div className="space-y-2 max-w-2xl">
+                <span className="pill-cmd pill-cmd-accent">Mentor roster</span>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight">
+                  Real guidance from verified officers.
+                </h2>
+                <p className="text-sm sm:text-base text-[var(--ink-soft)] leading-relaxed">
+                  120+ verified mentors across India for Mains evaluation, strategy, and 1:1 sessions — every engagement scoped and escrow-protected before it starts.
+                </p>
+              </div>
+              <Link
+                href="/mentors"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-5 py-3 text-sm font-bold text-white hover:brightness-110 transition whitespace-nowrap shrink-0"
+              >
+                Browse all mentors →
+              </Link>
+            </div>
+
+            {/* Officer Roster List */}
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel-border)] divide-y divide-[var(--panel-border)] overflow-hidden">
+              {mentors.length > 0 ? (
+                mentors.map((m: any) => (
+                  <div key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-[var(--panel)]">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#b8730a] to-[#8a5c0a] flex items-center justify-center font-bold text-amber-950 text-base shrink-0">
+                        {m.display_name?.[0] || "M"}
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-[var(--ink)]">{m.display_name}</h4>
+                        <span className="font-mono text-xs text-[var(--ink-faint)]">
+                          {m.years_experience > 0 ? `${m.years_experience} Yrs Experience` : "Verified UPSC Topper"}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[var(--ink-soft)] italic flex-1 max-w-xl">
+                      "{m.headline || "Dedicated Mains answer writing evaluation & strategy mentor."}"
+                    </p>
+                    <Link
+                      href={`/mentors/${m.id}`}
+                      className="font-mono text-xs font-bold text-[#4a3fe0] dark:text-[#5b5bf5] hover:underline shrink-0"
+                    >
+                      Book →
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                [
+                  {
+                    name: "Aditya Sharma",
+                    role: "IAS 2023 · AIR 12",
+                    quote: "I review each answer against the actual GS-II marking scheme, not a generic rubric."
+                  },
+                  {
+                    name: "Priya Mehta",
+                    role: "IPS 2022 · Mains Expert",
+                    quote: "Most students lose marks on structure, not content. That's where I focus first."
+                  },
+                  {
+                    name: "Rohan Gupta",
+                    role: "UPSC Prelims Topper",
+                    quote: "CSAT is a pacing exam. I teach the clock, not just the concepts."
+                  }
+                ].map((m) => (
+                  <div key={m.name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-[var(--panel)]">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#b8730a] to-[#8a5c0a] flex items-center justify-center font-bold text-amber-950 text-base shrink-0">
+                        {m.name[0]}
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-[var(--ink)]">{m.name}</h4>
+                        <span className="font-mono text-xs text-[var(--ink-faint)]">{m.role}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[var(--ink-soft)] italic flex-1 max-w-xl">
+                      "{m.quote}"
+                    </p>
+                    <Link
+                      href="/mentors"
+                      className="font-mono text-xs font-bold text-[#4a3fe0] dark:text-[#5b5bf5] hover:underline shrink-0"
+                    >
+                      Book →
+                    </Link>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 7 · VERIFIED OUTCOME TESTIMONIAL
+        ───────────────────────────────────────────────────────────────────── */}
+        <section className="py-20 border-t border-[var(--panel-border-soft)] bg-[var(--bg-2)] omr-tex text-center">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-4">
+            <span className="font-mono text-xs uppercase tracking-widest text-[var(--ink-faint)]">
+              // verified outcome
+            </span>
+            <blockquote className="text-xl sm:text-2xl font-bold text-[var(--ink)] leading-relaxed max-w-3xl mx-auto">
+              "The custom test builder helped me target my weakest topics, and my mentor's Mains evaluation caught mistakes I'd been making for months."
+            </blockquote>
+            <div>
+              <cite className="not-italic text-sm font-bold text-[var(--ink)] block">Aditya Verma</cite>
+              <span className="font-mono text-xs uppercase tracking-wider text-[#4a3fe0] dark:text-[#5b5bf5] block mt-0.5">
+                IAS Officer · AIR 45, UPSC CSE 2025
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────────────────────────────────────────────────────
+            SECTION 8 · PRICING MATRIX
+        ───────────────────────────────────────────────────────────────────── */}
+        <section id="pricing" className="py-16 border-t border-[var(--panel-border-soft)]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-2 mb-10">
+              <span className="pill-cmd pill-cmd-accent">Pricing</span>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight">
+                Plans for every stage of your journey.
               </h2>
-              <p className="text-sm text-slate-500">
-                Start free. Upgrade only what you need. Current affairs reading is always free for everyone.
+              <p className="text-sm sm:text-base text-[var(--ink-soft)]">
+                Start free. Upgrade only what you need. Current affairs stays free for everyone, always.
               </p>
             </div>
 
-            {/* Mobile: snap carousel | Desktop: grid */}
-            <div className="snap-scroll-x lg:grid lg:grid-cols-4 lg:gap-5 lg:overflow-x-visible">
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* FREE */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-slate-150 bg-surface p-6 shadow-sm flex flex-col">
-                <div className="space-y-1 mb-4">
-                  <h3 className="text-base font-black text-slate-800">Free Tier</h3>
-                  <p className="text-xs text-slate-500">Core features to get started</p>
-                </div>
-                <div className="flex items-baseline mb-5">
-                  <span className="font-mono text-3xl font-black tabular-nums text-slate-900">₹0</span>
-                  <span className="text-xs font-semibold text-slate-400 ml-1">/ month</span>
-                </div>
-                <div className="h-px bg-slate-100 mb-5" />
-                <ul className="space-y-3 text-xs text-slate-600 font-medium flex-1">
-                  {[
-                    {t:"Current Affairs — Unlimited, Always Free", ok:true, highlight:true},
-                    {t:"3 Custom Tests / Month (up to 10 Qs)", ok:true},
-                    {t:"Notes: 10 Articles per Repository (free)", ok:true},
-                    {t:"1 Active Notes Repository", ok:true},
-                    {t:"Sample Mentor Evaluations", ok:true},
-                    {t:"Advanced AI Analytics", ok:false},
-                    {t:"Unlimited Tests & Questions", ok:false},
-                  ].map(({t,ok,highlight}) => (
-                    <li key={t} className={`flex items-start gap-2 ${highlight ? "font-bold text-emerald-700" : ok ? "" : "text-slate-350"}`}>
-                      <Check className={`h-4 w-4 shrink-0 mt-0.5 ${highlight ? "text-emerald-500" : ok ? "text-emerald-500" : "text-slate-200"}`} />
-                      <span>{t}</span>
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[var(--ink)]">Free Tier</h3>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">Core features to get started</p>
+                  </div>
+                  <div className="font-mono text-3xl font-bold text-[var(--ink)]">
+                    ₹0<span className="text-xs text-[var(--ink-faint)] font-normal">/mo</span>
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--ink-soft)] border-t border-[var(--panel-border)] pt-4">
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Current affairs — unlimited, always free</span>
                     </li>
-                  ))}
-                </ul>
-                <Link href="/register" className="mt-6 block w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-center font-bold text-slate-700 text-xs transition-colors">
-                  Create Free Account
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>3 custom tests / month (up to 10 Qs)</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>10 notes articles per repository</span>
+                    </li>
+                  </ul>
+                </div>
+                <Link
+                  href="/register"
+                  className="block w-full text-center py-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] text-xs font-bold text-[var(--ink)] hover:bg-[var(--panel-2)] transition"
+                >
+                  Create free account
                 </Link>
               </div>
 
-              {/* SELF-PREP MODULE */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-blue-100 bg-surface p-6 shadow-sm flex flex-col">
-                <div className="space-y-1 mb-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-slate-800">Self-Prep Plan</h3>
-                    <Target className="h-4 w-4 text-civic" />
+              {/* SELF-PREP */}
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[var(--ink)]">Self-Prep</h3>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">For serious mock practice</p>
                   </div>
-                  <p className="text-xs text-slate-500">For serious mock practice</p>
-                </div>
-                <div className="flex items-baseline mb-5">
-                  <span className="font-mono text-3xl font-black tabular-nums text-slate-900">₹499</span>
-                  <span className="text-xs font-semibold text-slate-400 ml-1">/ month</span>
-                </div>
-                <div className="h-px bg-slate-100 mb-5" />
-                <ul className="space-y-3 text-xs text-slate-600 font-medium flex-1">
-                  {[
-                    {t:"Current Affairs — Unlimited, Always Free", ok:true, highlight:true},
-                    {t:"Unlimited Custom Tests (No question limit)", ok:true},
-                    {t:"Full GK & CSAT Sectional Mocks", ok:true},
-                    {t:"Advanced Subject-wise Analytics Radar", ok:true},
-                    {t:"AI Mains Answer Grading", ok:true},
-                    {t:"Photo/PDF Question Import (unlimited)", ok:true},
-                  ].map(({t,ok,highlight}) => (
-                    <li key={t} className={`flex items-start gap-2 ${highlight ? "font-bold text-emerald-700" : ""}`}>
-                      <Check className={`h-4 w-4 shrink-0 mt-0.5 ${highlight ? "text-emerald-500" : "text-blue-500"}`} />
-                      <span>{t}</span>
+                  <div className="font-mono text-3xl font-bold text-[var(--ink)]">
+                    ₹499<span className="text-xs text-[var(--ink-faint)] font-normal">/mo</span>
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--ink-soft)] border-t border-[var(--panel-border)] pt-4">
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Unlimited custom tests, no cap</span>
                     </li>
-                  ))}
-                </ul>
-                <Link href="/register" className="mt-6 block w-full py-3 rounded-xl bg-civic/10 hover:bg-blue-100 text-center font-bold text-civic text-xs transition-colors">
-                  Get Self-Prep Plan
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Full GK &amp; CSAT sectional mocks</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Advanced subject-wise analytics</span>
+                    </li>
+                  </ul>
+                </div>
+                <Link
+                  href="/register"
+                  className="block w-full text-center py-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] text-xs font-bold text-[var(--ink)] hover:bg-[var(--panel-2)] transition"
+                >
+                  Get Self-Prep
                 </Link>
               </div>
 
-              {/* NOTES MODULE */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border border-indigo-100 bg-surface p-6 shadow-sm flex flex-col">
-                <div className="space-y-1 mb-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-slate-800">Notes Plan</h3>
-                    <NotebookPen className="h-4 w-4 text-indigo-600" />
+              {/* NOTES */}
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[var(--ink)]">Notes</h3>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">For daily notes &amp; workspace</p>
                   </div>
-                  <p className="text-xs text-slate-500">For daily notes & workspace</p>
-                </div>
-                <div className="flex items-baseline mb-5">
-                  <span className="font-mono text-3xl font-black tabular-nums text-slate-900">₹299</span>
-                  <span className="text-xs font-semibold text-slate-400 ml-1">/ month</span>
-                </div>
-                <div className="h-px bg-slate-100 mb-5" />
-                <ul className="space-y-3 text-xs text-slate-600 font-medium flex-1">
-                  {[
-                    {t:"Current Affairs — Unlimited, Always Free", ok:true, highlight:true},
-                    {t:"Unlimited Notes & Bulk Imports", ok:true},
-                    {t:"Multiple Active Repositories (unlimited)", ok:true},
-                    {t:"Bulk-import entire article categories", ok:true},
-                    {t:"Auto-connected topics across repos", ok:true},
-                    {t:"Add your own articles manually", ok:true},
-                  ].map(({t,ok,highlight}) => (
-                    <li key={t} className={`flex items-start gap-2 ${highlight ? "font-bold text-emerald-700" : ""}`}>
-                      <Check className={`h-4 w-4 shrink-0 mt-0.5 ${highlight ? "text-emerald-500" : "text-indigo-500"}`} />
-                      <span>{t}</span>
+                  <div className="font-mono text-3xl font-bold text-[var(--ink)]">
+                    ₹299<span className="text-xs text-[var(--ink-faint)] font-normal">/mo</span>
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--ink-soft)] border-t border-[var(--panel-border)] pt-4">
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Unlimited notes &amp; bulk imports</span>
                     </li>
-                  ))}
-                </ul>
-                <Link href="/register" className="mt-6 block w-full py-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-center font-bold text-indigo-700 text-xs transition-colors">
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Unlimited active repositories</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Auto-connected topics</span>
+                    </li>
+                  </ul>
+                </div>
+                <Link
+                  href="/register"
+                  className="block w-full text-center py-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] text-xs font-bold text-[var(--ink)] hover:bg-[var(--panel-2)] transition"
+                >
                   Get Notes Plan
                 </Link>
               </div>
 
-              {/* ALL-ACCESS PREMIUM */}
-              <div className="w-[85vw] sm:w-[340px] lg:w-auto flex-shrink-0 rounded-2xl border-2 border-indigo-600 bg-midnight p-6 shadow-xl flex flex-col relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider whitespace-nowrap">
-                  Best Value
-                </div>
-                <div className="space-y-1 mb-4">
-                  <h3 className="text-base font-black text-white">All-Access Premium</h3>
-                  <p className="text-xs text-indigo-300">Everything, for serious UPSC prep</p>
-                </div>
-                <div className="flex items-baseline mb-5">
-                  <span className="font-mono text-3xl font-black tabular-nums text-white">₹699</span>
-                  <span className="text-xs font-semibold text-indigo-400 ml-1">/ month</span>
-                </div>
-                <div className="h-px bg-white/10 mb-5" />
-                <ul className="space-y-3 text-xs text-indigo-100 font-medium flex-1">
-                  {[
-                    "Current Affairs — Unlimited, Always Free",
-                    "Unlimited Tests + Advanced AI Tracking",
-                    "Unlimited Notes + Auto-Connected Topics",
-                    "2 Live Mentorship Sessions / Month",
-                    "Priority Mains Evaluations",
-                    "Photo/PDF Import (unlimited)",
-                    "All future features included",
-                  ].map(t => (
-                    <li key={t} className={`flex items-start gap-2 ${t.includes("Always Free") ? "font-bold text-emerald-400" : ""}`}>
-                      <Check className={`h-4 w-4 shrink-0 mt-0.5 ${t.includes("Always Free") ? "text-emerald-400" : "text-indigo-400"}`} />
-                      <span>{t}</span>
+              {/* ALL-ACCESS FEATURED */}
+              <div className="rounded-2xl border border-[var(--accent-line)] bg-gradient-to-b from-[var(--accent-soft)] to-[var(--panel)] p-6 flex flex-col justify-between space-y-6 shadow-lg">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[var(--ink)]">All-Access</h3>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">Everything, for serious prep</p>
+                  </div>
+                  <div className="font-mono text-3xl font-bold text-[var(--ink)]">
+                    ₹699<span className="text-xs text-[var(--ink-faint)] font-normal">/mo</span>
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--ink-soft)] border-t border-[var(--panel-border)] pt-4">
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Unlimited tests + AI trend tracking</span>
                     </li>
-                  ))}
-                </ul>
-                <Link href="/register" className="mt-6 block w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-center font-bold text-white text-xs transition-colors">
-                  Unlock Everything
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>2 live mentorship sessions / month</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-[#4a3fe0] dark:text-[#5b5bf5] font-bold">›</span>
+                      <span>Priority Mains evaluations</span>
+                    </li>
+                  </ul>
+                </div>
+                <Link
+                  href="/register"
+                  className="block w-full text-center py-3 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] text-xs font-bold text-white hover:brightness-110 transition shadow-md"
+                >
+                  Unlock everything
                 </Link>
               </div>
             </div>
-
-            {/* Always-free reminder */}
-            <p className="mt-6 text-center text-xs text-slate-400 font-medium">
-              📖 Current Affairs reading is free for everyone, forever — no account or payment required.
-            </p>
           </div>
         </section>
 
         {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 7 · TESTIMONIAL
+            SECTION 9 · FAQ ACCORDION
         ───────────────────────────────────────────────────────────────────── */}
-        <section className="bg-surface py-16 px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center space-y-5">
-            <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">// Verified Outcome</p>
-            <div className="flex justify-center gap-1 text-amber-400">
-              {[1,2,3,4,5].map(i => <Star key={i} className="h-5 w-5 fill-current" />)}
-            </div>
-            <blockquote className="text-base sm:text-xl font-bold italic text-slate-700 leading-relaxed">
-              &ldquo;WayToIAS completely changed how I prepare. The custom test builder helped me target my weakest topics, and my mentor's Mains evaluation caught mistakes I'd been making for months. The current affairs section is superb — I read it every day for free.&rdquo;
-            </blockquote>
-            <div>
-              <cite className="not-italic text-sm font-black text-slate-900">Aditya Verma</cite>
-              <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mt-0.5">IAS Officer (AIR 45, UPSC CSE 2025)</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────────────────────────────────────────────
-            SECTION 7.5 · FAQ
-        ───────────────────────────────────────────────────────────────────── */}
-        <section className="bg-slate-50 section-showcase">
-          <div className="mx-auto max-w-7xl">
-            <div className="max-w-2xl mb-10 space-y-2">
-              <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">Frequently Asked</span>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                Questions aspirants ask us most.
+        <section className="py-16 border-t border-[var(--panel-border-soft)] bg-[var(--bg-2)]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-2 mb-8">
+              <span className="pill-cmd pill-cmd-accent">FAQ</span>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-[var(--ink)] tracking-tight">
+                Frequently asked.
               </h2>
             </div>
+
             <div className="max-w-3xl space-y-3">
               {[
                 {
                   q: "Is current affairs really free forever?",
-                  a: "Yes — every daily brief, topic tag, and PYQ connection in the current affairs section is free with no login and no daily limit, on every plan including no plan at all.",
+                  a: "Yes — every daily brief, topic tag, and PYQ connection is free with no login and no daily limit, on every plan including no plan at all.",
                 },
                 {
                   q: "How are mentors verified?",
-                  a: "Mentors are verified UPSC-qualified officers or subject experts, each with a public track record shown on their profile before you book a session or evaluation.",
+                  a: "Mentors are verified UPSC-qualified officers or subject experts, each with a public track record on their profile before you book.",
                 },
                 {
-                  q: "What happens to my analytics if I stay on the free plan?",
-                  a: "You still get topic-wise accuracy and the weak-area focus panel on every test you take — paid tiers add multi-week trend tracking and unlimited test volume.",
+                  q: "What analytics do I get on the free plan?",
+                  a: "Topic-wise accuracy and the weak-area focus panel on every test — paid tiers add multi-week trend tracking and unlimited test volume.",
                 },
                 {
                   q: "Can I cancel a paid plan anytime?",
-                  a: "Yes, plans are month-to-month with no lock-in. Your notes and past test records remain accessible even after downgrading.",
+                  a: "Yes, plans are month-to-month with no lock-in. Notes and past test records stay accessible even after downgrading.",
                 },
               ].map(({ q, a }) => (
-                <details key={q} className="group rounded-2xl border border-slate-100 bg-surface px-5 py-4">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
-                    <span className="text-sm font-bold text-slate-800">{q}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+                <details key={q} className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-sm text-[var(--ink)]">
+                    <span>{q}</span>
+                    <span className="font-mono text-lg text-[var(--ink-faint)] group-open:text-[#4a3fe0] dark:group-open:text-[#5b5bf5]">
+                      +
+                    </span>
                   </summary>
-                  <p className="mt-3 text-sm text-slate-500 leading-relaxed">{a}</p>
+                  <p className="mt-3 text-xs sm:text-sm text-[var(--ink-soft)] leading-relaxed">
+                    {a}
+                  </p>
                 </details>
               ))}
             </div>

@@ -135,7 +135,7 @@ export function FilterPanel({
 
       {hasGsPapers && (
         <select
-          className="h-9 max-w-[170px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          className="h-10 max-w-[180px] rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-bold text-slate-800 dark:text-slate-100 shadow-xs transition hover:border-[#4a3fe0] focus:border-[#4a3fe0] focus:outline-none focus:ring-2 focus:ring-[#4a3fe0]/20"
           aria-label="Filter by GS Paper"
           onChange={(e) => handleGsPaperChange(e.target.value)}
           value={gsPaperId}
@@ -148,7 +148,7 @@ export function FilterPanel({
       )}
 
       <select
-        className="h-9 max-w-[180px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+        className="h-10 max-w-[190px] rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-bold text-slate-800 dark:text-slate-100 shadow-xs transition hover:border-[#4a3fe0] focus:border-[#4a3fe0] focus:outline-none focus:ring-2 focus:ring-[#4a3fe0]/20"
         aria-label="Filter by subject"
         onChange={(e) => handleSubjectChange(e.target.value)}
         value={subjectId}
@@ -161,7 +161,7 @@ export function FilterPanel({
 
       {topics.length > 0 && (
         <select
-          className="h-9 max-w-[180px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          className="h-10 max-w-[190px] rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-bold text-slate-800 dark:text-slate-100 shadow-xs transition hover:border-[#4a3fe0] focus:border-[#4a3fe0] focus:outline-none focus:ring-2 focus:ring-[#4a3fe0]/20"
           aria-label="Filter by topic"
           onChange={(e) => handleTopicChange(e.target.value)}
           value={topicId}
@@ -175,7 +175,7 @@ export function FilterPanel({
 
       {subtopics.length > 0 && (
         <select
-          className="h-9 max-w-[180px] rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          className="h-10 max-w-[190px] rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-bold text-slate-800 dark:text-slate-100 shadow-xs transition hover:border-[#4a3fe0] focus:border-[#4a3fe0] focus:outline-none focus:ring-2 focus:ring-[#4a3fe0]/20"
           aria-label="Filter by subtopic"
           onChange={(e) => setSubtopicId(e.target.value)}
           value={subtopicId}
@@ -190,7 +190,7 @@ export function FilterPanel({
       {/* Month / Year */}
       {hub.filterMode === "month" ? (
         <select
-          className="h-9 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          className="h-10 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-bold text-slate-800 dark:text-slate-100 shadow-xs transition hover:border-[#4a3fe0] focus:border-[#4a3fe0] focus:outline-none focus:ring-2 focus:ring-[#4a3fe0]/20"
           defaultValue={selectedMonth ?? ""}
           name="month"
           id="filter-month"
@@ -205,7 +205,7 @@ export function FilterPanel({
         </select>
       ) : (
         <select
-          className="h-9 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-sm transition hover:border-civic focus:border-civic focus:outline-none focus:ring-2 focus:ring-civic/20"
+          className="h-10 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-bold text-slate-800 dark:text-slate-100 shadow-xs transition hover:border-[#4a3fe0] focus:border-[#4a3fe0] focus:outline-none focus:ring-2 focus:ring-[#4a3fe0]/20"
           defaultValue={selectedYear ?? ""}
           name="year"
           id="filter-year"
@@ -222,7 +222,7 @@ export function FilterPanel({
 
       {/* Apply */}
       <button
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-civic px-4 text-sm font-bold text-white shadow-sm transition hover:bg-civic/90 active:scale-[0.98]"
+        className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-5 text-xs font-extrabold text-white shadow-md transition hover:brightness-110 active:scale-[0.98]"
         type="submit"
       >
         <Filter aria-hidden="true" className="h-3.5 w-3.5" />
@@ -233,7 +233,7 @@ export function FilterPanel({
       {hasActiveFilter && (
         <a
           href={`/current-affairs/${hub.path}`}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-semibold text-muted shadow-sm transition hover:border-berry/50 hover:text-berry"
+          className="inline-flex h-10 items-center gap-1.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs transition hover:border-red-500 hover:text-red-500"
         >
           <X aria-hidden="true" className="h-3.5 w-3.5" />
           Clear

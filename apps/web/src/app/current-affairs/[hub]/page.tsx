@@ -34,15 +34,22 @@ export async function generateMetadata({ params, searchParams }: HubPageProps): 
   if (category) titleParts.push(category);
 
   const path = hubHref(hub, { category, month, year, page: normalizePage(query.page) });
+  const title = titleParts.join(" — ");
   return {
-    title: titleParts.join(" — "),
+    title,
     description: hub.description,
     alternates: { canonical: path },
     openGraph: {
-      title: titleParts.join(" — "),
+      title,
       description: hub.description,
       url: path,
-      type: "website"
+      type: "website",
+      siteName: "WayToIAS — UPSC Current Affairs"
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: hub.description
     }
   };
 }
@@ -66,8 +73,52 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
   const accentColor = isMains ? "text-saffron" : "text-civic";
   const accentBg = isMains ? "bg-saffron/10" : "bg-civic/10";
 
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
+  const currentPath = hubHref(hub, { category, month, year, page });
+  const fullUrl = `${baseUrl}${currentPath}`;
+
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: baseUrl
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Current Affairs",
+        item: `${baseUrl}/current-affairs/daily-news`
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: hub.label,
+        item: fullUrl
+      }
+    ]
+  };
+
+  const jsonLdCollection = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${hub.label} — WayToIAS UPSC Current Affairs`,
+    description: hub.description,
+    url: fullUrl,
+    publisher: {
+      "@type": "Organization",
+      name: "WayToIAS",
+      url: baseUrl
+    }
+  };
+
   return (
     <main className="list-page mx-auto max-w-7xl px-4 pb-24 pt-5 lg:pb-12">
+      <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }} type="application/ld+json" />
+      <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdCollection) }} type="application/ld+json" />
       {/* Breadcrumb + hub header */}
       <div className="mb-5">
         <nav className="mb-2 flex items-center gap-1.5 text-xs text-muted" aria-label="Breadcrumb">
@@ -116,96 +167,101 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
           />
         </div>
 
-        {/* Hub Segments / Navigation Tab Bar */}
-        <div className="mt-5">
-          <div className="inline-flex p-1 bg-paper/70 rounded-xl border border-line/60">
+        {/* Hub Segments / Prominent Navigation Tab Bar */}
+        <div className="mt-6 space-y-4">
+          {/* Main Segmented Mode Switcher (Prelims vs Mains) */}
+          <div className="inline-flex items-center gap-1.5 p-1.5 bg-slate-200/90 dark:bg-slate-800/90 rounded-2xl border-2 border-slate-300 dark:border-slate-700 shadow-md">
             <Link
               href="/current-affairs/daily-news"
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-6 py-2 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                 !isMains
-                  ? "bg-surface text-civic shadow-sm border border-line/30"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-[#4a3fe0] dark:bg-[#5b5bf5] text-white shadow-lg ring-2 ring-[#4a3fe0]/30 scale-[1.03]"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/70 dark:hover:bg-slate-700/70"
               }`}
             >
-              Prelims
+              <span className="text-sm">📰</span> Prelims Hub
             </Link>
             <Link
               href="/current-affairs/editorial-summary"
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-6 py-2 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                 isMains
-                  ? "bg-surface text-civic shadow-sm border border-line/30"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-amber-600 dark:bg-amber-500 text-white shadow-lg ring-2 ring-amber-600/30 scale-[1.03]"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/70 dark:hover:bg-slate-700/70"
               }`}
             >
-              Mains
+              <span className="text-sm">📝</span> Mains Hub
             </Link>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          {/* Sub-Hub Module Tabs */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[11px] font-mono font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mr-1">
+              Modules:
+            </span>
             {!isMains ? (
               <>
                 <Link
                   href="/current-affairs/daily-news"
-                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition-all border-2 ${
                     hub.path === "daily-news"
-                      ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-surface text-muted hover:bg-paper"
+                      ? "border-[#4a3fe0] bg-[#4a3fe0] text-white shadow-md ring-2 ring-[#4a3fe0]/20 scale-[1.02]"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-[#4a3fe0] dark:hover:border-[#5b5bf5] hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs"
                   }`}
                 >
-                  Daily News
+                  📰 Daily News
                 </Link>
                 <Link
                   href="/current-affairs/prelims-pyq"
-                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition-all border-2 ${
                     hub.path === "prelims-pyq"
-                      ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-surface text-muted hover:bg-paper"
+                      ? "border-[#4a3fe0] bg-[#4a3fe0] text-white shadow-md ring-2 ring-[#4a3fe0]/20 scale-[1.02]"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-[#4a3fe0] dark:hover:border-[#5b5bf5] hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs"
                   }`}
                 >
-                  Prelims PYQ
+                  ⚡ Prelims PYQ
                 </Link>
                 <Link
                   href="/current-affairs/concepts"
-                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition-all border-2 ${
                     hub.path === "concepts"
-                      ? "border-berry bg-berry/5 text-berry"
-                      : "border-line bg-surface text-muted hover:bg-paper"
+                      ? "border-purple-600 bg-purple-600 text-white shadow-md ring-2 ring-purple-600/20 scale-[1.02]"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-purple-600 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs"
                   }`}
                 >
-                  Concepts
+                  💡 Concepts
                 </Link>
               </>
             ) : (
               <>
                 <Link
                   href="/current-affairs/editorial-summary"
-                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition-all border-2 ${
                     hub.path === "editorial-summary"
-                      ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-surface text-muted hover:bg-paper"
+                      ? "border-amber-600 bg-amber-600 text-white shadow-md ring-2 ring-amber-600/20 scale-[1.02]"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-amber-600 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs"
                   }`}
                 >
-                  Summaries
+                  📑 Summaries
                 </Link>
                 <Link
                   href="/current-affairs/mains-topic-notes"
-                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition-all border-2 ${
                     hub.path === "mains-topic-notes"
-                      ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-surface text-muted hover:bg-paper"
+                      ? "border-amber-600 bg-amber-600 text-white shadow-md ring-2 ring-amber-600/20 scale-[1.02]"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-amber-600 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs"
                   }`}
                 >
-                  Mains Notes
+                  📝 Mains Notes
                 </Link>
                 <Link
                   href="/current-affairs/mains-pyq"
-                  className={`inline-flex h-8 items-center rounded-full border px-3.5 text-xs font-bold transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition-all border-2 ${
                     hub.path === "mains-pyq"
-                      ? "border-civic bg-civic/5 text-civic"
-                      : "border-line bg-surface text-muted hover:bg-paper"
+                      ? "border-amber-600 bg-amber-600 text-white shadow-md ring-2 ring-amber-600/20 scale-[1.02]"
+                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-amber-600 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs"
                   }`}
                 >
-                  Mains PYQ
+                  ⚖️ Mains PYQ
                 </Link>
               </>
             )}

@@ -214,3 +214,141 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
     </tr>
   );
 }
+
+export function ArticleMobileCard({ article }: { article: ArticleSummary }) {
+  const { token, user } = useAuth();
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  const isAdmin = user && ["admin", "moderator", "content_editor"].includes(user.role);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) return;
+    if (!window.confirm(`Are you sure you want to delete this current affairs article:\n"${article.title}"?`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await authenticatedDelete(`/api/v1/current-affairs/articles/${article.id}`, token);
+      router.refresh();
+    } catch (err) {
+      alert("Failed to delete article. Please try again.");
+      console.error(err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-line/80 dark:border-slate-800 bg-surface dark:bg-slate-900 p-4 shadow-xs space-y-3 transition-all hover:border-[#4a3fe0]/40 relative group">
+      {/* Top Header Row: Category Badge + Source & Date */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          {article.category ? (
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-extrabold tracking-wide border ${getCategoryStyles(
+                article.category.name
+              )}`}
+            >
+              {article.category.name}
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted italic font-medium">General GS</span>
+          )}
+          {article.article_role === "concept" && (
+            <span className="inline-flex items-center rounded-md bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 text-[10px] font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wide border border-purple-200 dark:border-purple-800">
+              Concept
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+          {article.source_name && (
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold capitalize border ${getSourceStyles(
+                article.source_name
+              )}`}
+            >
+              {article.source_name}
+            </span>
+          )}
+          <span>{formatDate(article.publication_date)}</span>
+        </div>
+      </div>
+
+      {/* Article Title */}
+      <div className="space-y-1.5">
+        <Link
+          href={articleHref(article.slug)}
+          className="block font-extrabold text-ink dark:text-white text-base leading-snug hover:text-[#4a3fe0] dark:hover:text-[#5b5bf5] transition-colors"
+        >
+          {article.title}
+        </Link>
+        <StudentStatusBadge articleId={article.id} />
+      </div>
+
+      {/* Tags & Action Buttons */}
+      <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-line/40 dark:border-slate-800/60">
+        {article.institute_tags?.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {article.institute_tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded bg-paper dark:bg-slate-800 border border-line/40 dark:border-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex items-center gap-2 ml-auto">
+          <Link
+            href={articleHref(article.slug)}
+            className="inline-flex items-center gap-1 rounded-xl bg-[#4a3fe0] dark:bg-[#5b5bf5] px-3.5 py-1.5 text-xs font-black text-white shadow-xs hover:brightness-110 active:scale-95 transition-all"
+          >
+            <span>Read Article</span>
+            <span>→</span>
+          </Link>
+
+          {isAdmin && (
+            <>
+              <Link
+                href={`${(() => {
+                  switch (article.content_kind) {
+                    case "daily_current_affairs":
+                      return "/admin/current-affairs/create/daily-news";
+                    case "daily_editorial_summary":
+                      return "/admin/current-affairs/create/summaries";
+                    case "mains_topic_note":
+                      return "/admin/current-affairs/create/mains-notes";
+                    case "prelims_pyq":
+                      return "/admin/current-affairs/create/prelims-pyq";
+                    case "mains_pyq":
+                      return "/admin/current-affairs/create/mains-pyq";
+                    default:
+                      return "/admin/current-affairs/create/daily-news";
+                  }
+                })()}?edit=${article.id}`}
+                className="inline-flex items-center rounded-xl border border-line dark:border-slate-700 bg-paper dark:bg-slate-800 px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 px-2.5 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 transition disabled:opacity-50"
+              >
+                {deleting ? "..." : "Delete"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -24,9 +24,25 @@
   --s-800: 30 41 59;
   --s-900: 15 23 42;
   --s-950: 2 6 23;
+
+  /* Command Deck theme variables */
+  --bg: #f4f5fb; --bg-2: #eceefa;
+  --panel: #ffffff; --panel-2: #f7f8fd; --panel-border: #d2d5ea; --panel-border-soft: #e4e6f5;
+  --ink: #12131c; --ink-soft: #4d5170; --ink-faint: #767a9a;
+  --accent: #4a3fe0; --accent-soft: #ebe9fe; --accent-line: #c9c4f9;
+  --accent2: #b8730a; --accent2-soft: #fdf1da; --accent2-line: #eeca82;
+  --positive: #04815f; --positive-soft: #dff7ee; --positive-line: #a6e6cd;
+  --warn: #cf2249; --warn-soft: #fde6ec; --warn-line: #f5b7c6;
+  --texture-dot: rgba(18,19,28,0.055);
+  --bar-bg: rgba(244,245,251,0.85);
+  --hero-glow: rgba(74,63,224,0.10);
+  --card-shadow: rgba(30,32,60,0.14);
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+  --measure: 620px;
 }
 
-:root.dark {
+:root.dark, html.dark {
   color-scheme: dark;
   --c-ink: 231 236 243;
   --c-paper: 11 17 32;
@@ -46,6 +62,100 @@
   --s-800: 241 245 249;
   --s-900: 245 248 252;
   --s-950: 248 250 252;
+
+  --bg: #0a0c14; --bg-2: #0d0f1a;
+  --panel: #12141f; --panel-2: #171a2b; --panel-border: #262a3f; --panel-border-soft: #1c1f30;
+  --ink: #eef0fb; --ink-soft: #9296b5; --ink-faint: #5c6083;
+  --accent: #5b5bf5; --accent-soft: #1c1c3d; --accent-line: #33307a;
+  --accent2: #f59e0b; --accent2-soft: #332508; --accent2-line: #5c4415;
+  --positive: #10b981; --positive-soft: #0d2a22; --positive-line: #164a3b;
+  --warn: #fb7185; --warn-soft: #3a1620; --warn-line: #5c2530;
+  --texture-dot: rgba(238,240,251,0.055);
+  --bar-bg: rgba(10,12,20,0.9);
+  --hero-glow: rgba(91,91,245,0.16);
+  --card-shadow: rgba(0,0,0,0.6);
+}
+
+/* Command Deck OMR & Console Components */
+.omr-tex {
+  background-image: radial-gradient(circle, var(--texture-dot) 1.4px, transparent 1.6px);
+  background-size: 22px 22px;
+}
+
+.eyebrow-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.dot-blip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--positive);
+  display: inline-block;
+  box-shadow: 0 0 0 3px var(--positive-soft);
+  animation: blip 2.2s ease-in-out infinite;
+}
+
+@keyframes blip {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.bubble {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.3px solid var(--panel-border);
+  flex-shrink: 0;
+  background: transparent;
+}
+.bubble.f {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.bubble.f.pos {
+  background: var(--positive);
+  border-color: var(--positive);
+}
+.bubble.f.warn {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+.bubble.f.amb {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
+
+.pill-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.pill-cmd-pos {
+  background: var(--positive-soft);
+  color: var(--positive);
+  border-color: var(--positive-line);
+}
+.pill-cmd-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-line);
 }
 
 /* Styles for titles on list pages */

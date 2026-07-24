@@ -10,6 +10,8 @@ import { CURRENT_AFFAIRS_HUBS } from "../lib/current-affairs";
 import { WayToIASLogo } from "../components/app/logo";
 import { ThemeToggle } from "../components/app/theme-toggle";
 
+import { MobileNav } from "../components/app/mobile-nav";
+
 export const metadata: Metadata = {
   title: {
     default: "WayToIAS — UPSC Preparation Platform",
@@ -48,64 +50,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* Desktop nav */}
               <HeaderNav />
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <ThemeToggle />
                 <SignInPanel compact />
+                <MobileNav />
               </div>
             </div>
-
-            {/* Mobile nav — ordered by module priority per design spec v2 */}
-            <nav aria-label="Mobile primary sections" className="flex gap-2 overflow-x-auto px-4 pb-2.5 lg:hidden" style={{scrollbarWidth:'none'}}>
-              {/* 1. Self-Preparation */}
-              <Link
-                className="shrink-0 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-bold text-white"
-                href="/assessment/gk"
-              >
-                Self-Prep
-              </Link>
-              {/* 2. Current Affairs (always free) */}
-              <Link
-                className="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-700"
-                href="/current-affairs/daily-news"
-              >
-                Current Affairs
-              </Link>
-              {/* 3. Notes Making */}
-              <Link
-                className="shrink-0 rounded-lg border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700"
-                href="/current-affairs/workspace"
-              >
-                Notes
-              </Link>
-              {/* 4. Mentorship */}
-              <Link
-                className="shrink-0 rounded-lg border border-purple-100 bg-purple-50 px-3.5 py-1.5 text-xs font-bold text-purple-700"
-                href="/mentors"
-              >
-                Mentorship
-              </Link>
-              {/* 5. CSAT */}
-              <Link
-                className="shrink-0 rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-1.5 text-xs font-bold text-amber-700"
-                href="/assessment/csat"
-              >
-                CSAT
-              </Link>
-              {/* 6. Mains */}
-              <Link
-                className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600"
-                href="/assessment/mains-hub"
-              >
-                Mains
-              </Link>
-              {/* 7. Study Plans — low priority, at end */}
-              <Link
-                className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-500"
-                href="/study-plans"
-              >
-                Study Plans
-              </Link>
-            </nav>
           </header>
           {children}
         </Providers>
