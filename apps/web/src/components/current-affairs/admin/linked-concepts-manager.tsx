@@ -287,7 +287,7 @@ export function LinkedConceptsManager({
 
             {/* TAB 1: CREATE NEW CONCEPT WITH RICH TEXT EDITOR */}
             {activeTab === "create" && (
-              <form className="space-y-4" onSubmit={handleAddConceptDraft}>
+              <div className="space-y-4">
                 <label className="grid gap-1 text-sm font-bold text-ink">
                   Concept Title
                   <input
@@ -345,13 +345,14 @@ export function LinkedConceptsManager({
                   </button>
                   <button
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-berry px-5 text-sm font-bold text-white shadow-sm hover:bg-berry/90 transition-all"
-                    type="submit"
+                    onClick={handleAddConceptDraft}
+                    type="button"
                   >
                     <BookOpen className="h-4 w-4" />
                     Add Concept to Event
                   </button>
                 </div>
-              </form>
+              </div>
             )}
 
             {/* TAB 2: LINK EXISTING CONCEPT */}

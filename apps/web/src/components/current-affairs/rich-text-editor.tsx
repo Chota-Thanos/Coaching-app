@@ -86,7 +86,8 @@ export function RichTextMarkdownEditor({
   const extensions = useMemo(() => {
     const list = [
       StarterKit.configure({
-        // We disable list configurations here if we want standard behaviour
+        link: false,
+        underline: false
       }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
