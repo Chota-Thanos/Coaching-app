@@ -20,7 +20,7 @@ import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { ArticleCreatorAiWorkspace } from "./article-creator-ai-workspace";
 import { CascadingCategorySelector } from "./cascading-category-selector";
 import { AdminArticleDetailPanel } from "./admin-article-detail-panel";
-import { LinkedConceptsManager } from "./linked-concepts-manager";
+import { LinkedConceptsManager, type ConceptDraft } from "./linked-concepts-manager";
 
 type AdminArticleCreatorProps = {
   categories: CategoryNode[];
@@ -114,7 +114,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [editingArticleDetail, setEditingArticleDetail] = useState<AdminArticleDetail | null>(null);
 
-  const [linkedConcepts, setLinkedConcepts] = useState<any[]>([]);
+  const [linkedConcepts, setLinkedConcepts] = useState<ConceptDraft[]>([]);
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [successLink, setSuccessLink] = useState<{ href: string; label: string } | null>(null);
@@ -245,10 +245,18 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
         });
 
         // Populate linked concepts from outgoing relations
-        const existingConcepts = (detail.outgoing_relations || [])
+        const existingConcepts: ConceptDraft[] = (detail.outgoing_relations || [])
           .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite")
-          .map((r: any) => r.target_article)
-          .filter(Boolean);
+          .filter((r: any) => Boolean(r.target_article))
+          .map((r: any) => ({
+            id: r.target_article.id,
+            title: r.target_article.title,
+            slug: r.target_article.slug,
+            body: r.target_article.body || "",
+            categoryNodeId: r.target_article.category?.id ? String(r.target_article.category.id) : undefined,
+            categoryName: r.target_article.category?.name,
+            isNew: false
+          }));
         setLinkedConcepts(existingConcepts);
 
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -266,10 +274,18 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${editingDraftId}`, token);
       setEditingArticleDetail(detail);
 
-      const existingConcepts = (detail.outgoing_relations || [])
+      const existingConcepts: ConceptDraft[] = (detail.outgoing_relations || [])
         .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite")
-        .map((r: any) => r.target_article)
-        .filter(Boolean);
+        .filter((r: any) => Boolean(r.target_article))
+        .map((r: any) => ({
+          id: r.target_article.id,
+          title: r.target_article.title,
+          slug: r.target_article.slug,
+          body: r.target_article.body || "",
+          categoryNodeId: r.target_article.category?.id ? String(r.target_article.category.id) : undefined,
+          categoryName: r.target_article.category?.name,
+          isNew: false
+        }));
       setLinkedConcepts(existingConcepts);
     } catch (err) {
       console.error("Failed to refresh article detail:", err);
@@ -372,22 +388,20 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       keywords: splitAdminTags(formState.keywords)
     };
 
+    let targetArticleId: number | null = editingDraftId;
+
     if (editingDraftId) {
       if (!token) return;
       try {
         await authenticatedPatch(`/api/v1/current-affairs/articles/${editingDraftId}`, token, payload);
-
         setSuccessLink({
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
           label: `Draft "${payload.title || formState.title}" updated successfully.`
         });
-        // Stay in edit mode — the connections panel below stays available for
-        // continued work instead of vanishing on every save.
-        void refreshEditingArticleDetail();
-        void loadDrafts();
       } catch (err) {
         console.error("Failed to update draft:", err);
         alert("Failed to update draft. Check slug uniqueness.");
+        return;
       }
     } else {
       try {
@@ -396,33 +410,61 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
           label: `Article "${payload.title || formState.title}" created successfully.`
         });
-        
-        if (created?.id && token && linkedConcepts.length > 0) {
-          for (const concept of linkedConcepts) {
-            try {
-              await authenticatedPost(`/api/v1/current-affairs/articles/${created.id}/relations`, token, {
-                target_article_id: concept.id,
-                relation_type: "prerequisite",
-                label: "Background Concept"
-              });
-            } catch (rErr) {
-              console.error("Failed to link concept relation:", rErr);
-            }
-          }
-        }
-
-        if (created?.id) {
-          void handleEditDraft(created.id);
-        } else {
-          setFormState(initialForm(defaultKind));
-          setLinkedConcepts([]);
-        }
-        void loadDrafts();
+        if (created?.id) targetArticleId = created.id;
       } catch (err) {
         console.error("Failed to create article:", err);
         alert("Failed to create article. Please check input validation or slug uniqueness.");
+        return;
       }
     }
+
+    // Process concepts in linkedConcepts state (save new concepts to DB & create relation links)
+    if (targetArticleId && token && linkedConcepts.length > 0) {
+      for (const concept of linkedConcepts) {
+        let conceptId = concept.id;
+
+        // If it's a new draft concept created locally, save it as a concept article in DB
+        if (concept.isNew || !conceptId) {
+          try {
+            const conceptPayload = {
+              content_kind: "daily_current_affairs",
+              content_family: family,
+              article_role: "concept",
+              title: concept.title,
+              slug: concept.slug || adminSlug(concept.title, "concept"),
+              body: concept.body,
+              category_node_id: concept.categoryNodeId ? Number(concept.categoryNodeId) : undefined,
+              status: formState.status
+            };
+            const newConcept = await authenticatedPost<any>("/api/v1/current-affairs/articles", token, conceptPayload);
+            conceptId = newConcept.id;
+          } catch (cErr) {
+            console.error("Error creating concept article on publish:", cErr);
+          }
+        }
+
+        // Link concept relation to the target article
+        if (conceptId) {
+          try {
+            await authenticatedPost(`/api/v1/current-affairs/articles/${targetArticleId}/relations`, token, {
+              target_article_id: conceptId,
+              relation_type: "prerequisite",
+              label: "Background Concept"
+            });
+          } catch (rErr) {
+            console.error("Error creating concept relation on publish:", rErr);
+          }
+        }
+      }
+    }
+
+    if (targetArticleId) {
+      void handleEditDraft(targetArticleId);
+    } else {
+      setFormState(initialForm(defaultKind));
+      setLinkedConcepts([]);
+    }
+    void loadDrafts();
   };
 
   return (
