@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Brain, Save, Loader2, CheckCircle2, FileText } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
@@ -15,11 +15,12 @@ import {
   statusLabel,
   type MasterArticleStatus
 } from "../../../lib/admin-current-affairs";
-import { authenticatedGet, authenticatedPatch, authenticatedDelete, useAuth } from "../../auth/auth-context";
+import { authenticatedGet, authenticatedPatch, authenticatedDelete, authenticatedPost, useAuth } from "../../auth/auth-context";
 import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { ArticleCreatorAiWorkspace } from "./article-creator-ai-workspace";
 import { CascadingCategorySelector } from "./cascading-category-selector";
 import { AdminArticleDetailPanel } from "./admin-article-detail-panel";
+import { LinkedConceptsManager } from "./linked-concepts-manager";
 
 type AdminArticleCreatorProps = {
   categories: CategoryNode[];
@@ -113,6 +114,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [editingArticleDetail, setEditingArticleDetail] = useState<AdminArticleDetail | null>(null);
 
+  const [linkedConcepts, setLinkedConcepts] = useState<any[]>([]);
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [successLink, setSuccessLink] = useState<{ href: string; label: string } | null>(null);
@@ -168,6 +170,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
     setFormState(initialForm(defaultKind));
     setEditingDraftId(null);
     setEditingArticleDetail(null);
+    setLinkedConcepts([]);
   }, [defaultKind]);
 
   // Reset success link when form fields are modified
@@ -182,7 +185,19 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   );
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]): void {
-    setFormState((current) => ({ ...current, [key]: value }));
+    setFormState((current) => {
+      if (key === "title") {
+        const newTitle = value as string;
+        const autoSlug = adminSlug(newTitle);
+        const shouldAutoUpdateSlug = !current.slug || current.slug === adminSlug(current.title);
+        return {
+          ...current,
+          title: newTitle,
+          slug: shouldAutoUpdateSlug ? autoSlug : current.slug
+        };
+      }
+      return { ...current, [key]: value };
+    });
   }
 
   const handleEditDraft = async (draftId: number) => {
@@ -229,6 +244,13 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
           modelAnswer: bodyJson.model_answer || ""
         });
 
+        // Populate linked concepts from outgoing relations
+        const existingConcepts = (detail.outgoing_relations || [])
+          .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite")
+          .map((r: any) => r.target_article)
+          .filter(Boolean);
+        setLinkedConcepts(existingConcepts);
+
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
@@ -243,6 +265,12 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
     try {
       const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${editingDraftId}`, token);
       setEditingArticleDetail(detail);
+
+      const existingConcepts = (detail.outgoing_relations || [])
+        .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite")
+        .map((r: any) => r.target_article)
+        .filter(Boolean);
+      setLinkedConcepts(existingConcepts);
     } catch (err) {
       console.error("Failed to refresh article detail:", err);
     }
@@ -366,14 +394,28 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
         const created = await onSubmit(payload);
         setSuccessLink({
           href: `/current-affairs/articles/${payload.slug || formState.slug}`,
-          label: `Article "${payload.title || formState.title}" created successfully. You can now connect it to other articles below.`
+          label: `Article "${payload.title || formState.title}" created successfully.`
         });
-        // Switch straight into edit mode for the article just created, so the
-        // connections panel (sections/relations/import-export) appears immediately.
+        
+        if (created?.id && token && linkedConcepts.length > 0) {
+          for (const concept of linkedConcepts) {
+            try {
+              await authenticatedPost(`/api/v1/current-affairs/articles/${created.id}/relations`, token, {
+                target_article_id: concept.id,
+                relation_type: "prerequisite",
+                label: "Background Concept"
+              });
+            } catch (rErr) {
+              console.error("Failed to link concept relation:", rErr);
+            }
+          }
+        }
+
         if (created?.id) {
           void handleEditDraft(created.id);
         } else {
           setFormState(initialForm(defaultKind));
+          setLinkedConcepts([]);
         }
         void loadDrafts();
       } catch (err) {
@@ -826,6 +868,14 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
                 </label>
               </div>
             </details>
+
+            <LinkedConceptsManager
+              articleId={editingDraftId}
+              categories={categories}
+              contentFamily={family}
+              linkedConcepts={linkedConcepts}
+              onConceptsUpdated={(updated) => setLinkedConcepts(updated)}
+            />
 
             <label className="grid gap-1.5 text-sm font-bold text-ink">
               Publication Date

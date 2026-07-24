@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Layers3, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, Layers3, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
 import { useSubscription } from "../../lib/use-subscription";
 import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
@@ -117,6 +117,13 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   }
 
   // User is authorized, show the full article body and tools
+  const conceptRelations = article.outgoing_relations.filter(
+    (rel) => rel.target_article?.article_role === "concept" || rel.relation_type === "prerequisite"
+  );
+  const otherOutgoingRelations = article.outgoing_relations.filter(
+    (rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite"
+  );
+
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] mt-5">
       <div className="min-w-0">
@@ -156,6 +163,52 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
 
+        {/* Linked Background Concepts & Key Terms */}
+        {conceptRelations.length > 0 && (
+          <section className="mt-6 rounded-xl border border-berry/20 bg-berry/5 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-5 w-5 text-berry" />
+              <h2 className="text-lg font-black text-ink">Background Concepts & Key Terms</h2>
+            </div>
+            <p className="text-xs text-ink/65 mb-4 leading-relaxed">
+              Foundational explainers and reusable concept primers linked to this article:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {conceptRelations.map((rel) => (
+                <Link
+                  className="group rounded-xl border border-line bg-surface p-4 transition-all hover:border-berry hover:shadow-md flex flex-col justify-between"
+                  href={`/current-affairs/articles/${rel.target_article.slug}`}
+                  key={rel.id}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-berry">
+                        Concept Primer
+                      </span>
+                      {rel.target_article.category && (
+                        <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/60">
+                          {rel.target_article.category.name}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-extrabold text-ink group-hover:text-berry transition-colors leading-snug">
+                      {rel.target_article.title}
+                    </h3>
+                    {rel.target_article.body && (
+                      <p className="mt-1.5 text-xs text-ink/65 line-clamp-2 leading-relaxed">
+                        {rel.target_article.body.replace(/^[#*`-\s]+/, "").slice(0, 140)}...
+                      </p>
+                    )}
+                  </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-berry">
+                    Read Concept Explainer →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {article.updates.length > 0 && (
           <section className="mt-5 rounded-lg border border-line bg-surface p-4 shadow-sm md:p-6">
             <h2 className="text-lg font-extrabold text-ink">Updates</h2>
@@ -192,11 +245,11 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
             </ol>
           </section>
         )}
-        {article.outgoing_relations.length > 0 && (
+        {otherOutgoingRelations.length > 0 && (
           <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <h2 className="text-base font-extrabold text-ink">Related reading</h2>
             <div className="mt-3 grid gap-3">
-              {article.outgoing_relations.map((relation) => (
+              {otherOutgoingRelations.map((relation) => (
                 <Link className="rounded-md border border-line p-3 text-sm font-semibold text-ink hover:border-civic" href={`/current-affairs/articles/${relation.target_article.slug}`} key={relation.id}>
                   {relation.label ?? relation.target_article.title}
                 </Link>
