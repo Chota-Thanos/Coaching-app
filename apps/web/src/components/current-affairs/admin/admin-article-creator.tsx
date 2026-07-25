@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Save, Loader2, CheckCircle2, FileText } from "lucide-react";
+import { Brain, Save, Loader2, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
