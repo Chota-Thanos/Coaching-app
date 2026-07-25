@@ -67,7 +67,7 @@ export function AdminArticleDetailPanel({
     const loadAll = async () => {
       if (!token) return;
       try {
-        const res = await authenticatedGet<AdminArticleSummary[]>("/api/v1/current-affairs/articles?limit=150", token);
+        const res = await authenticatedGet<AdminArticleSummary[]>("/api/v1/current-affairs/articles?limit=300&include_concepts=true", token);
         setAllArticles(res || []);
       } catch (err) {
         console.error("Error loading articles list for relations:", err);

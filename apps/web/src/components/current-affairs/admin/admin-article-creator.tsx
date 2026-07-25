@@ -118,8 +118,17 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
   const [linkedConcepts, setLinkedConcepts] = useState<ConceptDraft[]>([]);
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
+  const [allArticlesForSplit, setAllArticlesForSplit] = useState<any[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [successLink, setSuccessLink] = useState<{ href: string; label: string } | null>(null);
+
+  useEffect(() => {
+    if (creatorSplitOpen && token) {
+      authenticatedGet<any[]>("/api/v1/current-affairs/articles?limit=300&include_concepts=true", token)
+        .then((res) => setAllArticlesForSplit(res || []))
+        .catch((err) => console.error("Failed to load articles for split screen:", err));
+    }
+  }, [creatorSplitOpen, token]);
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -979,7 +988,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
           {/* Split Screen Transfer Modal */}
           <SplitScreenTransferModal
-            allArticles={allDrafts}
+            allArticles={allArticlesForSplit.length > 0 ? allArticlesForSplit : allDrafts}
             categories={categories}
             isOpen={creatorSplitOpen}
             onClose={() => setCreatorSplitOpen(false)}

@@ -94,7 +94,11 @@ export function SplitScreenTransferModal({
     const q = searchQuery.trim().toLowerCase();
     return allArticles
       .filter((a) => a.id !== sourceArticle.id)
-      .filter((a) => filterKind === "all" || a.content_kind === filterKind)
+      .filter((a) => {
+        if (filterKind === "concepts") return a.article_role === "concept";
+        if (filterKind === "all") return true;
+        return a.content_kind === filterKind;
+      })
       .filter((a) => filterCategoryId === "all" || String(a.category?.id) === filterCategoryId)
       .filter((a) => !q || a.title.toLowerCase().includes(q) || (a.category?.name ?? "").toLowerCase().includes(q));
   }, [allArticles, sourceArticle.id, filterKind, filterCategoryId, searchQuery]);
@@ -232,9 +236,10 @@ export function SplitScreenTransferModal({
               onChange={(e) => setFilterKind(e.target.value)}
             >
               <option value="mains_topic_note">Filter: Mains Topic Notes (Recommended)</option>
+              <option value="concepts">Filter: Concepts Only (⭐ Concept Primers)</option>
               <option value="daily_current_affairs">Filter: Daily Current Affairs</option>
               <option value="daily_editorial_summary">Filter: Editorial Summaries</option>
-              <option value="all">Filter: All Content Types</option>
+              <option value="all">Filter: All Content Types & Concepts</option>
             </select>
           </div>
 
@@ -259,10 +264,10 @@ export function SplitScreenTransferModal({
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
             >
-              <option value="">-- Choose Target Mains Note ({filteredTargets.length}) --</option>
+              <option value="">-- Choose Target Article / Concept ({filteredTargets.length}) --</option>
               {filteredTargets.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.title} ({a.category?.name ?? "General"})
+                  {a.article_role === "concept" ? "⭐ Concept: " : ""}{a.title} ({a.category?.name ?? "General"})
                 </option>
               ))}
             </select>
