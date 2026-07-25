@@ -406,11 +406,11 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
             </ol>
           </section>
         )}
-        {otherOutgoingRelations.length > 0 && (
+        {relatedArticles.length > 0 && (
           <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <h2 className="text-base font-extrabold text-ink">Related reading</h2>
             <div className="mt-3 grid gap-3">
-              {otherOutgoingRelations.map((relation) => (
+              {relatedArticles.map((relation) => (
                 <Link className="rounded-md border border-line p-3 text-sm font-semibold text-ink hover:border-civic" href={`/current-affairs/articles/${relation.target_article.slug}`} key={relation.id}>
                   {relation.label ?? relation.target_article.title}
                 </Link>
