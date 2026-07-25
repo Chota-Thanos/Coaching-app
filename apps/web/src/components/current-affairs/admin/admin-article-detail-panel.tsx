@@ -605,6 +605,16 @@ export function AdminArticleDetailPanel({
         categories={categories}
         initialTargetArticleId={splitInitialTargetId}
         isOpen={splitModalOpen}
+        linkedConcepts={article.outgoing_relations
+          .filter((rel) => rel.target_article?.article_role === "concept" || rel.label === "Core Concept" || rel.relation_type === "prerequisite")
+          .map((rel) => ({
+            id: rel.target_article.id,
+            title: rel.target_article.title,
+            slug: rel.target_article.slug,
+            body: rel.target_article.body,
+            categoryName: rel.target_article.category?.name,
+            isConcept: true
+          }))}
         onClose={() => setSplitModalOpen(false)}
         onRefresh={onRefresh}
         onSelectArticleId={(id) => {

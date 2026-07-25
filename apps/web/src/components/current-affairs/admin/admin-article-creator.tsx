@@ -991,6 +991,16 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             allArticles={allArticlesForSplit.length > 0 ? allArticlesForSplit : allDrafts}
             categories={categories}
             isOpen={creatorSplitOpen}
+            linkedConcepts={editingArticleDetail?.outgoing_relations
+              ?.filter((rel) => rel.target_article?.article_role === "concept" || rel.label === "Core Concept" || rel.relation_type === "prerequisite")
+              .map((rel) => ({
+                id: rel.target_article.id,
+                title: rel.target_article.title,
+                slug: rel.target_article.slug,
+                body: rel.target_article.body,
+                categoryName: rel.target_article.category?.name,
+                isConcept: true
+              })) || []}
             onClose={() => setCreatorSplitOpen(false)}
             onRefresh={refreshEditingArticleDetail}
             onSelectArticleId={(id) => handleEditDraft(id)}

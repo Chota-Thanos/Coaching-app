@@ -7,17 +7,21 @@ import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { RenderedContent } from "../rendered-content";
 import { authenticatedGet, authenticatedPatch, useAuth } from "../../auth/auth-context";
 
+export type SourceArticleItem = {
+  id?: number;
+  title: string;
+  slug: string;
+  body: string;
+  categoryName?: string;
+  contentKind?: string;
+  isConcept?: boolean;
+};
+
 type SplitScreenTransferModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  sourceArticle: {
-    id?: number;
-    title: string;
-    slug: string;
-    body: string;
-    categoryName?: string;
-    contentKind?: string;
-  };
+  sourceArticle: SourceArticleItem;
+  linkedConcepts?: SourceArticleItem[];
   allArticles: AdminArticleSummary[];
   categories: CategoryNode[];
   initialTargetArticleId?: number;
@@ -29,6 +33,7 @@ export function SplitScreenTransferModal({
   isOpen,
   onClose,
   sourceArticle,
+  linkedConcepts = [],
   allArticles,
   categories,
   initialTargetArticleId,
@@ -37,6 +42,9 @@ export function SplitScreenTransferModal({
 }: SplitScreenTransferModalProps) {
   const { token } = useAuth();
   
+  // Source Selection (Main Article vs Linked Concepts)
+  const [selectedSourceId, setSelectedSourceId] = useState<string>("main");
+
   // Target Article Search & Selection
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKind, setFilterKind] = useState<string>("mains_topic_note"); // Default to Mains Notes as requested
@@ -55,6 +63,13 @@ export function SplitScreenTransferModal({
 
   // Selected HTML fragment from Left Column (preserves formatting 100%)
   const [selectedHtml, setSelectedHtml] = useState("");
+
+  // Compute active source item (Main Article or chosen Linked Concept)
+  const activeSource = useMemo(() => {
+    if (!selectedSourceId || selectedSourceId === "main") return sourceArticle;
+    const found = linkedConcepts.find((c) => String(c.id) === selectedSourceId);
+    return found || sourceArticle;
+  }, [selectedSourceId, sourceArticle, linkedConcepts]);
 
   // Update targetId when initialTargetArticleId prop changes
   useEffect(() => {
@@ -93,7 +108,7 @@ export function SplitScreenTransferModal({
   const filteredTargets = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return allArticles
-      .filter((a) => a.id !== sourceArticle.id)
+      .filter((a) => a.id !== activeSource.id)
       .filter((a) => {
         if (filterKind === "concepts") return a.article_role === "concept";
         if (filterKind === "all") return true;
@@ -101,7 +116,7 @@ export function SplitScreenTransferModal({
       })
       .filter((a) => filterCategoryId === "all" || String(a.category?.id) === filterCategoryId)
       .filter((a) => !q || a.title.toLowerCase().includes(q) || (a.category?.name ?? "").toLowerCase().includes(q));
-  }, [allArticles, sourceArticle.id, filterKind, filterCategoryId, searchQuery]);
+  }, [allArticles, activeSource.id, filterKind, filterCategoryId, searchQuery]);
 
   // Save Target Article Body
   const handleSaveTarget = async () => {
@@ -124,24 +139,24 @@ export function SplitScreenTransferModal({
 
   // Insert Inline Reference Link HTML directly at cursor location in target editor (Styled in Blue)
   const handleInsertReferenceLink = () => {
-    const inlineRefHtml = `<a href="/current-affairs/articles/${sourceArticle.slug}" style="color: #2563eb; text-decoration: underline; font-weight: 600;">Read more...</a>`;
+    const inlineRefHtml = `<a href="/current-affairs/articles/${activeSource.slug}" style="color: #2563eb; text-decoration: underline; font-weight: 600;">Read more...</a>`;
     if (targetEditor && !targetEditor.isDestroyed) {
       targetEditor.chain().focus().insertContent(` ${inlineRefHtml}`).run();
-      setMessage(`Inserted "Read more..." inline link in blue at active cursor.`);
+      setMessage(`Inserted "Read more..." link for "${activeSource.title}" at active cursor.`);
     } else {
       setTargetBody((prev) => `${prev} ${inlineRefHtml}`);
-      setMessage(`Inserted "Read more..." inline link.`);
+      setMessage(`Inserted "Read more..." link.`);
     }
   };
 
   // Insert Content Snippet directly at cursor location preserving full HTML formatting
   const handleInsertSnippet = (snippetToInsert?: string) => {
-    const htmlToUse = snippetToInsert || selectedHtml || sourceArticle.body;
+    const htmlToUse = snippetToInsert || selectedHtml || activeSource.body;
     if (!htmlToUse.trim()) return;
 
     if (targetEditor && !targetEditor.isDestroyed) {
       targetEditor.chain().focus().insertContent(htmlToUse.trim()).run();
-      setMessage(`Inserted formatted content snippet at active cursor.`);
+      setMessage(`Inserted formatted content from "${activeSource.title}" at active cursor.`);
     } else {
       setTargetBody((prev) => (prev ? `${prev}\n\n${htmlToUse.trim()}` : htmlToUse.trim()));
       setMessage(`Inserted content snippet.`);
@@ -188,7 +203,7 @@ export function SplitScreenTransferModal({
               )}
             </div>
             <h2 className="text-base font-black text-ink mt-0.5 flex items-center gap-2">
-              <span>{sourceArticle.title || "Current Article"}</span>
+              <span>{activeSource.title || "Current Article"}</span>
               <ArrowRight className="h-4 w-4 text-ink/40" />
               <span className="text-civic">{targetDetail?.title || "Select Target Mains Note"}</span>
             </h2>
@@ -286,14 +301,35 @@ export function SplitScreenTransferModal({
           <div className="flex flex-col h-full min-h-0 bg-paper/10 overflow-hidden">
             {/* Left Header & Actions Bar */}
             <div className="p-3 border-b border-line bg-surface space-y-2 shrink-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-ink/70 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-civic"></span>
-                  Source Article Context (Left)
-                </span>
-                {sourceArticle.categoryName && (
-                  <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
-                    {sourceArticle.categoryName}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {linkedConcepts.length > 0 ? (
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <label className="text-xs font-black uppercase tracking-wider text-ink/70 shrink-0">
+                      Copy Content From:
+                    </label>
+                    <select
+                      className="h-8 rounded-lg border border-civic bg-civic/5 px-2.5 text-xs font-extrabold text-civic outline-none focus:ring-2 focus:ring-civic/20 min-w-0 flex-1"
+                      value={selectedSourceId}
+                      onChange={(e) => setSelectedSourceId(e.target.value)}
+                    >
+                      <option value="main">📰 Current Event: {sourceArticle.title}</option>
+                      {linkedConcepts.map((concept) => (
+                        <option key={concept.id} value={String(concept.id)}>
+                          ⭐ Linked Concept: {concept.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="text-xs font-black uppercase tracking-wider text-ink/70 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-civic"></span>
+                    Source Article Context (Left)
+                  </span>
+                )}
+
+                {activeSource.categoryName && (
+                  <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65 shrink-0">
+                    {activeSource.categoryName}
                   </span>
                 )}
               </div>
@@ -305,7 +341,7 @@ export function SplitScreenTransferModal({
                   disabled={!targetDetail}
                   onClick={handleInsertReferenceLink}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-600/40 bg-blue-50 px-3 text-xs font-bold text-blue-600 hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50"
-                  title="Insert 'Read more...' blue hyperlink directly at the cursor location in the target note"
+                  title={`Insert 'Read more...' blue hyperlink pointing to '${activeSource.title}' directly at cursor`}
                 >
                   <Link2 className="h-3.5 w-3.5" />
                   Insert "Read more..." Link at Cursor
@@ -319,18 +355,18 @@ export function SplitScreenTransferModal({
                   title="Highlight text in the article body below, then click to insert formatted HTML at cursor"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Insert Formatted Snippet at Cursor ({selectedHtml.length > 0 ? "Formatted Text Selected" : "Highlight text first"})
+                  Insert Formatted Snippet at Cursor ({selectedHtml.length > 0 ? "Text Selected" : "Highlight text first"})
                 </button>
 
                 <button
                   type="button"
                   disabled={!targetDetail}
-                  onClick={() => handleInsertSnippet(sourceArticle.body)}
+                  onClick={() => handleInsertSnippet(activeSource.body)}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-xs font-bold text-ink hover:bg-paper transition-all disabled:opacity-50"
-                  title="Insert entire source article body preserving full HTML formatting at active cursor position"
+                  title="Insert entire selected source article body preserving full HTML formatting at active cursor position"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Insert Formatted Full Body at Cursor
+                  Insert Full Body at Cursor
                 </button>
               </div>
             </div>
@@ -340,7 +376,7 @@ export function SplitScreenTransferModal({
               className="flex-1 p-5 overflow-y-auto select-text article-body leading-relaxed text-sm text-ink bg-surface"
               onMouseUp={handleLeftColumnMouseUp}
             >
-              <RenderedContent content={sourceArticle.body} />
+              <RenderedContent content={activeSource.body} />
             </div>
           </div>
 
