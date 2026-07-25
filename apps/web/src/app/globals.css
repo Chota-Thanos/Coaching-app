@@ -828,3 +828,19 @@ img {
 .dark .text-yellow-800, .dark .text-yellow-900 { color: rgb(254 249 195); }
 .dark .border-yellow-100 { border-color: rgb(133 77 14 / 0.5); }
 .dark .border-yellow-200 { border-color: rgb(161 98 7 / 0.55); }
+
+/* Universal Article & Rich Text Editor Link Styles */
+.article-body a,
+.ProseMirror a,
+.article-body a[href],
+.ProseMirror a[href] {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+  font-weight: 600 !important;
+  transition: color 0.15s ease;
+}
+
+.article-body a:hover,
+.ProseMirror a:hover {
+  color: #1d4ed8 !important;
+}
