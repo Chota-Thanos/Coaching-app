@@ -132,15 +132,19 @@ export function LinkedConceptsManager({
     if (editingIndex !== null && editingIndex >= 0 && editingIndex < linkedConcepts.length) {
       // Update existing concept item in list
       const next = [...linkedConcepts];
-      next[editingIndex] = {
-        ...next[editingIndex],
-        title: conceptTitle.trim(),
-        slug: conceptSlug || adminSlug(conceptTitle, "concept"),
-        body: conceptBody.trim(),
-        categoryNodeId: primaryCategoryId || undefined,
-        categoryName: categoryObj?.name
-      };
-      onConceptsUpdated(next);
+      const existingItem = next[editingIndex];
+      if (existingItem) {
+        next[editingIndex] = {
+          ...existingItem,
+          title: conceptTitle.trim(),
+          slug: conceptSlug || adminSlug(conceptTitle, "concept"),
+          body: conceptBody.trim(),
+          categoryNodeId: primaryCategoryId || undefined,
+          categoryName: categoryObj?.name,
+          isNew: existingItem.isNew
+        };
+        onConceptsUpdated(next);
+      }
     } else {
       // Add new concept item to list
       const newDraft: ConceptDraft = {
