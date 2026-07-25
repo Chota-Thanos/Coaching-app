@@ -1,12 +1,13 @@
 "use client";
 
-import { BookOpen, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { BookOpen, Edit3, Eye, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AdminArticleSummary, CategoryNode } from "../../../lib/api";
 import type { ContentFamily } from "../../../lib/current-affairs";
 import { adminSlug } from "../../../lib/admin-current-affairs";
 import { CascadingParentCategorySelector } from "./cascading-parent-category-selector";
 import { RichTextMarkdownEditor } from "../rich-text-editor";
+import { RenderedContent } from "../rendered-content";
 import { authenticatedGet, useAuth } from "../../auth/auth-context";
 
 export type ConceptDraft = {
@@ -36,8 +37,10 @@ export function LinkedConceptsManager({
   const { token } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"create" | "existing">("create");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [viewingConcept, setViewingConcept] = useState<ConceptDraft | null>(null);
 
-  // New Concept Form state
+  // New / Edit Concept Form state
   const [conceptTitle, setConceptTitle] = useState("");
   const [conceptSlug, setConceptSlug] = useState("");
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
@@ -87,8 +90,34 @@ export function LinkedConceptsManager({
     void fetchConcepts();
   }, [modalOpen, token]);
 
-  // Client-side local addition of new concept (NO page reload, NO server request yet)
-  const handleAddConceptDraft = (e?: React.SyntheticEvent) => {
+  const handleOpenCreate = () => {
+    setEditingIndex(null);
+    setConceptTitle("");
+    setConceptSlug("");
+    setIsSlugManuallyEdited(false);
+    setConceptBody("");
+    setPrimaryCategoryId("");
+    setActiveTab("create");
+    setErrorMessage(null);
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (index: number) => {
+    const concept = linkedConcepts[index];
+    if (!concept) return;
+    setEditingIndex(index);
+    setConceptTitle(concept.title);
+    setConceptSlug(concept.slug);
+    setIsSlugManuallyEdited(true);
+    setConceptBody(concept.body);
+    setPrimaryCategoryId(concept.categoryNodeId || "");
+    setActiveTab("create");
+    setErrorMessage(null);
+    setModalOpen(true);
+  };
+
+  // Client-side local addition / update of concept (NO page reload, NO server request yet)
+  const handleSaveConceptDraft = (e?: React.SyntheticEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -99,19 +128,35 @@ export function LinkedConceptsManager({
     }
 
     const categoryObj = primaryCategoryId ? categoriesById.get(primaryCategoryId) : null;
-    const newDraft: ConceptDraft = {
-      tempId: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      title: conceptTitle.trim(),
-      slug: conceptSlug || adminSlug(conceptTitle, "concept"),
-      body: conceptBody.trim(),
-      categoryNodeId: primaryCategoryId || undefined,
-      categoryName: categoryObj?.name,
-      isNew: true
-    };
 
-    onConceptsUpdated([...linkedConcepts, newDraft]);
+    if (editingIndex !== null && editingIndex >= 0 && editingIndex < linkedConcepts.length) {
+      // Update existing concept item in list
+      const next = [...linkedConcepts];
+      next[editingIndex] = {
+        ...next[editingIndex],
+        title: conceptTitle.trim(),
+        slug: conceptSlug || adminSlug(conceptTitle, "concept"),
+        body: conceptBody.trim(),
+        categoryNodeId: primaryCategoryId || undefined,
+        categoryName: categoryObj?.name
+      };
+      onConceptsUpdated(next);
+    } else {
+      // Add new concept item to list
+      const newDraft: ConceptDraft = {
+        tempId: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        title: conceptTitle.trim(),
+        slug: conceptSlug || adminSlug(conceptTitle, "concept"),
+        body: conceptBody.trim(),
+        categoryNodeId: primaryCategoryId || undefined,
+        categoryName: categoryObj?.name,
+        isNew: true
+      };
+      onConceptsUpdated([...linkedConcepts, newDraft]);
+    }
 
     // Reset form & close modal cleanly
+    setEditingIndex(null);
     setConceptTitle("");
     setConceptSlug("");
     setIsSlugManuallyEdited(false);
@@ -181,10 +226,7 @@ export function LinkedConceptsManager({
         </div>
         <button
           className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-berry px-3 text-xs font-bold text-white shadow-xs hover:bg-berry/90 transition-all"
-          onClick={() => {
-            setErrorMessage(null);
-            setModalOpen(true);
-          }}
+          onClick={handleOpenCreate}
           type="button"
         >
           <Plus className="h-4 w-4" />
@@ -228,35 +270,128 @@ export function LinkedConceptsManager({
                   </p>
                 )}
               </div>
-              <button
-                aria-label="Remove concept from list"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded border border-line bg-surface text-ink/50 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
-                onClick={() => handleRemoveConcept(index)}
-                type="button"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+
+              {/* Card Action Buttons: View, Edit, Remove */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  aria-label="View concept preview"
+                  className="grid h-7 w-7 place-items-center rounded border border-line bg-surface text-ink/70 hover:bg-paper hover:text-ink transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setViewingConcept(concept);
+                  }}
+                  title="View Concept Primer"
+                  type="button"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  aria-label="Edit concept"
+                  className="grid h-7 w-7 place-items-center rounded border border-line bg-surface text-ink/70 hover:bg-civic/10 hover:text-civic hover:border-civic/30 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenEdit(index);
+                  }}
+                  title="Edit Concept"
+                  type="button"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  aria-label="Remove concept from list"
+                  className="grid h-7 w-7 place-items-center rounded border border-line bg-surface text-ink/50 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveConcept(index);
+                  }}
+                  title="Remove Concept"
+                  type="button"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Concept Creation & Linking Modal */}
+      {/* VIEW CONCEPT MODAL */}
+      {viewingConcept && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-midnight/60 px-4 py-6 overflow-y-auto"
+          onClick={(e) => {
+            e.stopPropagation();
+            setViewingConcept(null);
+          }}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-line bg-surface p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-line pb-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-berry">
+                    Concept Preview
+                  </span>
+                  {viewingConcept.categoryName && (
+                    <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
+                      {viewingConcept.categoryName}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl font-black text-ink">{viewingConcept.title}</h2>
+                <p className="text-xs font-mono text-ink/50 mt-0.5">/current-affairs/articles/{viewingConcept.slug}</p>
+              </div>
+              <button
+                aria-label="Close view modal"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-surface text-ink/70 hover:bg-paper"
+                onClick={() => setViewingConcept(null)}
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="article-body text-sm text-ink leading-relaxed border-t border-line/50 pt-3">
+              <RenderedContent content={viewingConcept.body} />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-line">
+              <button
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-4 text-xs font-bold text-ink hover:bg-paper"
+                onClick={() => {
+                  const idx = linkedConcepts.findIndex(
+                    (c) => (c.tempId && c.tempId === viewingConcept.tempId) || (c.id && c.id === viewingConcept.id)
+                  );
+                  setViewingConcept(null);
+                  if (idx !== -1) handleOpenEdit(idx);
+                }}
+                type="button"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-civic" />
+                Edit Concept
+              </button>
+              <button
+                className="h-9 rounded-xl bg-ink px-4 text-xs font-bold text-white hover:bg-ink/90"
+                onClick={() => setViewingConcept(null)}
+                type="button"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE / EDIT CONCEPT MODAL */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-midnight/60 px-4 py-6 overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
-              e.preventDefault();
-              if (activeTab === "create") {
-                handleAddConceptDraft(e);
-              } else if (activeTab === "existing") {
-                handleLinkExistingConcept(e);
-              }
-            }
-          }}
+          onKeyDown={(e) => e.stopPropagation()}
         >
           <div
             className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
@@ -268,7 +403,9 @@ export function LinkedConceptsManager({
                   <Sparkles className="h-4 w-4" />
                   Concept Management
                 </span>
-                <h2 className="text-xl font-black text-ink mt-1">Add Reusable Background Concept</h2>
+                <h2 className="text-xl font-black text-ink mt-1">
+                  {editingIndex !== null ? "Edit Background Concept" : "Add Reusable Background Concept"}
+                </h2>
               </div>
               <button
                 aria-label="Close modal"
@@ -280,31 +417,33 @@ export function LinkedConceptsManager({
               </button>
             </div>
 
-            {/* Modal Navigation Tabs */}
-            <div className="flex border-b border-line gap-2">
-              <button
-                className={`pb-2.5 px-3 text-sm font-bold transition-all border-b-2 ${
-                  activeTab === "create"
-                    ? "border-berry text-berry"
-                    : "border-transparent text-ink/60 hover:text-ink"
-                }`}
-                onClick={() => setActiveTab("create")}
-                type="button"
-              >
-                Create New Concept
-              </button>
-              <button
-                className={`pb-2.5 px-3 text-sm font-bold transition-all border-b-2 ${
-                  activeTab === "existing"
-                    ? "border-berry text-berry"
-                    : "border-transparent text-ink/60 hover:text-ink"
-                }`}
-                onClick={() => setActiveTab("existing")}
-                type="button"
-              >
-                Link Existing Concept
-              </button>
-            </div>
+            {/* Modal Navigation Tabs (only shown when creating new, not editing existing item) */}
+            {editingIndex === null && (
+              <div className="flex border-b border-line gap-2">
+                <button
+                  className={`pb-2.5 px-3 text-sm font-bold transition-all border-b-2 ${
+                    activeTab === "create"
+                      ? "border-berry text-berry"
+                      : "border-transparent text-ink/60 hover:text-ink"
+                  }`}
+                  onClick={() => setActiveTab("create")}
+                  type="button"
+                >
+                  Create New Concept
+                </button>
+                <button
+                  className={`pb-2.5 px-3 text-sm font-bold transition-all border-b-2 ${
+                    activeTab === "existing"
+                      ? "border-berry text-berry"
+                      : "border-transparent text-ink/60 hover:text-ink"
+                  }`}
+                  onClick={() => setActiveTab("existing")}
+                  type="button"
+                >
+                  Link Existing Concept
+                </button>
+              </div>
+            )}
 
             {errorMessage && (
               <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
@@ -312,7 +451,7 @@ export function LinkedConceptsManager({
               </p>
             )}
 
-            {/* TAB 1: CREATE NEW CONCEPT WITH RICH TEXT EDITOR */}
+            {/* TAB 1: CREATE / EDIT CONCEPT WITH RICH TEXT EDITOR */}
             {activeTab === "create" && (
               <div className="space-y-4">
                 <label className="grid gap-1 text-sm font-bold text-ink">
@@ -372,18 +511,18 @@ export function LinkedConceptsManager({
                   </button>
                   <button
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-berry px-5 text-sm font-bold text-white shadow-sm hover:bg-berry/90 transition-all"
-                    onClick={handleAddConceptDraft}
+                    onClick={handleSaveConceptDraft}
                     type="button"
                   >
                     <BookOpen className="h-4 w-4" />
-                    Add Concept to Event
+                    {editingIndex !== null ? "Update Concept" : "Add Concept to Event"}
                   </button>
                 </div>
               </div>
             )}
 
             {/* TAB 2: LINK EXISTING CONCEPT */}
-            {activeTab === "existing" && (
+            {activeTab === "existing" && editingIndex === null && (
               <div className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-ink/40" />
