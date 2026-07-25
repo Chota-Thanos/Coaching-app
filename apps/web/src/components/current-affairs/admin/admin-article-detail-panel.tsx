@@ -1,69 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { ImagePlus, Layers3, Plus, Trash2, Link2, ExternalLink, FileText, RefreshCw, Sparkles, ArrowDownToLine, ArrowUpFromLine, Search } from "lucide-react";
+import { ImagePlus, Plus, Trash2, Link2, ExternalLink, RefreshCw, Sparkles, ArrowDownToLine, ArrowUpFromLine, Search, BookOpen, CheckCircle2, X } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import type { FormEvent } from "react";
-import type { AdminArticleDetail, AdminArticleSummary, ArticleAsset, ArticleSection, CreateArticleAssetPayload } from "../../../lib/api";
-import { ARTICLE_ASSET_TYPES, adminSlug, type ArticleAssetType } from "../../../lib/admin-current-affairs";
+import type { AdminArticleDetail, AdminArticleSummary, ArticleAsset, CategoryNode, CreateArticleAssetPayload } from "../../../lib/api";
 import { articleHref } from "../../../lib/current-affairs";
+import { RenderedContent } from "../rendered-content";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
 
 type AdminArticleDetailPanelProps = {
   article: AdminArticleDetail | null;
   onRefresh: () => Promise<void>;
   onSelectArticleId?: (id: number) => void;
-};
-
-type SectionState = {
-  heading: string;
-  slug: string;
-  body: string;
-  seoDescription: string;
+  onInsertContentToActiveEditor?: (contentHtml: string) => void;
+  categories?: CategoryNode[];
 };
 
 type AssetState = {
-  assetType: ArticleAssetType;
-  fileName: string;
   fileUrl: string;
-  mimeType: string;
   altText: string;
-  caption: string;
-};
-
-const emptySection: SectionState = {
-  heading: "",
-  slug: "",
-  body: "",
-  seoDescription: ""
+  fileName: string;
 };
 
 const emptyAsset: AssetState = {
-  assetType: "image",
-  fileName: "",
   fileUrl: "",
-  mimeType: "",
   altText: "",
-  caption: ""
+  fileName: ""
 };
 
-function sectionSummary(section: ArticleSection): string {
-  return section.body.length > 110 ? `${section.body.slice(0, 110).trim()}...` : section.body;
-}
-
-const RELATION_TYPE_EXPLANATIONS: Record<string, string> = {
-  related_reference: "Intra-article reference: Links standard related articles for cross-referencing. Renders as 'Related reading' on the student details page.",
-  base_current_affairs: "Base Current Affairs: Links a Mains Daily Editorial summary to its corresponding factual Prelims Current Affairs article base.",
-  imported_source: "Imported Source (Notes content import): Links a Mains Topic-wise Note to an imported base article, whose contents can then be embedded into note sections.",
-  follow_up: "Follow Up: Links an older article to a newer article detailing further sequential developments on the same topic.",
-  prerequisite: "Prerequisite: Recommends foundational background articles or concepts the student should read before starting this page.",
-  mains_fodder: "Mains Fodder: Links a fact-filled Prelims article containing case studies, graphs, or key quotes to be used as fodder in Mains writing.",
-  pyq_context: "PYQ Context: Links a Past Year Question (PYQ) to the modern current affairs explanation or issue that prompted/contextualizes it."
-};
-
-export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId }: AdminArticleDetailPanelProps) {
+export function AdminArticleDetailPanel({
+  article,
+  onRefresh,
+  onSelectArticleId,
+  onInsertContentToActiveEditor,
+  categories = []
+}: AdminArticleDetailPanelProps) {
   const { token } = useAuth();
-  const [section, setSection] = useState<SectionState>(emptySection);
   const [asset, setAsset] = useState<AssetState>(emptyAsset);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -73,10 +46,12 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   const [targetArticleId, setTargetArticleId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("related_reference");
   const [relationLabel, setRelationLabel] = useState<string>("");
-  const [relationNote, setRelationNote] = useState<string>("");
   const [relationPending, setRelationPending] = useState(false);
-  const [relationConceptsOnly, setRelationConceptsOnly] = useState(false);
-  const [relationSearchQuery, setRelationSearchQuery] = useState("");
+
+  // Filters for relation search
+  const [filterSearchQuery, setFilterSearchQuery] = useState("");
+  const [filterContentKind, setFilterContentKind] = useState<string>("all");
+  const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
 
   // Article role (event/concept) state
   const [roleSaving, setRoleSaving] = useState(false);
@@ -87,15 +62,13 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   const [newUpdateBody, setNewUpdateBody] = useState("");
   const [savingUpdate, setSavingUpdate] = useState(false);
 
-  // Reference insert modal states (import content/link from another article, or export it there)
+  // Content Import & Export Modal state
   type RefDirection = "import" | "export";
   const [refModalOpen, setRefModalOpen] = useState(false);
-  const [refDirection, setRefDirection] = useState<RefDirection>("export");
-  const [refOtherArticle, setRefOtherArticle] = useState<{ id: number; title: string; slug: string } | null>(null);
-  const [refTargetSections, setRefTargetSections] = useState<ArticleSection[]>([]);
-  const [refSelectedSectionId, setRefSelectedSectionId] = useState<string>("");
-  const [refContent, setRefContent] = useState("");
-  const [refLoadingSections, setRefLoadingSections] = useState(false);
+  const [refDirection, setRefDirection] = useState<RefDirection>("import");
+  const [refTargetArticle, setRefTargetArticle] = useState<AdminArticleDetail | null>(null);
+  const [refLoadingTarget, setRefLoadingTarget] = useState(false);
+  const [refSnippet, setRefSnippet] = useState("");
   const [refPending, setRefPending] = useState(false);
 
   useEffect(() => {
@@ -174,15 +147,14 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     }
   }
 
-  async function addRelation(targetId: number, relType: string, label?: string, note?: string): Promise<void> {
+  async function addRelation(targetId: number, relType: string, label?: string): Promise<void> {
     if (!token || !article) return;
     setRelationPending(true);
     try {
       await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/relations`, token, {
         target_article_id: targetId,
         relation_type: relType,
-        label: label || undefined,
-        note: note || undefined
+        label: label || undefined
       });
       await onRefresh();
       setMessage("Relation added successfully.");
@@ -196,65 +168,21 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   async function createRelation(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (!targetArticleId) return;
-    await addRelation(Number(targetArticleId), relationType, relationLabel, relationNote);
+    await addRelation(Number(targetArticleId), relationType, relationLabel);
     setTargetArticleId("");
     setRelationLabel("");
-    setRelationNote("");
   }
 
-  // Already-linked article IDs, so suggestions never repeat an existing relation.
-  const alreadyLinkedIds = useMemo(() => {
-    const ids = new Set<number>();
-    if (!article) return ids;
-    article.outgoing_relations.forEach((r) => ids.add(Number(r.target_article.id)));
-    article.incoming_relations.forEach((r) => ids.add(Number(r.source_article.id)));
-    return ids;
-  }, [article]);
-
-  // Suggest concept articles either literally mentioned in this article's text,
-  // or sharing tags/keywords with it — so linking rarely needs manual searching.
-  const suggestedConcepts = useMemo(() => {
-    if (!article) return [];
-    const bodyText = (article.body || "").toLowerCase();
-    const titleText = (article.title || "").toLowerCase();
-    const currentTags = new Set(
-      [...(article.institute_tags || []), ...(article.keywords || [])].map((t) => t.toLowerCase().trim())
-    );
-
-    return allArticles
-      .filter((a) => a.article_role === "concept" && Number(a.id) !== article.id && !alreadyLinkedIds.has(Number(a.id)))
-      .map((candidate) => {
-        const candidateTitle = (candidate.title || "").toLowerCase().trim();
-        let score = 0;
-        const reasons: string[] = [];
-
-        if (candidateTitle.length > 3 && (bodyText.includes(candidateTitle) || titleText.includes(candidateTitle))) {
-          score += 10;
-          reasons.push("mentioned in this article");
-        }
-
-        const candidateTags = [...(candidate.institute_tags || []), ...(candidate.keywords || [])].map((t) => t.toLowerCase().trim());
-        const overlap = candidateTags.filter((t) => currentTags.has(t));
-        if (overlap.length > 0) {
-          score += overlap.length * 3;
-          reasons.push(`shared tags: ${overlap.slice(0, 2).join(", ")}`);
-        }
-
-        return { candidate, score, reason: reasons.join(" · ") };
-      })
-      .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-  }, [article, allArticles, alreadyLinkedIds]);
-
+  // Filter articles by Search Query, Content Kind, and Category
   const filteredRelationTargets = useMemo(() => {
     if (!article) return [];
-    const query = relationSearchQuery.trim().toLowerCase();
+    const query = filterSearchQuery.trim().toLowerCase();
     return allArticles
       .filter((a) => Number(a.id) !== article.id)
-      .filter((a) => !relationConceptsOnly || a.article_role === "concept")
-      .filter((a) => !query || a.title.toLowerCase().includes(query));
-  }, [allArticles, article, relationConceptsOnly, relationSearchQuery]);
+      .filter((a) => filterContentKind === "all" || a.content_kind === filterContentKind)
+      .filter((a) => filterCategoryId === "all" || String(a.category?.id) === filterCategoryId)
+      .filter((a) => !query || a.title.toLowerCase().includes(query) || (a.category?.name ?? "").toLowerCase().includes(query));
+  }, [allArticles, article, filterSearchQuery, filterContentKind, filterCategoryId]);
 
   async function deleteRelation(relationId: number): Promise<void> {
     if (!token || !window.confirm("Are you sure you want to remove this relation?")) return;
@@ -267,67 +195,56 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
     }
   }
 
-  function referenceHtml(title: string, slug: string, summary?: string | null): string {
-    const desc = summary?.trim();
-    return `<p>${desc ? `${desc} ` : ""}<a href="/current-affairs/articles/${slug}">Read more: ${title}</a></p>`;
-  }
-
-  async function openReferenceModal(
-    direction: RefDirection,
-    otherId: number,
-    otherTitle: string,
-    otherSlug: string,
-    otherSummary?: string | null
-  ) {
+  // Open Interactive Content Import / Export Modal
+  async function openContentModal(direction: RefDirection, targetId: number) {
     if (!token || !article) return;
     setRefDirection(direction);
-    setRefOtherArticle({ id: otherId, title: otherTitle, slug: otherSlug });
     setRefModalOpen(true);
-    setRefSelectedSectionId("");
+    setRefLoadingTarget(true);
+    setRefTargetArticle(null);
+    setRefSnippet("");
 
-    if (direction === "export") {
-      // Insert INTO the linked article; the content references the current article.
-      setRefContent(referenceHtml(article.title, article.slug, article.seo_description));
-      setRefLoadingSections(true);
-      try {
-        const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${otherId}`, token);
-        setRefTargetSections(detail.sections || []);
-      } catch (err) {
-        console.error("Failed to load sections for destination article:", err);
-        setRefTargetSections([]);
-      } finally {
-        setRefLoadingSections(false);
+    try {
+      const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${targetId}`, token);
+      setRefTargetArticle(detail);
+      if (direction === "import") {
+        setRefSnippet(detail.body || "");
+      } else {
+        setRefSnippet(article.body || "");
       }
-    } else {
-      // Insert INTO the current article; the content references the linked article.
-      setRefContent(referenceHtml(otherTitle, otherSlug, otherSummary));
-      setRefTargetSections(article.sections || []);
-      setRefLoadingSections(false);
+    } catch (err) {
+      console.error("Failed to load target article content:", err);
+      setMessage("Could not fetch target article content.");
+    } finally {
+      setRefLoadingTarget(false);
     }
   }
 
-  async function submitReference(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!token || !article || !refOtherArticle) return;
+  // Execute Import Content into Active Editor Body
+  function handleExecuteImport() {
+    if (!refSnippet.trim()) return;
+    if (onInsertContentToActiveEditor) {
+      onInsertContentToActiveEditor(refSnippet.trim());
+      setMessage(`Imported content snippet into active article editor.`);
+      setRefModalOpen(false);
+    }
+  }
 
-    const insertTargetId = refDirection === "export" ? refOtherArticle.id : article.id;
+  // Execute Export Content into Target Article Body
+  async function handleExecuteExport() {
+    if (!token || !refTargetArticle || !refSnippet.trim()) return;
     setRefPending(true);
     try {
-      await authenticatedPost(`/api/v1/current-affairs/articles/${insertTargetId}/insert-content`, token, {
-        content: refContent,
-        section_id: refSelectedSectionId ? Number(refSelectedSectionId) : undefined
+      const appendedBody = (refTargetArticle.body ? refTargetArticle.body + "\n\n" : "") + refSnippet.trim();
+      await authenticatedPatch(`/api/v1/current-affairs/articles/${refTargetArticle.id}`, token, {
+        body: appendedBody
       });
+      setMessage(`Exported content into '${refTargetArticle.title}'.`);
       setRefModalOpen(false);
-      setRefOtherArticle(null);
       await onRefresh();
-      setMessage(
-        refDirection === "export"
-          ? `Reference inserted into '${refOtherArticle.title}'.`
-          : `Reference to '${refOtherArticle.title}' inserted into this article.`
-      );
     } catch (err) {
-      console.error(err);
-      setMessage("Could not insert reference.");
+      console.error("Failed to export content into target article:", err);
+      setMessage("Could not export content to target article.");
     } finally {
       setRefPending(false);
     }
@@ -336,46 +253,21 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
   if (!article) {
     return (
       <section className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
-        Select an article to manage sections and assets.
+        Select an article to manage assets and cross-linking relations.
       </section>
     );
   }
 
-  async function createSection(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (!token || !article) return;
-
-    setPending(true);
-    setMessage(null);
-    try {
-      await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/sections`, token, {
-        heading: section.heading,
-        slug: section.slug || adminSlug(section.heading, "section"),
-        body: section.body,
-        seo_description: section.seoDescription || undefined,
-        is_active: true
-      });
-      setSection(emptySection);
-      await onRefresh();
-      setMessage("Section added.");
-    } catch {
-      setMessage("Could not add section.");
-    } finally {
-      setPending(false);
-    }
-  }
-
   async function createAsset(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!token || !article) return;
+    if (!token || !article || !asset.fileUrl.trim()) return;
 
     const payload: CreateArticleAssetPayload = {
-      asset_type: asset.assetType,
-      file_name: asset.fileName,
-      file_url: asset.fileUrl,
-      mime_type: asset.mimeType || undefined,
-      alt_text: asset.altText || undefined,
-      caption: asset.caption || undefined
+      asset_type: "image",
+      file_name: asset.fileName || asset.altText || "article_image",
+      file_url: asset.fileUrl.trim(),
+      mime_type: "image/jpeg",
+      alt_text: asset.altText.trim() || undefined
     };
 
     setPending(true);
@@ -384,18 +276,12 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
       await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/assets`, token, payload);
       setAsset(emptyAsset);
       await onRefresh();
-      setMessage("Asset added.");
+      setMessage("Image asset added.");
     } catch {
-      setMessage("Could not add asset.");
+      setMessage("Could not add image asset.");
     } finally {
       setPending(false);
     }
-  }
-
-  async function deleteSection(sectionId: number): Promise<void> {
-    if (!token) return;
-    await authenticatedDelete(`/api/v1/current-affairs/article-sections/${sectionId}`, token);
-    await onRefresh();
   }
 
   async function deleteAsset(assetId: number): Promise<void> {
@@ -406,299 +292,203 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
 
   return (
     <section className="space-y-6">
-      <div className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-        <p className="text-sm font-bold uppercase tracking-wide text-civic">Selected article</p>
-        <h2 className="mt-2 text-xl font-black leading-snug text-ink">{article.title}</h2>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-md bg-paper px-2 py-1 text-ink/65">{article.status}</span>
-          <span className="rounded-md bg-paper px-2 py-1 text-ink/65">{article.content_kind.replace(/_/g, " ")}</span>
-          {article.category && <span className="rounded-md bg-paper px-2 py-1 text-ink/65">{article.category.name}</span>}
-          {article.article_role === "concept" && (
-            <span className="rounded-md bg-berry/10 px-2 py-1 text-berry">Concept</span>
-          )}
+      {/* Article Meta Bar */}
+      <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-civic">Editing Article #{article.id}</span>
+          <h2 className="text-lg font-black text-ink">{article.title}</h2>
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">{article.status}</span>
+            <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">{article.content_kind.replace(/_/g, " ")}</span>
+            {article.category && <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">{article.category.name}</span>}
+            {article.article_role === "concept" && (
+              <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-black uppercase text-berry border border-berry/20">
+                Concept Primer
+              </span>
+            )}
+          </div>
         </div>
 
-        {article.content_kind === "daily_current_affairs" && (
-          <div className="mt-3 grid gap-1.5">
-            <span className="text-xs font-bold text-ink">Article role</span>
-            <div className="grid w-fit grid-cols-2 gap-1.5 rounded-lg border border-line bg-surface p-1">
-              <button
-                type="button"
-                disabled={roleSaving}
-                onClick={() => void toggleArticleRole("event")}
-                className={`h-8 rounded-md px-4 text-xs font-bold transition-all disabled:opacity-60 ${
-                  article.article_role === "event" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
-                }`}
-              >
-                Event
-              </button>
-              <button
-                type="button"
-                disabled={roleSaving}
-                onClick={() => void toggleArticleRole("concept")}
-                className={`h-8 rounded-md px-4 text-xs font-bold transition-all disabled:opacity-60 ${
-                  article.article_role === "concept" ? "bg-civic text-white shadow-sm" : "text-ink/60 hover:bg-surface"
-                }`}
-              >
-                Concept
-              </button>
-            </div>
-          </div>
-        )}
-
         {article.status === "published" && (
-          <Link className="mt-4 inline-flex h-10 items-center rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-civic" href={articleHref(article.slug)}>
-            Open public page
+          <Link
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-colors"
+            href={articleHref(article.slug)}
+            target="_blank"
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-civic" />
+            Open Public Page
           </Link>
         )}
       </div>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Layers3 aria-hidden="true" className="h-5 w-5 text-civic" />
-          <h3 className="text-lg font-black text-ink">Sections</h3>
-        </div>
-        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createSection}>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Heading
-              <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onBlur={() => setSection((current) => ({ ...current, slug: current.slug || adminSlug(current.heading, "section") }))}
-                onChange={(event) => setSection((current) => ({ ...current, heading: event.target.value }))}
-                required
-                value={section.heading}
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Slug
-              <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onChange={(event) => setSection((current) => ({ ...current, slug: adminSlug(event.target.value, "section") }))}
-                required
-                value={section.slug}
-              />
-            </label>
+      {/* 1. COMPRESSED & SIMPLIFIED ASSETS SECTION */}
+      <section className="space-y-3 rounded-xl border border-line bg-paper/20 p-4">
+        <div className="flex items-center justify-between border-b border-line/60 pb-2.5">
+          <div className="flex items-center gap-2">
+            <ImagePlus className="h-4 w-4 text-civic" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-ink">
+              Article Hero Images & Assets ({article.assets.length})
+            </h3>
           </div>
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            SEO description
-            <input
-              className="h-11 rounded-md border border-line px-3 text-base font-normal"
-              onChange={(event) => setSection((current) => ({ ...current, seoDescription: event.target.value }))}
-              value={section.seoDescription}
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            Body
-            <textarea
-              className="min-h-28 rounded-md border border-line px-3 py-2 text-base font-normal leading-6"
-              onChange={(event) => setSection((current) => ({ ...current, body: event.target.value }))}
-              value={section.body}
-            />
-          </label>
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white disabled:opacity-60"
-            disabled={pending}
-            type="submit"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            Add section
-          </button>
-        </form>
-
-        <div className="grid gap-3">
-          {article.sections.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">No sections added.</p>
-          ) : (
-            article.sections.map((item) => (
-              <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={item.id}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <h4 className="text-base font-extrabold leading-snug text-ink">{item.heading}</h4>
-                    <p className="mt-1 text-sm text-ink/65">{sectionSummary(item)}</p>
-                  </div>
-                  <button
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
-                    onClick={() => void deleteSection(item.id)}
-                    type="button"
-                  >
-                    <Trash2 aria-hidden="true" className="h-4 w-4" />
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
+          <span className="text-[11px] text-ink/50">Add thumbnail or header images</span>
         </div>
-      </section>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <ImagePlus aria-hidden="true" className="h-5 w-5 text-civic" />
-          <h3 className="text-lg font-black text-ink">Assets</h3>
-        </div>
-        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createAsset}>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Asset type
-              <select
-                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
-                onChange={(event) => setAsset((current) => ({ ...current, assetType: event.target.value as ArticleAssetType }))}
-                value={asset.assetType}
-              >
-                {ARTICLE_ASSET_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type.replace(/_/g, " ")}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              File name
+        {/* Compact inline image upload / link form */}
+        <form className="grid gap-2.5 sm:grid-cols-12 items-end rounded-xl border border-line bg-surface p-3 shadow-2xs" onSubmit={createAsset}>
+          <div className="sm:col-span-6 grid gap-1">
+            <label className="text-xs font-bold text-ink">Image File URL or Browse Local File</label>
+            <div className="flex items-center gap-2">
               <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onChange={(event) => setAsset((current) => ({ ...current, fileName: event.target.value }))}
+                className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 text-xs font-normal text-ink outline-none focus:border-civic"
+                onChange={(e) => setAsset((prev) => ({ ...prev, fileUrl: e.target.value }))}
+                placeholder="Paste image URL (https://...) or upload file"
                 required
-                value={asset.fileName}
+                type="url"
+                value={asset.fileUrl}
               />
-            </label>
-          </div>
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            File URL
-            <input
-              className="h-11 rounded-md border border-line px-3 text-base font-normal"
-              onChange={(event) => setAsset((current) => ({ ...current, fileUrl: event.target.value }))}
-              required
-              type="url"
-              value={asset.fileUrl}
-            />
-          </label>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              MIME type
-              <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onChange={(event) => setAsset((current) => ({ ...current, mimeType: event.target.value }))}
-                value={asset.mimeType}
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Alt text
-              <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onChange={(event) => setAsset((current) => ({ ...current, altText: event.target.value }))}
-                value={asset.altText}
-              />
-            </label>
-          </div>
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            Caption
-            <input
-              className="h-11 rounded-md border border-line px-3 text-base font-normal"
-              onChange={(event) => setAsset((current) => ({ ...current, caption: event.target.value }))}
-              value={asset.caption}
-            />
-          </label>
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white disabled:opacity-60"
-            disabled={pending}
-            type="submit"
-          >
-            <ImagePlus aria-hidden="true" className="h-4 w-4" />
-            Add asset
-          </button>
-        </form>
-
-        <div className="grid gap-3">
-          {article.assets.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">No assets added.</p>
-          ) : (
-            article.assets.map((item: ArticleAsset) => (
-              <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={item.id}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <h4 className="truncate text-base font-extrabold leading-snug text-ink">{item.file_name}</h4>
-                    <p className="mt-1 break-all text-sm text-ink/65">{item.file_url}</p>
-                    <p className="mt-1 text-xs font-bold text-civic">{item.asset_type.replace(/_/g, " ")}</p>
-                  </div>
-                  <button
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink hover:border-berry hover:text-berry"
-                    onClick={() => void deleteAsset(item.id)}
-                    type="button"
-                  >
-                    <Trash2 aria-hidden="true" className="h-4 w-4" />
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Link2 aria-hidden="true" className="h-5 w-5 text-civic" />
-          <h3 className="text-lg font-black text-ink">Relations & Cross-Linking</h3>
-        </div>
-
-        {suggestedConcepts.length > 0 && (
-          <div className="space-y-2 rounded-lg border border-civic/20 bg-civic/5 p-3">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-civic">
-              <Sparkles className="h-3.5 w-3.5" />
-              Suggested concepts (matched by mention or shared tags — click to link instantly)
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {suggestedConcepts.map(({ candidate, reason }) => (
-                <button
-                  key={candidate.id}
-                  type="button"
-                  disabled={relationPending}
-                  onClick={() => void addRelation(Number(candidate.id), "related_reference")}
-                  title={reason}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-civic/30 bg-surface px-3 py-1.5 text-xs font-bold text-civic transition-all hover:bg-civic hover:text-white disabled:opacity-50"
-                >
-                  <Plus className="h-3 w-3" />
-                  {candidate.title}
-                </button>
-              ))}
+              <label className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-xs font-bold text-ink hover:bg-line cursor-pointer">
+                <ImagePlus className="h-3.5 w-3.5 text-civic" />
+                <span>Upload</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const res = evt.target?.result as string;
+                      if (res) {
+                        setAsset((prev) => ({
+                          ...prev,
+                          fileUrl: res,
+                          fileName: file.name,
+                          altText: prev.altText || file.name.replace(/\.[^/.]+$/, "")
+                        }));
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
             </div>
           </div>
-        )}
 
-        {/* Form to Add Relation */}
-        <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createRelation}>
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div className="sm:col-span-4 grid gap-1">
+            <label className="text-xs font-bold text-ink">Alt Text (Image Description)</label>
+            <input
+              className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-xs font-normal text-ink outline-none focus:border-civic"
+              onChange={(e) => setAsset((prev) => ({ ...prev, altText: e.target.value }))}
+              placeholder="e.g. Map of Indian Ports"
+              type="text"
+              value={asset.altText}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <button
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white shadow-xs hover:bg-civic/90 transition-all disabled:opacity-60"
+              disabled={pending || !asset.fileUrl}
+              type="submit"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Image
+            </button>
+          </div>
+        </form>
+
+        {/* Compact Image Cards Grid */}
+        {article.assets.length > 0 && (
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {article.assets.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-2.5 shadow-2xs">
+                <img
+                  src={item.file_url}
+                  alt={item.alt_text || item.file_name}
+                  className="h-12 w-16 rounded-lg object-cover border border-line bg-paper/40 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <h5 className="text-xs font-extrabold text-ink truncate">{item.alt_text || item.file_name || "Image Asset"}</h5>
+                  <p className="text-[11px] text-ink/50 truncate font-mono mt-0.5">{item.file_url}</p>
+                </div>
+                <button
+                  onClick={() => void deleteAsset(item.id)}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line bg-surface text-ink/50 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                  title="Delete Image"
+                  type="button"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 2. RELATIONS & CROSS-LINKING OVERHAUL WITH FILTERS */}
+      <section className="space-y-4 rounded-xl border border-line bg-paper/20 p-4">
+        <div className="flex items-center gap-2 border-b border-line/60 pb-2.5">
+          <Link2 className="h-4 w-4 text-civic" />
+          <h3 className="text-sm font-bold uppercase tracking-wider text-ink">
+            Article Cross-Linking & References
+          </h3>
+        </div>
+
+        {/* Form to Add Relation with Filters */}
+        <form className="grid gap-3 rounded-xl border border-line bg-surface p-3.5 shadow-2xs" onSubmit={createRelation}>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {/* Filter 1: Title Search */}
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/40" />
               <input
                 type="text"
-                className="h-9 w-full rounded-md border border-line bg-surface pl-8 pr-3 text-xs outline-none focus:border-civic"
-                placeholder="Search articles by title..."
-                value={relationSearchQuery}
-                onChange={(e) => setRelationSearchQuery(e.target.value)}
+                className="h-9 w-full rounded-lg border border-line bg-surface pl-8 pr-3 text-xs outline-none focus:border-civic"
+                placeholder="Search by title..."
+                value={filterSearchQuery}
+                onChange={(e) => setFilterSearchQuery(e.target.value)}
               />
             </div>
-            <label className="flex items-center gap-2 whitespace-nowrap text-xs font-bold text-ink/75 cursor-pointer">
-              <input
-                type="checkbox"
-                className="h-3.5 w-3.5 rounded border-line accent-civic"
-                checked={relationConceptsOnly}
-                onChange={(e) => setRelationConceptsOnly(e.target.checked)}
-              />
-              Concepts only
-            </label>
+
+            {/* Filter 2: Content Type / Kind Filter */}
+            <select
+              className="h-9 rounded-lg border border-line bg-surface px-2.5 text-xs font-normal text-ink outline-none focus:border-civic"
+              value={filterContentKind}
+              onChange={(e) => setFilterContentKind(e.target.value)}
+            >
+              <option value="all">All Content Types</option>
+              <option value="daily_current_affairs">Daily Current Affairs</option>
+              <option value="daily_editorial_summary">Editorial Summaries</option>
+              <option value="mains_topic_note">Mains Notes</option>
+              <option value="prelims_pyq">Prelims PYQ</option>
+              <option value="mains_pyq">Mains PYQ</option>
+            </select>
+
+            {/* Filter 3: Category Filter */}
+            <select
+              className="h-9 rounded-lg border border-line bg-surface px-2.5 text-xs font-normal text-ink outline-none focus:border-civic"
+              value={filterCategoryId}
+              onChange={(e) => setFilterCategoryId(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={String(cat.id)}>
+                  {cat.name} ({cat.node_type.replace(/_/g, " ")})
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Related Article ({filteredRelationTargets.length} match{filteredRelationTargets.length === 1 ? "" : "es"})
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1 text-xs font-bold text-ink sm:col-span-2">
+              Select Target Article ({filteredRelationTargets.length} match{filteredRelationTargets.length === 1 ? "" : "es"})
               <select
-                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-normal text-ink outline-none focus:border-civic"
                 onChange={(event) => setTargetArticleId(event.target.value)}
                 required
                 value={targetArticleId}
               >
-                <option value="">-- Choose Article --</option>
+                <option value="">-- Choose Article to Link --</option>
                 {filteredRelationTargets.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.title} ({a.content_kind.replace(/_/g, " ")}{a.article_role === "concept" ? " — Concept" : ""})
@@ -706,190 +496,96 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-bold text-ink">
+
+            <label className="grid gap-1 text-xs font-bold text-ink">
               Relation Type
               <select
-                className="h-11 rounded-md border border-line bg-surface px-3 text-base font-normal"
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-normal text-ink outline-none focus:border-civic"
                 onChange={(event) => setRelationType(event.target.value)}
                 required
                 value={relationType}
               >
-                <option value="related_reference">Related Reference</option>
-                <option value="base_current_affairs">Base Current Affairs</option>
-                <option value="imported_source">Imported Source</option>
-                <option value="follow_up">Follow Up</option>
-                <option value="prerequisite">Prerequisite</option>
-                <option value="mains_fodder">Mains Fodder</option>
-                <option value="pyq_context">PYQ Context</option>
+                <option value="related_reference">🔗 Related Reference</option>
+                <option value="prerequisite">⭐ Core Concept</option>
+                <option value="follow_up">📰 Follow-up News</option>
               </select>
             </label>
           </div>
 
-          <div className="bg-civic/5 border border-civic/10 p-3 rounded-lg text-xs leading-relaxed text-civic font-semibold">
-            💡 <strong>Relation Explanation:</strong> {RELATION_TYPE_EXPLANATIONS[relationType] || "Select a relation type."}
+          <div className="flex justify-end gap-2 pt-2 border-t border-line/60">
+            <button
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-civic px-4 text-xs font-bold text-white shadow-xs hover:bg-civic/90 transition-all disabled:opacity-60"
+              disabled={relationPending || !targetArticleId}
+              type="submit"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Link Selected Article
+            </button>
           </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Label (optional)
-              <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onChange={(event) => setRelationLabel(event.target.value)}
-                placeholder="e.g. Critical Follow-up on Data Bill"
-                value={relationLabel}
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-bold text-ink">
-              Note (optional)
-              <input
-                className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                onChange={(event) => setRelationNote(event.target.value)}
-                placeholder="Internal memo or context note"
-                value={relationNote}
-              />
-            </label>
-          </div>
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white disabled:opacity-60"
-            disabled={relationPending || !targetArticleId}
-            type="submit"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            Add Relation
-          </button>
         </form>
 
-        {/* List of Outgoing Relations */}
+        {/* List of Outgoing Relations with Import / Export Content Buttons */}
         <div className="space-y-2">
-          <h4 className="text-sm font-bold text-ink">Outgoing Relations (Referenced by this article)</h4>
+          <h4 className="text-xs font-extrabold uppercase tracking-wider text-ink/70">Outgoing Linked Articles</h4>
           {article.outgoing_relations.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-xs text-ink/65">
-              This article does not reference any other articles.
+            <p className="rounded-lg border border-dashed border-line bg-surface/50 p-3 text-xs text-ink/50">
+              No articles linked yet. Search and select an article above to link.
             </p>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-2.5">
               {article.outgoing_relations.map((rel) => (
-                <div key={rel.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div key={rel.id} className="rounded-xl border border-line bg-surface p-3 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[10px] font-bold text-civic uppercase">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[10px] font-black uppercase text-civic border border-civic/20">
                         {rel.relation_type.replace(/_/g, " ")}
                       </span>
-                      {rel.label && (
-                        <span className="text-xs font-semibold text-ink/70">
-                          ({rel.label})
-                        </span>
-                      )}
                       {rel.target_article.article_role === "concept" && (
-                        <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-bold text-berry uppercase">
+                        <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-black uppercase text-berry border border-berry/20">
                           Concept
                         </span>
                       )}
                     </div>
                     <h5 className="mt-1 text-sm font-extrabold text-ink truncate">{rel.target_article.title}</h5>
-                    {rel.note && <p className="text-xs text-ink/65 mt-0.5 italic">{rel.note}</p>}
                   </div>
-                  <div className="flex gap-2 shrink-0">
+
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                     {onSelectArticleId && (
                       <button
                         onClick={() => onSelectArticleId(Number(rel.target_article.id))}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-all"
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2.5 text-xs font-bold text-ink hover:border-civic hover:text-civic transition-colors"
+                        title="Edit Target Article in Workspace"
                         type="button"
                       >
                         <ExternalLink className="h-3 w-3" />
-                        Open Article
+                        Edit Article
                       </button>
                     )}
-                    <button
-                      onClick={() => openReferenceModal("import", Number(rel.target_article.id), rel.target_article.title, rel.target_article.slug, rel.target_article.seo_description)}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-civic hover:border-civic transition-all"
-                      type="button"
-                    >
-                      <ArrowDownToLine className="h-3 w-3" />
-                      Import reference
-                    </button>
-                    <button
-                      onClick={() => openReferenceModal("export", Number(rel.target_article.id), rel.target_article.title, rel.target_article.slug)}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white hover:bg-civic/90 transition-all"
-                      type="button"
-                    >
-                      <ArrowUpFromLine className="h-3 w-3" />
-                      Export reference
-                    </button>
-                    <button
-                      onClick={() => deleteRelation(rel.id)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink hover:border-berry hover:text-berry"
-                      type="button"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* List of Incoming Relations */}
-        <div className="space-y-2 mt-4">
-          <h4 className="text-sm font-bold text-ink">Incoming Relations (Referencing this article)</h4>
-          {article.incoming_relations.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-xs text-ink/65">
-              No other articles reference this article.
-            </p>
-          ) : (
-            <div className="grid gap-3">
-              {article.incoming_relations.map((rel) => (
-                <div key={rel.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[10px] font-bold text-civic uppercase">
-                        {rel.relation_type.replace(/_/g, " ")}
-                      </span>
-                      {rel.label && (
-                        <span className="text-xs font-semibold text-ink/70">
-                          ({rel.label})
-                        </span>
-                      )}
-                      {rel.source_article.article_role === "concept" && (
-                        <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-bold text-berry uppercase">
-                          Concept
-                        </span>
-                      )}
-                    </div>
-                    <h5 className="mt-1 text-sm font-extrabold text-ink truncate">{rel.source_article.title}</h5>
-                    {rel.note && <p className="text-xs text-ink/65 mt-0.5 italic">{rel.note}</p>}
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    {onSelectArticleId && (
-                      <button
-                        onClick={() => onSelectArticleId(Number(rel.source_article.id))}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-all"
-                        type="button"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Open Article
-                      </button>
-                    )}
                     <button
-                      onClick={() => openReferenceModal("import", Number(rel.source_article.id), rel.source_article.title, rel.source_article.slug, rel.source_article.seo_description)}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-civic hover:border-civic transition-all"
+                      onClick={() => openContentModal("import", Number(rel.target_article.id))}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-civic/30 bg-civic/10 px-2.5 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all"
+                      title="Open and Import content from target article into active editor"
                       type="button"
                     >
                       <ArrowDownToLine className="h-3 w-3" />
-                      Import reference
+                      Import Content
                     </button>
+
                     <button
-                      onClick={() => openReferenceModal("export", Number(rel.source_article.id), rel.source_article.title, rel.source_article.slug)}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white hover:bg-civic/90 transition-all"
+                      onClick={() => openContentModal("export", Number(rel.target_article.id))}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-berry/30 bg-berry/10 px-2.5 text-xs font-bold text-berry hover:bg-berry hover:text-white transition-all"
+                      title="Export content into target article"
                       type="button"
                     >
                       <ArrowUpFromLine className="h-3 w-3" />
-                      Export reference
+                      Export Content
                     </button>
+
                     <button
                       onClick={() => deleteRelation(rel.id)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink hover:border-berry hover:text-berry"
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-ink/50 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                      title="Remove Relation"
                       type="button"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -902,52 +598,56 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         </div>
       </section>
 
+      {/* 3. CONCEPT UPDATES TIMELINE (Only for Concept articles) */}
       {article.article_role === "concept" && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles aria-hidden="true" className="h-5 w-5 text-berry" />
-            <h3 className="text-lg font-black text-ink">Concept Updates Timeline</h3>
+        <section className="space-y-3 rounded-xl border border-line bg-paper/20 p-4">
+          <div className="flex items-center gap-2 border-b border-line/60 pb-2.5">
+            <Sparkles className="h-4 w-4 text-berry" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-ink">Concept Updates Timeline</h3>
           </div>
-          <p className="text-xs text-ink/55 leading-snug -mt-2">
-            Add dated updates as new developments touch this concept, instead of creating a duplicate article. Every article linking here shows the latest update automatically.
+          <p className="text-xs text-ink/65 leading-snug">
+            Add dated updates as new developments touch this background concept.
           </p>
 
-          <div className="grid gap-2 rounded-lg border border-line bg-surface p-4">
+          <div className="grid gap-2 rounded-xl border border-line bg-surface p-3">
             <textarea
-              className="min-h-20 rounded-md border border-line px-3 py-2 text-sm font-normal leading-6"
+              className="min-h-20 rounded-lg border border-line px-3 py-2 text-xs font-normal outline-none focus:border-civic"
               onChange={(event) => setNewUpdateBody(event.target.value)}
-              placeholder="e.g. Ministry of Railways announced a second hydrogen train route in Oct 2026..."
+              placeholder="e.g. Ministry of Railways announced second hydrogen train route in Oct 2026..."
               value={newUpdateBody}
             />
-            <button
-              type="button"
-              onClick={() => void addConceptUpdate()}
-              disabled={savingUpdate || !newUpdateBody.trim()}
-              className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white disabled:opacity-60"
-            >
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              {savingUpdate ? "Saving..." : "Add update"}
-            </button>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => void addConceptUpdate()}
+                disabled={savingUpdate || !newUpdateBody.trim()}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white disabled:opacity-60"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {savingUpdate ? "Saving..." : "Add Concept Update"}
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-2">
             {loadingConceptUpdates ? (
-              <p className="text-xs text-ink/50 italic">Loading updates...</p>
+              <p className="text-xs text-ink/50 italic py-2">Loading updates...</p>
             ) : conceptUpdates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-surface p-3 text-xs text-ink/65">No updates yet.</p>
+              <p className="rounded-lg border border-dashed border-line bg-surface/50 p-3 text-xs text-ink/50">No updates yet.</p>
             ) : (
               conceptUpdates.map((upd) => (
-                <div key={upd.id} className="rounded-lg border border-line bg-surface p-3 shadow-xs flex items-start justify-between gap-3">
+                <div key={upd.id} className="rounded-xl border border-line bg-surface p-3 shadow-2xs flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <span className="text-[10px] font-bold text-berry uppercase">
+                    <span className="text-[10px] font-black uppercase text-berry">
                       {new Date(upd.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
                     </span>
-                    <p className="text-xs text-ink mt-1 whitespace-pre-wrap">{upd.body}</p>
+                    <p className="text-xs text-ink mt-1 whitespace-pre-wrap leading-relaxed">{upd.body}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => void deleteConceptUpdate(upd.id)}
-                    className="text-rose-500 hover:text-rose-700 shrink-0"
+                    className="text-ink/40 hover:text-rose-600 shrink-0"
+                    title="Delete update"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -958,104 +658,148 @@ export function AdminArticleDetailPanel({ article, onRefresh, onSelectArticleId 
         </section>
       )}
 
-      {/* Reference Insert Modal Overlay */}
-      {refModalOpen && refOtherArticle && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <form
-            onSubmit={submitReference}
-            className="relative w-full max-w-lg bg-surface rounded-2xl shadow-xl border border-line p-6 animate-in fade-in zoom-in-95 duration-200 space-y-4"
+      {/* 4. INTERACTIVE CONTENT IMPORT / EXPORT MODAL OVERLAY */}
+      {refModalOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-midnight/60 px-4 py-6 overflow-y-auto"
+          onClick={() => setRefModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
           >
-            <button
-              className="absolute top-4 right-4 h-8 w-8 rounded-full border border-line bg-surface hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
-              onClick={() => {
-                setRefModalOpen(false);
-                setRefOtherArticle(null);
-              }}
-              type="button"
-            >
-              ✕
-            </button>
-
-            <div>
-              <h3 className="text-lg font-black text-ink flex items-center gap-2">
-                {refDirection === "export" ? (
-                  <ArrowUpFromLine className="h-5 w-5 text-civic" />
-                ) : (
-                  <ArrowDownToLine className="h-5 w-5 text-civic" />
-                )}
-                {refDirection === "export" ? "Export Reference" : "Import Reference"}
-              </h3>
-              <p className="text-xs text-ink/60 mt-1">
-                {refDirection === "export" ? (
-                  <>Insert a short reference pointing to <strong>"{article.title}"</strong> into the target article <strong>"{refOtherArticle.title}"</strong>.</>
-                ) : (
-                  <>Insert a short reference to <strong>"{refOtherArticle.title}"</strong> into this article, <strong>"{article.title}"</strong>.</>
-                )}
-              </p>
-            </div>
-
-            <label className="grid gap-1.5 text-xs font-bold text-ink">
-              Select Target Placement Area
-              {refLoadingSections ? (
-                <div className="flex items-center gap-2 text-ink/65 text-xs py-2 bg-paper/50 rounded px-3 border border-line">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-civic" />
-                  <span>Loading article sections...</span>
-                </div>
-              ) : (
-                <select
-                  value={refSelectedSectionId}
-                  onChange={(e) => setRefSelectedSectionId(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                >
-                  <option value="">Main Body (Append to end)</option>
-                  {refTargetSections.map(sec => (
-                    <option key={sec.id} value={sec.id}>
-                      Section: {sec.heading}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </label>
-
-            <label className="grid gap-1.5 text-xs font-bold text-ink">
-              Reference HTML Content to Insert
-              <textarea
-                value={refContent}
-                onChange={(e) => setRefContent(e.target.value)}
-                required
-                className="min-h-[120px] rounded-lg border border-line p-3 font-mono text-xs outline-none focus:border-civic focus:ring-2 focus:ring-civic/20"
-                placeholder="HTML to append, e.g. <p>Short blurb <a href=&quot;/current-affairs/articles/slug&quot;>Read more: Title</a></p>"
-              />
-              <span className="text-[11px] font-normal text-ink/50">
-                Pre-filled from the linked article's SEO description, if it has one — edit freely before inserting.
-              </span>
-            </label>
-
-            <div className="flex gap-3 justify-end pt-4 border-t border-line">
+            <div className="flex items-start justify-between gap-4 border-b border-line pb-3">
+              <div>
+                <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-civic">
+                  {refDirection === "import" ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}
+                  {refDirection === "import" ? "Content Import System" : "Content Export System"}
+                </span>
+                <h2 className="text-lg font-black text-ink mt-0.5">
+                  {refDirection === "import" ? (
+                    <>Import Content from Target Article into Active Editor</>
+                  ) : (
+                    <>Export Content into Target Article</>
+                  )}
+                </h2>
+              </div>
               <button
+                aria-label="Close modal"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line bg-surface text-ink/70 hover:bg-paper"
+                onClick={() => setRefModalOpen(false)}
                 type="button"
-                className="h-10 px-4 rounded-lg border border-line font-bold text-xs text-ink hover:bg-paper"
-                onClick={() => {
-                  setRefModalOpen(false);
-                  setRefOtherArticle(null);
-                }}
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={refPending}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-civic px-4 text-xs font-bold text-white shadow-md hover:bg-civic/90 transition-all"
-              >
-                {refPending && <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />}
-                {refDirection === "export" ? "Export Reference" : "Import Reference"}
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </form>
+
+            {refLoadingTarget ? (
+              <div className="py-12 text-center text-xs text-ink/50 flex items-center justify-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin text-civic" />
+                Fetching target article content...
+              </div>
+            ) : refTargetArticle ? (
+              <div className="space-y-4">
+                {/* Target Article Banner */}
+                <div className="rounded-xl border border-line bg-paper/40 p-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-ink/50 uppercase">Target Article #{refTargetArticle.id}</span>
+                    <h3 className="text-base font-extrabold text-ink">{refTargetArticle.title}</h3>
+                    {refTargetArticle.category && (
+                      <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
+                        {refTargetArticle.category.name}
+                      </span>
+                    )}
+                  </div>
+
+                  {onSelectArticleId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectArticleId(refTargetArticle.id);
+                        setRefModalOpen(false);
+                      }}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-civic hover:bg-civic/10 transition-colors"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Open & Edit in Workspace
+                    </button>
+                  )}
+                </div>
+
+                {/* Target Article Body Rendered Preview */}
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-ink/70 mb-2">
+                    {refDirection === "import" ? "Target Article Content (Read & Select)" : "Target Article Current Body"}
+                  </h4>
+                  <div className="max-h-56 overflow-y-auto rounded-lg border border-line/60 bg-paper/20 p-3 text-sm text-ink leading-relaxed article-body select-text">
+                    <RenderedContent content={refTargetArticle.body} />
+                  </div>
+                </div>
+
+                {/* Snippet Editor */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-ink">
+                    {refDirection === "import"
+                      ? "Content Snippet to Import into Active Editor Body"
+                      : "Content Snippet to Export & Append to Target Article"}
+                  </label>
+                  <textarea
+                    className="min-h-32 w-full rounded-xl border border-line bg-surface p-3 font-mono text-xs text-ink outline-none focus:border-civic"
+                    onChange={(e) => setRefSnippet(e.target.value)}
+                    value={refSnippet}
+                  />
+                  <p className="text-[11px] text-ink/50">
+                    {refDirection === "import"
+                      ? "Edit or filter the snippet above. Clicking 'Insert into Active Editor' appends this directly to your main article body."
+                      : "Clicking 'Export Content' appends this snippet directly to the target article in the database."}
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-line">
+                  <button
+                    className="h-9 rounded-xl border border-line bg-surface px-4 text-xs font-bold text-ink hover:bg-paper"
+                    onClick={() => setRefModalOpen(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+
+                  {refDirection === "import" ? (
+                    <button
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-civic px-5 text-xs font-bold text-white shadow-xs hover:bg-civic/90 transition-all disabled:opacity-60"
+                      disabled={!refSnippet.trim()}
+                      onClick={handleExecuteImport}
+                      type="button"
+                    >
+                      <ArrowDownToLine className="h-3.5 w-3.5" />
+                      Insert into Active Editor
+                    </button>
+                  ) : (
+                    <button
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-berry px-5 text-xs font-bold text-white shadow-xs hover:bg-berry/90 transition-all disabled:opacity-60"
+                      disabled={refPending || !refSnippet.trim()}
+                      onClick={() => void handleExecuteExport()}
+                      type="button"
+                    >
+                      <ArrowUpFromLine className="h-3.5 w-3.5" />
+                      {refPending ? "Exporting..." : "Export Content to Target"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="py-8 text-center text-xs text-ink/50">Target article not found.</p>
+            )}
+          </div>
         </div>
       )}
 
-      {message && <p className="rounded-lg border border-line bg-surface p-3 text-sm font-semibold text-civic">{message}</p>}
+      {message && (
+        <div className="rounded-xl border border-civic/20 bg-civic/5 p-3 text-xs font-semibold text-civic flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {message}
+        </div>
+      )}
     </section>
   );
 }

@@ -967,12 +967,18 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             </div>
           </form>
 
-          {/* 1.5th - Sections, assets, connections & concept updates — unlocked once the article is saved */}
+          {/* 1.5th - Assets, connections, concept updates & content import/export — unlocked once the article is saved */}
           {editingDraftId && editingArticleDetail && (
             <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm">
               <AdminArticleDetailPanel
                 article={editingArticleDetail}
                 onRefresh={refreshEditingArticleDetail}
+                onSelectArticleId={(id) => handleEditDraft(id)}
+                onInsertContentToActiveEditor={(contentHtml) => {
+                  updateField("body", (formState.body ? formState.body + "\n\n" : "") + contentHtml);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                categories={categories}
               />
             </div>
           )}
