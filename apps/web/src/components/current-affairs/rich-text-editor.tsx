@@ -68,6 +68,7 @@ type RichTextMarkdownEditorProps = {
   label?: string;
   required?: boolean;
   minHeightClass?: string;
+  onEditorReady?: (editor: any) => void;
 };
 
 export function RichTextMarkdownEditor({
@@ -76,7 +77,8 @@ export function RichTextMarkdownEditor({
   placeholder = "Start writing here...",
   label = "",
   required = false,
-  minHeightClass = "min-h-[300px]"
+  minHeightClass = "min-h-[300px]",
+  onEditorReady
 }: RichTextMarkdownEditorProps) {
   const [tab, setTab] = useState<"visual" | "html" | "preview">("visual");
   const { token } = useAuth();
@@ -128,12 +130,15 @@ export function RichTextMarkdownEditor({
   // Sync external changes
   useEffect(() => {
     if (!editor) return;
+    if (onEditorReady) {
+      onEditorReady(editor);
+    }
     const current = editor.getHTML();
     const desired = value || "";
     if (desired !== current) {
       editor.commands.setContent(desired);
     }
-  }, [editor, value]);
+  }, [editor, value, onEditorReady]);
 
   const insertLink = () => {
     if (!editor) return;

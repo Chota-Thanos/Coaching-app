@@ -50,6 +50,9 @@ export function SplitScreenTransferModal({
   const [savingTarget, setSavingTarget] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // TipTap editor instance ref for right-hand editor
+  const [targetEditor, setTargetEditor] = useState<any>(null);
+
   // Selected text snippet from Left Column
   const [selectedText, setSelectedText] = useState("");
 
@@ -65,6 +68,7 @@ export function SplitScreenTransferModal({
     if (!isOpen || !token || !targetId) {
       setTargetDetail(null);
       setTargetBody("");
+      setTargetEditor(null);
       return;
     }
 
@@ -114,20 +118,31 @@ export function SplitScreenTransferModal({
     }
   };
 
-  // Insert Reference Link HTML into Target Editor
+  // Insert Inline Reference Link HTML directly at cursor location in target editor
   const handleInsertReferenceLink = () => {
-    const refLinkHtml = `<p><a href="/current-affairs/articles/${sourceArticle.slug}">Read more: ${sourceArticle.title}</a></p>`;
-    setTargetBody((prev) => (prev ? `${prev}\n\n${refLinkHtml}` : refLinkHtml));
-    setMessage(`Inserted reference link to "${sourceArticle.title}" at cursor/end.`);
+    const inlineRefHtml = `<a href="/current-affairs/articles/${sourceArticle.slug}">Read more...</a>`;
+    if (targetEditor && !targetEditor.isDestroyed) {
+      targetEditor.chain().focus().insertContent(` ${inlineRefHtml}`).run();
+      setMessage(`Inserted "Read more..." inline link at active cursor.`);
+    } else {
+      setTargetBody((prev) => `${prev} ${inlineRefHtml}`);
+      setMessage(`Inserted "Read more..." inline link.`);
+    }
   };
 
-  // Insert Selected Snippet into Target Editor
+  // Insert Content Snippet directly at cursor location in target editor
   const handleInsertSnippet = (snippetToInsert?: string) => {
     const textToUse = snippetToInsert || selectedText || sourceArticle.body;
     if (!textToUse.trim()) return;
-    const formattedSnippet = textToUse.trim().startsWith("<") ? textToUse.trim() : `<p>${textToUse.trim()}</p>`;
-    setTargetBody((prev) => (prev ? `${prev}\n\n${formattedSnippet}` : formattedSnippet));
-    setMessage(`Inserted content snippet into target note.`);
+    const contentHtml = textToUse.trim().startsWith("<") ? textToUse.trim() : `<p>${textToUse.trim()}</p>`;
+
+    if (targetEditor && !targetEditor.isDestroyed) {
+      targetEditor.chain().focus().insertContent(contentHtml).run();
+      setMessage(`Inserted content snippet at active cursor.`);
+    } else {
+      setTargetBody((prev) => (prev ? `${prev}\n\n${contentHtml}` : contentHtml));
+      setMessage(`Inserted content snippet.`);
+    }
   };
 
   // Capture text selected by user in left column
@@ -280,10 +295,10 @@ export function SplitScreenTransferModal({
                   disabled={!targetDetail}
                   onClick={handleInsertReferenceLink}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-civic/40 bg-civic/10 px-3 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all disabled:opacity-50"
-                  title="Insert a hyperlink referencing this source article into the target note at cursor"
+                  title="Insert 'Read more...' hyperlink directly at the cursor location in the target note"
                 >
                   <Link2 className="h-3.5 w-3.5" />
-                  Insert Reference Link at Cursor
+                  Insert "Read more..." Link at Cursor
                 </button>
 
                 <button
@@ -294,7 +309,7 @@ export function SplitScreenTransferModal({
                   title="Highlight text in the article body below, then click to insert at cursor"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Insert Selected Snippet ({selectedText.length > 0 ? `${selectedText.length} chars` : "Highlight text first"})
+                  Insert Highlighted Snippet at Cursor ({selectedText.length > 0 ? `${selectedText.length} chars` : "Highlight text first"})
                 </button>
 
                 <button
@@ -302,10 +317,10 @@ export function SplitScreenTransferModal({
                   disabled={!targetDetail}
                   onClick={() => handleInsertSnippet(sourceArticle.body)}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-xs font-bold text-ink hover:bg-paper transition-all disabled:opacity-50"
-                  title="Append entire source article body to target note"
+                  title="Insert entire source article body at active cursor position"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Append Full Article Body
+                  Insert Full Body at Cursor
                 </button>
               </div>
             </div>
@@ -361,7 +376,8 @@ export function SplitScreenTransferModal({
                 <RichTextMarkdownEditor
                   label="Target Mains Note Body Content"
                   onChange={(val) => setTargetBody(val)}
-                  placeholder="The target Mains Note content will appear here. Click any button on the left to insert text or reference links at your cursor..."
+                  onEditorReady={(editor) => setTargetEditor(editor)}
+                  placeholder="Click anywhere in this note to place your cursor, then click 'Insert Read more...' Link or 'Insert Snippet' on the left to place content right at your cursor..."
                   value={targetBody}
                   minHeightClass="min-h-[420px]"
                 />
