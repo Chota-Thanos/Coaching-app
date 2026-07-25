@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ImagePlus, Plus, Trash2, Link2, ExternalLink, RefreshCw, Sparkles, ArrowDownToLine, ArrowUpFromLine, Search, BookOpen, CheckCircle2, X } from "lucide-react";
+import { ImagePlus, Plus, Trash2, Link2, ExternalLink, Sparkles, Search, CheckCircle2, ArrowRight } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import type { FormEvent } from "react";
-import type { AdminArticleDetail, AdminArticleSummary, ArticleAsset, CategoryNode, CreateArticleAssetPayload } from "../../../lib/api";
+import type { AdminArticleDetail, AdminArticleSummary, CategoryNode, CreateArticleAssetPayload } from "../../../lib/api";
 import { articleHref } from "../../../lib/current-affairs";
-import { RenderedContent } from "../rendered-content";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { SplitScreenTransferModal } from "./split-screen-transfer-modal";
 
 type AdminArticleDetailPanelProps = {
   article: AdminArticleDetail | null;
@@ -53,23 +53,15 @@ export function AdminArticleDetailPanel({
   const [filterContentKind, setFilterContentKind] = useState<string>("all");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
 
-  // Article role (event/concept) state
-  const [roleSaving, setRoleSaving] = useState(false);
-
   // Concept updates timeline state
   const [conceptUpdates, setConceptUpdates] = useState<any[]>([]);
   const [loadingConceptUpdates, setLoadingConceptUpdates] = useState(false);
   const [newUpdateBody, setNewUpdateBody] = useState("");
   const [savingUpdate, setSavingUpdate] = useState(false);
 
-  // Content Import & Export Modal state
-  type RefDirection = "import" | "export";
-  const [refModalOpen, setRefModalOpen] = useState(false);
-  const [refDirection, setRefDirection] = useState<RefDirection>("import");
-  const [refTargetArticle, setRefTargetArticle] = useState<AdminArticleDetail | null>(null);
-  const [refLoadingTarget, setRefLoadingTarget] = useState(false);
-  const [refSnippet, setRefSnippet] = useState("");
-  const [refPending, setRefPending] = useState(false);
+  // Split-Screen Side-by-Side Transfer Workspace Modal state
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [splitInitialTargetId, setSplitInitialTargetId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -105,20 +97,6 @@ export function AdminArticleDetailPanel({
     }
     setNewUpdateBody("");
   }, [article?.id, article?.article_role, token]);
-
-  async function toggleArticleRole(nextRole: "event" | "concept"): Promise<void> {
-    if (!token || !article || article.article_role === nextRole) return;
-    setRoleSaving(true);
-    try {
-      await authenticatedPatch(`/api/v1/current-affairs/articles/${article.id}`, token, { article_role: nextRole });
-      await onRefresh();
-    } catch (err) {
-      console.error("Failed to update article role:", err);
-      setMessage("Could not update article role.");
-    } finally {
-      setRoleSaving(false);
-    }
-  }
 
   async function addConceptUpdate(): Promise<void> {
     if (!token || !article || !newUpdateBody.trim()) return;
@@ -195,60 +173,10 @@ export function AdminArticleDetailPanel({
     }
   }
 
-  // Open Interactive Content Import / Export Modal
-  async function openContentModal(direction: RefDirection, targetId: number) {
-    if (!token || !article) return;
-    setRefDirection(direction);
-    setRefModalOpen(true);
-    setRefLoadingTarget(true);
-    setRefTargetArticle(null);
-    setRefSnippet("");
-
-    try {
-      const detail = await authenticatedGet<AdminArticleDetail>(`/api/v1/current-affairs/admin/articles/${targetId}`, token);
-      setRefTargetArticle(detail);
-      if (direction === "import") {
-        setRefSnippet(detail.body || "");
-      } else {
-        setRefSnippet(article.body || "");
-      }
-    } catch (err) {
-      console.error("Failed to load target article content:", err);
-      setMessage("Could not fetch target article content.");
-    } finally {
-      setRefLoadingTarget(false);
-    }
-  }
-
-  // Execute Import Content into Active Editor Body
-  function handleExecuteImport() {
-    if (!refSnippet.trim()) return;
-    if (onInsertContentToActiveEditor) {
-      onInsertContentToActiveEditor(refSnippet.trim());
-      setMessage(`Imported content snippet into active article editor.`);
-      setRefModalOpen(false);
-    }
-  }
-
-  // Execute Export Content into Target Article Body
-  async function handleExecuteExport() {
-    if (!token || !refTargetArticle || !refSnippet.trim()) return;
-    setRefPending(true);
-    try {
-      const appendedBody = (refTargetArticle.body ? refTargetArticle.body + "\n\n" : "") + refSnippet.trim();
-      await authenticatedPatch(`/api/v1/current-affairs/articles/${refTargetArticle.id}`, token, {
-        body: appendedBody
-      });
-      setMessage(`Exported content into '${refTargetArticle.title}'.`);
-      setRefModalOpen(false);
-      await onRefresh();
-    } catch (err) {
-      console.error("Failed to export content into target article:", err);
-      setMessage("Could not export content to target article.");
-    } finally {
-      setRefPending(false);
-    }
-  }
+  const openSplitScreenForTarget = (targetId?: number) => {
+    setSplitInitialTargetId(targetId);
+    setSplitModalOpen(true);
+  };
 
   if (!article) {
     return (
@@ -309,16 +237,28 @@ export function AdminArticleDetailPanel({
           </div>
         </div>
 
-        {article.status === "published" && (
-          <Link
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-colors"
-            href={articleHref(article.slug)}
-            target="_blank"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openSplitScreenForTarget(undefined)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-civic/40 bg-civic/10 px-3 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all shadow-xs"
+            title="Open side-by-side split screen to transfer content & reference links into Mains Notes"
           >
-            <ExternalLink className="h-3.5 w-3.5 text-civic" />
-            Open Public Page
-          </Link>
-        )}
+            <ArrowRight className="h-3.5 w-3.5" />
+            ↔️ Mains Notes Split-Screen
+          </button>
+
+          {article.status === "published" && (
+            <Link
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-ink hover:border-civic transition-colors"
+              href={articleHref(article.slug)}
+              target="_blank"
+            >
+              <ExternalLink className="h-3.5 w-3.5 text-civic" />
+              Public Page
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* 1. COMPRESSED & SIMPLIFIED ASSETS SECTION */}
@@ -426,13 +366,24 @@ export function AdminArticleDetailPanel({
         )}
       </section>
 
-      {/* 2. RELATIONS & CROSS-LINKING OVERHAUL WITH FILTERS */}
+      {/* 2. RELATIONS & CROSS-LINKING OVERHAUL WITH SPLIT-SCREEN TRANSFER */}
       <section className="space-y-4 rounded-xl border border-line bg-paper/20 p-4">
-        <div className="flex items-center gap-2 border-b border-line/60 pb-2.5">
-          <Link2 className="h-4 w-4 text-civic" />
-          <h3 className="text-sm font-bold uppercase tracking-wider text-ink">
-            Article Cross-Linking & References
-          </h3>
+        <div className="flex items-center justify-between border-b border-line/60 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-civic" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-ink">
+              Article Cross-Linking & References
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => openSplitScreenForTarget(undefined)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-civic/40 bg-civic/10 px-3 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all shadow-xs"
+          >
+            <ArrowRight className="h-3.5 w-3.5" />
+            ↔️ Open Split-Screen Mains Notes Transfer
+          </button>
         </div>
 
         {/* Form to Add Relation with Filters */}
@@ -524,7 +475,7 @@ export function AdminArticleDetailPanel({
           </div>
         </form>
 
-        {/* List of Outgoing Relations with Import / Export Content Buttons */}
+        {/* List of Outgoing Relations with Split-Screen Transfer Button */}
         <div className="space-y-2">
           <h4 className="text-xs font-extrabold uppercase tracking-wider text-ink/70">Outgoing Linked Articles</h4>
           {article.outgoing_relations.length === 0 ? (
@@ -550,37 +501,27 @@ export function AdminArticleDetailPanel({
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <button
+                      onClick={() => openSplitScreenForTarget(Number(rel.target_article.id))}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-civic/40 bg-civic/10 px-3 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all shadow-2xs"
+                      title="Open side-by-side split screen to transfer content and reference link at cursor"
+                      type="button"
+                    >
+                      <ArrowRight className="h-3 w-3" />
+                      ↔️ Split-Screen Transfer
+                    </button>
+
                     {onSelectArticleId && (
                       <button
                         onClick={() => onSelectArticleId(Number(rel.target_article.id))}
                         className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2.5 text-xs font-bold text-ink hover:border-civic hover:text-civic transition-colors"
-                        title="Edit Target Article in Workspace"
+                        title="Edit Target Article in Main Workspace"
                         type="button"
                       >
                         <ExternalLink className="h-3 w-3" />
-                        Edit Article
+                        Edit Note
                       </button>
                     )}
-
-                    <button
-                      onClick={() => openContentModal("import", Number(rel.target_article.id))}
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-civic/30 bg-civic/10 px-2.5 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all"
-                      title="Open and Import content from target article into active editor"
-                      type="button"
-                    >
-                      <ArrowDownToLine className="h-3 w-3" />
-                      Import Content
-                    </button>
-
-                    <button
-                      onClick={() => openContentModal("export", Number(rel.target_article.id))}
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-berry/30 bg-berry/10 px-2.5 text-xs font-bold text-berry hover:bg-berry hover:text-white transition-all"
-                      title="Export content into target article"
-                      type="button"
-                    >
-                      <ArrowUpFromLine className="h-3 w-3" />
-                      Export Content
-                    </button>
 
                     <button
                       onClick={() => deleteRelation(rel.id)}
@@ -658,141 +599,26 @@ export function AdminArticleDetailPanel({
         </section>
       )}
 
-      {/* 4. INTERACTIVE CONTENT IMPORT / EXPORT MODAL OVERLAY */}
-      {refModalOpen && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-midnight/60 px-4 py-6 overflow-y-auto"
-          onClick={() => setRefModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-line pb-3">
-              <div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-civic">
-                  {refDirection === "import" ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}
-                  {refDirection === "import" ? "Content Import System" : "Content Export System"}
-                </span>
-                <h2 className="text-lg font-black text-ink mt-0.5">
-                  {refDirection === "import" ? (
-                    <>Import Content from Target Article into Active Editor</>
-                  ) : (
-                    <>Export Content into Target Article</>
-                  )}
-                </h2>
-              </div>
-              <button
-                aria-label="Close modal"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line bg-surface text-ink/70 hover:bg-paper"
-                onClick={() => setRefModalOpen(false)}
-                type="button"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {refLoadingTarget ? (
-              <div className="py-12 text-center text-xs text-ink/50 flex items-center justify-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin text-civic" />
-                Fetching target article content...
-              </div>
-            ) : refTargetArticle ? (
-              <div className="space-y-4">
-                {/* Target Article Banner */}
-                <div className="rounded-xl border border-line bg-paper/40 p-3 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-ink/50 uppercase">Target Article #{refTargetArticle.id}</span>
-                    <h3 className="text-base font-extrabold text-ink">{refTargetArticle.title}</h3>
-                    {refTargetArticle.category && (
-                      <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
-                        {refTargetArticle.category.name}
-                      </span>
-                    )}
-                  </div>
-
-                  {onSelectArticleId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectArticleId(refTargetArticle.id);
-                        setRefModalOpen(false);
-                      }}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-bold text-civic hover:bg-civic/10 transition-colors"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Open & Edit in Workspace
-                    </button>
-                  )}
-                </div>
-
-                {/* Target Article Body Rendered Preview */}
-                <div className="rounded-xl border border-line bg-surface p-4">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-ink/70 mb-2">
-                    {refDirection === "import" ? "Target Article Content (Read & Select)" : "Target Article Current Body"}
-                  </h4>
-                  <div className="max-h-56 overflow-y-auto rounded-lg border border-line/60 bg-paper/20 p-3 text-sm text-ink leading-relaxed article-body select-text">
-                    <RenderedContent content={refTargetArticle.body} />
-                  </div>
-                </div>
-
-                {/* Snippet Editor */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-ink">
-                    {refDirection === "import"
-                      ? "Content Snippet to Import into Active Editor Body"
-                      : "Content Snippet to Export & Append to Target Article"}
-                  </label>
-                  <textarea
-                    className="min-h-32 w-full rounded-xl border border-line bg-surface p-3 font-mono text-xs text-ink outline-none focus:border-civic"
-                    onChange={(e) => setRefSnippet(e.target.value)}
-                    value={refSnippet}
-                  />
-                  <p className="text-[11px] text-ink/50">
-                    {refDirection === "import"
-                      ? "Edit or filter the snippet above. Clicking 'Insert into Active Editor' appends this directly to your main article body."
-                      : "Clicking 'Export Content' appends this snippet directly to the target article in the database."}
-                  </p>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-3 border-t border-line">
-                  <button
-                    className="h-9 rounded-xl border border-line bg-surface px-4 text-xs font-bold text-ink hover:bg-paper"
-                    onClick={() => setRefModalOpen(false)}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-
-                  {refDirection === "import" ? (
-                    <button
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-civic px-5 text-xs font-bold text-white shadow-xs hover:bg-civic/90 transition-all disabled:opacity-60"
-                      disabled={!refSnippet.trim()}
-                      onClick={handleExecuteImport}
-                      type="button"
-                    >
-                      <ArrowDownToLine className="h-3.5 w-3.5" />
-                      Insert into Active Editor
-                    </button>
-                  ) : (
-                    <button
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-berry px-5 text-xs font-bold text-white shadow-xs hover:bg-berry/90 transition-all disabled:opacity-60"
-                      disabled={refPending || !refSnippet.trim()}
-                      onClick={() => void handleExecuteExport()}
-                      type="button"
-                    >
-                      <ArrowUpFromLine className="h-3.5 w-3.5" />
-                      {refPending ? "Exporting..." : "Export Content to Target"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p className="py-8 text-center text-xs text-ink/50">Target article not found.</p>
-            )}
-          </div>
-        </div>
-      )}
+      {/* 4. SIDE-BY-SIDE SPLIT SCREEN WORKSPACE MODAL */}
+      <SplitScreenTransferModal
+        allArticles={allArticles}
+        categories={categories}
+        initialTargetArticleId={splitInitialTargetId}
+        isOpen={splitModalOpen}
+        onClose={() => setSplitModalOpen(false)}
+        onRefresh={onRefresh}
+        onSelectArticleId={(id) => {
+          if (onSelectArticleId) onSelectArticleId(id);
+        }}
+        sourceArticle={{
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          body: article.body,
+          categoryName: article.category?.name,
+          contentKind: article.content_kind
+        }}
+      />
 
       {message && (
         <div className="rounded-xl border border-civic/20 bg-civic/5 p-3 text-xs font-semibold text-civic flex items-center gap-2">

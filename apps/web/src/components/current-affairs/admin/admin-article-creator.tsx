@@ -21,6 +21,7 @@ import { ArticleCreatorAiWorkspace } from "./article-creator-ai-workspace";
 import { CascadingCategorySelector } from "./cascading-category-selector";
 import { AdminArticleDetailPanel } from "./admin-article-detail-panel";
 import { LinkedConceptsManager, type ConceptDraft } from "./linked-concepts-manager";
+import { SplitScreenTransferModal } from "./split-screen-transfer-modal";
 
 type AdminArticleCreatorProps = {
   categories: CategoryNode[];
@@ -113,6 +114,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
   const [formState, setFormState] = useState<FormState>(initialForm(defaultKind));
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [editingArticleDetail, setEditingArticleDetail] = useState<AdminArticleDetail | null>(null);
+  const [creatorSplitOpen, setCreatorSplitOpen] = useState(false);
 
   const [linkedConcepts, setLinkedConcepts] = useState<ConceptDraft[]>([]);
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
@@ -944,7 +946,15 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               </div>
             )}
 
-            <div className="flex gap-3 justify-end pt-4 border-t border-line">
+            <div className="flex gap-3 justify-end pt-4 border-t border-line flex-wrap">
+              <button
+                type="button"
+                onClick={() => setCreatorSplitOpen(true)}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-civic/40 bg-civic/10 px-5 font-bold text-civic hover:bg-civic hover:text-white transition-all shadow-xs"
+                title="Open side-by-side split screen to transfer content & reference links into Mains Notes"
+              >
+                <span>↔️ Mains Notes Split Screen</span>
+              </button>
               <button
                 className="h-11 px-6 rounded-xl border border-line font-bold text-ink hover:bg-paper transition-all"
                 onClick={() => {
@@ -966,6 +976,23 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
               </button>
             </div>
           </form>
+
+          {/* Split Screen Transfer Modal */}
+          <SplitScreenTransferModal
+            allArticles={allDrafts}
+            categories={categories}
+            isOpen={creatorSplitOpen}
+            onClose={() => setCreatorSplitOpen(false)}
+            onRefresh={refreshEditingArticleDetail}
+            onSelectArticleId={(id) => handleEditDraft(id)}
+            sourceArticle={{
+              id: editingDraftId || undefined,
+              title: formState.title || "Untitled Article",
+              slug: formState.slug || "untitled",
+              body: formState.body || "",
+              contentKind: formState.contentKind
+            }}
+          />
 
           {/* 1.5th - Assets, connections, concept updates & content import/export — unlocked once the article is saved */}
           {editingDraftId && editingArticleDetail && (
