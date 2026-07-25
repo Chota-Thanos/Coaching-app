@@ -8,10 +8,11 @@ import { articleHref } from "../../lib/current-affairs";
 import { StudentStatusBadge } from "./student-status-badge";
 import { useAuth, authenticatedDelete } from "../auth/auth-context";
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "Undated";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
+function formatDate(dateStr: string | null, createdAt?: string | null): string {
+  const target = dateStr || createdAt;
+  if (!target) return "Undated";
+  const d = new Date(target);
+  if (isNaN(d.getTime())) return "Undated";
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",
@@ -103,7 +104,7 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
           isMains ? "border-l-saffron" : "border-l-civic"
         }`}
       >
-        {formatDate(article.publication_date)}
+        {formatDate(article.publication_date, article.created_at)}
       </td>
 
       {/* 2. Source cell with custom pill */}
@@ -197,15 +198,16 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
         </div>
       </td>
 
-      {/* 4. GS Paper / Category cell */}
+      {/* 4. GS Paper / Category cell (Full Category Hierarchy Levels) */}
       <td className="px-4 py-3 text-sm border border-line/60 bg-surface align-middle transition-colors group-hover:bg-paper/10">
-        {article.category ? (
+        {((article as any).category_path || article.category?.name) ? (
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border ${getCategoryStyles(
-              article.category.name
+              article.category?.name
             )}`}
+            title={(article as any).category_path || article.category?.name}
           >
-            {article.category.name}
+            {(article as any).category_path || article.category?.name}
           </span>
         ) : (
           <span className="text-xs text-muted/65 italic font-medium">Undefined category</span>

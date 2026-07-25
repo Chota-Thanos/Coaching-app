@@ -43,13 +43,16 @@ function categoryPredicate(category: string, paramPosition: number): string {
   `;
 }
 
-export async function listFrontendArticles(options: FrontendArticleListQuery): Promise<unknown> {
+export async function listFrontendArticles(options: FrontendArticleListQuery & { include_concepts?: boolean }): Promise<unknown> {
   const params: unknown[] = [options.content_kind];
   const conditions = ["ma.status = 'published'", "ma.content_kind = $1"];
 
   if (options.article_role) {
     params.push(options.article_role);
     conditions.push(`ma.article_role = $${params.length}`);
+  } else if (!options.include_concepts) {
+    // By default, exclude concepts from main current events lists
+    conditions.push(`ma.article_role = 'event'`);
   }
 
   if (options.category) {
@@ -93,7 +96,23 @@ export async function listFrontendArticles(options: FrontendArticleListQuery): P
       `
         select
           ma.*,
+          coalesce(ma.publication_date, ma.created_at::date) as publication_date,
           row_to_json(cn.*) as category,
+          (
+            with recursive category_tree as (
+              select id, name, slug, parent_id, node_type, 1 as depth
+              from current_affairs.category_nodes
+              where id = ma.category_node_id
+
+              union all
+
+              select p.id, p.name, p.slug, p.parent_id, p.node_type, ct.depth + 1
+              from current_affairs.category_nodes p
+              join category_tree ct on ct.parent_id = p.id
+            )
+            select string_agg(name, ' > ' order by depth desc)
+            from category_tree
+          ) as category_path,
           (
             select row_to_json(asset.*)
             from current_affairs.master_article_assets asset
@@ -111,7 +130,7 @@ export async function listFrontendArticles(options: FrontendArticleListQuery): P
         from current_affairs.master_articles ma
         left join current_affairs.category_nodes cn on cn.id = ma.category_node_id
         where ${whereSql}
-        order by ma.publication_date desc nulls last, ma.created_at desc
+        order by coalesce(ma.publication_date, ma.created_at::date) desc nulls last, ma.created_at desc
         limit $${limitPosition} offset $${offsetPosition}
       `,
       params
@@ -124,7 +143,7 @@ export async function listFrontendArticles(options: FrontendArticleListQuery): P
     page,
     limit,
     total,
-    total_pages: Math.max(1, Math.ceil(total / limit))
+    pageCount: Math.ceil(total / limit)
   };
 }
 
@@ -133,7 +152,23 @@ export async function getPublishedArticleBySlug(slug: string): Promise<unknown |
     `
       select
         ma.*,
+        coalesce(ma.publication_date, ma.created_at::date) as publication_date,
         row_to_json(cn.*) as category,
+        (
+          with recursive category_tree as (
+            select id, name, slug, parent_id, node_type, 1 as depth
+            from current_affairs.category_nodes
+            where id = ma.category_node_id
+
+            union all
+
+            select p.id, p.name, p.slug, p.parent_id, p.node_type, ct.depth + 1
+            from current_affairs.category_nodes p
+            join category_tree ct on ct.parent_id = p.id
+          )
+          select string_agg(name, ' > ' order by depth desc)
+          from category_tree
+        ) as category_path,
         coalesce((
           select jsonb_agg(to_jsonb(asset.*) order by asset.asset_type, asset.display_order, asset.id)
           from current_affairs.master_article_assets asset
@@ -170,12 +205,38 @@ export async function getPublishedArticleBySlug(slug: string): Promise<unknown |
               'label', rel.label,
               'note', rel.note,
               'display_order', rel.display_order,
-              'source_article', to_jsonb(source.*)
+              'source_article', jsonb_build_object(
+                'id', source.id,
+                'title', source.title,
+                'slug', source.slug,
+                'content_kind', source.content_kind,
+                'article_role', source.article_role,
+                'publication_date', coalesce(source.publication_date, source.created_at::date),
+                'created_at', source.created_at,
+                'body', source.body,
+                'category', to_jsonb(scn.*),
+                'category_path', (
+                  with recursive s_cat_tree as (
+                    select id, name, slug, parent_id, node_type, 1 as depth
+                    from current_affairs.category_nodes
+                    where id = source.category_node_id
+
+                    union all
+
+                    select p.id, p.name, p.slug, p.parent_id, p.node_type, sct.depth + 1
+                    from current_affairs.category_nodes p
+                    join s_cat_tree sct on sct.parent_id = p.id
+                  )
+                  select string_agg(name, ' > ' order by depth desc)
+                  from s_cat_tree
+                )
+              )
             )
             order by rel.display_order, rel.id
           )
           from current_affairs.master_article_relations rel
           join current_affairs.master_articles source on source.id = rel.source_article_id
+          left join current_affairs.category_nodes scn on scn.id = source.category_node_id
           where rel.target_article_id = ma.id
             and source.status = 'published'
         ), '[]'::jsonb) as incoming_relations,

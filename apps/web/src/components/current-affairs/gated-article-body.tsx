@@ -263,6 +263,65 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
 
+        {/* ON CONCEPT PAGES: LIST OF LINKED CURRENT EVENTS WITH EXCERPT */}
+        {article.article_role === "concept" && article.incoming_relations.length > 0 && (
+          <section className="mt-6 rounded-xl border border-civic/20 bg-civic/5 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Sparkles className="h-5 w-5 text-civic" />
+              <h2 className="text-lg font-black text-ink">
+                Appears in Current Events & Daily News ({article.incoming_relations.length})
+              </h2>
+            </div>
+            <p className="text-xs text-ink/65 mb-4 leading-relaxed font-medium">
+              This background concept is linked and referenced in the following current affairs articles:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {article.incoming_relations.map((rel: any) => {
+                const src = rel.source_article;
+                if (!src) return null;
+                const pubDateStr = src.publication_date || src.created_at;
+                const formattedDate = pubDateStr
+                  ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(pubDateStr))
+                  : "Dated";
+                const catPath = src.category_path || src.category?.name;
+                const excerpt = src.body ? src.body.replace(/<[^>]*>?/gm, "").replace(/^[#*`-\s]+/, "").slice(0, 160) : "";
+
+                return (
+                  <Link
+                    className="group rounded-xl border border-line bg-surface p-4 transition-all hover:border-civic hover:shadow-md flex flex-col justify-between"
+                    href={`/current-affairs/articles/${src.slug}`}
+                    key={rel.id}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                        <span className="rounded bg-civic/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-civic border border-civic/20">
+                          {formattedDate}
+                        </span>
+                        {catPath && (
+                          <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65 line-clamp-1 max-w-[180px]" title={catPath}>
+                            {catPath}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-extrabold text-ink group-hover:text-civic transition-colors leading-snug">
+                        {src.title}
+                      </h3>
+                      {excerpt && (
+                        <p className="mt-1.5 text-xs text-ink/65 line-clamp-2 leading-relaxed">
+                          {excerpt}...
+                        </p>
+                      )}
+                    </div>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-civic">
+                      Read Full Article →
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {article.updates.length > 0 && (
           <section className="mt-5 rounded-lg border border-line bg-surface p-4 shadow-sm md:p-6">
             <h2 className="text-lg font-extrabold text-ink">Updates</h2>
