@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Copy, ExternalLink, Link2, Loader2, Plus, RefreshCw, Save, Search, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, Copy, ExternalLink, Link2, Loader2, Plus, Save, Search, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AdminArticleDetail, AdminArticleSummary, CategoryNode } from "../../../lib/api";
 import { RichTextMarkdownEditor } from "../rich-text-editor";
@@ -53,8 +53,8 @@ export function SplitScreenTransferModal({
   // TipTap editor instance ref for right-hand editor
   const [targetEditor, setTargetEditor] = useState<any>(null);
 
-  // Selected text snippet from Left Column
-  const [selectedText, setSelectedText] = useState("");
+  // Selected HTML fragment from Left Column (preserves formatting 100%)
+  const [selectedHtml, setSelectedHtml] = useState("");
 
   // Update targetId when initialTargetArticleId prop changes
   useEffect(() => {
@@ -122,38 +122,43 @@ export function SplitScreenTransferModal({
     }
   };
 
-  // Insert Inline Reference Link HTML directly at cursor location in target editor
+  // Insert Inline Reference Link HTML directly at cursor location in target editor (Styled in Blue)
   const handleInsertReferenceLink = () => {
-    const inlineRefHtml = `<a href="/current-affairs/articles/${sourceArticle.slug}">Read more...</a>`;
+    const inlineRefHtml = `<a href="/current-affairs/articles/${sourceArticle.slug}" style="color: #2563eb; text-decoration: underline; font-weight: 600;">Read more...</a>`;
     if (targetEditor && !targetEditor.isDestroyed) {
       targetEditor.chain().focus().insertContent(` ${inlineRefHtml}`).run();
-      setMessage(`Inserted "Read more..." inline link at active cursor.`);
+      setMessage(`Inserted "Read more..." inline link in blue at active cursor.`);
     } else {
       setTargetBody((prev) => `${prev} ${inlineRefHtml}`);
       setMessage(`Inserted "Read more..." inline link.`);
     }
   };
 
-  // Insert Content Snippet directly at cursor location in target editor
+  // Insert Content Snippet directly at cursor location preserving full HTML formatting
   const handleInsertSnippet = (snippetToInsert?: string) => {
-    const textToUse = snippetToInsert || selectedText || sourceArticle.body;
-    if (!textToUse.trim()) return;
-    const contentHtml = textToUse.trim().startsWith("<") ? textToUse.trim() : `<p>${textToUse.trim()}</p>`;
+    const htmlToUse = snippetToInsert || selectedHtml || sourceArticle.body;
+    if (!htmlToUse.trim()) return;
 
     if (targetEditor && !targetEditor.isDestroyed) {
-      targetEditor.chain().focus().insertContent(contentHtml).run();
-      setMessage(`Inserted content snippet at active cursor.`);
+      targetEditor.chain().focus().insertContent(htmlToUse.trim()).run();
+      setMessage(`Inserted formatted content snippet at active cursor.`);
     } else {
-      setTargetBody((prev) => (prev ? `${prev}\n\n${contentHtml}` : contentHtml));
+      setTargetBody((prev) => (prev ? `${prev}\n\n${htmlToUse.trim()}` : htmlToUse.trim()));
       setMessage(`Inserted content snippet.`);
     }
   };
 
-  // Capture text selected by user in left column
+  // Capture selected HTML fragment in left column (maintaining 100% bold, italic, headings & list formatting)
   const handleLeftColumnMouseUp = () => {
     const sel = window.getSelection();
-    if (sel && sel.toString().trim()) {
-      setSelectedText(sel.toString().trim());
+    if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const container = document.createElement("div");
+      container.appendChild(range.cloneContents());
+      const htmlContent = container.innerHTML.trim();
+      if (htmlContent) {
+        setSelectedHtml(htmlContent);
+      }
     }
   };
 
@@ -299,8 +304,8 @@ export function SplitScreenTransferModal({
                   type="button"
                   disabled={!targetDetail}
                   onClick={handleInsertReferenceLink}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-civic/40 bg-civic/10 px-3 text-xs font-bold text-civic hover:bg-civic hover:text-white transition-all disabled:opacity-50"
-                  title="Insert 'Read more...' hyperlink directly at the cursor location in the target note"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-600/40 bg-blue-50 px-3 text-xs font-bold text-blue-600 hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50"
+                  title="Insert 'Read more...' blue hyperlink directly at the cursor location in the target note"
                 >
                   <Link2 className="h-3.5 w-3.5" />
                   Insert "Read more..." Link at Cursor
@@ -308,13 +313,13 @@ export function SplitScreenTransferModal({
 
                 <button
                   type="button"
-                  disabled={!targetDetail || !selectedText}
-                  onClick={() => handleInsertSnippet(selectedText)}
+                  disabled={!targetDetail || !selectedHtml}
+                  onClick={() => handleInsertSnippet(selectedHtml)}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-berry/40 bg-berry/10 px-3 text-xs font-bold text-berry hover:bg-berry hover:text-white transition-all disabled:opacity-50"
-                  title="Highlight text in the article body below, then click to insert at cursor"
+                  title="Highlight text in the article body below, then click to insert formatted HTML at cursor"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Insert Highlighted Snippet at Cursor ({selectedText.length > 0 ? `${selectedText.length} chars` : "Highlight text first"})
+                  Insert Formatted Snippet at Cursor ({selectedHtml.length > 0 ? "Formatted Text Selected" : "Highlight text first"})
                 </button>
 
                 <button
@@ -322,10 +327,10 @@ export function SplitScreenTransferModal({
                   disabled={!targetDetail}
                   onClick={() => handleInsertSnippet(sourceArticle.body)}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-xs font-bold text-ink hover:bg-paper transition-all disabled:opacity-50"
-                  title="Insert entire source article body at active cursor position"
+                  title="Insert entire source article body preserving full HTML formatting at active cursor position"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Insert Full Body at Cursor
+                  Insert Formatted Full Body at Cursor
                 </button>
               </div>
             </div>

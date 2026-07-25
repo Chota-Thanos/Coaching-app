@@ -169,7 +169,13 @@ export function RichTextMarkdownEditor({
         token,
         { text: selected, mode }
       );
-      editor.chain().focus().deleteRange({ from, to }).insertContent(res.text).run();
+      const cleanText = (res?.text || "")
+        .replace(/^```(?:html)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .replace(/^<code>/i, "")
+        .replace(/<\/code>$/i, "")
+        .trim();
+      editor.chain().focus().deleteRange({ from, to }).insertContent(cleanText).run();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Rewording failed.");
     } finally {

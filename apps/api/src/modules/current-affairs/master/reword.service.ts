@@ -11,7 +11,7 @@ const MODE_DIRECTIVES: Record<RewordInput["mode"], string> = {
 
 /**
  * Rewrites a selected passage for the rich text editor.
- * Guarantees fully-formatted HTML output while maintaining strict factual and contextual accuracy.
+ * Guarantees clean, unescaped semantic text/HTML output without code fences or raw HTML entities.
  */
 export async function rewordText(input: RewordInput): Promise<string> {
   if (!hasAiCredentials()) {
@@ -26,18 +26,26 @@ CRITICAL REQUIREMENT - ZERO MEANING DISTORTION:
 1. STRICT FACTUAL & CONTEXTUAL FIDELITY: You MUST NOT change, omit, invent, or distort any facts, statistics, numbers, proper nouns, official scheme names, constitutional articles, dates, locations, or legal terms.
 2. CONTEXT & MEANING PRESERVATION: The core context, logical argument, cause-and-effect relationship, and exact meaning of every statement MUST remain 100% identical. Rewording must NEVER change the analytical nuance or stance of any sentence.
 
-OUTPUT FORMATTING REQUIREMENTS:
-1. FULLY FORMATTED HTML: Output the rewritten content in clean, semantic HTML format (using tags like <p>, <strong>, <em>, <ul>, <ol>, <li>, <h3>, <h4>, <blockquote>, <table>, etc.).
-2. DO NOT return plain text or raw markdown symbols (do not use **, #, -, etc.).
-3. DO NOT enclose output in markdown codeblocks (do NOT use \`\`\`html or \`\`\`).
-4. Output ONLY the raw formatted HTML markup — no intro preamble ("Here is..."), no commentary, no quote wrappers.`;
+OUTPUT FORMATTING REQUIREMENTS (EXTREMELY IMPORTANT):
+1. NO RAW CODE / NO ESCAPED HTML TAGS IN TEXT: You MUST NOT wrap the output in <code> tags, markdown code blocks (\`\`\`html or \`\`\`), or insert escaped HTML entities (like &lt;p&gt;).
+2. CLEAN PARAGRAPH OR INLINE TEXT:
+   - If the input is a single sentence or phrase, return ONLY the rewritten text directly, without adding <p> wrapper tags.
+   - If the input contains multiple paragraphs or structured lists, return clean semantic HTML (<p>, <ul>, <li>, <strong>, <em>).
+3. Output ONLY the clean rewritten content — no preamble ("Here is..."), no commentary, no code fences.`;
 
   const userPrompt = `${input.instructions ? `SPECIFIC CUSTOM INSTRUCTION: ${input.instructions}\n\n` : ""}PASSAGE TO REWORD:\n${input.text}`;
 
   let result = (await generateText(systemPrompt, userPrompt)).trim();
 
-  // Strip codeblock fence wrappers if the LLM includes them despite instructions
-  result = result.replace(/^```(?:html)?\s*/i, "").replace(/\s*```$/, "").trim();
+  // Strip codeblock fence wrappers and code tags if the LLM includes them despite instructions
+  result = result
+    .replace(/^```(?:html)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .replace(/^<code>/i, "")
+    .replace(/<\/code>$/i, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
 
   return result || input.text;
 }

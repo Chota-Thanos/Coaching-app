@@ -117,19 +117,21 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   }
 
   // User is authorized, show the full article body and tools
-  const allConceptRelations = article.outgoing_relations.filter(
-    (rel) => rel.target_article?.article_role === "concept" || rel.relation_type === "prerequisite" || rel.relation_type === "related_reference"
+  // 1. CONCEPTS: ONLY target articles with article_role === 'concept' or relation_type === 'prerequisite'
+  const conceptRelations = article.outgoing_relations.filter(
+    (rel) => rel.target_article?.article_role === "concept" || rel.relation_type === "prerequisite"
   );
 
-  const coreConcepts = allConceptRelations.filter(
+  const coreConcepts = conceptRelations.filter(
     (rel) => rel.label === "Core Concept" || rel.relation_type === "prerequisite"
   );
-  const relatedConcepts = allConceptRelations.filter(
+  const relatedConcepts = conceptRelations.filter(
     (rel) => rel.label !== "Core Concept" && rel.relation_type !== "prerequisite"
   );
 
-  const otherOutgoingRelations = article.outgoing_relations.filter(
-    (rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite" && rel.relation_type !== "related_reference"
+  // 2. LINKED ARTICLES & REFERENCES: Regular linked articles (NOT concepts)
+  const relatedArticles = article.outgoing_relations.filter(
+    (rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite"
   );
 
   return (
@@ -256,6 +258,52 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
                   </div>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-berry">
                     Read Related Concept →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 3. LINKED RELATED ARTICLES & CROSS REFERENCES */}
+        {relatedArticles.length > 0 && (
+          <section className="mt-5 rounded-xl border border-civic/20 bg-civic/5 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Layers3 className="h-5 w-5 text-civic" />
+              <h2 className="text-lg font-black text-ink">Linked Related Articles & References</h2>
+            </div>
+            <p className="text-xs text-ink/65 mb-4 leading-relaxed">
+              Related current affairs, issue briefs, and editorial analyses linked to this article:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {relatedArticles.map((rel) => (
+                <Link
+                  className="group rounded-xl border border-line bg-surface p-4 transition-all hover:border-civic hover:shadow-md flex flex-col justify-between"
+                  href={`/current-affairs/articles/${rel.target_article.slug}`}
+                  key={rel.id}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="rounded bg-civic/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-civic border border-civic/20">
+                        {rel.target_article.content_kind ? rel.target_article.content_kind.replace(/_/g, " ") : "Linked Article"}
+                      </span>
+                      {rel.target_article.category && (
+                        <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/60">
+                          {rel.target_article.category.name}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-extrabold text-ink group-hover:text-civic transition-colors leading-snug">
+                      {rel.target_article.title}
+                    </h3>
+                    {rel.target_article.body && (
+                      <p className="mt-1.5 text-xs text-ink/65 line-clamp-2 leading-relaxed">
+                        {rel.target_article.body.replace(/<[^>]*>?/gm, "").replace(/^[#*`-\s]+/, "").slice(0, 140)}...
+                      </p>
+                    )}
+                  </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-civic">
+                    Read Linked Article →
                   </span>
                 </Link>
               ))}
