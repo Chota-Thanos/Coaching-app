@@ -107,9 +107,11 @@ export type ArticleSummary = {
   body: string;
   body_json?: any;
   category: CategoryNode | null;
+  category_path?: string | null;
   source_name: string | null;
   source_url: string | null;
   publication_date: string | null;
+  created_at?: string | null;
   institute_tags: string[];
   primary_asset: ArticleAsset | null;
   seo_title?: string | null;

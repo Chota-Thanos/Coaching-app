@@ -200,14 +200,14 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
 
       {/* 4. GS Paper / Category cell (Full Category Hierarchy Levels) */}
       <td className="px-4 py-3 text-sm border border-line/60 bg-surface align-middle transition-colors group-hover:bg-paper/10">
-        {((article as any).category_path || article.category?.name) ? (
+        {(article.category_path || article.category?.name) ? (
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border ${getCategoryStyles(
               article.category?.name
             )}`}
-            title={(article as any).category_path || article.category?.name}
+            title={article.category_path || article.category?.name}
           >
-            {(article as any).category_path || article.category?.name}
+            {article.category_path || article.category?.name}
           </span>
         ) : (
           <span className="text-xs text-muted/65 italic font-medium">Undefined category</span>
