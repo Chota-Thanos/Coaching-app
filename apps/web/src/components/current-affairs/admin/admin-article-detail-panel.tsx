@@ -478,13 +478,13 @@ export function AdminArticleDetailPanel({
         {/* List of Outgoing Relations with Split-Screen Transfer Button */}
         <div className="space-y-2">
           <h4 className="text-xs font-extrabold uppercase tracking-wider text-ink/70">Outgoing Linked Articles</h4>
-          {article.outgoing_relations.length === 0 ? (
+          {article.outgoing_relations.filter((rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite").length === 0 ? (
             <p className="rounded-lg border border-dashed border-line bg-surface/50 p-3 text-xs text-ink/50">
               No articles linked yet. Search and select an article above to link.
             </p>
           ) : (
             <div className="grid gap-2.5">
-              {article.outgoing_relations.map((rel) => (
+              {article.outgoing_relations.filter((rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite").map((rel) => (
                 <div key={rel.id} className="rounded-xl border border-line bg-surface p-3 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
