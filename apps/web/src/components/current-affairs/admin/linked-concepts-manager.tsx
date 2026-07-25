@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Edit3, Eye, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { BookOpen, Edit3, Eye, Plus, Search, Sparkles, Star, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AdminArticleSummary, CategoryNode } from "../../../lib/api";
 import type { ContentFamily } from "../../../lib/current-affairs";
@@ -19,6 +19,7 @@ export type ConceptDraft = {
   categoryNodeId?: string;
   categoryName?: string;
   isNew: boolean;
+  isCore: boolean; // true = Core Concept (Must Read), false = Related Concept (Important Aspect)
 };
 
 type LinkedConceptsManagerProps = {
@@ -46,6 +47,7 @@ export function LinkedConceptsManager({
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const [conceptBody, setConceptBody] = useState("");
   const [primaryCategoryId, setPrimaryCategoryId] = useState("");
+  const [isCoreConcept, setIsCoreConcept] = useState<boolean>(true);
 
   // Search existing concepts state
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +99,7 @@ export function LinkedConceptsManager({
     setIsSlugManuallyEdited(false);
     setConceptBody("");
     setPrimaryCategoryId("");
+    setIsCoreConcept(true);
     setActiveTab("create");
     setErrorMessage(null);
     setModalOpen(true);
@@ -111,6 +114,7 @@ export function LinkedConceptsManager({
     setIsSlugManuallyEdited(true);
     setConceptBody(concept.body);
     setPrimaryCategoryId(concept.categoryNodeId || "");
+    setIsCoreConcept(concept.isCore ?? true);
     setActiveTab("create");
     setErrorMessage(null);
     setModalOpen(true);
@@ -141,7 +145,8 @@ export function LinkedConceptsManager({
           body: conceptBody.trim(),
           categoryNodeId: primaryCategoryId || undefined,
           categoryName: categoryObj?.name,
-          isNew: existingItem.isNew
+          isNew: existingItem.isNew,
+          isCore: isCoreConcept
         };
         onConceptsUpdated(next);
       }
@@ -154,7 +159,8 @@ export function LinkedConceptsManager({
         body: conceptBody.trim(),
         categoryNodeId: primaryCategoryId || undefined,
         categoryName: categoryObj?.name,
-        isNew: true
+        isNew: true,
+        isCore: isCoreConcept
       };
       onConceptsUpdated([...linkedConcepts, newDraft]);
     }
@@ -166,6 +172,7 @@ export function LinkedConceptsManager({
     setIsSlugManuallyEdited(false);
     setConceptBody("");
     setPrimaryCategoryId("");
+    setIsCoreConcept(true);
     setErrorMessage(null);
     setModalOpen(false);
   };
@@ -194,7 +201,8 @@ export function LinkedConceptsManager({
       body: conceptObj.body || "",
       categoryNodeId: conceptObj.category?.id ? String(conceptObj.category.id) : undefined,
       categoryName: conceptObj.category?.name,
-      isNew: false
+      isNew: false,
+      isCore: isCoreConcept
     };
 
     onConceptsUpdated([...linkedConcepts, draftItem]);
@@ -207,6 +215,14 @@ export function LinkedConceptsManager({
     const next = [...linkedConcepts];
     next.splice(index, 1);
     onConceptsUpdated(next);
+  };
+
+  const handleToggleCore = (index: number) => {
+    const next = [...linkedConcepts];
+    if (next[index]) {
+      next[index] = { ...next[index], isCore: !next[index].isCore };
+      onConceptsUpdated(next);
+    }
   };
 
   const filteredConcepts = allExistingConcepts.filter((c) => {
@@ -225,7 +241,7 @@ export function LinkedConceptsManager({
             Linked Concepts & Background Primers ({linkedConcepts.length})
           </h3>
           <p className="text-xs text-ink/60 mt-0.5">
-            Attach evergreen concepts. Concepts are stored locally and will be saved & linked when you submit the event.
+            Attach concepts classified as <strong>Core Concept (Must Read)</strong> or <strong>Related Concept (Important Aspect)</strong>. Saved on Publish.
           </p>
         </div>
         <button
@@ -247,16 +263,27 @@ export function LinkedConceptsManager({
         <div className="grid gap-2.5 sm:grid-cols-2">
           {linkedConcepts.map((concept, index) => (
             <div
-              className="flex items-start justify-between gap-3 rounded-xl border border-line bg-surface p-3.5 shadow-2xs transition-all hover:border-berry/40"
+              className={`flex items-start justify-between gap-3 rounded-xl border p-3.5 shadow-2xs transition-all ${
+                concept.isCore
+                  ? "border-amber-400/70 bg-amber-500/5 hover:border-amber-500"
+                  : "border-line bg-surface hover:border-berry/40"
+              }`}
               key={concept.tempId || concept.id || index}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                  <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-berry">
-                    Concept
-                  </span>
+                  {concept.isCore ? (
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-800 flex items-center gap-1 border border-amber-500/30">
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-600" /> Core Concept
+                    </span>
+                  ) : (
+                    <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-berry border border-berry/20">
+                      Related Concept
+                    </span>
+                  )}
+
                   {concept.isNew && (
-                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-amber-700">
+                    <span className="rounded bg-civic/10 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-civic">
                       New Draft
                     </span>
                   )}
@@ -275,8 +302,25 @@ export function LinkedConceptsManager({
                 )}
               </div>
 
-              {/* Card Action Buttons: View, Edit, Remove */}
+              {/* Card Action Buttons: Toggle Core, View, Edit, Remove */}
               <div className="flex items-center gap-1 shrink-0">
+                <button
+                  aria-label="Toggle Core or Related Concept"
+                  className={`grid h-7 w-7 place-items-center rounded border transition-colors ${
+                    concept.isCore
+                      ? "border-amber-400 bg-amber-100 text-amber-800"
+                      : "border-line bg-surface text-ink/40 hover:bg-amber-50 hover:text-amber-700"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleCore(index);
+                  }}
+                  title={concept.isCore ? "Classified as Core Concept (Must Read)" : "Classified as Related Concept (Click to toggle Core)"}
+                  type="button"
+                >
+                  <Star className={`h-3.5 w-3.5 ${concept.isCore ? "fill-amber-500 text-amber-700" : ""}`} />
+                </button>
+
                 <button
                   aria-label="View concept preview"
                   className="grid h-7 w-7 place-items-center rounded border border-line bg-surface text-ink/70 hover:bg-paper hover:text-ink transition-colors"
@@ -337,9 +381,15 @@ export function LinkedConceptsManager({
             <div className="flex items-start justify-between gap-4 border-b border-line pb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-berry">
-                    Concept Preview
-                  </span>
+                  {viewingConcept.isCore ? (
+                    <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800 flex items-center gap-1 border border-amber-500/30">
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-600" /> Core Concept (Must Read)
+                    </span>
+                  ) : (
+                    <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-berry border border-berry/20">
+                      Related Concept
+                    </span>
+                  )}
                   {viewingConcept.categoryName && (
                     <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
                       {viewingConcept.categoryName}
@@ -359,7 +409,7 @@ export function LinkedConceptsManager({
               </button>
             </div>
 
-            <div className="article-body text-sm text-ink leading-relaxed border-t border-line/50 pt-3">
+            <div className="article-body text-sm text-ink leading-relaxed border-t border-line/50 pt-3 max-h-[50vh] overflow-y-auto">
               <RenderedContent content={viewingConcept.body} />
             </div>
 
@@ -455,6 +505,54 @@ export function LinkedConceptsManager({
               </p>
             )}
 
+            {/* CONCEPT CLASSIFICATION SELECTOR: Core Concept vs Related Concept */}
+            <div className="grid gap-1.5 rounded-xl border border-line/70 bg-paper/30 p-3">
+              <label className="text-xs font-black uppercase tracking-wider text-ink/70">
+                Concept Classification for this Article
+              </label>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCoreConcept(true)}
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    isCoreConcept
+                      ? "border-amber-500 bg-amber-500/15 shadow-xs ring-2 ring-amber-500/20"
+                      : "border-line bg-surface hover:border-amber-500/40"
+                  }`}
+                >
+                  <Star className={`h-5 w-5 ${isCoreConcept ? "fill-amber-500 text-amber-700" : "text-ink/40"}`} />
+                  <div>
+                    <span className="block text-xs font-black uppercase tracking-wider text-amber-900">
+                      Core Concept ⭐
+                    </span>
+                    <span className="block text-[11px] text-ink/70 leading-tight mt-0.5">
+                      Treated as Must-Read core foundation of this article
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCoreConcept(false)}
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    !isCoreConcept
+                      ? "border-berry bg-berry/10 shadow-xs ring-2 ring-berry/20"
+                      : "border-line bg-surface hover:border-berry/40"
+                  }`}
+                >
+                  <BookOpen className={`h-5 w-5 ${!isCoreConcept ? "text-berry" : "text-ink/40"}`} />
+                  <div>
+                    <span className="block text-xs font-black uppercase tracking-wider text-berry">
+                      Related Concept 🔗
+                    </span>
+                    <span className="block text-[11px] text-ink/70 leading-tight mt-0.5">
+                      Secondary aspect / Related reference primer
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* TAB 1: CREATE / EDIT CONCEPT WITH RICH TEXT EDITOR */}
             {activeTab === "create" && (
               <div className="space-y-4">
@@ -463,7 +561,7 @@ export function LinkedConceptsManager({
                   <input
                     className="h-11 rounded-xl border border-line px-3 text-base font-normal text-ink outline-none focus:border-berry"
                     onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="e.g. Collegium System & Judicial Appointments"
+                    placeholder="e.g. Index of Industrial Production (IIP)"
                     required
                     type="text"
                     value={conceptTitle}
@@ -477,7 +575,7 @@ export function LinkedConceptsManager({
                     <input
                       className="min-w-0 flex-1 bg-transparent font-mono text-ink outline-none"
                       onChange={(e) => handleSlugChange(e.target.value)}
-                      placeholder="collegium-system"
+                      placeholder="index-of-industrial-production-iip"
                       required
                       type="text"
                       value={conceptSlug}

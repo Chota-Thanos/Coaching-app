@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Layers3, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, Layers3, Loader2, Sparkles, Star } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
 import { useSubscription } from "../../lib/use-subscription";
 import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
@@ -117,11 +117,19 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   }
 
   // User is authorized, show the full article body and tools
-  const conceptRelations = article.outgoing_relations.filter(
-    (rel) => rel.target_article?.article_role === "concept" || rel.relation_type === "prerequisite"
+  const allConceptRelations = article.outgoing_relations.filter(
+    (rel) => rel.target_article?.article_role === "concept" || rel.relation_type === "prerequisite" || rel.relation_type === "related_reference"
   );
+
+  const coreConcepts = allConceptRelations.filter(
+    (rel) => rel.label === "Core Concept" || rel.relation_type === "prerequisite"
+  );
+  const relatedConcepts = allConceptRelations.filter(
+    (rel) => rel.label !== "Core Concept" && rel.relation_type !== "prerequisite"
+  );
+
   const otherOutgoingRelations = article.outgoing_relations.filter(
-    (rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite"
+    (rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite" && rel.relation_type !== "related_reference"
   );
 
   return (
@@ -163,18 +171,64 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
 
-        {/* Linked Background Concepts & Key Terms */}
-        {conceptRelations.length > 0 && (
-          <section className="mt-6 rounded-xl border border-berry/20 bg-berry/5 p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="h-5 w-5 text-berry" />
-              <h2 className="text-lg font-black text-ink">Background Concepts & Key Terms</h2>
+        {/* 1. MUST READ: CORE CONCEPTS (Top Callout) */}
+        {coreConcepts.length > 0 && (
+          <section className="mt-6 rounded-xl border border-amber-400/80 bg-amber-500/10 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Star className="h-5 w-5 fill-amber-500 text-amber-700" />
+              <h2 className="text-lg font-black text-amber-950">Must Read: Core Concepts</h2>
             </div>
-            <p className="text-xs text-ink/65 mb-4 leading-relaxed">
-              Foundational explainers and reusable concept primers linked to this article:
+            <p className="text-xs text-amber-900/80 mb-4 leading-relaxed font-medium">
+              Essential foundational concepts that form the core part of this article:
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {conceptRelations.map((rel) => (
+              {coreConcepts.map((rel) => (
+                <Link
+                  className="group rounded-xl border border-amber-300/80 bg-surface p-4 transition-all hover:border-amber-500 hover:shadow-md flex flex-col justify-between"
+                  href={`/current-affairs/articles/${rel.target_article.slug}`}
+                  key={rel.id}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800 flex items-center gap-1 border border-amber-500/30">
+                        <Star className="h-3 w-3 fill-amber-500 text-amber-600" /> Core Concept
+                      </span>
+                      {rel.target_article.category && (
+                        <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/60">
+                          {rel.target_article.category.name}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-extrabold text-ink group-hover:text-amber-700 transition-colors leading-snug">
+                      {rel.target_article.title}
+                    </h3>
+                    {rel.target_article.body && (
+                      <p className="mt-1.5 text-xs text-ink/65 line-clamp-2 leading-relaxed">
+                        {rel.target_article.body.replace(/<[^>]*>?/gm, "").replace(/^[#*`-\s]+/, "").slice(0, 140)}...
+                      </p>
+                    )}
+                  </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-amber-800">
+                    Read Core Concept Primer →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 2. IMPORTANT ASPECTS & RELATED CONCEPTS */}
+        {relatedConcepts.length > 0 && (
+          <section className="mt-5 rounded-xl border border-berry/20 bg-berry/5 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-1.5">
+              <BookOpen className="h-5 w-5 text-berry" />
+              <h2 className="text-lg font-black text-ink">Important Aspects & Related Concepts</h2>
+            </div>
+            <p className="text-xs text-ink/65 mb-4 leading-relaxed">
+              Secondary background aspects and related references linked to this article:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {relatedConcepts.map((rel) => (
                 <Link
                   className="group rounded-xl border border-line bg-surface p-4 transition-all hover:border-berry hover:shadow-md flex flex-col justify-between"
                   href={`/current-affairs/articles/${rel.target_article.slug}`}
@@ -182,8 +236,8 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-berry">
-                        Concept Primer
+                      <span className="rounded bg-berry/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-berry border border-berry/20">
+                        Related Concept
                       </span>
                       {rel.target_article.category && (
                         <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/60">
@@ -196,12 +250,12 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
                     </h3>
                     {rel.target_article.body && (
                       <p className="mt-1.5 text-xs text-ink/65 line-clamp-2 leading-relaxed">
-                        {rel.target_article.body.replace(/^[#*`-\s]+/, "").slice(0, 140)}...
+                        {rel.target_article.body.replace(/<[^>]*>?/gm, "").replace(/^[#*`-\s]+/, "").slice(0, 140)}...
                       </p>
                     )}
                   </div>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-berry">
-                    Read Concept Explainer →
+                    Read Related Concept →
                   </span>
                 </Link>
               ))}

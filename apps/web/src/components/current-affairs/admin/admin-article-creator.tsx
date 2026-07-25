@@ -246,7 +246,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
 
         // Populate linked concepts from outgoing relations
         const existingConcepts: ConceptDraft[] = (detail.outgoing_relations || [])
-          .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite")
+          .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite" || r.relation_type === "related_reference")
           .filter((r: any) => Boolean(r.target_article))
           .map((r: any) => ({
             id: r.target_article.id,
@@ -255,7 +255,8 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             body: r.target_article.body || "",
             categoryNodeId: r.target_article.category?.id ? String(r.target_article.category.id) : undefined,
             categoryName: r.target_article.category?.name,
-            isNew: false
+            isNew: false,
+            isCore: r.label === "Core Concept" || r.relation_type === "prerequisite"
           }));
         setLinkedConcepts(existingConcepts);
 
@@ -275,7 +276,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
       setEditingArticleDetail(detail);
 
       const existingConcepts: ConceptDraft[] = (detail.outgoing_relations || [])
-        .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite")
+        .filter((r: any) => r.target_article?.article_role === "concept" || r.relation_type === "prerequisite" || r.relation_type === "related_reference")
         .filter((r: any) => Boolean(r.target_article))
         .map((r: any) => ({
           id: r.target_article.id,
@@ -284,7 +285,8 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
           body: r.target_article.body || "",
           categoryNodeId: r.target_article.category?.id ? String(r.target_article.category.id) : undefined,
           categoryName: r.target_article.category?.name,
-          isNew: false
+          isNew: false,
+          isCore: r.label === "Core Concept" || r.relation_type === "prerequisite"
         }));
       setLinkedConcepts(existingConcepts);
     } catch (err) {
@@ -452,8 +454,8 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
           try {
             await authenticatedPost(`/api/v1/current-affairs/articles/${targetArticleId}/relations`, token, {
               target_article_id: conceptId,
-              relation_type: "prerequisite",
-              label: "Background Concept"
+              relation_type: concept.isCore ? "prerequisite" : "related_reference",
+              label: concept.isCore ? "Core Concept" : "Related Concept"
             });
           } catch (rErr) {
             console.error("Error creating concept relation on publish:", rErr);

@@ -225,10 +225,10 @@ export function RichTextMarkdownEditor({
         </div>
       </div>
 
-      <div className="rounded-xl border border-line overflow-hidden bg-surface shadow-xs focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/10 transition-all w-full flex flex-col">
-        {/* Tiptap Toolbar (Visual only) */}
+      <div className="rounded-xl border border-line overflow-hidden bg-surface shadow-xs focus-within:border-civic focus-within:ring-2 focus-within:ring-civic/10 transition-all w-full flex flex-col relative">
+        {/* Tiptap Toolbar (Visual only) - Sticky pinned at top */}
         {tab === "visual" && editor && (
-          <div className="flex flex-wrap items-center gap-1 bg-paper/40 border-b border-line/60 px-2 py-1.5 select-none rte-toolbar">
+          <div className="sticky top-0 z-20 flex flex-wrap items-center gap-1 bg-surface border-b border-line px-2.5 py-1.5 select-none rte-toolbar shadow-xs">
             
             {/* Heading Level */}
             <select
@@ -526,10 +526,10 @@ export function RichTextMarkdownEditor({
 
         {/* Edit / Code / Preview areas */}
         {tab === "visual" && (
-          <div className="flex-1 w-full bg-surface outline-none">
+          <div className="flex-1 w-full bg-surface outline-none max-h-[520px] overflow-y-auto min-h-[250px]">
             <EditorContent
               editor={editor}
-              className={`w-full p-4 font-normal text-sm text-ink outline-none resize-y overflow-y-auto article-body prose prose-civic max-w-none tiptap-prosemirror ${minHeightClass}`}
+              className={`w-full p-4 font-normal text-sm text-ink outline-none article-body prose prose-civic max-w-none tiptap-prosemirror ${minHeightClass}`}
               style={{ minHeight: "250px" }}
             />
           </div>
@@ -539,7 +539,7 @@ export function RichTextMarkdownEditor({
           <textarea
             value={value || ""}
             onChange={(e) => onChange(e.target.value)}
-            className={`w-full p-4 font-mono text-xs text-ink/90 outline-none resize-y bg-paper/20 border-0 ${minHeightClass}`}
+            className={`w-full p-4 font-mono text-xs text-ink/90 outline-none max-h-[520px] overflow-y-auto bg-paper/20 border-0 ${minHeightClass}`}
             placeholder="Paste HTML here or edit source directly..."
             style={{ minHeight: "250px" }}
           />
@@ -547,7 +547,7 @@ export function RichTextMarkdownEditor({
 
         {tab === "preview" && (
           <div
-            className={`w-full p-4 overflow-y-auto bg-paper/10 text-sm leading-relaxed article-body prose prose-civic max-w-none select-text ${minHeightClass}`}
+            className={`w-full p-4 max-h-[520px] overflow-y-auto bg-paper/10 text-sm leading-relaxed article-body prose prose-civic max-w-none select-text ${minHeightClass}`}
             style={{ minHeight: "250px" }}
             dangerouslySetInnerHTML={{
               __html: value || `<p class="text-ink/40 italic">Nothing to preview yet...</p>`,
