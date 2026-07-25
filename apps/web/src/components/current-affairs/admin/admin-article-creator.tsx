@@ -476,7 +476,12 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
     }
 
     if (targetArticleId) {
-      void handleEditDraft(targetArticleId);
+      setEditingDraftId(targetArticleId);
+      await handleEditDraft(targetArticleId);
+      setSuccessLink({
+        href: `/current-affairs/articles/${payload.slug || formState.slug}`,
+        label: `Article "${payload.title || formState.title}" published & saved successfully.`
+      });
     } else {
       setFormState(initialForm(defaultKind));
       setLinkedConcepts([]);
@@ -956,6 +961,18 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             )}
 
             <div className="flex gap-3 justify-end pt-4 border-t border-line flex-wrap">
+              {editingDraftId && formState.slug && (
+                <a
+                  href={`/current-affairs/articles/${formState.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-50 px-5 font-extrabold text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all shadow-xs"
+                  title="Open published article page on frontend in a new tab"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span>👁️ View on Frontend ↗</span>
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => setCreatorSplitOpen(true)}
