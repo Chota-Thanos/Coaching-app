@@ -39,12 +39,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="sticky top-0 z-30 border-b border-line/60 bg-surface/95 shadow-card backdrop-blur-md">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3">
               {/* Logo */}
-              <Link className="flex items-center gap-2.5 font-extrabold text-ink" href="/">
+              <Link className="flex items-center gap-2 text-ink shrink-0 hover:opacity-90 transition-opacity" href="/" title="WayToIAS Home">
                 <WayToIASLogo className="h-9 w-auto" />
-                <span className="leading-tight">
-                  <span className="block text-base font-black text-ink">WayToIAS</span>
-                  <span className="block text-xs font-semibold text-indigo-650">UPSC Prep Platform</span>
-                </span>
               </Link>
 
               {/* Desktop nav */}
