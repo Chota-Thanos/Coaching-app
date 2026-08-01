@@ -1,5 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { getUserById, verifyAccessToken } from "./service.js";
+import { isApiKey, resolveApiKey } from "./api-keys.service.js";
 import type { AuthUser, UserRole } from "./schemas.js";
 
 function unauthorized(message = "Authentication required."): never {
@@ -14,12 +15,35 @@ function forbidden(message = "Permission denied."): never {
   throw error;
 }
 
-export async function requireAuth(request: FastifyRequest): Promise<AuthUser> {
-  const authHeader = request.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) unauthorized();
+/**
+ * Reads the presented credential from either `X-Api-Key` or a Bearer header.
+ * Machine clients may use either; browsers only ever send the Bearer JWT.
+ */
+function readCredential(request: FastifyRequest): string | null {
+  const apiKeyHeader = request.headers["x-api-key"];
+  const apiKey = Array.isArray(apiKeyHeader) ? apiKeyHeader[0] : apiKeyHeader;
+  if (apiKey && apiKey.trim().length > 0) return apiKey.trim();
 
-  const token = authHeader.slice("Bearer ".length).trim();
-  const payload = verifyAccessToken(token);
+  const authHeader = request.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) return authHeader.slice("Bearer ".length).trim();
+
+  return null;
+}
+
+export async function requireAuth(request: FastifyRequest): Promise<AuthUser> {
+  const credential = readCredential(request);
+  if (!credential) unauthorized();
+
+  // A service API key authenticates *as* a real user row, so every role check
+  // downstream (requireRole, requireAdminOrEditor, created_by columns) behaves
+  // identically whether the caller is a browser session or the local agent.
+  if (isApiKey(credential)) {
+    const keyUser = await resolveApiKey(credential);
+    if (!keyUser) unauthorized("Invalid or revoked API key.");
+    return keyUser;
+  }
+
+  const payload = verifyAccessToken(credential);
   const user = await getUserById(payload.user_id);
 
   if (!user || !user.is_active) unauthorized();

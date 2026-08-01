@@ -17,7 +17,8 @@
     "test:api": "npm --workspace apps/api run test",
     "test:web": "npm --workspace @coaching-app/web run test",
     "db:migrate": "npm --workspace apps/api run db:migrate",
-    "api:start": "npm --workspace apps/api run start"
+    "api:start": "npm --workspace apps/api run start",
+    "api:key": "npm --workspace apps/api run api:key --"
   },
   "devDependencies": {
     "ssh2": "^1.17.0"
