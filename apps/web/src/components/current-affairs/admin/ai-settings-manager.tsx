@@ -342,6 +342,23 @@ export function AiSettingsManager() {
                   href: "/admin/current-affairs/ai-settings/mains-notes",
                   color: "border-indigo-200 bg-indigo-50/10 hover:border-indigo-400 hover:bg-indigo-50/20 text-indigo-800",
                   icon: <FileText className="h-5 w-5 text-indigo-600" />
+                },
+                // The PYQ content types were configurable in the component but had
+                // no card here, so their settings pages were unreachable except by
+                // typing the URL.
+                {
+                  title: "Prelims PYQ AI Settings",
+                  desc: "Configure prompts and formatting rules for Prelims Past Year Questions.",
+                  href: "/admin/current-affairs/ai-settings/prelims-pyq",
+                  color: "border-teal-200 bg-teal-50/10 hover:border-teal-400 hover:bg-teal-50/20 text-teal-800",
+                  icon: <BookOpen className="h-5 w-5 text-teal-600" />
+                },
+                {
+                  title: "Mains PYQ AI Settings",
+                  desc: "Configure prompts and answering guidelines for Mains Past Year Questions.",
+                  href: "/admin/current-affairs/ai-settings/mains-pyq",
+                  color: "border-pink-200 bg-pink-50/10 hover:border-pink-400 hover:bg-pink-50/20 text-pink-800",
+                  icon: <Brain className="h-5 w-5 text-pink-600" />
                 }
               ].map((card) => (
                 <Link

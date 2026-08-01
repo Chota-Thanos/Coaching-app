@@ -792,7 +792,19 @@ Return ONLY a valid JSON object matching:
     systemPrompt = instructionRow.prompt;
     outputSchema = instructionRow.output_schema;
     exampleOutput = instructionRow.example_output;
-  } else {
+  }
+
+  // The per-content-type settings screen saves the prompt but never an
+  // output_schema, and new rows default it to {}. Using that empty object would
+  // send the model "OUTPUT SCHEMA (STRICT JSON): {}" — i.e. saving instructions
+  // would silently REMOVE the structure guidance and make the response shape
+  // unpredictable. Fall back to the built-in schema whenever none is stored,
+  // keeping any saved prompt.
+  const hasStoredSchema =
+    outputSchema && typeof outputSchema === "object" && Object.keys(outputSchema).length > 0;
+
+  if (!hasStoredSchema) {
+    const savedPrompt = systemPrompt;
     if (routedContentType === "prelims_pyq") {
       systemPrompt = `You are a UPSC prelims question creator. Generate a highly relevant multiple-choice question (MCQ) for the topic.
 Rules:
@@ -891,6 +903,9 @@ Rules:
         }
       };
     }
+    // A saved prompt always wins over the built-in one; only the schema was
+    // missing.
+    if (savedPrompt) systemPrompt = savedPrompt;
   }
 
   // 2. Fetch subject override instructions
