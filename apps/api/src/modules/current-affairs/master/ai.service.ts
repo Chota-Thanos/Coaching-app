@@ -566,17 +566,40 @@ function generateMockArticles(promptText: string, systemPrompt: string): any {
   };
 }
 
-export async function searchWeb(queryText: string): Promise<string> {
+/**
+ * Outcome of trying to gather grounding material for one topic.
+ *
+ * Both of these used to swallow every failure and return `""`, which the caller
+ * could not distinguish from "this topic genuinely has no context". A blocked
+ * search therefore produced an article written purely from model priors that
+ * looked exactly like a researched one. The failure is now explicit and travels
+ * back to the caller.
+ */
+export interface TopicContext {
+  topic: string;
+  text: string;
+  method: "url_scrape" | "web_search" | "none";
+  /** Set whenever grounding material could not be gathered. */
+  error?: string;
+}
+
+const SCRAPE_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+export interface WebSearchResult {
+  text: string;
+  error?: string;
+}
+
+export async function searchWeb(queryText: string): Promise<WebSearchResult> {
   try {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(queryText)}`;
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
-    });
-    if (!res.ok) throw new Error(`DuckDuckGo responded with status ${res.status}`);
+    const res = await fetch(url, { headers: { "User-Agent": SCRAPE_USER_AGENT } });
+    if (!res.ok) {
+      return { text: "", error: `DuckDuckGo responded with status ${res.status}` };
+    }
     const html = await res.text();
-    
+
     const matches = html.matchAll(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g);
     const snippets: string[] = [];
     for (const match of matches) {
@@ -591,7 +614,7 @@ export async function searchWeb(queryText: string): Promise<string> {
         snippets.push(snippet);
       }
     }
-    
+
     if (snippets.length === 0) {
       const titles = html.matchAll(/<a class="result__url"[^>]*>([\s\S]*?)<\/a>/g);
       for (const match of titles) {
@@ -600,24 +623,37 @@ export async function searchWeb(queryText: string): Promise<string> {
         }
       }
     }
-    
-    return snippets.slice(0, 5).join("\n\n");
+
+    if (snippets.length === 0) {
+      // Reached the endpoint but parsed nothing: rate-limiting, a CAPTCHA
+      // interstitial, or DuckDuckGo changing its markup. All three are silent
+      // in the HTML status code, so treat an empty parse as a failure.
+      return {
+        text: "",
+        error: "Search returned no parseable results (rate-limited, blocked, or markup changed)."
+      };
+    }
+
+    return { text: snippets.slice(0, 5).join("\n\n") };
   } catch (err) {
-    console.error("Web search error:", err);
-    return "";
+    return { text: "", error: `Web search failed: ${(err as Error).message}` };
   }
 }
 
-export async function fetchTopicContext(topic: string): Promise<string> {
+export async function fetchTopicContext(topic: string): Promise<TopicContext> {
   const trimmed = topic.trim();
+
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     try {
-      const res = await fetch(trimmed, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-      });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const res = await fetch(trimmed, { headers: { "User-Agent": SCRAPE_USER_AGENT } });
+      if (!res.ok) {
+        return {
+          topic: trimmed,
+          text: "",
+          method: "url_scrape",
+          error: `Source URL returned status ${res.status}`
+        };
+      }
       const html = await res.text();
       const cleanHtml = html
         .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "")
@@ -625,20 +661,41 @@ export async function fetchTopicContext(topic: string): Promise<string> {
         .replace(/<[^>]*>/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-      return cleanHtml.slice(0, 8000); // limit to 8k characters
+      if (cleanHtml.length === 0) {
+        return {
+          topic: trimmed,
+          text: "",
+          method: "url_scrape",
+          error: "Source URL had no extractable text (likely JavaScript-rendered)."
+        };
+      }
+      return { topic: trimmed, text: cleanHtml.slice(0, 8000), method: "url_scrape" };
     } catch (err) {
-      console.error(`Failed to scrape URL ${trimmed}:`, err);
-      return "";
+      return {
+        topic: trimmed,
+        text: "",
+        method: "url_scrape",
+        error: `Could not fetch source URL: ${(err as Error).message}`
+      };
     }
-  } else {
-    if (trimmed.length > 200) {
-      return "";
-    }
-    return searchWeb(trimmed);
   }
+
+  if (trimmed.length > 200) {
+    // Long free text is the body of the story itself, not a search query — it is
+    // its own grounding material, so this is not a failure.
+    return { topic: trimmed, text: "", method: "none" };
+  }
+
+  const search = await searchWeb(trimmed);
+  return {
+    topic: trimmed,
+    text: search.text,
+    method: "web_search",
+    ...(search.error ? { error: search.error } : {})
+  };
 }
 
-function getAlternativeContentTypes(contentType: string): string[] {
+export function getAlternativeContentTypes(contentType: string): string[] {
   const mapping: Record<string, string[]> = {
     "prelims_ca": ["daily_current_affairs"],
     "daily_current_affairs": ["prelims_ca"],
@@ -905,12 +962,25 @@ Rules:
     systemPrompt = `${systemPrompt}\n\nEXAMPLE OUTPUT:\n${JSON.stringify(exampleOutput, null, 2)}`;
   }
 
-  // Fetch web search context
-  const topicsWithContext = [];
+  // Fetch web search context. A topic whose research failed is labelled as such
+  // in the prompt — otherwise the model treats "no context" as "write it from
+  // memory" and silently produces an unsourced article that reads like a
+  // researched one.
+  const contexts: TopicContext[] = [];
+  const topicsWithContext: string[] = [];
   for (const topic of options.topics) {
     const context = await fetchTopicContext(topic);
-    if (context) {
-      topicsWithContext.push(`Topic/URL: ${topic}\nWeb/Scraped Context:\n${context}`);
+    contexts.push(context);
+
+    if (context.text) {
+      topicsWithContext.push(`Topic/URL: ${topic}\nWeb/Scraped Context:\n${context.text}`);
+    } else if (context.error) {
+      console.warn(`[AI Generation] No research context for "${topic}": ${context.error}`);
+      topicsWithContext.push(
+        `Topic/URL: ${topic}\n[NO RESEARCH CONTEXT AVAILABLE — ${context.error}]\n` +
+          `Write only what you can state with confidence about this topic. Do NOT invent ` +
+          `specific figures, dates, names, scheme outlays or report rankings for it.`
+      );
     } else {
       topicsWithContext.push(`Topic/URL: ${topic}`);
     }
@@ -948,6 +1018,20 @@ Return ONLY the corrected draft matching the input structure. Do not change text
         art.category_node_id = Number(matched.id);
       }
     }
+  }
+
+  // Surface grounding coverage to the caller so a UI or agent can warn before
+  // anyone publishes. Additive — existing consumers read `articles` and ignore it.
+  const ungrounded = contexts.filter(c => c.error);
+  parsedDraft.research = {
+    topics_total: contexts.length,
+    topics_grounded: contexts.filter(c => c.text.length > 0).length,
+    failures: ungrounded.map(c => ({ topic: c.topic, method: c.method, error: c.error }))
+  };
+  if (ungrounded.length > 0) {
+    parsedDraft.research.warning =
+      `${ungrounded.length} of ${contexts.length} topic(s) were generated without research ` +
+      `context. Verify facts before publishing.`;
   }
 
   return parsedDraft;
