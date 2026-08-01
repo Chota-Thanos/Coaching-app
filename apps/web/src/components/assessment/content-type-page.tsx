@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Plus, Sparkles, ClipboardList } from 'lucide-react';
+import { Plus, Sparkles, ClipboardList, PlayCircle } from 'lucide-react';
 import { AssessmentHomePage } from './assessment-home';
 import { AssessmentDashboard } from './assessment-dashboard';
 import { authenticatedGet, useAuth } from '../auth/auth-context';
@@ -63,6 +63,23 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
               <span>AI based Parsing</span>
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* Walkthrough entry — worth opening even on an empty account, unlike the
+          spotlight tour it replaces. */}
+      <div className="border-b border-line/60 bg-surface px-4 py-2">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            href="/assessment/demo"
+            className="flex items-center gap-2.5 rounded-xl border border-civic/25 bg-civic/5 px-3 py-2.5 transition hover:bg-civic/10"
+          >
+            <PlayCircle className="h-5 w-5 shrink-0 text-civic" />
+            <span className="min-w-0 flex-1 truncate text-xs font-bold text-civic">
+              See how it works — build &amp; attempt a test in 90 seconds
+            </span>
+            <span className="shrink-0 text-xs font-bold text-civic">→</span>
+          </Link>
         </div>
       </div>
 
