@@ -3,6 +3,7 @@ import { deriveContentFamily } from "./content-family.js";
 import { generateText, parseJsonRobust, hasAiCredentials, parseQuizAI } from "./ai.service.js";
 import { extractFromDocument, extractFromUrl, type ExtractedSource } from "./extraction.service.js";
 import type { ExtractSourceInput, ParsePostingAgentInput } from "../schemas.js";
+import { loadSavedRules, renderSavedRules } from "./ai-instructions.service.js";
 
 // ── Category tree loading ─────────────────────────────────────────────────────
 
@@ -110,6 +111,12 @@ export interface AgentParseResult {
   extraction_method: string;
   source_name?: string;
   source_url?: string;
+  /**
+   * Titles of the saved AI-Settings rules applied to this parse. Empty means no
+   * house rules are configured for this content type — worth surfacing so an
+   * editor is not left assuming rules were followed when none exist.
+   */
+  applied_rules: string[];
   candidates: AgentArticleCandidate[];
 }
 
@@ -193,24 +200,31 @@ async function parsePyqCandidates(
   fallbackDate: string,
   extracted: ExtractedSource,
   instructions?: string
-): Promise<AgentArticleCandidate[]> {
+): Promise<{ candidates: AgentArticleCandidate[]; appliedRules: string[] }> {
   const contentType = contentKind === "mains_pyq" ? "mains" : "gk";
+  // Uploaded PYQ documents follow the same saved house rules as PYQs the AI
+  // writes; the editor's per-request note still comes last and wins.
+  const savedRules = await loadSavedRules({ scope: "article", contentType: contentKind });
+  const rulesText = renderSavedRules(savedRules);
+  const combinedInstructions = [rulesText.trim(), instructions?.trim()]
+    .filter(Boolean)
+    .join("\n\n");
   const quiz = await parseQuizAI({
     rawText: text,
     aiProvider: "gemini",
     aiModel: "gemini-2.5-flash",
     content_type: contentType,
-    instructions
+    instructions: combinedInstructions || undefined
   });
   const questions: Record<string, unknown>[] = Array.isArray(quiz?.questions) ? quiz.questions : [];
-  if (questions.length === 0) return [];
+  if (questions.length === 0) return { candidates: [], appliedRules: savedRules.applied };
 
   const pathById = new Map(tree.map((entry) => [entry.id, entry.path]));
   const statements = questions.map((q) => String(q.question_statement ?? ""));
   const categoryAssignments = await classifyIntoTree(statements, tree);
   const fallbackYear = fallbackDate.slice(0, 4);
 
-  return questions.map((question, index) => {
+  const candidates = questions.map((question, index) => {
     const yearRaw = question.year ? String(question.year) : "";
     const year = /^\d{4}$/.test(yearRaw) ? yearRaw : fallbackYear;
     const categoryIds = categoryAssignments[index] ?? [];
@@ -265,6 +279,8 @@ async function parsePyqCandidates(
       warnings
     };
   });
+
+  return { candidates, appliedRules: savedRules.applied };
 }
 
 // ── The agent ─────────────────────────────────────────────────────────────────
@@ -300,7 +316,7 @@ export async function parsePostingAgent(input: ParsePostingAgentInput): Promise<
   // PYQ content kinds are structured as questions, not prose — route them through
   // the quiz parser and shape the results into the platform's PYQ body_json.
   if (PYQ_CONTENT_KINDS.has(input.content_kind)) {
-    const candidates = await parsePyqCandidates(
+    const pyq = await parsePyqCandidates(
       extracted.text,
       input.content_kind,
       tree,
@@ -314,7 +330,8 @@ export async function parsePostingAgent(input: ParsePostingAgentInput): Promise<
       extraction_method: extracted.extraction_method,
       source_name: extracted.source_name,
       source_url: extracted.source_url,
-      candidates
+      applied_rules: pyq.appliedRules,
+      candidates: pyq.candidates
     };
   }
 
@@ -336,6 +353,12 @@ export async function parsePostingAgent(input: ParsePostingAgentInput): Promise<
 - Write each item in the style of its resolved role: events preserve/back-date the reporting date; concepts are self-contained and date-light (embedded or fallback date).`
   };
   const roleGuidance = roleGuidanceByMode[roleMode];
+
+  // Load the house rules an admin saved for this content type in AI Settings.
+  // Until now only the *generation* path read these, so an uploaded document
+  // ignored rules the same content type obeyed when the AI wrote it.
+  const savedRules = await loadSavedRules({ scope: "article", contentType: input.content_kind });
+  const savedRulesText = renderSavedRules(savedRules);
 
   const systemPrompt = `You are a precise current-affairs desk editor for an Indian UPSC coaching platform. You convert raw source material (news articles, editorials, notes, concept primers, possibly several items concatenated together) into clean, structured, publishable articles.
 
@@ -379,7 +402,7 @@ Return ONLY JSON in this exact shape:
   ]
 }`;
 
-  const userPrompt = `CONTENT KIND: ${input.content_kind} (family: ${contentFamily})
+  const userPrompt = `CONTENT KIND: ${input.content_kind} (family: ${contentFamily})${savedRulesText}
 FALLBACK PUBLICATION DATE (use only if none found in text): ${fallbackDate}
 TODAY: ${today}
 ${input.instructions ? `EDITOR INSTRUCTIONS: ${input.instructions}\n` : ""}
@@ -461,6 +484,7 @@ ${extracted.text}
     extraction_method: extracted.extraction_method,
     source_name: extracted.source_name,
     source_url: extracted.source_url,
+    applied_rules: savedRules.applied,
     candidates
   };
 }

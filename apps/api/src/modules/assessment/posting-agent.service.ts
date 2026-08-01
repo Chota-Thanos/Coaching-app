@@ -5,6 +5,7 @@ import {
   type ExtractedSource
 } from "../current-affairs/master/extraction.service.js";
 import { parseQuizAI, generateText, parseJsonRobust } from "../current-affairs/master/ai.service.js";
+import { loadSavedRules, renderSavedRules } from "../current-affairs/master/ai-instructions.service.js";
 import type { AssessmentExtractSourceInput, ParseAssessmentAgentInput } from "./posting-agent.schemas.js";
 
 interface TaxNodeRow {
@@ -45,6 +46,8 @@ export interface AssessmentParseResult {
   extraction_method: string;
   passage_title?: string;
   passage_text?: string;
+  /** Titles of the saved AI-Settings rules applied to this parse. */
+  applied_rules: string[];
   candidates: AssessmentAgentCandidate[];
 }
 
@@ -179,12 +182,19 @@ export async function parseAssessmentAgent(input: ParseAssessmentAgentInput): Pr
     throw new Error("No text could be extracted from the source.");
   }
 
+  // An uploaded question paper follows the same saved house rules as questions
+  // the AI writes; the editor's per-request note comes last and wins.
+  const savedRules = await loadSavedRules({ scope: "quiz", contentType: input.content_type });
+  const combinedInstructions = [renderSavedRules(savedRules).trim(), input.instructions?.trim()]
+    .filter(Boolean)
+    .join("\n\n");
+
   const quiz = await parseQuizAI({
     rawText: extracted.text,
     aiProvider: "gemini",
     aiModel: "gemini-2.5-flash",
     content_type: input.content_type,
-    instructions: input.instructions
+    instructions: combinedInstructions || undefined
   });
 
   const questions: Record<string, unknown>[] = Array.isArray(quiz?.questions) ? quiz.questions : [];
@@ -235,6 +245,7 @@ export async function parseAssessmentAgent(input: ParseAssessmentAgentInput): Pr
     extraction_method: extracted.extraction_method,
     passage_title: typeof quiz?.passage_title === "string" ? quiz.passage_title : undefined,
     passage_text: typeof quiz?.passage_text === "string" ? quiz.passage_text : undefined,
+    applied_rules: savedRules.applied,
     candidates
   };
 }
