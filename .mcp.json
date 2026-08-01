@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "coaching-posting-agent": {
+      "command": "node",
+      "args": ["tools/posting-agent-mcp/dist/index.js"],
+      "env": {
+        "COACHING_API_URL": "${COACHING_API_URL:-http://localhost:4000}",
+        "COACHING_API_KEY": "${COACHING_API_KEY}"
+      }
+    }
+  }
+}

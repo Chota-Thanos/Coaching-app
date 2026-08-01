@@ -1,0 +1,704 @@
+#!/usr/bin/env node
+/**
+ * MCP server exposing the coaching app's admin posting pipeline as tools.
+ *
+ * It is a *transport*, not a second brain: all extraction, AI parsing,
+ * classification and publishing already live in the API
+ * (`/api/v1/{current-affairs,assessment}/admin/agent/*`). This wraps those
+ * endpoints so an agent running on your machine can drive them, with the
+ * editorial judgement supplied by the skills in `.claude/skills/`.
+ *
+ * Run it via `.mcp.json` at the repo root; see README.md for setup.
+ */
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import { ApiError, CoachingApi, loadConfig } from './client.js';
+import { assertPublishable, recordGenerated } from './provenance.js';
+
+const api = new CoachingApi(loadConfig());
+
+const server = new McpServer({
+  name: 'coaching-posting-agent',
+  version: '0.1.0',
+});
+
+/** Uniform tool result: JSON on success, a readable error the model can act on. */
+async function run(work: () => Promise<unknown>) {
+  try {
+    const result = await work();
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+    };
+  } catch (error) {
+    const message =
+      error instanceof ApiError
+        ? `API call failed (${error.status}) on ${error.path}\n${error.body}`
+        : error instanceof Error
+          ? error.message
+          : String(error);
+    return {
+      content: [{ type: 'text' as const, text: message }],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Same as `run`, but fingerprints whatever prose the tool produced so the
+ * commit tools can later refuse to publish it live. Every generation tool must
+ * go through this rather than `run`.
+ */
+async function runGeneration(work: () => Promise<unknown>) {
+  try {
+    const result = await work();
+    recordGenerated(result);
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+    };
+  } catch (error) {
+    return run(() => Promise.reject(error));
+  }
+}
+
+const MIME_BY_EXT: Record<string, string> = {
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.doc': 'application/msword',
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
+
+/** Reads a local file into the base64 source contract both agents share. */
+async function fileSource(filePath: string) {
+  const absolute = path.resolve(filePath);
+  const extension = path.extname(absolute).toLowerCase();
+  const mime = MIME_BY_EXT[extension];
+  if (!mime) {
+    throw new Error(
+      `Unsupported file type "${extension}". Supported: ${Object.keys(MIME_BY_EXT).join(', ')}`,
+    );
+  }
+  const buffer = await readFile(absolute);
+  return {
+    kind: 'file' as const,
+    base64_data: buffer.toString('base64'),
+    mime_type: mime,
+    filename: path.basename(absolute),
+  };
+}
+
+// ─── Connection / discovery ──────────────────────────────────────────────────
+
+server.registerTool(
+  'whoami',
+  {
+    title: 'Check API connection',
+    description:
+      'Verifies the configured API key and returns the account it authenticates as, including its role. Call this first if any other tool returns 401 or 403.',
+    inputSchema: {},
+  },
+  async () => run(() => api.get('/api/v1/auth/me')),
+);
+
+server.registerTool(
+  'list_exams',
+  {
+    title: 'List exams',
+    description:
+      'Lists exams. Assessment posting requires an exam_id — get it here rather than guessing (there is usually exactly one, UPSC CSE).',
+    inputSchema: {},
+  },
+  async () => run(() => api.get('/api/v1/assessment/exams')),
+);
+
+server.registerTool(
+  'list_current_affairs_categories',
+  {
+    title: 'List current-affairs categories',
+    description:
+      'Lists the current-affairs category tree used to classify articles. Use root_only to see top-level nodes, then parent_id to walk down. Returns node ids for use in ca_commit.category_node_ids.',
+    inputSchema: {
+      content_family: z.enum(['prelims', 'mains']).optional(),
+      parent_id: z.number().int().positive().optional().describe('Show children of this node.'),
+      root_only: z.boolean().optional(),
+      node_type: z.enum(['gs_paper', 'subject', 'topic', 'subtopic']).optional(),
+      limit: z.number().int().positive().max(500).optional(),
+    },
+  },
+  async (args) => run(() => api.get('/api/v1/current-affairs/categories', args)),
+);
+
+server.registerTool(
+  'list_assessment_taxonomy',
+  {
+    title: 'List assessment taxonomy',
+    description:
+      'Lists the assessment taxonomy. GK/CSAT use the objective tree (subject → source_bucket → topic → subtopic); Mains uses a separate tree (paper → subject_area → theme → topic). Returns node ids for taxonomy_node_ids in assessment_commit.',
+    inputSchema: {
+      tree: z
+        .enum(['objective', 'mains'])
+        .describe('"objective" for gk/aptitude questions, "mains" for mains questions.'),
+      content_type: z
+        .enum(['gk', 'aptitude'])
+        .optional()
+        .describe('Objective tree only.'),
+      exam_id: z.number().int().positive().optional(),
+      parent_id: z.number().int().positive().optional(),
+      root_only: z.boolean().optional(),
+      search: z.string().optional().describe('Free-text node-name search.'),
+      limit: z.number().int().positive().max(500).optional(),
+    },
+  },
+  async ({ tree, ...rest }) =>
+    run(() =>
+      api.get(
+        tree === 'mains'
+          ? '/api/v1/assessment/mains/taxonomy-nodes'
+          : '/api/v1/assessment/taxonomy-nodes',
+        rest,
+      ),
+    ),
+);
+
+// ─── Current affairs ─────────────────────────────────────────────────────────
+
+server.registerTool(
+  'ca_extract',
+  {
+    title: 'Extract text (current affairs)',
+    description:
+      'Phase 1. Pulls raw text out of a local Word/PDF/image file or a URL. Scanned PDFs fall back to OCR automatically. Use this when you want to read and edit the text before parsing; ca_parse can also take a source directly.',
+    inputSchema: {
+      file_path: z.string().optional().describe('Absolute or relative path to a local file.'),
+      url: z.string().url().optional().describe('Web page to extract instead of a file.'),
+    },
+  },
+  async ({ file_path, url }) =>
+    run(async () => {
+      if (!file_path && !url) throw new Error('Provide either file_path or url.');
+      const source = url ? { kind: 'url' as const, url } : await fileSource(file_path!);
+      return api.post('/api/v1/current-affairs/admin/agent/extract', source);
+    }),
+);
+
+server.registerTool(
+  'ca_parse',
+  {
+    title: 'Parse current affairs',
+    description:
+      'Phase 2. Segments a document into individual articles, resolves and back-dates each publication_date, classifies each into the live category tree, and normalises the body. Returns candidates for review — nothing is written to the site yet. Editor markers in the source text (Title:, Categories: A > B; C > D, Date:, [CONCEPT]/[EVENT], --- separators, Instructions:) override the agent\'s inference.',
+    inputSchema: {
+      raw_text: z.string().optional().describe('Text to parse (e.g. the output of ca_extract).'),
+      file_path: z.string().optional().describe('Parse a local file directly, skipping ca_extract.'),
+      url: z.string().url().optional().describe('Parse a URL directly.'),
+      content_kind: z
+        .enum([
+          'daily_current_affairs',
+          'prelims_pyq',
+          'daily_editorial_summary',
+          'mains_topic_note',
+          'mains_pyq',
+          'mains_summary',
+          'mains_article',
+          'study_note',
+        ])
+        .describe('What kind of content this document holds.'),
+      article_role: z
+        .enum(['event', 'concept', 'auto'])
+        .optional()
+        .describe(
+          '"event" = dated news; "concept" = evergreen primer kept out of the daily feed; "auto" = classify per item. Only meaningful for daily_current_affairs.',
+        ),
+      default_publication_date: z
+        .string()
+        .optional()
+        .describe('YYYY-MM-DD fallback when the text carries no date.'),
+      default_tags: z.array(z.string()).optional(),
+      instructions: z
+        .string()
+        .max(4000)
+        .optional()
+        .describe('Editorial guidance passed through to the parsing prompt.'),
+    },
+  },
+  async ({ raw_text, file_path, url, ...rest }) =>
+    run(async () => {
+      const body: Record<string, unknown> = { ...rest };
+      if (raw_text) body.raw_text = raw_text;
+      else if (url) body.source = { kind: 'url', url };
+      else if (file_path) body.source = await fileSource(file_path);
+      else throw new Error('Provide raw_text, file_path or url.');
+      return api.post('/api/v1/current-affairs/admin/agent/parse', body);
+    }),
+);
+
+server.registerTool(
+  'ca_commit',
+  {
+    title: 'Publish current affairs',
+    description:
+      'Phase 3 — THIS WRITES TO THE LIVE SITE. publish_mode "auto" publishes immediately; "review" stages the batch as drafts for a human to approve in the admin UI. Prefer "review" unless the user has explicitly asked to publish. Pass the (possibly edited) candidates from ca_parse.',
+    inputSchema: {
+      content_kind: z.enum([
+        'daily_current_affairs',
+        'prelims_pyq',
+        'daily_editorial_summary',
+        'mains_topic_note',
+        'mains_pyq',
+        'mains_summary',
+        'mains_article',
+        'study_note',
+      ]),
+      publish_mode: z
+        .enum(['auto', 'review'])
+        .describe('"auto" = live immediately. "review" = staged as drafts.'),
+      confirm_publish_ai_content: z
+        .string()
+        .optional()
+        .describe(
+          'Only when the user explicitly asked, in this request, to publish AI-written content live. See the refusal message for the exact value. Never set this on your own initiative.',
+        ),
+      article_role: z.enum(['event', 'concept']).optional(),
+      articles: z
+        .array(
+          z.object({
+            title: z.string().min(1),
+            body: z.string().min(1),
+            slug: z.string().optional(),
+            excerpt: z.string().optional(),
+            article_role: z.enum(['event', 'concept']).optional(),
+            publication_date: z.string().optional().describe('YYYY-MM-DD.'),
+            category_node_ids: z
+              .array(z.number().int().positive())
+              .max(50)
+              .optional()
+              .describe('First id is the primary category; the rest are extra tree links.'),
+            source_name: z.string().optional(),
+            source_url: z.string().url().optional(),
+            seo_title: z.string().optional(),
+            seo_description: z.string().optional(),
+            keywords: z.array(z.string()).optional(),
+            body_json: z.record(z.string(), z.unknown()).optional(),
+            questions: z.array(z.record(z.string(), z.unknown())).optional(),
+          }),
+        )
+        .min(1)
+        .max(500),
+    },
+  },
+  async (args) =>
+    run(() => {
+      const { confirm_publish_ai_content, ...body } = args;
+      assertPublishable(args.publish_mode, args.articles, confirm_publish_ai_content);
+      return api.post('/api/v1/current-affairs/admin/agent/commit', body);
+    }),
+);
+
+// ─── Generation ──────────────────────────────────────────────────────────────
+//
+// These *create* content that no human has read. None of them write anything —
+// they return drafts, which must go back through ca_commit / assessment_commit
+// with publish_mode "review". The skills forbid auto-publishing generated
+// content; that boundary is the whole point of keeping generation separate.
+
+server.registerTool(
+  'list_style_guides',
+  {
+    title: 'List current-affairs style guides',
+    description:
+      'Lists saved writing-style guides. Pass the chosen id as style_guide_id to ca_generate_articles so drafts come out in the house voice instead of generic model prose.',
+    inputSchema: {},
+  },
+  async () => run(() => api.get('/api/v1/current-affairs/admin/ai/style-guide')),
+);
+
+server.registerTool(
+  'list_style_profiles',
+  {
+    title: 'List assessment style profiles',
+    description:
+      'Lists saved question-writing style profiles. Pass the chosen id as style_profile_id to assessment_generate_questions or assessment_draft_mains_question.',
+    inputSchema: {},
+  },
+  async () => run(() => api.get('/api/v1/assessment/admin/ai/style-profiles')),
+);
+
+server.registerTool(
+  'list_question_formats',
+  {
+    title: 'List question formats',
+    description:
+      'Lists question formats (MCQ shapes, statement-based patterns, etc.). Required as question_format_id by ca_generate_questions_from_article.',
+    inputSchema: {},
+  },
+  async () => run(() => api.get('/api/v1/assessment/question-formats')),
+);
+
+server.registerTool(
+  'ca_generate_articles',
+  {
+    title: 'Generate current-affairs articles from topics',
+    description:
+      'Writes NEW article drafts from a list of topics or source URLs. For each topic it gathers grounding material (scrapes the page if you pass a URL, otherwise runs a web search), routes it into your live category tree, and drafts in the chosen style guide. Returns drafts only — nothing is saved. ALWAYS check the returned `research` block: any topic listed under `research.failures` was written WITHOUT grounding material and its specifics must be verified before it goes anywhere near publication.',
+    inputSchema: {
+      topics: z
+        .array(z.string().min(1))
+        .min(1)
+        .max(25)
+        .describe(
+          'Topic lines or source URLs. A URL gets scraped; a short phrase gets searched; a long pasted passage is used as its own source material.',
+        ),
+      content_type: z
+        .enum(['prelims_ca', 'mains_ca', 'prelims_pyq', 'mains_pyq'])
+        .optional()
+        .describe('Omit to let the router agent classify each topic.'),
+      instructions: z.string().max(4000).optional(),
+      subject_id: z.number().int().positive().optional(),
+      style_guide_id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('From list_style_guides. Strongly recommended.'),
+      ai_provider: z.string().optional().describe('Defaults to the server configuration.'),
+      ai_model: z.string().optional(),
+    },
+  },
+  async ({ topics, content_type, instructions, subject_id, style_guide_id, ai_provider, ai_model }) =>
+    runGeneration(() =>
+      api.post('/api/v1/current-affairs/admin/ai/generate', {
+        topics,
+        content_type,
+        instructions,
+        subject_id,
+        style_guide_id,
+        ai_provider: ai_provider ?? 'gemini',
+        ai_model: ai_model ?? '',
+      }),
+    ),
+);
+
+/** Content types as the AI-Settings screens name them, so rules and format match exactly. */
+const CA_CONTENT_KINDS = [
+  'daily_current_affairs',
+  'daily_editorial_summary',
+  'mains_topic_note',
+  'mains_summary',
+  'mains_article',
+  'prelims_pyq',
+  'mains_pyq',
+  'study_note',
+] as const;
+
+server.registerTool(
+  'ca_generate_and_post',
+  {
+    title: 'Generate current affairs and post them',
+    description:
+      'The full pipeline in one call: researches each topic, writes it using the instructions and output format saved for that exact content type in AI Settings, converts the result into articles, and posts them. Defaults to drafts for review. Prefer this over ca_generate_articles + ca_commit — it applies the per-content-type format server-side instead of leaving you to reshape the output by hand. Always report the `research` summary and any per-article `warnings` back to the user.',
+    inputSchema: {
+      content_kind: z
+        .enum(CA_CONTENT_KINDS)
+        .describe(
+          'The exact content type as named in AI Settings. Determines which saved instructions and output format are used.',
+        ),
+      topics: z
+        .array(z.string().min(1))
+        .min(1)
+        .max(25)
+        .describe(
+          'Topic lines or source URLs. A URL is scraped and used as source material; a short phrase is searched; a long pasted passage is used as its own source.',
+        ),
+      publish_mode: z
+        .enum(['auto', 'review'])
+        .default('review')
+        .describe(
+          '"review" (default) stages drafts in the admin panel. "auto" publishes live and additionally requires confirm_publish_ai_content.',
+        ),
+      confirm_publish_ai_content: z
+        .string()
+        .optional()
+        .describe(
+          'Only when the user explicitly asked, in this request, to publish live. Never set on your own initiative.',
+        ),
+      category_node_ids: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe('Fallback categories when the generated item resolves none of its own.'),
+      publication_date: z.string().optional().describe('YYYY-MM-DD.'),
+      subject_id: z.number().int().positive().optional(),
+      style_guide_id: z.number().int().positive().optional().describe('From list_style_guides.'),
+      instructions: z
+        .string()
+        .max(4000)
+        .optional()
+        .describe("Extra direction for this run; overrides the saved rules where they conflict."),
+      dry_run: z
+        .boolean()
+        .optional()
+        .describe('Generate and convert but do not post, so the user can review the drafts first.'),
+    },
+  },
+  async (args) =>
+    run(async () => {
+      const generated = (await api.post('/api/v1/current-affairs/admin/ai/generate-articles', {
+        content_kind: args.content_kind,
+        topics: args.topics,
+        instructions: args.instructions,
+        subject_id: args.subject_id,
+        style_guide_id: args.style_guide_id,
+        category_node_ids: args.category_node_ids,
+        publication_date: args.publication_date,
+      })) as {
+        articles: Array<Record<string, unknown>>;
+        research?: unknown;
+        content_family?: string;
+      };
+
+      // Fingerprint before any commit so the publish gate can recognise it.
+      recordGenerated(generated);
+
+      const allArticles = generated.articles ?? [];
+      if (allArticles.length === 0) {
+        throw new Error('Generation produced no articles — nothing was posted.');
+      }
+
+      // Generation is non-deterministic: a run occasionally returns a shape the
+      // converter cannot turn into body text. Drop those here rather than
+      // letting the commit fail with a schema error that says nothing about
+      // what actually went wrong.
+      const articles = allArticles.filter((a) => String(a.body ?? '').trim().length > 0);
+      const emptyTitles = allArticles
+        .filter((a) => String(a.body ?? '').trim().length === 0)
+        .map((a) => String(a.title ?? 'Untitled'));
+
+      if (articles.length === 0) {
+        throw new Error(
+          `Generation returned ${allArticles.length} item(s) but none had usable body text, so ` +
+            `nothing was posted. This usually means the output format configured for ` +
+            `"${args.content_kind}" in AI Settings did not produce prose. Try again, or check ` +
+            `that content type's format.`,
+        );
+      }
+
+      if (args.dry_run) {
+        return { posted: false, reason: 'dry_run', research: generated.research, articles };
+      }
+
+      const publishMode = args.publish_mode ?? 'review';
+      assertPublishable(publishMode, articles, args.confirm_publish_ai_content);
+
+      const commit = await api.post('/api/v1/current-affairs/admin/agent/commit', {
+        content_kind: args.content_kind,
+        publish_mode: publishMode,
+        articles,
+      });
+
+      return {
+        posted: true,
+        publish_mode: publishMode,
+        posted_count: articles.length,
+        skipped_empty: emptyTitles.length > 0 ? emptyTitles : undefined,
+        research: generated.research,
+        warnings: articles.flatMap((a) => (a.warnings as string[] | undefined) ?? []),
+        commit,
+      };
+    }),
+);
+
+server.registerTool(
+  'ca_generate_questions_from_article',
+  {
+    title: 'Generate questions from a published article',
+    description:
+      'Generates practice questions grounded in one existing article, so the questions cannot drift from content already on your site. Returns a generation job with the drafted questions; nothing is published.',
+    inputSchema: {
+      article_id: z.number().int().positive(),
+      question_format_id: z.number().int().positive().describe('From list_question_formats.'),
+      question_count: z.number().int().min(1).max(20).optional().describe('Default 5.'),
+      instructions: z.string().optional(),
+      taxonomy: z
+        .object({
+          exam_id: z.number().int().positive(),
+          exam_level_id: z.number().int().positive(),
+          subject_node_id: z.number().int().positive(),
+          source_node_id: z.number().int().positive().optional(),
+          topic_node_id: z.number().int().positive().optional(),
+          subtopic_node_id: z.number().int().positive().optional(),
+          question_nature_id: z.number().int().positive().optional(),
+        })
+        .optional()
+        .describe('Where the generated questions should be filed.'),
+    },
+  },
+  async ({ article_id, ...body }) =>
+    runGeneration(() =>
+      api.post(`/api/v1/current-affairs/articles/${article_id}/question-generation`, body),
+    ),
+);
+
+server.registerTool(
+  'assessment_generate_questions',
+  {
+    title: 'Generate objective questions from a prompt',
+    description:
+      'Writes NEW GK or CSAT questions from a topic prompt, in a saved style profile. Returns drafts only — nothing is saved. Generated questions have no source document behind them, so answer keys and factual claims must be reviewed before they reach students.',
+    inputSchema: {
+      prompt: z.string().min(1).describe('Topic or brief, e.g. "Monetary policy instruments of the RBI".'),
+      quiz_type: z
+        .string()
+        .describe('Question shape, e.g. "mcq", "statement_based", "match_the_following".'),
+      count: z.number().int().min(1).max(50).optional(),
+      content_type: z.enum(['gk', 'aptitude']).optional(),
+      style_profile_id: z.number().int().positive().optional().describe('From list_style_profiles.'),
+      instructions: z.string().max(4000).optional(),
+      ai_provider: z.string().optional(),
+      ai_model: z.string().optional(),
+    },
+  },
+  async (args) => runGeneration(() => api.post('/api/v1/assessment/admin/ai/generate-quiz', args)),
+);
+
+server.registerTool(
+  'assessment_draft_mains_question',
+  {
+    title: 'Draft a Mains question',
+    description:
+      'Drafts a Mains-style question (with directive, marks and word limit) on a topic. Returns a draft only — nothing is saved.',
+    inputSchema: {
+      topic: z.string().min(1),
+      instructions: z.string().optional(),
+      style_profile_id: z.number().int().positive().optional(),
+      ai_provider: z.string().optional(),
+      ai_model: z.string().optional(),
+    },
+  },
+  async (args) =>
+    runGeneration(() => api.post('/api/v1/assessment/admin/ai/draft-mains-question', args)),
+);
+
+server.registerTool(
+  'ca_reword',
+  {
+    title: 'Reword a passage',
+    description:
+      'Rewrites a passage in the platform house style without inventing facts. Modes: concise, expand, simplify, exam_tone, grammar.',
+    inputSchema: {
+      text: z.string().min(1).max(20000),
+      mode: z.enum(['concise', 'expand', 'simplify', 'exam_tone', 'grammar']).optional(),
+      instructions: z.string().max(2000).optional(),
+    },
+  },
+  async (args) => run(() => api.post('/api/v1/current-affairs/admin/agent/reword', args)),
+);
+
+// ─── Assessment questions ────────────────────────────────────────────────────
+
+server.registerTool(
+  'assessment_extract',
+  {
+    title: 'Extract text (assessment)',
+    description:
+      'Phase 1 for question banks. Pulls raw text out of a local Word/PDF/image file or a URL.',
+    inputSchema: {
+      file_path: z.string().optional(),
+      url: z.string().url().optional(),
+    },
+  },
+  async ({ file_path, url }) =>
+    run(async () => {
+      if (!file_path && !url) throw new Error('Provide either file_path or url.');
+      const source = url ? { kind: 'url' as const, url } : await fileSource(file_path!);
+      return api.post('/api/v1/assessment/admin/agent/extract', source);
+    }),
+);
+
+server.registerTool(
+  'assessment_parse',
+  {
+    title: 'Parse assessment questions',
+    description:
+      'Phase 2 for question banks. Splits a document into questions (GK, CSAT/aptitude, or Mains), extracts stems/options/answers/explanations, and classifies each into the deepest matching taxonomy node. Returns candidates for review — nothing is saved yet.',
+    inputSchema: {
+      raw_text: z.string().optional(),
+      file_path: z.string().optional(),
+      url: z.string().url().optional(),
+      content_type: z
+        .enum(['gk', 'aptitude', 'mains'])
+        .describe('"gk" = prelims GS, "aptitude" = CSAT, "mains" = written.'),
+      exam_id: z.number().int().positive().describe('From list_exams.'),
+      instructions: z.string().max(4000).optional(),
+    },
+  },
+  async ({ raw_text, file_path, url, ...rest }) =>
+    run(async () => {
+      const body: Record<string, unknown> = { ...rest };
+      if (raw_text) body.raw_text = raw_text;
+      else if (url) body.source = { kind: 'url', url };
+      else if (file_path) body.source = await fileSource(file_path);
+      else throw new Error('Provide raw_text, file_path or url.');
+      return api.post('/api/v1/assessment/admin/agent/parse', body);
+    }),
+);
+
+server.registerTool(
+  'assessment_commit',
+  {
+    title: 'Save assessment questions',
+    description:
+      'Phase 3 — THIS WRITES TO THE QUESTION BANK. publish_mode "auto" publishes questions immediately; "review" saves them as drafts for the questions manager. Prefer "review" unless the user explicitly asked to publish. taxonomy_node_ids is the ordered node path root → leaf; questions without it are rejected.',
+    inputSchema: {
+      content_type: z.enum(['gk', 'aptitude', 'mains']),
+      exam_id: z.number().int().positive(),
+      publish_mode: z.enum(['auto', 'review']),
+      confirm_publish_ai_content: z
+        .string()
+        .optional()
+        .describe(
+          'Only when the user explicitly asked, in this request, to publish AI-written content live. See the refusal message for the exact value. Never set this on your own initiative.',
+        ),
+      passage_title: z.string().optional().describe('For comprehension sets (CSAT).'),
+      passage_text: z.string().optional(),
+      questions: z
+        .array(
+          z.object({
+            question_statement: z.string().min(1),
+            supp_question_statement: z.string().optional(),
+            question_prompt: z.string().optional(),
+            options: z
+              .array(z.object({ label: z.string(), text: z.string() }))
+              .optional()
+              .describe('Objective questions only. Labels are usually A–D.'),
+            correct_answer: z.string().optional().describe('The label of the correct option.'),
+            explanation: z.string().optional(),
+            word_limit: z.number().int().positive().optional().describe('Mains only.'),
+            marks: z.number().positive().optional().describe('Mains only.'),
+            directive: z.string().optional().describe('Mains only, e.g. "Discuss", "Critically examine".'),
+            taxonomy_node_ids: z
+              .array(z.number().int().positive())
+              .max(6)
+              .optional()
+              .describe('Ordered root → leaf path from list_assessment_taxonomy.'),
+          }),
+        )
+        .min(1)
+        .max(500),
+    },
+  },
+  async (args) =>
+    run(() => {
+      const { confirm_publish_ai_content, ...body } = args;
+      assertPublishable(args.publish_mode, args.questions, confirm_publish_ai_content);
+      return api.post('/api/v1/assessment/admin/agent/commit', body);
+    }),
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
