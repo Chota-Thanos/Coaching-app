@@ -27,7 +27,16 @@ const COMMON_RULES = `
 ACCURACY (non-negotiable)
 - Never invent a figure, date, name, rank, scheme outlay or report finding. If
   the research context does not support it, leave it out entirely.
-- Attribute every statistic to its source (ministry, report, survey, court).
+- Attribute every statistic to its source (ministry, report, survey, court) BY
+  NAME in the body text — e.g. "according to the Economic Survey 2024-25" —
+  not as a link.
+- NEVER invent "source_name" or "source_url". Only set them when the research
+  context you were given was itself fetched from one specific, identifiable
+  page — in that case, use that exact URL. If your context came from a web
+  search (multiple snippets, no single page) or you were given a topic with no
+  linked source, LEAVE source_name AND source_url EMPTY. A placeholder or
+  guessed URL (e.g. anything on example.com, or a URL you constructed from the
+  topic) is a fabricated citation and is never acceptable.
 - If the research context is missing or thin, write only what is safely
   established. A shorter accurate article beats a longer speculative one.
 

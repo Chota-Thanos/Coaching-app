@@ -316,3 +316,43 @@ test("SEO fields are carried through, falling back sensibly", () => {
   assert.equal(fallback.seo_title, "Only a title");
   assert.equal(fallback.seo_description, "From meta.");
 });
+
+test("a fabricated source URL is discarded, not published as a real citation", () => {
+  // A live run against a plain search topic (no real linked source) still
+  // returned "https://example.com/<topic-slug>" as source_url — a fabricated
+  // citation. Better to publish with no link than a fake one.
+  const article = convertGeneratedToArticle({
+    contentKind: "prelims_pyq",
+    item: {
+      title: "X",
+      question_statement: "Q",
+      source_name: "Web Scraped Content",
+      source_url: "https://example.com/cooperative-federalism-in-india"
+    }
+  });
+
+  assert.equal(article.source_url, undefined);
+  assert.ok(article.warnings?.some((w) => /fabricated source link/i.test(w)));
+});
+
+test("a genuinely fetched source URL is kept", () => {
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: {
+      title: "X",
+      sections: [{ content: "Body." }],
+      source_url: "https://pib.gov.in/PressReleasePage.aspx?PRID=123456"
+    }
+  });
+
+  assert.equal(article.source_url, "https://pib.gov.in/PressReleasePage.aspx?PRID=123456");
+});
+
+test("an unparseable source URL is treated as fabricated too", () => {
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: { title: "X", sections: [{ content: "B." }], source_url: "not a real url" }
+  });
+
+  assert.equal(article.source_url, undefined);
+});

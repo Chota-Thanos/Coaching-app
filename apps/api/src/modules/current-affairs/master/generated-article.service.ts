@@ -38,6 +38,32 @@ export interface GeneratedArticle {
   warnings?: string[];
 }
 
+/** RFC 2606 reserved domains and other classic placeholder hosts models fabricate. */
+const PLACEHOLDER_HOSTS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "example.edu",
+  "test.com",
+  "yourwebsite.com",
+  "localhost"
+]);
+
+/**
+ * A prompt can ask the model not to invent a source URL; it cannot guarantee
+ * compliance. This is the code-level backstop — a live run fabricated
+ * `https://example.com/<topic-slug>` as a citation for a plain search topic
+ * with no linked source. Better to publish with no source link than a fake one.
+ */
+function isFabricatedSourceUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return PLACEHOLDER_HOSTS.has(host);
+  } catch {
+    return true; // not even a valid URL — can't be a real source
+  }
+}
+
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -309,7 +335,15 @@ export function convertGeneratedToArticle(params: {
     publication_date: publicationDate,
     category_node_ids: categories.length > 0 ? categories : undefined,
     source_name: asString(item.source_name) || "AI Research Engine",
-    source_url: asString(item.source_url) || undefined,
+    source_url: (() => {
+      const url = asString(item.source_url);
+      if (!url) return undefined;
+      if (isFabricatedSourceUrl(url)) {
+        warnings.push(`Discarded a fabricated source link (${url}).`);
+        return undefined;
+      }
+      return url;
+    })(),
     seo_title: asString(item.seo_title) || asString(item.meta_title) || title,
     seo_description:
       asString(item.seo_description) ||
