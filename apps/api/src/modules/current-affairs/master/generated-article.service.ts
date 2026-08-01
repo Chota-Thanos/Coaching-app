@@ -29,6 +29,11 @@ export interface GeneratedArticle {
   seo_title?: string;
   seo_description?: string;
   keywords?: string[];
+  /**
+   * What picture should accompany the article. The generator specifies it; the
+   * file itself is attached later, so `url` is usually absent at this point.
+   */
+  image?: { url?: string; alt_text?: string; caption?: string; search_query?: string };
   /** Fields the converter could not place, so nothing is silently lost. */
   warnings?: string[];
 }
@@ -139,6 +144,8 @@ const META_KEYS = new Set([
   "category_node_ids",
   "suggested_category_slug",
   "excerpt",
+  "image",
+  "images",
   "research"
 ]);
 
@@ -269,26 +276,48 @@ export function convertGeneratedToArticle(params: {
 
   const keywords = splitKeywords(item.keywords ?? item.meta_keywords);
 
+  const rawImage = (item.image ?? (Array.isArray(item.images) ? item.images[0] : null)) as
+    | Record<string, unknown>
+    | null;
+  const image = rawImage
+    ? {
+        url: asString(rawImage.url) || asString(rawImage.file_url) || undefined,
+        alt_text: asString(rawImage.alt_text) || asString(rawImage.alt) || undefined,
+        caption: asString(rawImage.caption) || undefined,
+        search_query: asString(rawImage.search_query) || asString(rawImage.query) || undefined
+      }
+    : undefined;
+  if (image && !image.alt_text && !image.search_query) {
+    warnings.push("Image was suggested without alt text or a search query.");
+  }
+
+  // A malformed date would otherwise be written straight to a date column and
+  // rejected by the database, or silently land the article on the wrong day.
+  const rawDate =
+    asString(item.publication_date) || asString(item.news_date) || params.fallbackDate || "";
+  const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate);
+  if (rawDate && !isIsoDate) {
+    warnings.push(`Ignored an unusable publication date ("${rawDate}"); used today instead.`);
+  }
+  const publicationDate = isIsoDate ? rawDate : new Date().toISOString().slice(0, 10);
+
   return {
     title,
     slug: asString(item.slug) || slugify(title) || undefined,
     body,
     excerpt: asString(item.excerpt) || undefined,
-    publication_date:
-      asString(item.publication_date) ||
-      asString(item.news_date) ||
-      params.fallbackDate ||
-      new Date().toISOString().slice(0, 10),
+    publication_date: publicationDate,
     category_node_ids: categories.length > 0 ? categories : undefined,
     source_name: asString(item.source_name) || "AI Research Engine",
     source_url: asString(item.source_url) || undefined,
-    seo_title: asString(item.seo_title) || title,
+    seo_title: asString(item.seo_title) || asString(item.meta_title) || title,
     seo_description:
       asString(item.seo_description) ||
       asString(item.meta_description) ||
       asString(item.question_statement) ||
       undefined,
     keywords: keywords.length > 0 ? keywords : undefined,
+    image,
     warnings: warnings.length > 0 ? warnings : undefined
   };
 }

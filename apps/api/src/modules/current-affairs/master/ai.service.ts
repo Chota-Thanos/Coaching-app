@@ -1,4 +1,5 @@
 import { one, query } from "../../../db.js";
+import { getContentTypeBrief } from "./content-type-prompts.js";
 import { GoogleAuth } from "google-auth-library";
 
 // Types for AI output
@@ -804,108 +805,13 @@ Return ONLY a valid JSON object matching:
     outputSchema && typeof outputSchema === "object" && Object.keys(outputSchema).length > 0;
 
   if (!hasStoredSchema) {
-    const savedPrompt = systemPrompt;
-    if (routedContentType === "prelims_pyq") {
-      systemPrompt = `You are a UPSC prelims question creator. Generate a highly relevant multiple-choice question (MCQ) for the topic.
-Rules:
-- Generate valid JSON matching the output schema.
-- Include 4 options labeled A, B, C, and D. Specify which option is correct and provide a detailed explanation.`;
-      outputSchema = {
-        type: "object",
-        properties: {
-          articles: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                year: { type: "string" },
-                question_statement: { type: "string" },
-                supp_question_statement: { type: "string" },
-                question_prompt: { type: "string" },
-                options: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      label: { type: "string" },
-                      text: { type: "string" }
-                    }
-                  }
-                },
-                correct_answer: { type: "string" },
-                explanation: { type: "string" },
-                meta_keywords: { type: "string" },
-                meta_description: { type: "string" }
-              }
-            }
-          }
-        }
-      };
-    } else if (routedContentType === "mains_pyq") {
-      systemPrompt = `You are a UPSC mains subjective question creator. Generate a written exam question with word limits, marks, model answer approach, and guidelines.
-Rules:
-- Generate valid JSON matching the output schema.`;
-      outputSchema = {
-        type: "object",
-        properties: {
-          articles: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                year: { type: "string" },
-                question_statement: { type: "string" },
-                word_limit: { type: "integer" },
-                max_marks: { type: "integer" },
-                answer_approach: { type: "string" },
-                model_answer: { type: "string" },
-                meta_keywords: { type: "string" },
-                meta_description: { type: "string" }
-              }
-            }
-          }
-        }
-      };
-    } else {
-      systemPrompt = `You are a UPSC current affairs content creator. Generate structured articles for each topic.
-Rules:
-- Generate valid JSON matching the output schema.
-- Exclude introductory comments or prose. Use HTML for section contents.`;
-      outputSchema = {
-        type: "object",
-        properties: {
-          articles: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                slug: { type: "string" },
-                excerpt: { type: "string" },
-                meta_description: { type: "string" },
-                meta_keywords: { type: "string" },
-                sections: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      section_title: { type: "string" },
-                      content: { type: "string" },
-                      display_order: { type: "integer" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      };
-    }
-    // A saved prompt always wins over the built-in one; only the schema was
-    // missing.
-    if (savedPrompt) systemPrompt = savedPrompt;
+    // Built-in brief and structure for this content type. Lives in
+    // content-type-prompts.ts so all five are readable in one place, and so a
+    // fresh database still writes to the house standard — instructions stored
+    // only in ai_instructions do not travel with a deploy.
+    const brief = getContentTypeBrief(routedContentType);
+    outputSchema = brief.outputSchema;
+    if (!systemPrompt) systemPrompt = brief.prompt;
   }
 
   // 2. Fetch subject override instructions

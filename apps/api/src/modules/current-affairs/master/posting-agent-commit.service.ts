@@ -1,4 +1,5 @@
 import { createMasterArticle } from "./articles.service.js";
+import { query } from "../../../db.js";
 import { createIngestionJob } from "./ingestion.service.js";
 import type {
   CommitPostingAgentInput,
@@ -73,6 +74,49 @@ export interface CommitResult {
  *               (parser_kind "manual_json" so the AI re-parse worker is skipped),
  *               where the editor approves/publishes them one click at a time.
  */
+/**
+ * Records the image the generator specified.
+ *
+ * Usually there is no file yet — the model describes the picture it wants
+ * rather than producing one — so the search query and alt text are kept in
+ * `metadata` and a placeholder `file_url` is stored. That way the intent
+ * survives to whoever sources the image, instead of being discarded at commit
+ * and silently lost.
+ *
+ * Never fails the commit: an article without its picture is still an article.
+ */
+async function attachImage(
+  articleId: number,
+  image: { url?: string; alt_text?: string; caption?: string; search_query?: string } | undefined,
+  userId: number
+): Promise<void> {
+  if (!image) return;
+  if (!image.url && !image.search_query && !image.alt_text) return;
+
+  try {
+    await query(
+      `insert into current_affairs.master_article_assets
+         (article_id, asset_type, file_name, file_url, alt_text, caption, metadata, uploaded_by_user_id)
+       values ($1, 'image', $2, $3, $4, $5, $6, $7)`,
+      [
+        articleId,
+        image.search_query?.slice(0, 120) || image.alt_text?.slice(0, 120) || "ai-suggested-image",
+        image.url ?? "",
+        image.alt_text ?? null,
+        image.caption ?? null,
+        JSON.stringify({
+          source: "ai_generated",
+          pending_upload: !image.url,
+          search_query: image.search_query ?? null
+        }),
+        userId
+      ]
+    );
+  } catch (err) {
+    console.error(`[commit] could not record image for article ${articleId}:`, err);
+  }
+}
+
 export async function commitPostingAgent(
   input: CommitPostingAgentInput,
   userId: number
@@ -89,6 +133,7 @@ export async function commitPostingAgent(
           slug: string;
           title: string;
         };
+        await attachImage(article.id, item.image, userId);
         published.push({ id: article.id, slug: article.slug, title: article.title });
       } catch (err) {
         failed.push({ title: item.title, error: err instanceof Error ? err.message : String(err) });

@@ -71,7 +71,18 @@ export const commitPostingAgentSchema = z.object({
         seo_description: z.string().trim().optional(),
         keywords: z.array(z.string().trim()).optional(),
         // Structured questions for PYQ content kinds (Phase 4).
-        questions: z.array(z.record(z.unknown())).optional()
+        questions: z.array(z.record(z.unknown())).optional(),
+        // What picture should accompany the article. `url` is usually absent at
+        // this point — the generator specifies the image, the file is attached
+        // later — so the intent is stored rather than dropped.
+        image: z
+          .object({
+            url: z.string().url().optional(),
+            alt_text: z.string().trim().optional(),
+            caption: z.string().trim().optional(),
+            search_query: z.string().trim().optional()
+          })
+          .optional()
       })
     )
     .min(1)

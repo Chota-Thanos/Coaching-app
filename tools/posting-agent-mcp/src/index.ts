@@ -287,6 +287,15 @@ server.registerTool(
             keywords: z.array(z.string()).optional(),
             body_json: z.record(z.string(), z.unknown()).optional(),
             questions: z.array(z.record(z.string(), z.unknown())).optional(),
+            image: z
+              .object({
+                url: z.string().url().optional(),
+                alt_text: z.string().optional(),
+                caption: z.string().optional(),
+                search_query: z.string().optional(),
+              })
+              .optional()
+              .describe('The picture to accompany the article. A search_query without a url is normal — the file is sourced later.'),
           }),
         )
         .min(1)

@@ -245,3 +245,74 @@ test("sections using 'heading' and an array of paragraphs still render", () => {
   assert.match(article.body, /percentage of GDP/);
   assert.ok(!article.warnings?.some((w) => /no usable body/i.test(w)));
 });
+
+test("a back-dated article keeps its own date, not today", () => {
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: { title: "X", publication_date: "2024-03-15", sections: [{ content: "Body." }] }
+  });
+
+  assert.equal(article.publication_date, "2024-03-15");
+});
+
+test("an unusable date is rejected and flagged rather than written through", () => {
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: { title: "X", publication_date: "15 March 2024", sections: [{ content: "Body." }] }
+  });
+
+  assert.match(article.publication_date!, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(article.warnings?.some((w) => /unusable publication date/i.test(w)));
+});
+
+test("image intent survives even when no file exists yet", () => {
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: {
+      title: "X",
+      sections: [{ content: "Body." }],
+      image: {
+        search_query: "Reserve Bank of India headquarters Mumbai",
+        alt_text: "The RBI headquarters building in Mumbai",
+        caption: "The RBI has held the repo rate since February."
+      }
+    }
+  });
+
+  assert.equal(article.image?.search_query, "Reserve Bank of India headquarters Mumbai");
+  assert.equal(article.image?.alt_text, "The RBI headquarters building in Mumbai");
+  assert.equal(article.image?.url, undefined);
+  assert.doesNotMatch(article.body, /Search Query/, "image intent must not leak into the body");
+});
+
+test("an image with neither alt text nor a search query is flagged", () => {
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: { title: "X", sections: [{ content: "Body." }], image: { caption: "Just a caption" } }
+  });
+
+  assert.ok(article.warnings?.some((w) => /alt text or a search query/i.test(w)));
+});
+
+test("SEO fields are carried through, falling back sensibly", () => {
+  const explicit = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: {
+      title: "Long internal title",
+      seo_title: "Short SEO headline",
+      seo_description: "What the reader learns.",
+      meta_keywords: "rbi, mpc",
+      sections: [{ content: "Body." }]
+    }
+  });
+  assert.equal(explicit.seo_title, "Short SEO headline");
+  assert.equal(explicit.seo_description, "What the reader learns.");
+  assert.deepEqual(explicit.keywords, ["rbi", "mpc"]);
+
+  const fallback = convertGeneratedToArticle({
+    contentKind: "daily_current_affairs",
+    item: { title: "Only a title", meta_description: "From meta.", sections: [{ content: "B." }] }
+  });
+  assert.equal(fallback.seo_title, "Only a title");
+  assert.equal(fallback.seo_description, "From meta.");
+});
