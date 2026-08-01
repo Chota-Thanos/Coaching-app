@@ -17,6 +17,7 @@ import {
 } from "../schemas.js";
 import { one, query } from "../../../db.js";
 import { generateContentAffairsAI, generateQuizzesAI, extractStyleAI } from "./ai.service.js";
+import { convertGenerationResult } from "./generated-article.service.js";
 
 export async function registerCurrentAffairsArticleRoutes(server: FastifyInstance): Promise<void> {
   server.get("/api/v1/current-affairs/articles", async (request, reply) => {
@@ -152,6 +153,81 @@ export async function registerCurrentAffairsArticleRoutes(server: FastifyInstanc
         styleGuideId: body.style_guide_id,
         isParsingMode: body.is_parsing_mode
       });
+    });
+  });
+
+  /**
+   * Generate AND shape into commit-ready articles, in one call.
+   *
+   * `/generate` alone returns whatever structure the configured output format
+   * describes — sections, question fields, or an admin's own schema. Turning
+   * that into a postable article used to happen only in the admin browser
+   * screen, so an agent could generate but had nothing to post. This runs the
+   * same conversion server-side, so generation and posting are one pipeline
+   * with one implementation of the format rules.
+   *
+   * `content_kind` here is the *posting* vocabulary (daily_current_affairs,
+   * mains_topic_note, …) rather than the broad routing groups, so the exact
+   * per-content-type rules and format configured in AI Settings are used.
+   */
+  server.post("/api/v1/current-affairs/admin/ai/generate-articles", async (request, reply) => {
+    await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const body = request.body as {
+        content_kind: string;
+        topics: string[];
+        instructions?: string;
+        subject_id?: number;
+        style_guide_id?: number;
+        category_node_ids?: number[];
+        publication_date?: string;
+        ai_provider?: string;
+        ai_model?: string;
+      };
+
+      if (!Array.isArray(body.topics) || body.topics.length === 0) {
+        return reply.badRequest("topics must be a non-empty array.");
+      }
+      if (!body.content_kind) {
+        return reply.badRequest("content_kind is required.");
+      }
+
+      const generated = await generateContentAffairsAI({
+        // Passed through verbatim so an exact content type wins over the
+        // broader group it belongs to when the instructions are looked up.
+        contentType: body.content_kind as never,
+        topics: body.topics,
+        aiProvider: body.ai_provider ?? "gemini",
+        aiModel: body.ai_model ?? "",
+        instructions: body.instructions,
+        subjectId: body.subject_id,
+        styleGuideId: body.style_guide_id
+      });
+
+      // The model reports its chosen category as a slug. Resolving it here
+      // means a correctly-classified article keeps that category instead of
+      // landing uncategorised.
+      const categoryRows = await query<{ id: number; slug: string }>(
+        `select id, slug from current_affairs.category_nodes where is_active = true`
+      );
+      const categorySlugToId = new Map(categoryRows.map((row) => [row.slug, Number(row.id)]));
+
+      const converted = convertGenerationResult({
+        contentKind: body.content_kind,
+        generated,
+        fallbackCategoryNodeIds: body.category_node_ids,
+        categorySlugToId,
+        fallbackDate: body.publication_date
+      });
+
+      return {
+        content_kind: body.content_kind,
+        content_family: converted.content_family,
+        // Carried through so callers can see which topics had no source
+        // material behind them before anything is published.
+        research: (generated as Record<string, unknown>)?.research ?? null,
+        articles: converted.articles
+      };
     });
   });
 
