@@ -120,6 +120,86 @@ export interface AgentParseResult {
   candidates: AgentArticleCandidate[];
 }
 
+/**
+ * Every real article on this platform stores `body` as HTML (`<p>`, `<h2>`,
+ * `<strong>`, `<ul><li>`) — confirmed by reading a live published article
+ * directly. The parsing prompt above now asks for HTML explicitly, but a
+ * prompt is a request, not a guarantee: this session alone has seen models
+ * ignore an explicit instruction more than once. Rather than trust compliance
+ * silently, detect leftover Markdown and convert it, so a raw `## Heading`
+ * can never reach the site's rich-text editor as literal punctuation again.
+ *
+ * Deliberately hand-rolled instead of pulling in a Markdown library: the
+ * surface this needs to cover is exactly what the prompt above asks the
+ * model to produce (headings, bold, bullet lists, paragraphs) — nothing more
+ * exotic like tables or nested lists — so a small, fully-tested function is
+ * safer than a new runtime dependency for a handful of patterns.
+ */
+export function looksLikeMarkdown(text: string): boolean {
+  if (/<\/?(p|h[1-6]|ul|ol|li|strong|em|div)\b/i.test(text)) return false; // already has real HTML
+  return /^#{1,6}\s/m.test(text) || /^[-*]\s/m.test(text) || /\*\*[^*]+\*\*/.test(text);
+}
+
+export function markdownToHtml(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const htmlBlocks: string[] = [];
+  let listBuffer: string[] = [];
+  let paraBuffer: string[] = [];
+
+  const inline = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    htmlBlocks.push(`<ul>${listBuffer.map((li) => `<li>${inline(li)}</li>`).join("")}</ul>`);
+    listBuffer = [];
+  };
+  const flushPara = () => {
+    if (paraBuffer.length === 0) return;
+    htmlBlocks.push(`<p>${inline(paraBuffer.join(" "))}</p>`);
+    paraBuffer = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    const bullet = line.match(/^[-*]\s+(.*)$/);
+
+    if (!line) {
+      flushList();
+      flushPara();
+    } else if (heading) {
+      flushList();
+      flushPara();
+      // Every real article's section headings are h2 (confirmed against a live
+      // article); collapse whatever heading depth the model used down to that.
+      htmlBlocks.push(`<h2>${inline(heading[2]!)}</h2>`);
+    } else if (bullet) {
+      flushPara();
+      listBuffer.push(bullet[1]!);
+    } else {
+      flushList();
+      paraBuffer.push(line);
+    }
+  }
+  flushList();
+  flushPara();
+
+  return htmlBlocks.join("");
+}
+
+/** Applies the Markdown safety net above, only when it's actually needed. */
+export function ensureHtmlBody(body: string): { body: string; converted: boolean } {
+  const trimmed = body.trim();
+  if (!trimmed || !looksLikeMarkdown(trimmed)) return { body: trimmed, converted: false };
+  return { body: markdownToHtml(trimmed), converted: true };
+}
+
 function slugify(value: string): string {
   const slug = value
     .toLowerCase()
@@ -375,7 +455,7 @@ EDITOR MARKERS (the editor may embed these in the source; when present they OVER
 
 STRICT RULES:
 - Do NOT invent facts. Only restructure and lightly copy-edit the provided text. If the source is thin, keep the article thin — never fabricate.
-- "body" must be clean Markdown (headings, bullet points where natural). Remove site chrome, ads, share buttons, cookie notices.
+- "body" must be clean HTML, matching this platform's article format exactly: paragraphs as <p>, section headings as <h2>, bold as <strong>, bullet lists as <ul><li>...</li></ul>. Do not use Markdown syntax (##, **, -, *) anywhere in "body" — every real article on the platform is stored as HTML, and Markdown left in this field renders as literal punctuation to readers, not formatting. Remove site chrome, ads, share buttons, cookie notices.
 - "excerpt" is a 1-2 sentence summary.
 
 CATEGORY CLASSIFICATION:
@@ -391,7 +471,7 @@ Return ONLY JSON in this exact shape:
       "title": "string",
       "article_role": "event | concept",
       "excerpt": "string",
-      "body": "string (markdown)",
+      "body": "string (HTML: <p>, <h2>, <strong>, <ul><li> — never Markdown)",
       "publication_date": "YYYY-MM-DD",
       "category_node_ids": [number, ...],
       "seo_title": "string",
@@ -442,6 +522,11 @@ ${extracted.text}
 
     const keywords = Array.isArray(item.keywords) ? item.keywords.map((k) => String(k)).filter(Boolean) : undefined;
 
+    const { body: bodyHtml, converted } = ensureHtmlBody(String(item.body ?? ""));
+    if (converted) {
+      warnings.push("Body arrived as Markdown despite the HTML instruction; converted automatically — check formatting before publishing.");
+    }
+
     // Resolve the role. In explicit modes the editor's batch choice is authoritative;
     // in auto mode we trust the per-item classification but validate it defensively.
     const suggestedRole = String(item.article_role ?? "").trim().toLowerCase();
@@ -462,7 +547,7 @@ ${extracted.text}
     return {
       title,
       slug: `${slugify(title)}-${pubDate}`,
-      body: String(item.body ?? "").trim(),
+      body: bodyHtml,
       article_role: resolvedRole,
       excerpt: item.excerpt ? String(item.excerpt).trim() : undefined,
       publication_date: pubDate,
