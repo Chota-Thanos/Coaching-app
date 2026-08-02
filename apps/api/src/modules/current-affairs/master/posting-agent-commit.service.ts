@@ -1,9 +1,7 @@
 import { createMasterArticle } from "./articles.service.js";
 import { query } from "../../../db.js";
-import { createIngestionJob } from "./ingestion.service.js";
 import type {
   CommitPostingAgentInput,
-  CreateIngestionJobInput,
   CreateMasterArticleInput
 } from "../schemas.js";
 
@@ -64,15 +62,25 @@ export interface CommitResult {
   content_kind: string;
   published: { id: number; slug: string; title: string }[];
   failed: { title: string; error: string }[];
-  job?: unknown;
+  /** Draft articles created in review mode, editable in the Articles Library. */
+  drafts?: { id: number; slug: string; title: string }[];
 }
 
 /**
  * Commits reviewed agent candidates. Per-batch choice:
  *   - "auto":   each article is created and published immediately.
- *   - "review": articles are staged into the existing ingestion review buffer
- *               (parser_kind "manual_json" so the AI re-parse worker is skipped),
- *               where the editor approves/publishes them one click at a time.
+ *   - "review": each article is created as a real draft in the Articles
+ *               Library, where it can be opened and edited with the normal
+ *               article editor before publishing.
+ *
+ * Review mode used to stage into the ingestion buffer instead. That buffer
+ * exists to hold *raw parsed material* awaiting a shaping pass — but agent
+ * candidates have already been through parsing and normalisation by this
+ * point, so the extra hop bought nothing and split editing across two
+ * screens, with the queue offering only approve/reject rather than a real
+ * editor. A draft is equally invisible to students: every public read filters
+ * on status = 'published'. This also matches what the assessment side already
+ * does with its own review mode.
  */
 /**
  * Records the image the generator specified.
@@ -142,19 +150,26 @@ export async function commitPostingAgent(
     return { mode: "auto", content_kind: input.content_kind, published, failed };
   }
 
-  // Review mode → stage into the ingestion buffer with the target status baked in,
-  // so a single "publish" click later produces a live (or approved) article.
-  const firstWithSource = input.articles.find((item) => item.source_name || item.source_url);
-  const jobInput: CreateIngestionJobInput = {
-    source_kind: "ai_prompt",
-    parser_kind: "manual_json",
-    source_name: firstWithSource?.source_name,
-    source_url: firstWithSource?.source_url,
-    default_content_kind: input.content_kind,
-    default_status: targetStatus,
-    articles: input.articles.map((item) => toArticleInput(input, item, targetStatus))
-  };
-  const job = await createIngestionJob(jobInput, userId);
+  // Review mode → create each as a real draft article, editable in the
+  // Articles Library. `default_status` is ignored here on purpose: the whole
+  // point of review mode is that nothing is published without a human doing so
+  // from the editor, so the status is forced to "draft" regardless of what the
+  // caller passed.
+  const drafts: CommitResult["drafts"] = [];
+  const failed: CommitResult["failed"] = [];
+  for (const item of input.articles) {
+    try {
+      const article = (await createMasterArticle(toArticleInput(input, item, "draft"), userId)) as {
+        id: number;
+        slug: string;
+        title: string;
+      };
+      await attachImage(article.id, item.image, userId);
+      drafts.push({ id: article.id, slug: article.slug, title: article.title });
+    } catch (err) {
+      failed.push({ title: item.title, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
 
-  return { mode: "review", content_kind: input.content_kind, published: [], failed: [], job };
+  return { mode: "review", content_kind: input.content_kind, published: [], failed, drafts };
 }

@@ -104,9 +104,9 @@ names before writing one in.
 
 ## Publishing — read this before every `ca_commit` call
 
-**Default to `publish_mode: "review"`, always.** This stages the piece in
-the site's Ingestion Queue — invisible to students — for a human to read
-and approve.
+**Default to `publish_mode: "review"`, always.** This saves the piece as a
+draft in the Articles Library — invisible to students — for a human to open
+in the normal article editor, then publish.
 
 When content is generated through the app's own AI tools, the server itself
 refuses to publish it live without an extra confirmation. That automatic

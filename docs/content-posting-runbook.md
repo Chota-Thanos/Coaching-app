@@ -76,7 +76,7 @@ straight away. AI-*written* content is the opposite: drafts unless you ask (§6)
 
 | Content | Screen |
 |---|---|
-| Current affairs | `/admin/current-affairs/ingestion` — Ingestion Queue |
+| Current affairs | Articles Library, filtered by Draft — open and edit like any article |
 | GK questions | `/admin/assessment/objective-questions` |
 | CSAT questions | `/admin/assessment/csat-questions` |
 | Mains questions | `/admin/assessment/mains-questions` |

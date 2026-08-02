@@ -46,7 +46,7 @@ interface CommitResult {
   content_kind: string;
   published: { id: number; slug: string; title: string }[];
   failed: { title: string; error: string }[];
-  job?: { id: number } | null;
+  drafts?: { id: number; slug: string; title: string }[];
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -639,15 +639,15 @@ export function AdminPostingAgentManager() {
             <CheckCircle2 className="h-5 w-5" />
             {commitResult.mode === "auto"
               ? `Published ${commitResult.published.length} item(s).`
-              : "Batch staged in the Ingestion Queue for review."}
+              : `Saved ${commitResult.drafts?.length ?? 0} draft(s) to the Articles Library.`}
           </div>
-          {commitResult.mode === "auto" && commitResult.failed.length > 0 && (
+          {commitResult.failed.length > 0 && (
             <div className="text-red-700">
               {commitResult.failed.length} failed: {commitResult.failed.map((f) => f.title).join(", ")}
             </div>
           )}
-          {commitResult.mode === "review" && commitResult.job?.id && (
-            <p className="text-xs">Open the Ingestion Queue to approve & publish (job #{commitResult.job.id}).</p>
+          {commitResult.mode === "review" && (commitResult.drafts?.length ?? 0) > 0 && (
+            <p className="text-xs">Open the Articles Library (filter by Draft) to edit and publish.</p>
           )}
         </div>
       )}
