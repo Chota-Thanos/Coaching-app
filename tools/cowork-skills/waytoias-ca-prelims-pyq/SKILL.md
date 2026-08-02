@@ -89,7 +89,9 @@ names.
 
 ## Publishing — read this before every `ca_commit` call
 
-**Default to `publish_mode: "review"`, always.**
+**Default to `publish_mode: "review"`, always.** This saves the question as a
+draft in the Articles Library — invisible to students — for a human to open
+in the normal article editor, then publish.
 
 When content is generated through the app's own AI tools, the server itself
 refuses to publish it live without an extra confirmation. That automatic
