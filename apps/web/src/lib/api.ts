@@ -89,14 +89,6 @@ export type ArticleSection = {
 
 export type ArticleRole = "event" | "concept";
 
-export type ArticleUpdateEntry = {
-  id: number;
-  article_id: number;
-  body: string;
-  created_by_user_id: number | null;
-  created_at: string;
-};
-
 export type ArticleSummary = {
   id: number;
   content_family: ContentFamily;
@@ -111,6 +103,13 @@ export type ArticleSummary = {
   source_name: string | null;
   source_url: string | null;
   publication_date: string | null;
+  /**
+   * For a concept, the date it is actually being listed under in this
+   * response — its own publication_date, or a linked development's date when
+   * that's what put it in the requested month/year. Absent outside a
+   * date-filtered concept listing; falls back to `publication_date`.
+   */
+  last_activity_date?: string | null;
   created_at?: string | null;
   institute_tags: string[];
   primary_asset: ArticleAsset | null;
@@ -148,7 +147,6 @@ export type AdminArticleDetail = AdminArticleSummary & {
     source_article: AdminArticleSummary;
   }>;
   appearance_count: number;
-  updates: ArticleUpdateEntry[];
 };
 
 export type ArticleDetail = ArticleSummary & {
@@ -158,16 +156,17 @@ export type ArticleDetail = ArticleSummary & {
     id: number;
     relation_type: string;
     label: string | null;
+    note?: string | null;
     target_article: ArticleSummary;
   }>;
   incoming_relations: Array<{
     id: number;
     relation_type: string;
     label: string | null;
+    note?: string | null;
     source_article: ArticleSummary;
   }>;
   appearance_count: number;
-  updates: ArticleUpdateEntry[];
 };
 
 export type ArticleListResponse = {
@@ -303,7 +302,6 @@ export type StudentMasterArticle = {
     source_article: ArticleSummary;
   }>;
   appearance_count?: number;
-  updates?: ArticleUpdateEntry[];
 };
 
 export type StudentArticle = {

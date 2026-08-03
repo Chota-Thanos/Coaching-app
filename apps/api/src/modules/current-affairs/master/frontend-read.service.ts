@@ -60,17 +60,81 @@ export async function listFrontendArticles(options: FrontendArticleListQuery & {
     conditions.push(categoryPredicate(options.category, params.length));
   }
 
-  if (options.month) {
-    params.push(`${options.month}-01`);
-    conditions.push(`ma.publication_date >= $${params.length}::date`);
-    conditions.push(`ma.publication_date < ($${params.length}::date + interval '1 month')`);
-  }
+  // A concept's own publication_date is the day it was first written, which is
+  // the wrong date to file it under once it starts accumulating developments: a
+  // 2019 primer that picked up three updates last month is invisible in last
+  // month's list — exactly where a student revising that month would look for
+  // it. So for concepts a month matches on the concept's own date OR on any
+  // linked published event falling inside it, which gives one concept legitimate
+  // presence in several months. Events are unaffected: they keep the plain
+  // column comparison, and concepts still never enter the daily-news list.
+  const fanOutToDevelopments = options.article_role === "concept";
 
-  if (options.year) {
-    params.push(`${options.year}-01-01`);
-    conditions.push(`ma.publication_date >= $${params.length}::date`);
-    conditions.push(`ma.publication_date < ($${params.length}::date + interval '1 year')`);
-  }
+  /** Developments on this concept, as `exists`/`max` fragments sharing one bound date param. */
+  const developmentsIn = (paramPosition: number, span: string) => `
+    from current_affairs.master_article_relations rel
+    join current_affairs.master_articles src on src.id = rel.source_article_id
+    where rel.target_article_id = ma.id
+      and src.status = 'published'
+      and coalesce(src.publication_date, src.created_at::date) >= $${paramPosition}::date
+      and coalesce(src.publication_date, src.created_at::date) < ($${paramPosition}::date + interval '${span}')
+  `;
+
+  /** All developments on this concept, regardless of date. */
+  const allDevelopments = `
+    from current_affairs.master_article_relations rel
+    join current_affairs.master_articles src on src.id = rel.source_article_id
+    where rel.target_article_id = ma.id
+      and src.status = 'published'
+  `;
+
+  // The date the list displays and sorts by. The month filter used to compare
+  // the bare column instead, which made every article with a null
+  // publication_date — still shown in the list, dated by created_at —
+  // unreachable from any month or year filter.
+  const articleDate = `coalesce(ma.publication_date, ma.created_at::date)`;
+
+  type DateWindow = { position: number; span: string; ownDate: string };
+
+  /** Adds the window condition; returns it when concepts fanned out, so the sort can reuse it. */
+  const applyDateWindow = (start: string, span: string): DateWindow | null => {
+    params.push(start);
+    const position = params.length;
+    const ownDate = `(${articleDate} >= $${position}::date and ${articleDate} < ($${position}::date + interval '${span}'))`;
+
+    if (!fanOutToDevelopments) {
+      conditions.push(ownDate);
+      return null;
+    }
+
+    conditions.push(`(${ownDate} or exists (select 1 ${developmentsIn(position, span)}))`);
+    return { position, span, ownDate };
+  };
+
+  let activeWindow: DateWindow | null = null;
+  if (options.month) activeWindow = applyDateWindow(`${options.month}-01`, "1 month");
+  if (options.year) activeWindow = applyDateWindow(`${options.year}-01-01`, "1 year") ?? activeWindow;
+
+  // The date the row is actually being listed under. Inside a month view that
+  // has to be the date that put it in *this* month — a concept surfacing in
+  // June because of a June development must read as June, not as the day the
+  // primer was written. So candidates outside the window are dropped, and
+  // `greatest` picks the latest of what remains (it ignores nulls, so a concept
+  // with no developments falls back to its own date).
+  const lastActivitySql = !fanOutToDevelopments
+    ? articleDate
+    : activeWindow
+      ? `greatest(
+          case when ${activeWindow.ownDate} then ${articleDate} end,
+          (select max(coalesce(src.publication_date, src.created_at::date)) ${developmentsIn(
+            activeWindow.position,
+            activeWindow.span
+          )})
+        )`
+      : `greatest(
+          ${articleDate},
+          (select max(coalesce(src.publication_date, src.created_at::date)) ${allDevelopments})
+        )`;
 
   const whereSql = conditions.join(" and ");
   const countParams = [...params];
@@ -97,6 +161,7 @@ export async function listFrontendArticles(options: FrontendArticleListQuery & {
         select
           ma.*,
           coalesce(ma.publication_date, ma.created_at::date) as publication_date,
+          ${lastActivitySql} as last_activity_date,
           row_to_json(cn.*) as category,
           (
             with recursive category_tree as (
@@ -130,7 +195,7 @@ export async function listFrontendArticles(options: FrontendArticleListQuery & {
         from current_affairs.master_articles ma
         left join current_affairs.category_nodes cn on cn.id = ma.category_node_id
         where ${whereSql}
-        order by coalesce(ma.publication_date, ma.created_at::date) desc nulls last, ma.created_at desc
+        order by ${lastActivitySql} desc nulls last, ma.created_at desc
         limit $${limitPosition} offset $${offsetPosition}
       `,
       params
@@ -232,7 +297,10 @@ export async function getPublishedArticleBySlug(slug: string): Promise<unknown |
                 )
               )
             )
-            order by rel.display_order, rel.id
+            -- Newest development first: on a concept page this list *is* the
+            -- news timeline, so it reads chronologically rather than in
+            -- whatever order the links happened to be created.
+            order by coalesce(source.publication_date, source.created_at::date) desc, rel.id desc
           )
           from current_affairs.master_article_relations rel
           join current_affairs.master_articles source on source.id = rel.source_article_id
@@ -246,12 +314,7 @@ export async function getPublishedArticleBySlug(slug: string): Promise<unknown |
           join current_affairs.master_articles source on source.id = rel.source_article_id
           where rel.target_article_id = ma.id
             and source.status = 'published'
-        ) as appearance_count,
-        coalesce((
-          select jsonb_agg(to_jsonb(upd.*) order by upd.created_at desc)
-          from current_affairs.master_article_updates upd
-          where upd.article_id = ma.id
-        ), '[]'::jsonb) as updates
+        ) as appearance_count
       from current_affairs.master_articles ma
       left join current_affairs.category_nodes cn on cn.id = ma.category_node_id
       where ma.slug = $1

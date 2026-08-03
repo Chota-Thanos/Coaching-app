@@ -170,11 +170,18 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               <dd>{article.source_name}</dd>
             </div>
           )}
-          {article.updates[0] && (
+          {article.article_role === "concept" && article.incoming_relations[0] && (
             <div className="flex items-center gap-2">
               <CalendarDays aria-hidden="true" className="h-4 w-4 text-berry" />
               <dt className="sr-only">Last updated</dt>
-              <dd>Last updated {formatDate(article.updates[0].created_at)}</dd>
+              <dd>
+                Last updated{" "}
+                {formatDate(
+                  article.incoming_relations[0].source_article.publication_date ??
+                    article.incoming_relations[0].source_article.created_at ??
+                    null
+                )}
+              </dd>
             </div>
           )}
         </dl>

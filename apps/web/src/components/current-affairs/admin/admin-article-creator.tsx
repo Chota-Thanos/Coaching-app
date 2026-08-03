@@ -1030,7 +1030,7 @@ export function AdminArticleCreator({ categories, pending, onSubmit, message, cr
             }}
           />
 
-          {/* 1.5th - Assets, connections, concept updates & content import/export — unlocked once the article is saved */}
+          {/* 1.5th - Assets, connections, news timeline & content import/export — unlocked once the article is saved */}
           {editingDraftId && editingArticleDetail && (
             <div className="bg-surface border border-line rounded-2xl p-4 sm:p-6 shadow-sm">
               <AdminArticleDetailPanel

@@ -47,7 +47,6 @@ Web (`Coaching-app` `a86c9d2`, `3ea46c7`) and mobile (`Current-Affairs-Mobile` `
 - `current_affairs.student_collection_items`
 - `current_affairs.student_article_reading_progress`
 - `current_affairs.student_article_reading_events`
-- `current_affairs.master_article_updates` — dated updates timeline for concept articles
 - `current_affairs.master_article_assets`
 - `current_affairs.ingestion_jobs`
 - `current_affairs.ingestion_items`

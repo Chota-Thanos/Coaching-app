@@ -104,7 +104,7 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
           isMains ? "border-l-saffron" : "border-l-civic"
         }`}
       >
-        {formatDate(article.publication_date, article.created_at)}
+        {formatDate(article.last_activity_date ?? article.publication_date, article.created_at)}
       </td>
 
       {/* 2. Source cell with custom pill */}
@@ -276,7 +276,7 @@ export function ArticleMobileCard({ article }: { article: ArticleSummary }) {
               {article.source_name}
             </span>
           )}
-          <span>{formatDate(article.publication_date)}</span>
+          <span>{formatDate(article.last_activity_date ?? article.publication_date)}</span>
         </div>
       </div>
 

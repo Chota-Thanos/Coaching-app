@@ -123,7 +123,7 @@ server.registerTool(
   {
     title: 'List current-affairs categories',
     description:
-      'Lists the current-affairs category tree used to classify articles. Use root_only to see top-level nodes, then parent_id to walk down. Returns node ids for use in ca_commit.category_node_ids.',
+      'Lists the current-affairs category tree used to classify articles. Use root_only to see top-level nodes, then parent_id to walk down. Returns node ids for use in ca_commit.category_node_ids AND, separately, ca_link_concept.concept.category_node_ids — a concept\'s own category is usually a different lookup than the news article\'s category, since the concept is filed under the entity itself rather than under today\'s event.',
     inputSchema: {
       content_family: z.enum(['prelims', 'mains']).optional(),
       parent_id: z.number().int().positive().optional().describe('Show children of this node.'),
@@ -307,6 +307,247 @@ server.registerTool(
       const { confirm_publish_ai_content, ...body } = args;
       assertPublishable(args.publish_mode, args.articles, confirm_publish_ai_content);
       return api.post('/api/v1/current-affairs/admin/agent/commit', body);
+    }),
+);
+
+// ─── Background concepts ─────────────────────────────────────────────────────
+//
+// A concept is an evergreen primer (`article_role: "concept"`) kept out of the
+// daily feed. Events link to it instead of re-explaining it every time.
+//
+// The editorial rule these two tools serve: a first-of-its-kind story is one
+// event article and no concept, because the background *is* the news. A
+// development on something that already exists splits — the durable half is the
+// concept, only what changed is the event.
+//
+// The failure they exist to prevent is a *second copy* of a concept. Once
+// "Nasha Mukt Bharat Abhiyaan" exists, every later development has to link that
+// same row; a duplicate splits the concept's news timeline in two and neither
+// half is right. Hence: search first, link by id, create only as a last resort.
+
+function conceptSlug(value: string): string {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-') || 'concept'
+  );
+}
+
+interface ConceptRow {
+  id: number;
+  title: string;
+  slug: string;
+  status?: string;
+  article_role?: string;
+  category?: { id: number; name: string } | null;
+}
+
+/**
+ * Searches concepts across drafts as well as published rows.
+ *
+ * A concept staged for review this morning is still a concept — creating a
+ * second one because the first has not been published yet is exactly the
+ * duplication this is meant to stop. The admin list only looks past `published`
+ * when an explicit status is passed, which is why this costs two calls.
+ */
+async function findConcepts(search: string, limit = 25): Promise<ConceptRow[]> {
+  const base = { article_role: 'concept', search, limit };
+  const [published, drafts] = await Promise.all([
+    api.get<ConceptRow[]>('/api/v1/current-affairs/articles', base),
+    api.get<ConceptRow[]>('/api/v1/current-affairs/articles', { ...base, status: 'draft' }),
+  ]);
+  const byId = new Map<number, ConceptRow>();
+  for (const row of [...(published ?? []), ...(drafts ?? [])]) byId.set(row.id, row);
+  return [...byId.values()];
+}
+
+server.registerTool(
+  'ca_find_concepts',
+  {
+    title: 'Find existing background concepts',
+    description:
+      'Searches existing concept primers by text in their title or body, drafts included. Call this BEFORE writing anything about a development on an existing law, scheme, body, index or institution — if a concept already exists it must be reused, never rewritten as a second copy. Returns ids for ca_link_concept.concept_article_id, plus each concept\'s own current category so you can tell at a glance whether it already has one. An empty result is itself an answer: it means this is a first occurrence, which is written as a single news article with no concept.',
+    inputSchema: {
+      search: z
+        .string()
+        .min(2)
+        .describe('The name of the underlying entity, e.g. "Nasha Mukt Bharat" or "Forest Rights Act".'),
+      limit: z.number().int().positive().max(100).optional(),
+    },
+  },
+  async ({ search, limit }) =>
+    run(async () => {
+      const matches = await findConcepts(search, limit ?? 25);
+      return {
+        count: matches.length,
+        concepts: matches.map((c) => ({
+          id: c.id,
+          title: c.title,
+          slug: c.slug,
+          status: c.status,
+          category: c.category ? { id: c.category.id, name: c.category.name } : null,
+        })),
+      };
+    }),
+);
+
+server.registerTool(
+  'ca_link_concept',
+  {
+    title: 'Link a background concept to news articles',
+    description:
+      'Attaches an evergreen concept primer to one or more event articles — the same two writes the admin "Add Concept" modal performs on publish. Pass concept_article_id to reuse an existing concept (strongly preferred; call ca_find_concepts first), or `concept` to compose one when genuinely none exists. Passing several links at once is how an older article gets back-linked when its concept is only written later. Safe to re-run: a link that already exists is reported, not duplicated.',
+    inputSchema: {
+      concept_article_id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Existing concept to reuse, from ca_find_concepts. Always prefer this.'),
+      concept: z
+        .object({
+          title: z.string().min(1),
+          body: z
+            .string()
+            .min(1)
+            .describe('HTML, never Markdown. The evergreen explainer — no dates, no "recently".'),
+          slug: z.string().optional(),
+          category_node_ids: z
+            .array(z.number().int().positive())
+            .max(50)
+            .optional()
+            .describe(
+              'The CONCEPT\'S OWN category from list_current_affairs_categories — the subject the entity belongs to, not the category of today\'s news article, which is usually a different lookup. First id is primary. Omit only when the entity is genuinely cross-cutting or you are not confident; say so to the user rather than guessing, the same as an uncategorised news article, an uncategorised concept is effectively invisible on the site.',
+            ),
+          status: z
+            .enum(['draft', 'published'])
+            .optional()
+            .describe('Defaults to draft. Publishing AI-written prose needs confirm_publish_ai_content.'),
+        })
+        .optional()
+        .describe(
+          'Compose a new concept. Reused automatically if its slug or title already matches one, so this cannot create a duplicate by accident.',
+        ),
+      confirm_publish_ai_content: z
+        .string()
+        .optional()
+        .describe('Only with concept.status "published", and only when the user asked for it in this request.'),
+      is_core: z
+        .boolean()
+        .default(true)
+        .describe(
+          'true = Core Concept: the entity the development is actually about (there is normally exactly one). false = Related Concept: something touched in passing.',
+        ),
+      links: z
+        .array(
+          z.object({
+            article_id: z.number().int().positive().describe('The event article to link from.'),
+            note: z
+              .string()
+              .max(300)
+              .optional()
+              .describe(
+                'One line on what this article changed, e.g. "Coverage extended to 100 more districts." Becomes this entry on the concept page timeline, so write it to be read on its own.',
+              ),
+          }),
+        )
+        .min(1)
+        .max(50),
+    },
+  },
+  async ({ concept_article_id, concept, confirm_publish_ai_content, is_core, links }) =>
+    run(async () => {
+      if (!concept_article_id && !concept) {
+        throw new Error(
+          'Provide concept_article_id (preferred — call ca_find_concepts first) or a `concept` to compose.',
+        );
+      }
+
+      let conceptId = concept_article_id;
+      let conceptRow: ConceptRow | undefined;
+      let reused = conceptId !== undefined;
+
+      if (!conceptId && concept) {
+        const slug = concept.slug?.trim() || conceptSlug(concept.title);
+        const wantedTitle = concept.title.trim().toLowerCase();
+        // Match on slug or exact title only. A loose match here would silently
+        // link the wrong primer, which is worse than one extra concept.
+        const existing = (await findConcepts(concept.title, 50)).find(
+          (c) => c.slug === slug || c.title.trim().toLowerCase() === wantedTitle,
+        );
+
+        if (existing) {
+          conceptId = existing.id;
+          conceptRow = existing;
+          reused = true;
+        } else {
+          const status = concept.status ?? 'draft';
+          // Concept bodies are prose like any other; the same gate that stops
+          // ca_commit publishing AI writing live applies to them.
+          assertPublishable(status === 'published' ? 'auto' : 'review', concept, confirm_publish_ai_content);
+          conceptRow = await api.post<ConceptRow>('/api/v1/current-affairs/articles', {
+            content_kind: 'daily_current_affairs',
+            article_role: 'concept',
+            title: concept.title,
+            slug,
+            body: concept.body,
+            category_node_id: concept.category_node_ids?.[0],
+            category_node_ids: concept.category_node_ids,
+            status,
+            is_ai_generated: true,
+          });
+          conceptId = conceptRow.id;
+        }
+      }
+
+      const relationType = is_core ? 'prerequisite' : 'related_reference';
+      const label = is_core ? 'Core Concept' : 'Related Concept';
+      const results: Array<{ article_id: number; linked: boolean; reason?: string; error?: string }> = [];
+
+      for (const link of links) {
+        try {
+          // Re-running a post is routine (a retry, a second development landing
+          // the same day). Linking twice would double the concept's timeline
+          // entry, so check before writing.
+          const existing = await api.get<{ outgoing?: Array<{ target_article_id: number }> }>(
+            `/api/v1/current-affairs/articles/${link.article_id}/relations`,
+          );
+          if ((existing?.outgoing ?? []).some((rel) => rel.target_article_id === conceptId)) {
+            results.push({ article_id: link.article_id, linked: false, reason: 'already linked' });
+            continue;
+          }
+
+          await api.post(`/api/v1/current-affairs/articles/${link.article_id}/relations`, {
+            target_article_id: conceptId,
+            relation_type: relationType,
+            label,
+            note: link.note,
+          });
+          results.push({ article_id: link.article_id, linked: true });
+        } catch (error) {
+          // One bad article id should not lose the other links in the batch.
+          results.push({
+            article_id: link.article_id,
+            linked: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      return {
+        concept: {
+          id: conceptId,
+          title: conceptRow?.title,
+          slug: conceptRow?.slug,
+          status: conceptRow?.status,
+          reused,
+        },
+        classification: label,
+        links: results,
+      };
     }),
 );
 

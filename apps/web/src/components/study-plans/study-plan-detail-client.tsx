@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   Clock,
   Globe2,
@@ -199,6 +200,19 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
   const completed = plan.progress_summary?.completed_items ?? 0;
   const total = plan.progress_summary?.total_items ?? plan.items.length;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  // The first non-completed, unlocked item in plan order is the one the
+  // learner should do next -- surfaced with a distinct "Up next" treatment
+  // in the curriculum list so it's the obvious next click, not just another
+  // row among many.
+  const nextUpItemId = useMemo(() => {
+    const ordered = [...plan.items].sort((a, b) => a.week_no - b.week_no || a.day_no - b.day_no || a.display_order - b.display_order);
+    const next = ordered.find((item) => {
+      const locked = !plan.has_access && !item.is_preview;
+      return !locked && item.progress?.status !== "completed";
+    });
+    return next?.id ?? null;
+  }, [plan.items, plan.has_access]);
   const tests = plan.items.filter((item) => ["prelims_test", "csat_test", "mains_test"].includes(item.item_type)).length;
   const lectures = plan.items.filter((item) => item.item_type === "live_lecture").length;
   const previewItems = plan.items.filter((item) => item.is_preview).length;
@@ -433,10 +447,12 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
                 const isLast = idx === weeks.length - 1;
                 const weekMinutes = items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
                 const overview = plan.week_overviews?.find((wo) => wo.week_no === week);
-                const allDone = items.length > 0 && items.every((item) => item.progress?.status === "completed");
+                const doneCount = items.filter((item) => item.progress?.status === "completed").length;
+                const allDone = items.length > 0 && doneCount === items.length;
                 const weekLocked = !plan.has_access && !items.some((item) => item.is_preview);
                 const isExpanded = expandedWeeks.has(week);
-                const isCurrent = isExpanded && !allDone && !weekLocked;
+                const containsNextUp = items.some((item) => item.id === nextUpItemId);
+                const isCurrent = !allDone && !weekLocked && (isExpanded || containsNextUp);
                 return (
                   <div className="flex items-stretch gap-3" key={week}>
                     <div className="flex flex-col items-center">
@@ -445,27 +461,48 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
                     </div>
                     <div className={`min-w-0 flex-1 ${isLast ? "pb-1" : "pb-6"}`}>
                       <button
-                        className={`w-full text-left ${weekLocked ? "opacity-50" : ""}`}
+                        className={`flex w-full items-start justify-between gap-3 rounded-lg text-left transition ${
+                          isCurrent ? "border border-civic/30 bg-civic/5 px-3 py-2.5 -ml-3" : weekLocked ? "opacity-50" : ""
+                        }`}
                         onClick={() => toggleWeek(week)}
                         type="button"
                       >
-                        <p className={`font-heading text-[11px] !font-black uppercase tracking-wide ${allDone ? "text-emerald-600" : weekLocked ? "text-slate-400" : "text-civic"}`}>
-                          Week {week}{allDone ? " · Complete" : weekLocked ? " · Locked" : ""}
-                        </p>
-                        <h3 className="mt-0.5 font-heading text-base !font-extrabold text-ink leading-tight">{overview?.title ?? `Week ${week}`}</h3>
-                        {overview?.description && (
-                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 max-w-4xl">{overview.description}</p>
-                        )}
-                        <p className="mt-1.5 text-xs font-semibold text-slate-400">
-                          {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
-                        </p>
+                        <div className="min-w-0">
+                          <p className={`flex items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide ${allDone ? "text-emerald-600" : weekLocked ? "text-slate-400" : "text-civic"}`}>
+                            Week {week}
+                            {allDone && " · Complete"}
+                            {weekLocked && " · Locked"}
+                            {isCurrent && !allDone && (
+                              <span className="rounded-full bg-civic px-2 py-0.5 text-[10px] tracking-wide text-white">In progress</span>
+                            )}
+                          </p>
+                          <h3 className="mt-0.5 font-heading text-base !font-extrabold text-ink leading-tight">{overview?.title ?? `Week ${week}`}</h3>
+                          {overview?.description && (
+                            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 max-w-4xl">{overview.description}</p>
+                          )}
+                          <p className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-slate-400">
+                            <span>
+                              {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
+                            </span>
+                            {!weekLocked && (
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${allDone ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                                {doneCount}/{items.length} done
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <ChevronDown
+                          className={`mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        />
                       </button>
                       {isExpanded && (
-                        <div className="mt-3 space-y-2">
+                        <div className="relative mt-3 space-y-2 pl-4">
+                          <div className="absolute left-[7px] top-1 bottom-1 w-px bg-line" />
                           {items.map((item) => (
                             <CurriculumItem
                               busyAction={busyAction}
                               item={item}
+                              isNextUp={item.id === nextUpItemId}
                               key={item.id}
                               planHasAccess={plan.has_access}
                               startTest={startTest}
@@ -700,12 +737,14 @@ function PurchasePanel({
 function CurriculumItem({
   busyAction,
   item,
+  isNextUp,
   planHasAccess,
   startTest,
   updateProgress
 }: {
   busyAction: string | null;
   item: StudyPlanItem;
+  isNextUp: boolean;
   planHasAccess: boolean;
   startTest: (item: StudyPlanItem) => Promise<void>;
   updateProgress: (item: StudyPlanItem, status: "in_progress" | "completed") => Promise<void>;
@@ -717,43 +756,56 @@ function CurriculumItem({
   const resourceUrl = item.lecture_url || item.resource_url;
 
   return (
-    <article className={`flex flex-col gap-3 rounded-xl border bg-surface px-4 py-3.5 md:flex-row md:items-start md:justify-between ${isFreeSample ? "border-civic/50" : "border-line"} ${locked ? "opacity-50" : ""}`}>
-      <div className="flex min-w-0 gap-3">
-        <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${done ? "bg-emerald-600 text-white" : locked ? "bg-slate-100 text-slate-400" : "bg-indigo-50 border border-indigo-100/55 text-civic"}`}>
-          {done ? <CheckCircle2 className="h-4 w-4" /> : itemIcon(item)}
-        </span>
-        <div className="min-w-0">
-          <p className="font-heading text-[10px] !font-black uppercase tracking-wide text-civic">
-            Day {item.day_no} - {formatStudyPlanItemType(item.item_type)}
-          </p>
-          <h4 className={`mt-1 font-heading text-base !font-extrabold ${done ? "text-slate-400 line-through decoration-2 decoration-slate-300" : "text-slate-800"}`}>
-            {item.title}
-          </h4>
-          {item.description && <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>}
-          <div className="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
-            {item.estimated_minutes && (
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                {item.estimated_minutes} min
-              </span>
-            )}
-            {isFreeSample && (
-              <span className="inline-flex items-center gap-1 text-civic">
-                <PlayCircle className="h-3.5 w-3.5" />
-                Preview
-              </span>
-            )}
-            {locked && (
-              <span className="inline-flex items-center gap-1 text-slate-400">
-                <LockKeyhole className="h-3.5 w-3.5" />
-                Locked
-              </span>
-            )}
+    <article className="relative">
+      <span
+        className={`absolute -left-4 top-4 h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 ${
+          done ? "border-emerald-600 bg-emerald-600" : isNextUp ? "border-civic bg-civic" : locked ? "border-line bg-paper" : "border-slate-300 bg-surface"
+        }`}
+      />
+      <div
+        className={`flex flex-col gap-3 rounded-xl border bg-surface px-4 py-3.5 md:flex-row md:items-start md:justify-between ${
+          isNextUp ? "border-civic shadow-sm ring-1 ring-civic/15" : done ? "border-line/70" : isFreeSample ? "border-civic/50" : "border-line"
+        } ${locked ? "opacity-50" : ""} ${done ? "opacity-70" : ""}`}
+      >
+        <div className="flex min-w-0 gap-3">
+          <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${done ? "bg-emerald-600 text-white" : locked ? "bg-slate-100 text-slate-400" : "bg-indigo-50 border border-indigo-100/55 text-civic"}`}>
+            {done ? <CheckCircle2 className="h-4 w-4" /> : itemIcon(item)}
+          </span>
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 font-heading text-[10px] !font-black uppercase tracking-wide text-civic">
+              Day {item.day_no} - {formatStudyPlanItemType(item.item_type)}
+              {isNextUp && (
+                <span className="rounded-full bg-civic px-2 py-0.5 text-[9px] tracking-wide text-white">Up next</span>
+              )}
+            </p>
+            <h4 className={`mt-1 font-heading text-base !font-extrabold ${done ? "text-slate-400 line-through decoration-2 decoration-slate-300" : "text-slate-800"}`}>
+              {item.title}
+            </h4>
+            {item.description && !done && <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>}
+            <div className="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
+              {item.estimated_minutes && (
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {item.estimated_minutes} min
+                </span>
+              )}
+              {isFreeSample && (
+                <span className="inline-flex items-center gap-1 text-civic">
+                  <PlayCircle className="h-3.5 w-3.5" />
+                  Preview
+                </span>
+              )}
+              {locked && (
+                <span className="inline-flex items-center gap-1 text-slate-400">
+                  <LockKeyhole className="h-3.5 w-3.5" />
+                  Locked
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+        <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
         {locked ? (
           <button className="h-9 rounded-xl border border-slate-200 bg-slate-100 px-4 !font-heading text-xs !font-black text-slate-400" disabled type="button">
             Locked
@@ -796,6 +848,7 @@ function CurriculumItem({
             {done ? "Done" : "Mark done"}
           </button>
         )}
+        </div>
       </div>
     </article>
   );

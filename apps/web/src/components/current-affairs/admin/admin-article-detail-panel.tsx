@@ -53,12 +53,6 @@ export function AdminArticleDetailPanel({
   const [filterContentKind, setFilterContentKind] = useState<string>("all");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
 
-  // Concept updates timeline state
-  const [conceptUpdates, setConceptUpdates] = useState<any[]>([]);
-  const [loadingConceptUpdates, setLoadingConceptUpdates] = useState(false);
-  const [newUpdateBody, setNewUpdateBody] = useState("");
-  const [savingUpdate, setSavingUpdate] = useState(false);
-
   // Split-Screen Side-by-Side Transfer Workspace Modal state
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [splitInitialTargetId, setSplitInitialTargetId] = useState<number | undefined>(undefined);
@@ -75,55 +69,6 @@ export function AdminArticleDetailPanel({
     };
     void loadAll();
   }, [token]);
-
-  const loadConceptUpdates = async (articleId: number) => {
-    if (!token) return;
-    setLoadingConceptUpdates(true);
-    try {
-      const res = await authenticatedGet<any[]>(`/api/v1/current-affairs/articles/${articleId}/updates`, token);
-      setConceptUpdates(res || []);
-    } catch (err) {
-      console.error("Failed to load concept updates:", err);
-    } finally {
-      setLoadingConceptUpdates(false);
-    }
-  };
-
-  useEffect(() => {
-    if (article && article.article_role === "concept") {
-      void loadConceptUpdates(article.id);
-    } else {
-      setConceptUpdates([]);
-    }
-    setNewUpdateBody("");
-  }, [article?.id, article?.article_role, token]);
-
-  async function addConceptUpdate(): Promise<void> {
-    if (!token || !article || !newUpdateBody.trim()) return;
-    setSavingUpdate(true);
-    try {
-      await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/updates`, token, {
-        body: newUpdateBody.trim()
-      });
-      setNewUpdateBody("");
-      await loadConceptUpdates(article.id);
-    } catch (err) {
-      console.error("Failed to add concept update:", err);
-      setMessage("Failed to save update.");
-    } finally {
-      setSavingUpdate(false);
-    }
-  }
-
-  async function deleteConceptUpdate(updateId: number): Promise<void> {
-    if (!token || !article || !window.confirm("Remove this update entry?")) return;
-    try {
-      await authenticatedDelete(`/api/v1/current-affairs/article-updates/${updateId}`, token);
-      await loadConceptUpdates(article.id);
-    } catch (err) {
-      console.error("Failed to delete concept update:", err);
-    }
-  }
 
   async function addRelation(targetId: number, relType: string, label?: string): Promise<void> {
     if (!token || !article) return;
@@ -539,61 +484,53 @@ export function AdminArticleDetailPanel({
         </div>
       </section>
 
-      {/* 3. CONCEPT UPDATES TIMELINE (Only for Concept articles) */}
+      {/* 3. NEWS TIMELINE (Only for Concept articles) — built automatically from
+          which event articles link here as Core/Related Concept. Read-only: to
+          add an entry, link a news article to this concept (from the news
+          article's own editor) with a note describing what changed; it appears
+          here and on the public concept page as soon as that article is
+          published. */}
       {article.article_role === "concept" && (
         <section className="space-y-3 rounded-xl border border-line bg-paper/20 p-4">
           <div className="flex items-center gap-2 border-b border-line/60 pb-2.5">
             <Sparkles className="h-4 w-4 text-berry" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-ink">Concept Updates Timeline</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-ink">
+              News Timeline ({article.incoming_relations.length})
+            </h3>
           </div>
           <p className="text-xs text-ink/65 leading-snug">
-            Add dated updates as new developments touch this background concept.
+            Every published news article currently linked to this concept, most recent first.
           </p>
 
-          <div className="grid gap-2 rounded-xl border border-line bg-surface p-3">
-            <textarea
-              className="min-h-20 rounded-lg border border-line px-3 py-2 text-xs font-normal outline-none focus:border-civic"
-              onChange={(event) => setNewUpdateBody(event.target.value)}
-              placeholder="e.g. Ministry of Railways announced second hydrogen train route in Oct 2026..."
-              value={newUpdateBody}
-            />
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => void addConceptUpdate()}
-                disabled={savingUpdate || !newUpdateBody.trim()}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white disabled:opacity-60"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {savingUpdate ? "Saving..." : "Add Concept Update"}
-              </button>
-            </div>
-          </div>
-
           <div className="grid gap-2">
-            {loadingConceptUpdates ? (
-              <p className="text-xs text-ink/50 italic py-2">Loading updates...</p>
-            ) : conceptUpdates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-surface/50 p-3 text-xs text-ink/50">No updates yet.</p>
+            {article.incoming_relations.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-line bg-surface/50 p-3 text-xs text-ink/50">
+                No news article links here yet.
+              </p>
             ) : (
-              conceptUpdates.map((upd) => (
-                <div key={upd.id} className="rounded-xl border border-line bg-surface p-3 shadow-2xs flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] font-black uppercase text-berry">
-                      {new Date(upd.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                    </span>
-                    <p className="text-xs text-ink mt-1 whitespace-pre-wrap leading-relaxed">{upd.body}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void deleteConceptUpdate(upd.id)}
-                    className="text-ink/40 hover:text-rose-600 shrink-0"
-                    title="Delete update"
+              article.incoming_relations.map((rel) => {
+                const src = rel.source_article;
+                const dateStr = src.publication_date ?? src.created_at;
+                return (
+                  <Link
+                    className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-civic transition-colors block"
+                    href={articleHref(src.slug)}
+                    key={rel.id}
+                    target="_blank"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black uppercase text-berry">
+                        {dateStr ? new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Undated"}
+                      </span>
+                      <span className="rounded bg-berry/10 px-1.5 py-0.5 text-[10px] font-bold text-berry">
+                        {rel.label ?? (rel.relation_type === "prerequisite" ? "Core Concept" : "Related Concept")}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-ink mt-1">{src.title}</p>
+                    {rel.note && <p className="text-xs text-ink/65 mt-0.5 leading-relaxed">{rel.note}</p>}
+                  </Link>
+                );
+              })
             )}
           </div>
         </section>

@@ -153,6 +153,30 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </figure>
         )}
 
+        {/* BACKGROUND STRIP: orients a reader before the news body, since a
+            development article deliberately keeps its own recap short and
+            leans on the linked concept for the full explanation. Sits above
+            the body on purpose — the "Must Read: Core Concepts" section below
+            covers the same ground in depth, for after reading. */}
+        {coreConcepts.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-400/60 bg-amber-500/10 px-4 py-2.5 text-sm">
+            <Star className="h-4 w-4 shrink-0 fill-amber-500 text-amber-700" />
+            <span className="font-bold text-amber-950">Background:</span>
+            {coreConcepts.map((rel, index) => (
+              <span key={rel.id}>
+                <Link
+                  className="font-extrabold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-2 hover:text-amber-950"
+                  href={`/current-affairs/articles/${rel.target_article.slug}`}
+                >
+                  {rel.target_article.title}
+                </Link>
+                {index < coreConcepts.length - 1 && <span className="text-amber-900/60">, </span>}
+              </span>
+            ))}
+            <span className="text-amber-900/70">— read this first for full context.</span>
+          </div>
+        )}
+
         {article.content_kind === "prelims_pyq" && article.body_json && Object.keys(article.body_json).length > 0 ? (
           <div className="mt-5">
             <InteractivePrelimsPyq data={article.body_json} />
@@ -311,80 +335,67 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
 
-        {/* ON CONCEPT PAGES: LIST OF LINKED CURRENT EVENTS WITH EXCERPT */}
+        {/* ON CONCEPT PAGES: NEWS TIMELINE — every dated development linked to this concept */}
         {article.article_role === "concept" && article.incoming_relations.length > 0 && (
           <section className="mt-6 rounded-xl border border-civic/20 bg-civic/5 p-5 shadow-xs">
             <div className="flex items-center gap-2 mb-1.5">
               <Sparkles className="h-5 w-5 text-civic" />
               <h2 className="text-lg font-black text-ink">
-                Appears in Current Events & Daily News ({article.incoming_relations.length})
+                News Timeline ({article.incoming_relations.length})
               </h2>
             </div>
             <p className="text-xs text-ink/65 mb-4 leading-relaxed font-medium">
-              This background concept is linked and referenced in the following current affairs articles:
+              Every development reported on this concept, most recent first:
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            {/* Already ordered newest-first by the API — this is a reading
+                timeline, not a set of cards, so it stays chronological rather
+                than being re-sorted client-side. */}
+            <ol className="space-y-4 border-l-2 border-civic/30 pl-5">
               {article.incoming_relations.map((rel: any) => {
                 const src = rel.source_article;
                 if (!src) return null;
                 const pubDateStr = src.publication_date || src.created_at;
                 const formattedDate = pubDateStr
-                  ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(pubDateStr))
-                  : "Dated";
+                  ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(pubDateStr))
+                  : "Undated";
                 const catPath = src.category_path || src.category?.name;
-                const excerpt = src.body ? src.body.replace(/<[^>]*>?/gm, "").replace(/^[#*`-\s]+/, "").slice(0, 160) : "";
+                const brief =
+                  rel.note ||
+                  (src.body ? `${src.body.replace(/<[^>]*>?/gm, "").replace(/^[#*`-\s]+/, "").slice(0, 160)}...` : "");
 
                 return (
-                  <Link
-                    className="group rounded-xl border border-line bg-surface p-4 transition-all hover:border-civic hover:shadow-md flex flex-col justify-between"
-                    href={`/current-affairs/articles/${src.slug}`}
-                    key={rel.id}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                        <span className="rounded bg-civic/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-civic border border-civic/20">
-                          {formattedDate}
+                  <li className="relative" key={rel.id}>
+                    <span className="absolute -left-[1.65rem] top-1.5 h-2.5 w-2.5 rounded-full bg-civic ring-4 ring-civic/15" />
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-black uppercase tracking-wide text-civic">{formattedDate}</span>
+                      {catPath && (
+                        <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65 line-clamp-1 max-w-[180px]" title={catPath}>
+                          {catPath}
                         </span>
-                        {catPath && (
-                          <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65 line-clamp-1 max-w-[180px]" title={catPath}>
-                            {catPath}
-                          </span>
-                        )}
-                      </div>
+                      )}
+                    </div>
+                    <Link
+                      className="group inline-block"
+                      href={`/current-affairs/articles/${src.slug}`}
+                    >
                       <h3 className="text-base font-extrabold text-ink group-hover:text-civic transition-colors leading-snug">
                         {src.title}
                       </h3>
-                      {excerpt && (
-                        <p className="mt-1.5 text-xs text-ink/65 line-clamp-2 leading-relaxed">
-                          {excerpt}...
-                        </p>
-                      )}
-                    </div>
-                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-civic">
+                    </Link>
+                    {brief && <p className="mt-1 text-xs text-ink/65 leading-relaxed">{brief}</p>}
+                    <Link
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-black text-civic"
+                      href={`/current-affairs/articles/${src.slug}`}
+                    >
                       Read Full Article →
-                    </span>
-                  </Link>
+                    </Link>
+                  </li>
                 );
               })}
-            </div>
-          </section>
-        )}
-
-        {article.updates.length > 0 && (
-          <section className="mt-5 rounded-lg border border-line bg-surface p-4 shadow-sm md:p-6">
-            <h2 className="text-lg font-extrabold text-ink">Updates</h2>
-            <ol className="mt-3 space-y-4 border-l-2 border-berry/20 pl-4">
-              {article.updates.map((update) => (
-                <li key={update.id}>
-                  <span className="block text-xs font-bold text-berry">
-                    {new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(update.created_at))}
-                  </span>
-                  <RenderedContent className="mt-1 text-sm text-ink/85" content={update.body} />
-                </li>
-              ))}
             </ol>
           </section>
         )}
+
       </div>
 
       <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">

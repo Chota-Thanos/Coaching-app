@@ -250,7 +250,7 @@ export async function getMasterArticle(id: number, includeUnpublished: boolean):
               'display_order', rel.display_order,
               'source_article', to_jsonb(source.*)
             )
-            order by rel.display_order, rel.id
+            order by coalesce(source.publication_date, source.created_at::date) desc, rel.id desc
           )
           from current_affairs.master_article_relations rel
           join current_affairs.master_articles source on source.id = rel.source_article_id
@@ -261,12 +261,7 @@ export async function getMasterArticle(id: number, includeUnpublished: boolean):
           select count(*)::integer
           from current_affairs.master_article_relations rel
           where rel.target_article_id = ma.id
-        ) as appearance_count,
-        coalesce((
-          select jsonb_agg(to_jsonb(upd.*) order by upd.created_at desc)
-          from current_affairs.master_article_updates upd
-          where upd.article_id = ma.id
-        ), '[]'::jsonb) as updates
+        ) as appearance_count
       from current_affairs.master_articles ma
       left join current_affairs.category_nodes cn on cn.id = ma.category_node_id
       where ma.id = $1

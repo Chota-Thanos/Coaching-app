@@ -138,10 +138,6 @@ export const addArticleSectionSourceSchema = z.object({
   display_order: z.number().int().optional()
 });
 
-export const createArticleUpdateSchema = z.object({
-  body: z.string().trim().min(1)
-});
-
 export const categoryPageQuerySchema = listQuerySchema.extend({
   include_descendants: z.coerce.boolean().default(true),
   content_kind: masterArticleKindSchema.optional(),
@@ -172,6 +168,5 @@ export type UpdateArticleRelationInput = z.output<typeof updateArticleRelationSc
 export type CreateArticleSectionInput = z.output<typeof createArticleSectionSchema>;
 export type UpdateArticleSectionInput = z.output<typeof updateArticleSectionSchema>;
 export type AddArticleSectionSourceInput = z.output<typeof addArticleSectionSourceSchema>;
-export type CreateArticleUpdateInput = z.output<typeof createArticleUpdateSchema>;
 export type CategoryPageQuery = z.output<typeof categoryPageQuerySchema>;
 export type SearchCurrentAffairsQuery = z.output<typeof searchCurrentAffairsQuerySchema>;
