@@ -29,7 +29,13 @@ export async function buildServer(): Promise<FastifyInstance> {
     logger: {
       level: config.LOG_LEVEL
     },
-    bodyLimit: 52428800 // 50MB
+    bodyLimit: 52428800, // 50MB
+    // find-my-way's default 100-char cap on a single dynamic path segment silently
+    // fails the whole route match (falls through to a generic 404) rather than
+    // erroring — and article slugs are title-derived plus a date suffix, so any
+    // sufficiently long headline crosses it. 300 comfortably covers the longest
+    // realistic slug this app generates.
+    maxParamLength: 300
   });
 
   await server.register(sensible);

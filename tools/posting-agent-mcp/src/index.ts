@@ -413,7 +413,12 @@ server.registerTool(
           body: z
             .string()
             .min(1)
-            .describe('HTML, never Markdown. The evergreen explainer — no dates, no "recently".'),
+            .describe(
+              'HTML, never Markdown. The evergreen explainer — no dates, no "recently". ' +
+                'Same Format Library shape you would use for a news article about this entity ' +
+                '(scheme, report/index, organisation, etc. — whichever fits), just written ' +
+                'evergreen and at full depth rather than trimmed for a specific day\'s news.',
+            ),
           slug: z.string().optional(),
           category_node_ids: z
             .array(z.number().int().positive())

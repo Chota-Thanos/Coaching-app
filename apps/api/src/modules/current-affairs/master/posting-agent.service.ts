@@ -200,6 +200,41 @@ export function ensureHtmlBody(body: string): { body: string; converted: boolean
   return { body: markdownToHtml(trimmed), converted: true };
 }
 
+/**
+ * Flags the "every fact got its own heading" pattern — a real bug seen in
+ * production: a scheme's Ministry, Launch date, Objective and Beneficiaries
+ * each rendered as their own <h2> with one short sentence under it, instead
+ * of being grouped as bulleted facts under one shared heading.
+ *
+ * Deliberately a warning, never a rewrite. Which fields are "one fact" versus
+ * "a genuine list" is an editorial call the writer already makes (or a human
+ * reviewer makes on read-through) — this only makes sure the pattern doesn't
+ * slip through unnoticed, the same role `ensureHtmlBody`'s conversion warning
+ * already plays for literal Markdown leaking through.
+ *
+ * This function runs for every content kind that flows through this parser —
+ * Mains Topic Notes and concepts included, both of which legitimately have
+ * their own short standalone sections by design (a one-line "Constitutional
+ * and Legal Basis" citing a single Article is correct there, not a bug). A
+ * rewrite step would risk corrupting exactly that kind of legitimate short
+ * section on a content type this function has no awareness of; a warning
+ * cannot corrupt anything, so it is the safe layer to add for every content
+ * kind, not just daily news. The threshold (3+ back-to-back short, list-less
+ * headings) is set high enough that a normal, deliberately-short section
+ * pair never trips it.
+ */
+export function detectFactHeadingSprawl(bodyHtml: string): boolean {
+  const sections = bodyHtml.split(/(?=<h[1-6][ >])/i).filter((section) => /^<h[1-6][ >]/i.test(section));
+  let shortNoListCount = 0;
+  for (const section of sections) {
+    const afterHeading = section.replace(/^<h[1-6][^>]*>.*?<\/h[1-6]>/is, "");
+    if (/<ul|<ol/i.test(afterHeading)) continue; // has a real list underneath — not a bare fact
+    const text = afterHeading.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (text.length > 0 && text.length <= 160) shortNoListCount += 1;
+  }
+  return shortNoListCount >= 3;
+}
+
 function slugify(value: string): string {
   const slug = value
     .toLowerCase()
@@ -525,6 +560,12 @@ ${extracted.text}
     const { body: bodyHtml, converted } = ensureHtmlBody(String(item.body ?? ""));
     if (converted) {
       warnings.push("Body arrived as Markdown despite the HTML instruction; converted automatically — check formatting before publishing.");
+    }
+    if (detectFactHeadingSprawl(bodyHtml)) {
+      warnings.push(
+        "Several short, single-fact headings detected (e.g. one-line \"Ministry\"/\"Launched\"/\"Aim\" sections). " +
+          "These usually belong together under one shared heading as bulleted facts, not separate headings — review before publishing."
+      );
     }
 
     // Resolve the role. In explicit modes the editor's batch choice is authoritative;

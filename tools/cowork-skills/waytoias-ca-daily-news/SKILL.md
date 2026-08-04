@@ -71,6 +71,40 @@ Only pass `concept: {...}` to `ca_link_concept` when the search genuinely
 found nothing. Write that body evergreen: no "recently", no "this week", no
 dates tied to today's story. It has to still read correctly in three years.
 
+### Structure the concept body — the same Format Library, written evergreen
+
+A concept isn't a separate document type with its own fixed spec. It's
+**the same shape the news article itself would use**, chosen the same way:
+pick whichever template in the Format Library below actually fits the
+entity — a scheme's concept uses the scheme template, an index's concept
+uses the report/index template, a regulatory body's concept uses the
+organisation template. The topic decides the shape. There is no universal
+list of sections every concept must have.
+
+Two things differ from writing the news article, and only these two:
+
+- **Write it evergreen.** No "today", no trigger event, no framing around
+  what just happened — a concept exists independent of any single day's
+  news. Where the news template has a field anchored to an action
+  ("Launched — date, and by whom"), the concept states that same fact
+  plainly, as permanent history, not as today's headline.
+- **Write it full, not trimmed.** The trimming rule under "When this
+  article links a background concept" (in the Format Library section
+  below) applies to the *news article*, never to the concept. The concept
+  is exactly where that definitional weight is supposed to end up — give
+  every field that genuinely applies its full due, not a shortened version.
+
+Everything else about how you write it is identical to any other article:
+the same fact-field-vs-list-field split, the same shared "Basic Details"
+heading, the same bold-inside-values rule, the same discipline against
+turning a single fact into its own heading. Composing a concept is not a
+different writing task from composing a news article — it's the same task,
+aimed at a topic instead of an event.
+
+This only applies when composing a **new** concept. An existing concept
+you're reusing keeps whatever structure it already has — see "Reuse the
+concept" above.
+
 ### Give the new concept its own category — a separate decision from the article's
 
 A concept is filed under **the subject the entity itself belongs to**, which
@@ -134,36 +168,171 @@ One article per distinct story — if the user gives you several unrelated
 stories, write and file them as separate articles, not one piece stitched
 together.
 
-Use these sections, in this order. Omit one only when the material genuinely
-doesn't support it — don't pad to keep the shape:
+Frame every article the same way the `current-affairs` skill frames a study
+entry: a short universal spine, then a body assembled from whichever format
+in the library below actually matches the story. Don't force every story
+through one fixed set of headings — a scheme launch, a court judgment, a
+report release, and an appointment don't carry the same kind of information.
 
-1. **Why in News** — the trigger event and its date, in two or three sentences.
-2. **Background** — the minimum context a reader needs to follow the story.
-   Don't over-explain what most aspirants already know.
-   **When the article is linked to a concept, this section is two or three
-   sentences and no more** — just enough to orient someone who arrived from
-   a search result, then straight into what changed. The concept carries the
-   full explanation; repeating it here is the duplication the split exists to
-   remove. For the de-addiction example: *"The Nasha Mukt Bharat Abhiyaan,
+### Always present, in order
+
+1. **Title** — a title-case headline naming the topic, written by you. Don't
+   just adopt the phrasing the user gave you when they described the topic,
+   or copy a source article's own headline verbatim — a source headline is
+   often written for clicks, not precision, and the user's own phrasing was
+   a topic description, not a drafted title. State exactly what happened,
+   built around the specific figure, entity, ruling or decision that makes
+   this story what it is, in as few words as that actually requires.
+   Qualifier clauses stitched on for exhaustiveness ("...as X% of Y across
+   Z, following W") cost readability without adding anything a title needs
+   — that detail belongs in "Key Facts" or the Introduction, not squeezed
+   into the headline. If the source or the user's phrasing already is
+   precise, keep it; don't rewrite for the sake of rewriting.
+2. **Why in the News?** — a short lead stating the trigger event and its
+   date; bold the key facts/figures.
+3. **Introduction** — one plain sentence stating what the topic
+   fundamentally *is*, in language a newcomer would understand. Never skip
+   straight from "Why in the News" into field-by-field details without
+   this line. **If this article links a background concept** (see "First
+   occurrence vs development" above), this is also where the recap goes:
+   extend the Introduction to two or three sentences — state what the
+   concept is, then move straight into today's development. The concept
+   article carries the full explanation; this is not the place to repeat
+   it. For the de-addiction example: *"The Nasha Mukt Bharat Abhiyaan,
    launched in 2020 under the Ministry of Social Justice and Empowerment,
    runs India's demand-reduction drive against substance abuse across its
-   most vulnerable districts."* — then on to the approval.
-3. **Key Facts** — bullet points. Exact figures, dates, Article/Section
-   numbers, official scheme names. This is the section students actually scan
-   for revision, so density matters more than prose style.
-4. **Significance** — why it matters: governance, economy, society,
-   international relations. Pick the angles that genuinely apply.
-5. **Challenges** — real concerns, criticisms or implementation gaps. If
-   there genuinely aren't any worth noting, say so briefly rather than
-   inventing filler controversy.
-6. **Way Forward** — practical, specific steps. Not slogans.
-7. **Prelims Pointers** — 3 to 5 one-line facts of the kind an MCQ would
-   actually test.
+   most vulnerable districts."* — then straight into the approval.
+4. The topic-specific body — assembled from whichever format below matches
+   the story; combine building blocks if it straddles more than one.
+5. *Source* — italic closing line naming the source(s) used.
+
+### Format Library — pick the body that fits the story
+
+Each template below lists **fields**, but a field is not automatically a
+heading. Every field is one of exactly two kinds, and confusing them is the
+single most common formatting mistake this skill produces:
+
+- **A fact field** — one short, named attribute (ministry, date, outlay,
+  who they are). A fact field is a single bulleted line: the label bold,
+  the value after it — `**Ministry:** Ministry of Youth Affairs and
+  Sports.` It never gets its own heading. All the fact fields in a template
+  are grouped together under **one shared heading, "Basic Details"** — one
+  `## Basic Details` for the whole group, not one heading per fact.
+- **A list field** — something that genuinely has several items or points
+  (Salient Features, Key Findings, Significance, Functions & Powers, and
+  similar). A list field gets its own heading, and under that heading is an
+  actual bulleted or numbered list — real list markup (`-` lines in your
+  Markdown, which becomes `<ul><li>` in the stored HTML), never a paragraph
+  of sentences run together. If a list field only has one genuine point,
+  write one bullet — still a bullet, not a sentence loose under a heading
+  with nothing else in it.
+
+Skeleton for a scheme launch, to make the shape unambiguous:
+
+```
+## Basic Details
+- **Ministry:** Ministry of X.
+- **Launched:** 2 August 2026, by the Prime Minister.
+- **Objective:** ...
+- **Beneficiaries:** ...
+
+## Salient Features
+- First feature, one clean sentence.
+- Second feature, one clean sentence.
+
+## Significance
+- First angle, most important first.
+- Second angle.
+```
+
+Never emit a heading for a single fact — no `## Launched`, no `## Aim`, no
+`## Who They Are`. If you catch yourself about to write `##` immediately
+followed by a two- or three-word label with one short line under it, that's
+a fact field: move it into "Basic Details" instead.
+
+**Bold inside a value, not just the label.** A value that names a
+particular figure, threshold, Act, body or deadline gets that specific
+detail bolded too, not just the field label — `**Aim:** To ensure every
+inhabited village has access to a banking outlet **within 5 km**.` Bold
+what a reader would scan for, not every word — one or two salient terms per
+line, not the whole sentence.
+
+**When this article links a background concept, don't use a template
+below at full length.** Every field in it assumes the reader knows nothing
+about the entity yet — correct for a first occurrence, wrong for a
+development. Once a concept exists, its evergreen facts (what the thing is,
+its legal basis, its general design, the standards it runs on) live *there*,
+not here. Keep only whichever fields — or parts of a field — are actually
+about *today's* development: what's new, what changed, the figures specific
+to this action. Ask of each field: would this line read identically whether
+posted today or a year ago? If yes, it belongs in the concept, not repeated
+here — drop it, or fold a one-clause version into the Introduction's recap
+instead of giving it its own section. A linked article should end up
+noticeably shorter than a first-occurrence one on the same kind of story,
+because the definitional weight moved to the concept.
+
+**Scheme, policy or government initiative launch**
+- *Basic Details:* Ministry / implementing body. Launched — date, and by
+  whom. Objective — official framing, simplified language, without
+  changing the meaning. Beneficiaries — who's included, who's excluded.
+  Financial Outlay, if applicable — sub-bullets if there are multiple
+  components.
+- *Own heading, real list:* Salient Features — the scheme's design, as an
+  ordered list. Don't add a separate "Achievements / Progress So Far" field
+  — a scheme that was just launched has no track record yet. If the story
+  genuinely is about an implementation milestone (cards issued, funds
+  disbursed), that dated figure is its own bullet here, not its own
+  heading.
+- *Own heading, real list:* Significance — one angle per bullet, ordered by
+  importance.
+
+**Report, index or ranking release**
+- *Basic Details:* Released by. Aim.
+- *Own heading, real list:* Key Findings.
+- *Own heading, real list:* Key Recommendations.
+- *Own heading, real list:* Significance.
+
+**Organisation, institution, committee or body in the news**
+- *Basic Details:* Formation — who/when established, legal basis. Aim &
+  Objective — official framing, simplified language.
+- *Own heading, real list:* Functions & Powers.
+- *Own heading, real list:* Significance.
+
+**Judicial or legal development**
+- *Basic Details:* Case/matter name, court and bench, Article/Section
+  invoked.
+- *Own heading:* The Ruling — the order itself. A single-point ruling can
+  be one bullet or two clean sentences; a multi-point one is a real list.
+- *Own heading, real list:* Significance.
+
+**Personality in the news**
+- *Basic Details:* Who they are, in one line. The biographical details tied
+  to why they're in the news today — not a full biography.
+- *Own heading, real list:* Significance / Legacy.
+
+**International or bilateral development**
+- *Basic Details:* Countries/bodies involved.
+- *Own heading:* The Agreement or Outcome — key figures present, terms
+  reached. Real list if there are several distinct outcomes.
+- *Own heading, real list:* Significance.
+
+**Science & technology development**
+- *Basic Details:* Organisation involved. What it is — a brief,
+  easy-to-understand description of the technology, discovery or mission.
+- *Own heading, real list:* Technological Concepts Involved — the
+  standards, frequencies or mechanisms at work, with examples where
+  possible.
+- *Own heading:* Applications — stated purpose or use cases. Real list if
+  there's more than one.
+- *Own heading, real list:* Significance.
+
+If a story doesn't fit any of these cleanly, use judgment — but the
+fact-field-vs-list-field split above still applies. Dense, scannable
+content (exact figures, dates, Article/Section numbers, official scheme
+names) beats prose either way; smart structure beats mechanically following
+a field list into headings that don't deserve to be headings.
 
 **Voice:** neutral, factual, analytical — a briefing, not an opinion piece.
-Sentences under 25 words wherever natural. 500-700 words total; a story that
-genuinely needs more room can run longer, but check you're adding substance,
-not padding.
 
 ## Research and accuracy — this is what makes the content trustworthy
 
@@ -210,11 +379,28 @@ names before writing one in.
   clearly historical item came back dated today, fix it in the payload you
   send to `ca_commit`.
 - **Nothing truncated or duplicated.**
+- **No heading exists for a single fact.** Scan every `##` — if what's under
+  it is one short line about one named attribute, that's a "Basic Details"
+  fact, not a heading. Merge it in before committing.
+- **Every list field is an actual list.** Key Findings, Significance,
+  Salient Features and similar — check they rendered as bullets, not a
+  paragraph of sentences run together.
+- **Is the title precise, not just the source or the user's phrasing
+  copied through?** A title stitched together from qualifier clauses is the
+  kind of thing that also produces an unreasonably long slug — tighten it.
+- **If this article links a concept, is the body actually trimmed?** Reread
+  the topic-specific section against the concept it links — if a field
+  restates evergreen facts the concept already carries, cut it before
+  committing rather than leaving the full first-occurrence-shaped template in.
 - **If you composed a new concept, does it have its own category?** This is
   separate from the article check above — `ca_parse` never sees the concept,
   so nothing resolves it automatically. Confirm you set
   `concept.category_node_ids` (or deliberately decided the entity is
   cross-cutting) before calling `ca_link_concept`.
+- **If you composed a new concept, is it actually full, not trimmed?**
+  Reread it against the Format Library template you picked — every field
+  that genuinely applies to the entity should be there at full depth. The
+  trimming rule is for the news article, never for the concept.
 
 ## Publishing — read this before every `ca_commit` call
 
@@ -244,9 +430,42 @@ Tell the user plainly, every time, which one happened and where it ended up.
   link the id you find.
 - Don't split off a concept for a first-of-its-kind story just because the
   article mentions a scheme name. Nothing durable exists yet.
-- Don't repeat the full background inside an article that links a concept.
+- Don't repeat the concept's full explanation inside the Introduction of an
+  article that links it — a short recap, not a rewrite.
 - Don't assume a new concept inherits the news article's category — look up
   the entity's own category separately, or state that you're deliberately
   leaving it uncategorised and why.
 - Don't re-categorise an existing concept as a side effect of linking a new
   article to it. Flag a gap you notice; don't silently fix it.
+- Don't trim a concept's fields down for brevity. Trimming is for the news
+  article that links it, never for the concept itself.
+- Don't force a fixed section list onto every concept. Pick whichever
+  Format Library template actually fits the entity, the same as you would
+  for a news article about it — the topic decides the shape, not a
+  template borrowed from somewhere else.
+- Don't use a Format Library template at full length on an article that
+  links a concept. Definitional fields (what the entity is, its legal
+  basis, its general design, standards it runs on) belong in the concept —
+  repeating them in the news article is the exact duplication concepts
+  exist to remove.
+- Don't treat the user's topic phrasing or a source's headline as the
+  title. Write your own precise one — see "Title" above.
+- Don't turn a single fact into its own heading. "Ministry", "Launched",
+  "Aim", "Who they are" and similar are one bulleted line each under
+  "Basic Details" — never `## Launched` with one sentence under it.
+- Don't leave a list field (Key Findings, Significance, Salient Features,
+  Functions & Powers) as a paragraph. It's a real bulleted or numbered
+  list, always.
+- Don't bold only field labels and leave the values plain. Bold the
+  specific figures, thresholds, Act names or deadlines inside a value too
+  — that's what a reader is actually scanning for.
+
+## Adjusting the format later
+
+This skill's format spec (the Format Library, the common spine, sourcing
+rules, or anything else in this file) is meant to be a persistent, editable
+spec, not something re-decided each run. If the user asks to change any of
+it, update this skill and re-save it (via the skill-saving tool with
+overwrite) rather than only applying the change ad hoc for one run — editing
+the skill's files on disk directly does not persist, so a real change has to
+go through re-saving the skill itself.
