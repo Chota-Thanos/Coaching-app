@@ -366,12 +366,18 @@ async function refreshEnrollmentCompletion(client: PoolClient, enrollmentId: num
   );
 }
 
-export async function listStudyPlans(options: ListStudyPlansQuery): Promise<unknown[]> {
+export async function listStudyPlans(options: ListStudyPlansQuery, user?: AuthContext): Promise<unknown[]> {
   const params: unknown[] = [];
   const conditions: string[] = [];
 
   if (options.exam_id) addCondition(conditions, params, "sp.exam_id = ?", options.exam_id);
   if (options.status) addCondition(conditions, params, "sp.status = ?", options.status);
+
+  // Signed-in users get their own enrollment (if any) joined in so the
+  // client can put "continue where I left off" plans at the top of the
+  // list, instead of only knowing that once they open a plan's detail page.
+  params.push(user?.id ?? null);
+  const userIdPosition = params.length;
 
   params.push(options.limit, options.offset);
   const limitPosition = params.length - 1;
@@ -386,15 +392,26 @@ export async function listStudyPlans(options: ListStudyPlansQuery): Promise<unkn
         coalesce(count(distinct pi.id), 0)::integer as item_count,
         coalesce(count(distinct pi.id) filter (where pi.item_type in ('prelims_test', 'csat_test', 'mains_test')), 0)::integer as test_count,
         coalesce(avg(rev.rating), 0.0)::float as average_rating,
-        coalesce(count(distinct rev.id), 0)::integer as total_reviews
+        coalesce(count(distinct rev.id), 0)::integer as total_reviews,
+        (
+          my_e.id is not null
+          and (sp.price_amount_minor = 0 or my_e.payment_status = 'paid')
+        ) as has_access,
+        my_e.started_at as enrolled_at
       from study_plan.plans sp
       join assessment.exams e on e.id = sp.exam_id
       left join assessment.assessment_taxonomy_nodes atn on atn.id = sp.subject_node_id
       left join study_plan.plan_items pi on pi.plan_id = sp.id
       left join study_plan.reviews rev on rev.plan_id = sp.id
+      left join study_plan.enrollments my_e
+        on my_e.plan_id = sp.id
+       and my_e.user_id = $${userIdPosition}::integer
+       and my_e.status in ('active', 'completed')
       ${conditions.length ? `where ${conditions.join(" and ")}` : ""}
-      group by sp.id, e.id, atn.id
-      order by sp.created_at desc
+      group by sp.id, e.id, atn.id, my_e.id, my_e.payment_status, my_e.started_at
+      order by (my_e.id is not null and (sp.price_amount_minor = 0 or my_e.payment_status = 'paid')) desc,
+        my_e.started_at desc nulls last,
+        sp.created_at desc
       limit $${limitPosition} offset $${offsetPosition}
     `,
     params

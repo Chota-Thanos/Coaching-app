@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { BookOpenCheck, CalendarDays, CheckCircle2, ClipboardList, Filter, PlayCircle, Star, Video } from "lucide-react";
+import { BookOpenCheck, CalendarDays, ClipboardList, Filter, Video } from "lucide-react";
 import { getAssessmentExams } from "../../lib/assessment-api";
 import { normalizeAssessmentPage } from "../../lib/assessment";
-import { formatPlanPrice, studyPlanHref, type StudyPlanSummary } from "../../lib/study-plans";
+import type { StudyPlanSummary } from "../../lib/study-plans";
 import { getStudyPlans } from "../../lib/study-plans-api";
+import { StudyPlansGrid } from "../../components/study-plans/study-plans-grid";
 
 export const dynamic = "force-dynamic";
 
@@ -22,16 +22,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/study-plans" }
 };
 
-function PlanArtwork({ plan, large = false }: { plan: StudyPlanSummary; large?: boolean }) {
+function FeaturedPlanArtwork({ plan }: { plan: StudyPlanSummary }) {
   const inner = plan.cover_image_url ? (
-    <div
-      className={`${large ? "h-52" : "h-40"} bg-cover bg-center`}
-      style={{ backgroundImage: `url(${plan.cover_image_url})` }}
-    />
+    <div className="h-52 bg-cover bg-center" style={{ backgroundImage: `url(${plan.cover_image_url})` }} />
   ) : (
-    <div className={`${large ? "h-52" : "h-40"} relative overflow-hidden bg-gradient-to-br from-slate-800 to-indigo-950 text-white`}>
-      <div className="absolute inset-y-0 right-0 w-1/3 bg-indigo-600/15" />
-      <div className="absolute bottom-0 left-0 h-1.5 w-full bg-indigo-500" />
+    <div className="relative h-52 overflow-hidden bg-gradient-to-br from-slate-800 to-indigo-950 text-white">
+      <div className="absolute inset-y-0 right-0 w-1/3 bg-civic/15" />
+      <div className="absolute bottom-0 left-0 h-1.5 w-full bg-civic" />
       <div className="relative flex h-full flex-col justify-between p-4">
         <BookOpenCheck className="ml-auto h-5 w-5 text-indigo-200" />
         <p className="max-w-[14rem] font-heading text-lg !font-black leading-tight text-slate-100">{plan.exam_name ?? "Exam Prep"}</p>
@@ -95,7 +92,7 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
           <div className="hidden overflow-hidden rounded-lg border border-white/15 bg-white/10 shadow-soft lg:block">
             {plans[0] ? (
               <>
-                <PlanArtwork plan={plans[0]} large />
+                <FeaturedPlanArtwork plan={plans[0]} />
                 <div className="p-4">
                   <p className="font-heading text-sm !font-black">{plans[0].title}</p>
                   <p className="mt-1 text-xs font-semibold text-white/65">{plans[0].duration_weeks} weeks - {plans[0].test_count ?? 0} tests</p>
@@ -131,57 +128,7 @@ export default async function StudyPlansPage({ searchParams }: StudyPlansPagePro
           </label>
         </form>
 
-        {plans.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-surface p-8 text-center text-sm font-semibold text-slate-500">No published study plans found.</p>
-        ) : (
-          <div className="grid gap-5 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <Link
-                className="group overflow-hidden rounded-xl border border-slate-200 bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-soft"
-                href={studyPlanHref(`/${plan.id}`)}
-                key={plan.id}
-              >
-                <PlanArtwork plan={plan} />
-                <div className="p-4">
-                  <p className="inline-flex items-center gap-1.5 font-heading text-[11px] !font-black uppercase tracking-wide text-civic">
-                    <Star className="h-3.5 w-3.5 fill-civic text-civic" />
-                    {plan.exam_name ?? "Guided curriculum"}
-                  </p>
-                  <h2 className="mt-2 min-h-12 font-heading text-lg !font-extrabold leading-snug text-ink group-hover:text-civic transition-colors">{plan.title}</h2>
-                  {plan.subtitle && <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-500">{plan.subtitle}</p>}
-                  {plan.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{plan.description}</p>}
-                  <div className="mt-4 grid grid-cols-3 gap-2 border-y border-slate-100 py-3 text-xs font-bold text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5 text-civic" />
-                      {plan.duration_weeks} weeks
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <BookOpenCheck className="h-3.5 w-3.5 text-civic" />
-                      {plan.item_count ?? 0} items
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <ClipboardList className="h-3.5 w-3.5 text-civic" />
-                      {plan.test_count ?? 0} tests
-                    </span>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className={`font-heading text-xl !font-black ${plan.price_amount_minor === 0 ? "text-emerald-600" : "text-civic"}`}>
-                      {formatPlanPrice(plan.price_amount_minor, plan.currency)}
-                    </p>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-civic px-3.5 py-2 font-heading text-xs !font-black uppercase tracking-wide text-white transition group-hover:bg-indigo-700">
-                      <PlayCircle className="h-3.5 w-3.5" />
-                      View plan
-                    </span>
-                  </div>
-                  <p className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-civic" />
-                    Curriculum visible before purchase
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <StudyPlansGrid examId={examId} initialPlans={plans} page={page} />
       </div>
     </main>
   );

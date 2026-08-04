@@ -72,9 +72,10 @@ async function optionalAuth(request: Parameters<typeof requireAuth>[0]) {
 
 export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<void> {
   server.get("/api/v1/study-plans", async (request, reply) => {
+    const user = await optionalAuth(request);
     return withValidation(reply, async () => {
       const query = parse(listStudyPlansQuerySchema, request.query);
-      return listStudyPlans(query);
+      return listStudyPlans(query, user);
     });
   });
 

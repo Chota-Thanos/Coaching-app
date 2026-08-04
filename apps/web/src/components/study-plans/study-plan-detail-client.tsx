@@ -344,6 +344,231 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
     }
   };
 
+  // "Continue learning" jumps straight to the next unfinished lesson: expand
+  // its week (if collapsed) and scroll it into view, instead of making an
+  // enrolled learner hunt through the accordion for where they left off.
+  const continueToNextUp = () => {
+    if (nextUpItemId === null) return;
+    const item = plan.items.find((i) => i.id === nextUpItemId);
+    if (item) setExpandedWeeks((prev) => new Set(prev).add(item.week_no));
+    setTimeout(() => {
+      document.getElementById(`plan-item-${nextUpItemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 60);
+  };
+
+  // The curriculum accordion and the reviews section are shared between the
+  // pre-purchase marketing layout and the post-purchase learning layout --
+  // built once here and dropped into whichever shell renders below.
+  const courseContentSection = (
+    <section className="rounded-lg border border-line bg-surface shadow-card">
+      <div className="border-b border-line p-5">
+        <h2 className="text-2xl !font-black text-ink">Course content</h2>
+        <p className="mt-2 text-sm font-semibold text-ink/55">
+          {weeks.length} weeks - {plan.items.length} items - {tests} tests - about {estimatedHours} hours of planned effort
+        </p>
+      </div>
+
+      <div className="p-5">
+        {weeks.map(([week, items], idx) => {
+          const isLast = idx === weeks.length - 1;
+          const weekMinutes = items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
+          const overview = plan.week_overviews?.find((wo) => wo.week_no === week);
+          const doneCount = items.filter((item) => item.progress?.status === "completed").length;
+          const allDone = items.length > 0 && doneCount === items.length;
+          const weekLocked = !plan.has_access && !items.some((item) => item.is_preview);
+          const isExpanded = expandedWeeks.has(week);
+          const containsNextUp = items.some((item) => item.id === nextUpItemId);
+          const isCurrent = !allDone && !weekLocked && (isExpanded || containsNextUp);
+          return (
+            <div className="flex items-stretch gap-3" key={week}>
+              <div className="flex flex-col items-center">
+                <WeekStatusCircle done={allDone} isCurrent={isCurrent} locked={weekLocked} />
+                {!isLast && <div className="my-1 w-0.5 flex-1 bg-line" />}
+              </div>
+              <div className={`min-w-0 flex-1 ${isLast ? "pb-1" : "pb-6"}`}>
+                <button
+                  className={`flex w-full items-start justify-between gap-3 rounded-lg text-left transition ${
+                    isCurrent ? "border border-civic/30 bg-civic/5 px-3 py-2.5 -ml-3" : weekLocked ? "opacity-50" : ""
+                  }`}
+                  onClick={() => toggleWeek(week)}
+                  type="button"
+                >
+                  <div className="min-w-0">
+                    <p className={`flex items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide ${allDone ? "text-emerald-600" : weekLocked ? "text-slate-400" : "text-civic"}`}>
+                      Week {week}
+                      {allDone && " · Complete"}
+                      {weekLocked && " · Locked"}
+                      {isCurrent && !allDone && (
+                        <span className="rounded-full bg-civic px-2 py-0.5 text-[10px] tracking-wide text-white">In progress</span>
+                      )}
+                    </p>
+                    <h3 className="mt-0.5 font-heading text-base !font-extrabold text-ink leading-tight">{overview?.title ?? `Week ${week}`}</h3>
+                    {overview?.description && (
+                      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 max-w-4xl">{overview.description}</p>
+                    )}
+                    <p className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-slate-400">
+                      <span>
+                        {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
+                      </span>
+                      {!weekLocked && (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${allDone ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                          {doneCount}/{items.length} done
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={`mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {isExpanded && (
+                  <div className="relative mt-3 space-y-2 pl-4">
+                    <div className="absolute left-[7px] top-1 bottom-1 w-px bg-line" />
+                    {items.map((item) => (
+                      <CurriculumItem
+                        busyAction={busyAction}
+                        item={item}
+                        isNextUp={item.id === nextUpItemId}
+                        key={item.id}
+                        planHasAccess={plan.has_access}
+                        startTest={startTest}
+                        updateProgress={updateProgress}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  const reviewsSection = (
+    <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
+      <h2 className="text-2xl !font-black text-ink">Student Reviews</h2>
+
+      {plan.has_access && token && (
+        <div className="mt-4 rounded-xl border border-indigo-50 bg-indigo-50/30 p-4">
+          <h3 className="font-heading text-sm !font-black text-ink">
+            {reviews.some((r) => r.user?.id === user?.id) ? "Update your review" : "Leave a review"}
+          </h3>
+          <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Share your experience with other aspirants.</p>
+          <div className="mt-3 flex items-center gap-1.5">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                className="transition transform hover:scale-110"
+              >
+                <Star
+                  className={`h-6 w-6 ${reviewForm.rating >= star ? "fill-amber-400 text-amber-400" : "text-slate-300"}`}
+                />
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="mt-3 w-full min-h-20 rounded-lg border border-slate-200 bg-surface p-3 text-xs font-semibold leading-5 text-ink focus:border-indigo-500 focus:outline-none"
+            placeholder="Write your review about the study guide, tests quality, or mentor support..."
+            value={reviewForm.comment}
+            onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+          />
+          <button
+            type="button"
+            disabled={reviewBusy}
+            onClick={submitReview}
+            className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-civic px-4 !font-heading text-xs !font-black text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {reviewBusy ? "Submitting..." : "Submit Review"}
+          </button>
+        </div>
+      )}
+
+      <div className="mt-5 space-y-4 divide-y divide-line">
+        {reviews.length === 0 ? (
+          <p className="py-2 text-sm font-bold text-ink/50">No reviews yet. Be the first to share your thoughts!</p>
+        ) : (
+          reviews.map((rev) => (
+            <div key={rev.id} className="pt-4 first:pt-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-heading text-xs !font-black text-ink">{rev.user?.username || rev.user?.email || "Student"}</p>
+                  <div className="mt-1 flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`h-3 w-3 ${rev.rating >= s ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <span className="text-[10px] font-semibold text-ink/40">
+                  {new Date(rev.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              </div>
+              {rev.comment && <p className="mt-2 text-xs font-semibold leading-5 text-ink/75">{rev.comment}</p>}
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+
+  if (plan.has_access) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-16">
+        <section className="border-b border-line bg-surface">
+          <div className="mx-auto max-w-5xl px-4 py-6">
+            <Link className="inline-flex items-center gap-2 !font-heading text-sm !font-black text-civic hover:text-indigo-700" href={studyPlanHref()}>
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              Study plans
+            </Link>
+            <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide text-civic">
+                  <span>{plan.exam?.name ?? plan.exam_name}</span>
+                  {plan.level_label && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span>{plan.level_label}</span>
+                    </>
+                  )}
+                </p>
+                <h1 className="mt-1 font-heading text-2xl !font-black leading-tight text-ink md:text-3xl">{plan.title}</h1>
+              </div>
+              <button
+                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-civic px-5 !font-heading text-sm !font-black text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                disabled={nextUpItemId === null}
+                onClick={continueToNextUp}
+                type="button"
+              >
+                <PlayCircle className="h-4 w-4" />
+                {completed === 0 ? "Start learning" : progress >= 100 ? "Review course" : "Continue learning"}
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-line bg-paper p-4">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                <span>Your progress</span>
+                <span>{progress}% · {completed} of {total} done</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div className="h-full rounded-full bg-civic transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-5xl space-y-6 px-4 pt-6">
+          {courseContentSection}
+          {reviewsSection}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 py-12 text-white">
@@ -434,89 +659,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             </div>
           </section>
 
-          <section className="rounded-lg border border-line bg-surface shadow-card">
-            <div className="border-b border-line p-5">
-              <h2 className="text-2xl !font-black text-ink">Course content</h2>
-              <p className="mt-2 text-sm font-semibold text-ink/55">
-                {weeks.length} weeks - {plan.items.length} items - {tests} tests - about {estimatedHours} hours of planned effort
-              </p>
-            </div>
-
-            <div className="p-5">
-              {weeks.map(([week, items], idx) => {
-                const isLast = idx === weeks.length - 1;
-                const weekMinutes = items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
-                const overview = plan.week_overviews?.find((wo) => wo.week_no === week);
-                const doneCount = items.filter((item) => item.progress?.status === "completed").length;
-                const allDone = items.length > 0 && doneCount === items.length;
-                const weekLocked = !plan.has_access && !items.some((item) => item.is_preview);
-                const isExpanded = expandedWeeks.has(week);
-                const containsNextUp = items.some((item) => item.id === nextUpItemId);
-                const isCurrent = !allDone && !weekLocked && (isExpanded || containsNextUp);
-                return (
-                  <div className="flex items-stretch gap-3" key={week}>
-                    <div className="flex flex-col items-center">
-                      <WeekStatusCircle done={allDone} isCurrent={isCurrent} locked={weekLocked} />
-                      {!isLast && <div className="my-1 w-0.5 flex-1 bg-line" />}
-                    </div>
-                    <div className={`min-w-0 flex-1 ${isLast ? "pb-1" : "pb-6"}`}>
-                      <button
-                        className={`flex w-full items-start justify-between gap-3 rounded-lg text-left transition ${
-                          isCurrent ? "border border-civic/30 bg-civic/5 px-3 py-2.5 -ml-3" : weekLocked ? "opacity-50" : ""
-                        }`}
-                        onClick={() => toggleWeek(week)}
-                        type="button"
-                      >
-                        <div className="min-w-0">
-                          <p className={`flex items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide ${allDone ? "text-emerald-600" : weekLocked ? "text-slate-400" : "text-civic"}`}>
-                            Week {week}
-                            {allDone && " · Complete"}
-                            {weekLocked && " · Locked"}
-                            {isCurrent && !allDone && (
-                              <span className="rounded-full bg-civic px-2 py-0.5 text-[10px] tracking-wide text-white">In progress</span>
-                            )}
-                          </p>
-                          <h3 className="mt-0.5 font-heading text-base !font-extrabold text-ink leading-tight">{overview?.title ?? `Week ${week}`}</h3>
-                          {overview?.description && (
-                            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 max-w-4xl">{overview.description}</p>
-                          )}
-                          <p className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-slate-400">
-                            <span>
-                              {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
-                            </span>
-                            {!weekLocked && (
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${allDone ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
-                                {doneCount}/{items.length} done
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <ChevronDown
-                          className={`mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {isExpanded && (
-                        <div className="relative mt-3 space-y-2 pl-4">
-                          <div className="absolute left-[7px] top-1 bottom-1 w-px bg-line" />
-                          {items.map((item) => (
-                            <CurriculumItem
-                              busyAction={busyAction}
-                              item={item}
-                              isNextUp={item.id === nextUpItemId}
-                              key={item.id}
-                              planHasAccess={plan.has_access}
-                              startTest={startTest}
-                              updateProgress={updateProgress}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          {courseContentSection}
 
           <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
             <h2 className="text-2xl !font-black text-ink">Requirements</h2>
@@ -526,74 +669,7 @@ export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProp
             </div>
           </section>
 
-          <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
-            <h2 className="text-2xl !font-black text-ink">Student Reviews</h2>
-            
-            {plan.has_access && token && (
-              <div className="mt-4 rounded-xl border border-indigo-50 bg-indigo-50/30 p-4">
-                <h3 className="font-heading text-sm !font-black text-ink">
-                  {reviews.some((r) => r.user?.id === user?.id) ? "Update your review" : "Leave a review"}
-                </h3>
-                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Share your experience with other aspirants.</p>
-                <div className="mt-3 flex items-center gap-1.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                      className="transition transform hover:scale-110"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${reviewForm.rating >= star ? "fill-amber-400 text-amber-400" : "text-slate-300"}`}
-                      />
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  className="mt-3 w-full min-h-20 rounded-lg border border-slate-200 bg-surface p-3 text-xs font-semibold leading-5 text-ink focus:border-indigo-500 focus:outline-none"
-                  placeholder="Write your review about the study guide, tests quality, or mentor support..."
-                  value={reviewForm.comment}
-                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                />
-                <button
-                  type="button"
-                  disabled={reviewBusy}
-                  onClick={submitReview}
-                  className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-civic px-4 !font-heading text-xs !font-black text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {reviewBusy ? "Submitting..." : "Submit Review"}
-                </button>
-              </div>
-            )}
-
-            <div className="mt-5 space-y-4 divide-y divide-line">
-              {reviews.length === 0 ? (
-                <p className="py-2 text-sm font-bold text-ink/50">No reviews yet. Be the first to share your thoughts!</p>
-              ) : (
-                reviews.map((rev) => (
-                  <div key={rev.id} className="pt-4 first:pt-0">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-heading text-xs !font-black text-ink">{rev.user?.username || rev.user?.email || "Student"}</p>
-                        <div className="mt-1 flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star
-                              key={s}
-                              className={`h-3 w-3 ${rev.rating >= s ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-semibold text-ink/40">
-                        {new Date(rev.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                      </span>
-                    </div>
-                    {rev.comment && <p className="mt-2 text-xs font-semibold leading-5 text-ink/75">{rev.comment}</p>}
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
+          {reviewsSection}
         </div>
 
         <aside className="lg:hidden">
@@ -756,7 +832,7 @@ function CurriculumItem({
   const resourceUrl = item.lecture_url || item.resource_url;
 
   return (
-    <article className="relative">
+    <article className="relative" id={`plan-item-${item.id}`}>
       <span
         className={`absolute -left-4 top-4 h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 ${
           done ? "border-emerald-600 bg-emerald-600" : isNextUp ? "border-civic bg-civic" : locked ? "border-line bg-paper" : "border-slate-300 bg-surface"

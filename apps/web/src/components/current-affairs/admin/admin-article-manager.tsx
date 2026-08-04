@@ -478,7 +478,11 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                   <div className="flex flex-wrap items-center gap-1.5 shrink-0 border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0">
                     <button
                       className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
-                      onClick={() => void loadDetail(article.id)}
+                      onClick={() => {
+                        void loadDetail(article.id).then(() => {
+                          document.getElementById("article-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        });
+                      }}
                       type="button"
                     >
                       <Eye aria-hidden="true" className="h-3.5 w-3.5" />

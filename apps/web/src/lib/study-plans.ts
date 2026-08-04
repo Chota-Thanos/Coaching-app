@@ -30,6 +30,13 @@ export type StudyPlanSummary = {
   item_count?: number;
   test_count?: number;
   published_at: string | null;
+  average_rating?: number;
+  total_reviews?: number;
+  // Only populated when the list is fetched with an auth token -- lets the
+  // signed-in learner's purchased/enrolled plans surface at the top of the
+  // browse grid instead of mixing in anonymously with everything else.
+  has_access?: boolean;
+  enrolled_at?: string | null;
 };
 
 export type StudyPlanTestTemplate = {
