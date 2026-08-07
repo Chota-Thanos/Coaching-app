@@ -394,6 +394,168 @@ server.registerTool(
     }),
 );
 
+/**
+ * Correcting already-posted content.
+ *
+ * News posts and concept primers are rows in the same table, separated only by
+ * `article_role`, so one set of tools covers both. The find → read → change
+ * sequence is deliberate: an id guessed from a title is the one mistake here
+ * that silently rewrites the wrong article.
+ */
+interface ArticleRow {
+  id: number;
+  title: string;
+  slug: string;
+  status: string;
+  article_role: string;
+  content_kind: string;
+  publication_date: string | null;
+  body?: string;
+}
+
+server.registerTool(
+  'ca_find_articles',
+  {
+    title: 'Find a posted article to correct',
+    description:
+      'Searches posted articles — news and concept primers, drafts and published alike — by text in the title or body. Use this FIRST when something needs fixing, to get the id. Filter by article_role ("event" for news, "concept" for primers) when a title could match either. Returns no body; call ca_get_article to read one before changing it.',
+    inputSchema: {
+      search: z.string().min(2).describe('Text from the title or body, e.g. "Nasha Mukt Yuva".'),
+      article_role: z
+        .enum(['event', 'concept'])
+        .optional()
+        .describe('"event" = news article, "concept" = evergreen primer. Omit to search both.'),
+      status: z
+        .enum(['draft', 'in_review', 'approved', 'published', 'archived'])
+        .optional()
+        .describe('Omit to search every status — a wrong article is often still a draft.'),
+      content_kind: z.string().optional(),
+      limit: z.number().int().positive().max(100).optional(),
+    },
+  },
+  async ({ search, article_role, status, content_kind, limit }) =>
+    run(async () => {
+      // The list endpoint filters by a single status, so an unfiltered search
+      // has to union the statuses that matter rather than silently returning
+      // published-only and looking like the article does not exist.
+      const base = { search, article_role, content_kind, limit: limit ?? 25 };
+      const statuses = status ? [status] : ['published', 'draft', 'in_review', 'approved'];
+      const results = await Promise.all(
+        statuses.map((s) => api.get<ArticleRow[]>('/api/v1/current-affairs/articles', { ...base, status: s })),
+      );
+      const byId = new Map<number, ArticleRow>();
+      for (const row of results.flat()) if (row) byId.set(row.id, row);
+      const found = [...byId.values()];
+      return {
+        count: found.length,
+        articles: found.map((a) => ({
+          id: a.id,
+          title: a.title,
+          slug: a.slug,
+          status: a.status,
+          article_role: a.article_role,
+          content_kind: a.content_kind,
+          publication_date: a.publication_date,
+        })),
+        note:
+          found.length === 0
+            ? 'Nothing matched. Widen the search text before concluding the article does not exist.'
+            : undefined,
+      };
+    }),
+);
+
+server.registerTool(
+  'ca_get_article',
+  {
+    title: 'Read one posted article in full',
+    description:
+      'Returns a single article including its full current body, whatever its status. Read the article before correcting it — a rewrite composed from memory of what was posted tends to drop details that were right, and the returned body is also what an edit must preserve the HTML shape of.',
+    inputSchema: {
+      article_id: z.number().int().positive().describe('From ca_find_articles.'),
+    },
+  },
+  async ({ article_id }) =>
+    run(() => api.get(`/api/v1/current-affairs/admin/articles/${article_id}`)),
+);
+
+server.registerTool(
+  'ca_update_article',
+  {
+    title: 'Correct a posted article',
+    description:
+      'Edits an already-posted article or concept primer — the fix for one that turns out to be factually wrong. Only the fields passed are changed; everything else is left exactly as it is, so a single wrong figure does not require resupplying the whole article. Call ca_get_article first. Bodies must be HTML (<p>, <h2>, <strong>, <ul><li>), same as when posting.\n\nEditing an article whose status is "published" changes what readers see immediately, so that case requires confirm_live_edit — a draft needs no confirmation. To pull a live article down instead of fixing it in place, set status to "draft".',
+    inputSchema: {
+      article_id: z.number().int().positive().describe('From ca_find_articles.'),
+      title: z.string().min(1).optional(),
+      body: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('The complete replacement body as HTML — not a fragment, not a diff.'),
+      category_node_ids: z
+        .array(z.number().int().positive())
+        .max(50)
+        .optional()
+        .describe('Replaces the existing categories outright. Omit to leave filing untouched.'),
+      publication_date: z.string().optional().describe('YYYY-MM-DD.'),
+      status: z
+        .enum(['draft', 'in_review', 'approved', 'published', 'archived'])
+        .optional()
+        .describe('Set "draft" to unpublish something wrong while it is being rewritten.'),
+      source_name: z.string().optional(),
+      source_url: z.string().optional(),
+      seo_title: z.string().optional(),
+      seo_description: z.string().optional(),
+      keywords: z.array(z.string()).optional(),
+      confirm_live_edit: z
+        .literal('update-live-article')
+        .optional()
+        .describe(
+          'Required only when the target is currently published. Ask the user before sending it — this is a live change to content students are reading.',
+        ),
+    },
+  },
+  async ({ article_id, confirm_live_edit, ...fields }) =>
+    run(async () => {
+      const current = await api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${article_id}`);
+      if (!current) throw new Error(`No article with id ${article_id}.`);
+
+      const changed = Object.entries(fields).filter(([, v]) => v !== undefined);
+      if (changed.length === 0) {
+        throw new Error('No fields to change were supplied.');
+      }
+
+      // A published article is live to students; an unconfirmed edit to one is
+      // treated as a mistake rather than an intention. Unpublishing is exempt:
+      // pulling wrong content down is the safe direction.
+      const isUnpublishing = fields.status !== undefined && fields.status !== 'published';
+      if (current.status === 'published' && confirm_live_edit !== 'update-live-article' && !isUnpublishing) {
+        throw new Error(
+          `Article ${article_id} ("${current.title}") is PUBLISHED — this edit would change what students see immediately. ` +
+            'Confirm with the user, then resend with confirm_live_edit: "update-live-article". ' +
+            'To take it offline instead, set status: "draft" (no confirmation needed).',
+        );
+      }
+
+      const updated = await api.patch<ArticleRow>(
+        `/api/v1/current-affairs/articles/${article_id}`,
+        Object.fromEntries(changed),
+      );
+
+      return {
+        updated: true,
+        id: article_id,
+        title: updated?.title ?? current.title,
+        article_role: current.article_role,
+        status_before: current.status,
+        status_after: updated?.status ?? current.status,
+        fields_changed: changed.map(([k]) => k),
+        live: (updated?.status ?? current.status) === 'published',
+      };
+    }),
+);
+
 server.registerTool(
   'ca_link_concept',
   {

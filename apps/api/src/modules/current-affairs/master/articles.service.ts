@@ -6,6 +6,7 @@ import type {
   UpdateMasterArticleInput
 } from "../schemas.js";
 import { deriveContentFamily } from "./content-family.js";
+import { ensureHtmlBody } from "./html-body.js";
 
 /**
  * Reconciles the article_category_links join table for an article so it reflects
@@ -284,7 +285,10 @@ export async function updateMasterArticle(
   addUpdate(updates, params, "article_role", input.article_role);
   addUpdate(updates, params, "title", input.title);
   addUpdate(updates, params, "slug", input.slug);
-  addUpdate(updates, params, "body", input.body);
+  // A correction arriving as Markdown would render as literal "##" to readers
+  // exactly as a badly-formatted new article would, so edits get the same
+  // guarantee as creates. Real HTML passes through untouched.
+  addUpdate(updates, params, "body", input.body === undefined ? undefined : ensureHtmlBody(input.body).body);
   addUpdate(updates, params, "body_json", input.body_json === undefined ? undefined : JSON.stringify(input.body_json));
   // Category handling: the join table is the source of truth for multi-category,
   // while the category_node_id column mirrors the primary link. If only the

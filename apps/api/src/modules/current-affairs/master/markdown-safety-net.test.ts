@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ensureHtmlBody, looksLikeMarkdown, markdownToHtml } from "./posting-agent.service.js";
+import { ensureHtmlBody, looksLikeMarkdown, markdownToHtml } from "./html-body.js";
 
 /**
  * Regression cover for a real bug caught by looking at a live draft: every
