@@ -484,7 +484,7 @@ server.registerTool(
   {
     title: 'Correct a posted article',
     description:
-      'Edits an already-posted article or concept primer — the fix for one that turns out to be factually wrong. Only the fields passed are changed; everything else is left exactly as it is, so a single wrong figure does not require resupplying the whole article. Call ca_get_article first. Bodies must be HTML (<p>, <h2>, <strong>, <ul><li>), same as when posting.\n\nEditing an article whose status is "published" changes what readers see immediately, so that case requires confirm_live_edit — a draft needs no confirmation. To pull a live article down instead of fixing it in place, set status to "draft".',
+      'Edits an already-posted article or concept primer — the fix for one that turns out to be factually wrong. Only the fields passed are changed; everything else is left exactly as it is, so a single wrong figure does not require resupplying the whole article. Call ca_get_article first. Bodies must be HTML (<p>, <h2>, <strong>, <ul><li>), same as when posting.\n\nNEVER edit on your own judgement. Every change to anything already posted — drafts included — must be put to the user and agreed by them first, then sent with confirm_change. If you notice something wrong while doing other work, say so and wait; do not fix it silently. A published article needs confirm_live_edit as well, since students are reading it. To pull a live article down instead of fixing it in place, set status to "draft".',
     inputSchema: {
       article_id: z.number().int().positive().describe('From ca_find_articles.'),
       title: z.string().min(1).optional(),
@@ -508,15 +508,21 @@ server.registerTool(
       seo_title: z.string().optional(),
       seo_description: z.string().optional(),
       keywords: z.array(z.string()).optional(),
+      confirm_change: z
+        .literal('user-approved')
+        .optional()
+        .describe(
+          'Required for EVERY edit, drafts included. Send it only after the user has seen what you propose to change and agreed to it in this request. Never edit an article on your own judgement.',
+        ),
       confirm_live_edit: z
         .literal('update-live-article')
         .optional()
         .describe(
-          'Required only when the target is currently published. Ask the user before sending it — this is a live change to content students are reading.',
+          'Required IN ADDITION to confirm_change when the target is currently published, because students are reading it right now.',
         ),
     },
   },
-  async ({ article_id, confirm_live_edit, ...fields }) =>
+  async ({ article_id, confirm_change, confirm_live_edit, ...fields }) =>
     run(async () => {
       const current = await api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${article_id}`);
       if (!current) throw new Error(`No article with id ${article_id}.`);
@@ -526,15 +532,26 @@ server.registerTool(
         throw new Error('No fields to change were supplied.');
       }
 
-      // A published article is live to students; an unconfirmed edit to one is
-      // treated as a mistake rather than an intention. Unpublishing is exempt:
-      // pulling wrong content down is the safe direction.
+      // Editing anything already posted is the user's call, not the agent's —
+      // drafts included. Their content is not ours to revise on our own
+      // judgement, so the gate is on every edit rather than only on live ones.
+      if (confirm_change !== 'user-approved') {
+        throw new Error(
+          `Article ${article_id} ("${current.title}", status: ${current.status}) was not changed. ` +
+            `Every edit must be agreed by the user first. Show them what you propose to change to ` +
+            `${changed.map(([k]) => k).join(', ')}, and once they agree, resend with confirm_change: "user-approved".`,
+        );
+      }
+
+      // A published article is being read right now, so it carries a second
+      // gate on top of the user's agreement. Unpublishing is exempt from this
+      // one: pulling wrong content down is the safe direction.
       const isUnpublishing = fields.status !== undefined && fields.status !== 'published';
       if (current.status === 'published' && confirm_live_edit !== 'update-live-article' && !isUnpublishing) {
         throw new Error(
           `Article ${article_id} ("${current.title}") is PUBLISHED — this edit would change what students see immediately. ` +
-            'Confirm with the user, then resend with confirm_live_edit: "update-live-article". ' +
-            'To take it offline instead, set status: "draft" (no confirmation needed).',
+            'Confirm that with the user too, then resend with confirm_live_edit: "update-live-article" alongside confirm_change. ' +
+            'To take it offline instead, set status: "draft" (needs confirm_change only).',
         );
       }
 
