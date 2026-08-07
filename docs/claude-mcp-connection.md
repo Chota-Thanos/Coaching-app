@@ -279,7 +279,43 @@ before Claude sees it — see [`deployment.md`](deployment.md).
 
 ---
 
-## 9. Skill files
+## 9. Correcting content that is already posted
+
+Added 2026-08-02. News articles and concept primers are rows in the same table
+separated only by `article_role` (`event` vs `concept`), so one set of tools
+corrects both.
+
+Three tools, meant to be used in order:
+
+| Tool | Purpose |
+|---|---|
+| `ca_find_articles` | Search posted content by text; returns ids. Searches every status, drafts included |
+| `ca_get_article` | Read one article in full, including its current body |
+| `ca_update_article` | Change only the fields supplied; everything else untouched |
+
+**Always find → read → change.** An id guessed from a title is the one mistake
+here that silently rewrites the wrong article.
+
+**Editing a published article requires `confirm_live_edit:
+"update-live-article"`**, because the change is visible to students
+immediately. Drafts need no confirmation. *Unpublishing is deliberately
+exempt* — setting `status: "draft"` on a wrong live article works without
+confirmation, since taking bad content down is the safe direction. The tool
+refuses with an explanatory error rather than editing, so the guardrail cannot
+be tripped by accident.
+
+`body` must be the **complete replacement** as HTML — not a fragment, not a
+diff. Markdown is converted automatically (§8), but only once the API change
+in commit `5ee5308` is deployed; before that, send HTML.
+
+No database migration and no new endpoint were needed — `PATCH
+/api/v1/current-affairs/articles/:id` already existed and accepts every
+creatable field. Regression cover in `article-update.test.ts` (5 tests, real
+DB, self-cleaning) including a concept-post case.
+
+---
+
+## 10. Skill files
 
 Eight standalone Cowork skills live in `tools/cowork-skills/` (five current
 affairs, three assessment), packaged as `.skill` files and uploaded via
