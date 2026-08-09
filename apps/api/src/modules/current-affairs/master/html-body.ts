@@ -20,7 +20,15 @@
  */
 
 export function looksLikeMarkdown(text: string): boolean {
-  if (/<\/?(p|h[1-6]|ul|ol|li|strong|em|div)\b/i.test(text)) return false; // already has real HTML
+  // `a` is in this list for a specific reason: Mains Notes carry pointers that
+  // each link back to their source article, so their bodies routinely contain
+  // <a href> among otherwise plain text. Without `a` here, such a body reads
+  // as Markdown, gets converted, and the converter escapes the anchor into
+  // visible "&lt;a&gt;" — destroying exactly the reference links the notes
+  // exist to carry. Treating any real anchor as "already HTML" is the safer
+  // failure: the worst case is prose left unconverted and visible in review,
+  // versus links silently broken on a published page.
+  if (/<\/?(p|h[1-6]|ul|ol|li|strong|em|div|a)\b/i.test(text)) return false; // already has real HTML
   return /^#{1,6}\s/m.test(text) || /^[-*]\s/m.test(text) || /\*\*[^*]+\*\*/.test(text);
 }
 

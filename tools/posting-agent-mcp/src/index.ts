@@ -755,62 +755,81 @@ server.registerTool(
  * ca_update_article for the actual merge, so there is exactly one place that
  * asks for edit confirmation rather than two.
  */
+/** Public URL of an article — what a pointer's reference link points at. */
+function articleUrl(slug: string): string {
+  const site = (process.env.COACHING_API_URL ?? '').replace(/\/+$/, '');
+  return `${site}/current-affairs/articles/${slug}`;
+}
+
 server.registerTool(
-  'ca_link_mains_summary',
+  'ca_link_to_mains_note',
   {
-    title: 'Link an Editorial Summary to its Mains Note topic',
+    title: 'Link a summary or news article to its Mains Note topic',
     description:
-      'Records that a summary contributed to a Mains Note topic — the same relationship ca_link_concept records for news and concepts, but for Editorial Summaries feeding a durable Mains Note. Find the topic first with ca_find_articles (content_kind: "mains_topic_note"). This tool ONLY creates the link; merging the summary\'s pointers into the topic\'s body is a separate ca_update_article call, proposed to and agreed by the user first. Safe to re-run: a link that already exists is reported, not duplicated.',
+      'Records that a source article fed pointers into a durable Mains Note — the Mains-side counterpart to ca_link_concept. The source can be an Editorial Summary OR a daily news article: a judgment or committee report filed as daily news is just as much fodder for a topic note as a summary is. Find the topic first with ca_find_articles (content_kind: "mains_topic_note").\n\nReturns the source\'s public URL as reference_url — use exactly that in the pointer\'s <a href> inside the note body, rather than composing a URL by hand.\n\nThis tool ONLY records the relation; writing the pointers into the note body is a separate ca_update_article call. Propose both to the user together and get one agreement, then make the two calls. Safe to re-run: an existing link is reported, not duplicated.',
     inputSchema: {
-      summary_article_id: z.number().int().positive().describe('The Editorial Summary — the source.'),
+      source_article_id: z
+        .number()
+        .int()
+        .positive()
+        .describe('The Editorial Summary or daily news article the pointers came from.'),
       topic_article_id: z.number().int().positive().describe('The Mains Note — the target. From ca_find_articles.'),
       note: z
         .string()
         .max(300)
         .optional()
-        .describe('One line on what this summary added, e.g. "China\'s BRI stance after the 2024 border talks."'),
+        .describe('One line on what this source added, e.g. "SC ruling on NOTA in Rajya Sabha polls."'),
       confirm_change: z
         .literal('user-approved')
         .describe(
-          'Required, same as ca_update_article. The user must have agreed to this link (and to the separate pointers merge, if any) before it is sent.',
+          'Required, same as ca_update_article. The user must have agreed to this link (and to the pointers merge that goes with it) before it is sent.',
         ),
     },
   },
-  async ({ summary_article_id, topic_article_id, note, confirm_change }) =>
+  async ({ source_article_id, topic_article_id, note, confirm_change }) =>
     run(async () => {
       if (confirm_change !== 'user-approved') {
         throw new Error(
-          `Not linked. Propose the link (summary ${summary_article_id} → topic ${topic_article_id}) to the user and wait for agreement, then resend with confirm_change: "user-approved".`,
+          `Not linked. Propose the link (source ${source_article_id} → topic ${topic_article_id}) to the user and wait for agreement, then resend with confirm_change: "user-approved".`,
         );
       }
 
-      const [summary, topic] = await Promise.all([
-        api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${summary_article_id}`),
+      const [source, topic] = await Promise.all([
+        api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${source_article_id}`),
         api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${topic_article_id}`),
       ]);
-      if (!summary) throw new Error(`No article with id ${summary_article_id} (summary).`);
+      if (!source) throw new Error(`No article with id ${source_article_id} (source).`);
       if (!topic) throw new Error(`No article with id ${topic_article_id} (topic).`);
       if (topic.content_kind !== 'mains_topic_note') {
         throw new Error(`Article ${topic_article_id} is content_kind "${topic.content_kind}", not "mains_topic_note".`);
       }
+      if (source.id === topic.id) {
+        throw new Error('A note cannot be linked to itself.');
+      }
+
+      // The label is what an editor sees on the relation in the admin panel,
+      // so it should say which kind of source this was without them opening it.
+      const label = source.content_kind === 'daily_editorial_summary' ? 'Source Summary' : 'Source Article';
+      const reference_url = articleUrl(source.slug);
 
       const existing = await api.get<{ outgoing?: Array<{ target_article_id: number }> }>(
-        `/api/v1/current-affairs/articles/${summary_article_id}/relations`,
+        `/api/v1/current-affairs/articles/${source_article_id}/relations`,
       );
       if ((existing?.outgoing ?? []).some((rel) => rel.target_article_id === topic_article_id)) {
         return {
           linked: false,
           reason: 'already linked',
-          summary: { id: summary.id, title: summary.title },
+          reference_url,
+          source: { id: source.id, title: source.title, content_kind: source.content_kind },
           topic: { id: topic.id, title: topic.title },
         };
       }
 
       try {
-        await api.post(`/api/v1/current-affairs/articles/${summary_article_id}/relations`, {
+        await api.post(`/api/v1/current-affairs/articles/${source_article_id}/relations`, {
           target_article_id: topic_article_id,
           relation_type: 'mains_fodder',
-          label: 'Source Summary',
+          label,
           note,
         });
       } catch (error) {
@@ -823,7 +842,8 @@ server.registerTool(
           return {
             linked: false,
             reason: 'already linked',
-            summary: { id: summary.id, title: summary.title },
+            reference_url,
+            source: { id: source.id, title: source.title, content_kind: source.content_kind },
             topic: { id: topic.id, title: topic.title },
           };
         }
@@ -832,7 +852,13 @@ server.registerTool(
 
       return {
         linked: true,
-        summary: { id: summary.id, title: summary.title, status: summary.status },
+        reference_url,
+        source: {
+          id: source.id,
+          title: source.title,
+          content_kind: source.content_kind,
+          status: source.status,
+        },
         topic: { id: topic.id, title: topic.title, status: topic.status },
       };
     }),

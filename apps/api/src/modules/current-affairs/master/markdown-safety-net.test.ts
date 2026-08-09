@@ -58,6 +58,23 @@ test("HTML-unsafe characters in the source text are escaped, not injected", () =
   assert.match(html, /&lt; b comparison/);
 });
 
+test("a body carrying reference links is never converted, so the links survive", () => {
+  // Mains Notes route pointers from summaries and daily news into their
+  // sections, each with an <a href> back to the source. Converting such a
+  // body would escape the anchor into visible "&lt;a&gt;" and break every
+  // reference link on the page.
+  const withLink =
+    '<p>SC struck down the provision. <a href="https://waytoias.com/current-affairs/articles/x">Source</a></p>';
+  assert.equal(looksLikeMarkdown(withLink), false);
+  assert.equal(ensureHtmlBody(withLink).converted, false);
+  assert.equal(ensureHtmlBody(withLink).body, withLink);
+
+  // Even mixed with Markdown-looking punctuation, a real anchor wins.
+  const mixed = '## Issues\n- Struck down. <a href="https://waytoias.com/x">Source</a>';
+  assert.equal(looksLikeMarkdown(mixed), false);
+  assert.doesNotMatch(ensureHtmlBody(mixed).body, /&lt;a/);
+});
+
 test("ensureHtmlBody reports whether it actually had to convert anything", () => {
   const untouched = ensureHtmlBody("<p>Already fine.</p>");
   assert.equal(untouched.converted, false);

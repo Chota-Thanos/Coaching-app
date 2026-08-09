@@ -119,24 +119,35 @@ Do this after every `ca_commit`, once the summary has an id:
    and `content_kind: "mains_topic_note"`.
 
 2. **If a topic exists:** read it with `ca_get_article`. Identify which of
-   its dimension sub-headings this summary's content actually adds to —
-   usually one or two, not all of them. Pull out only the pointers worth a
-   student remembering (a fact, a figure, a named argument), not the whole
-   summary. **Propose this to the user before touching anything**: which
-   dimension(s), what you'd add, in what form. Wait for agreement.
+   its **section headings** this summary's content actually adds to —
+   usually one or two, not all of them. A note's sections are named things
+   (*Issues and Challenges*, *Evolution*, *Recommendations and Reforms*, and
+   so on, depending on subject); route each pointer to the section it truly
+   belongs to, never to a "Recent Developments" dump at the bottom.
+
+   Pull out only the pointers worth a student remembering (a fact, a figure,
+   a named argument), not the whole summary. Each pointer is one bullet:
+   the substance to the point, then a reference link back to this summary —
+   using the exact `reference_url` that `ca_link_to_mains_note` returns,
+   never a hand-composed URL.
+
+   **Propose this to the user before touching anything**: which section(s),
+   and the exact bullet text. Wait for agreement.
 
    Once agreed: merge the new pointers into the topic's existing body under
-   the matching heading (`ca_get_article` again if time has passed, so
+   the matching headings (`ca_get_article` again if time has passed, so
    you're editing the current body, not a stale copy) and save with
    `ca_update_article`, `confirm_change: "user-approved"` (plus
-   `confirm_live_edit` if the topic is published). Then record the link
-   itself with `ca_link_mains_summary`, same confirmation. Two calls, one
-   agreement — don't ask twice for the same change.
+   `confirm_live_edit` if the topic is published) — the body replaces the
+   whole body, so send the existing note with your additions merged in, not
+   just the new bullets. Then record the link with `ca_link_to_mains_note`,
+   same confirmation. Two calls, one agreement — don't ask twice for the
+   same change.
 
 3. **If no topic exists:** tell the user plainly — "no Mains Note exists yet
    for X" — and propose creating one. Don't create it yourself. If they
    agree, write it through the normal `waytoias-ca-mains-notes` flow, then
-   link the two with `ca_link_mains_summary`.
+   link the two with `ca_link_to_mains_note`.
 
 4. **Never re-summarise the same ground into a second topic.** If a topic
    already exists but looks thin, that's a reason to improve it in place

@@ -29,36 +29,133 @@ say so and stop; don't try to work around it.
 
 ## Structure
 
-This is a durable study note, not news — it should read the same and be just
-as useful in two years. If the topic has a recent news hook, mention it
-briefly for relevance, but the note itself should stand on its own as
-something a student returns to repeatedly.
+A Mains Note is the **durable topic page** — the one place a student returns
+to for everything on "Electoral System of India" or "India-China Relations".
+It should read the same and be just as useful in two years. Dated pieces
+(summaries, daily news) feed pointers *into* it; it is never itself a
+write-up of one day's event.
 
-1. **Syllabus Mapping** — the GS paper and the exact syllabus phrase this
-   topic falls under.
-2. **Concept** — a precise definition and the essential framework. Assume the
-   reader is prepping seriously but wants clarity, not a textbook wall of
-   text.
-3. **Constitutional and Legal Basis** — relevant Articles, Acts, judgments.
-   Omit entirely if the topic genuinely has none, rather than stretching for
-   a tenuous citation.
-4. **Dimensions** — political, economic, social, environmental, ethical,
-   international. Give each applicable angle its own sub-heading; skip any
-   that don't genuinely apply.
-5. **Committees, Reports and Data** — named sources with their actual key
-   findings, not just a list of names.
-6. **Case Studies and Examples** — two or three concrete, verifiable
-   instances.
-7. **Way Forward** — specific measures, each tied back to a dimension raised
-   above, not generic recommendations.
-8. **Answer Framework** — how a student should structure a ~250-word answer
-   on this topic: what the introduction, body and conclusion should each do.
+### Always present, in order
+
+1. **Title** — the topic itself, not an event: *"Electoral System of
+   India"*, not *"SC Ruling on NOTA"*. One topic per note.
+2. **Syllabus Mapping** — the GS paper and the exact syllabus phrase.
+3. The subject-specific body — from the Format Library below.
+4. **Answer Framework** — how to structure a ~250-word answer: what the
+   introduction, body and conclusion should each do.
+
+### Format Library — pick the body that fits the subject
+
+Don't force every topic through one fixed set of headings. A polity
+institution, a bilateral relationship, an economic mechanism and an
+environmental issue don't carry the same kind of information. Pick the
+template whose subject matches, and **use its heading names exactly as
+written** — pointers get routed to sections by name, so a note whose
+headings are improvised has nowhere predictable to route them to.
+
+Skip a section that genuinely doesn't apply rather than padding it. Add one
+the template lacks if the topic truly needs it.
+
+**Polity, Governance and Constitution** — institutions, systems, rights,
+bodies. *(The shape the user specified; treat it as the reference pattern.)*
+- *Overview* — what this institution/system is, in plain language, and why
+  it exists.
+- *Components and Constituents* — its parts and who/what each is. Real list.
+- *Constitutional and Legal Provisions* — Articles, Acts, rules, with exact
+  citations. Real list.
+- *Evolution* — a **chronology**, oldest first, showing how the present
+  shape was formed: colonial-era origin → Constituent Assembly debate →
+  each amendment, statute and landmark judgment that changed it. One dated
+  bullet per step, in order. This is the section that grows most as
+  developments land.
+- *Issues and Challenges* — what is actually wrong with it now. Real list.
+- *Recommendations and Reforms* — committee proposals and expert
+  recommendations answering those issues, each named. Real list.
+
+**International Relations** — bilateral/multilateral relationships, groupings.
+- *Overview* — the relationship in one paragraph.
+- *Historical Evolution* — chronology of the relationship's phases.
+- *Pillars of Cooperation* — trade, defence, energy, diaspora, technology;
+  one bullet each, with figures.
+- *Areas of Friction* — disputes and irritants. Real list.
+- *India's Strategic Interests* — what India actually wants here.
+- *Way Forward* — specific, not generic.
+
+**Economy** — mechanisms, sectors, policy instruments.
+- *Overview* — what it is and where it sits in the economy.
+- *How It Works* — the mechanism, step by step.
+- *Institutional and Regulatory Framework* — who governs it, under what law.
+- *Current Status and Data* — figures with their source and year. Real list.
+- *Issues and Challenges* — real list.
+- *Reforms and Recommendations* — committee-named where possible.
+
+**Environment and Ecology** — ecosystems, species, climate, pollution.
+- *Overview* — what it is and its ecological significance.
+- *Legal and Policy Framework* — domestic Acts and rules.
+- *International Conventions and Commitments* — treaties, targets, India's
+  position.
+- *Threats and Drivers of Degradation* — real list.
+- *Conservation Measures* — schemes, protected areas, restoration efforts.
+- *Way Forward*.
+
+**Science and Technology** — technologies, missions, emerging domains.
+- *Overview* — what it is, in language a non-specialist follows.
+- *How It Works* — the underlying mechanism or principle.
+- *Applications* — real list.
+- *India's Ecosystem and Capability* — bodies, missions, indigenous
+  capacity, where India stands.
+- *Regulatory and Ethical Issues* — real list.
+- *Way Forward*.
+
+**Society and Social Justice** — vulnerable sections, social issues,
+welfare.
+- *Overview* — the issue and who it affects.
+- *Constitutional and Legal Safeguards* — Articles, Acts, exact citations.
+- *Data and Status* — figures with source and year.
+- *Causes and Structural Drivers* — real list.
+- *Government Interventions* — schemes and programmes, named.
+- *Issues in Implementation* — real list.
+- *Way Forward*.
+
+**Ethics (GS-IV)** — concepts, values, applied ethics.
+- *Overview* — the concept defined precisely.
+- *Philosophical Foundations* — thinkers and schools, named.
+- *Application in Public Administration* — how it plays out in real
+  administrative life.
+- *Case Studies* — two or three concrete instances. Real list.
+- *Ethical Dilemmas Involved* — the genuine tensions, both sides.
+- *Way Forward*.
+
+**History, Art and Culture / Geography** — if a topic fits none of the above
+cleanly, build from: *Overview → Features/Characteristics → Evolution or
+Distribution → Significance → Issues → Way Forward*, keeping the same
+fact-vs-list discipline.
+
+### Sections shared by every template
+
+Add these to whichever template you picked, unless genuinely inapplicable:
+
+- **Committees, Reports and Data** — named sources with their actual
+  findings, not just a list of names.
+- **Case Studies and Examples** — two or three concrete, verifiable
+  instances (skip if the template already has its own Case Studies).
+
+### Fact fields vs list fields
+
+Same discipline as the daily-news skill. A **fact field** is one short named
+attribute — a bulleted line with a bold label, never its own heading. A
+**list field** genuinely has several points — it gets its own `##` heading
+with a real bulleted list under it (`-` lines in your Markdown), never a
+paragraph of sentences run together. Never emit a `##` heading for a single
+short fact.
 
 **Voice:** write for permanence — avoid "recently", "last month", or
 anything that dates the note. Where a fact is genuinely time-bound (a
-committee's report year, a scheme's launch year), state the year explicitly.
-Length 800-1200 words — the longest content type here, so budget research
-time before you start writing.
+committee's report year, a judgment's year), state the year explicitly.
+Length 800-1200 words for a new note — the longest content type here, so
+budget research time before you start writing. A mature note that has
+accumulated pointers over months will be considerably longer, and that's
+correct.
 
 ## Research and accuracy — this is what makes the content trustworthy
 
@@ -113,25 +210,90 @@ went live last time. If you're not sure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
-## After committing — check for Editorial Summaries to link back
+## Pointers — how developments enter a note
 
-This note is the durable topic that many dated Editorial Summaries feed over
-time (several India-China summaries across months all belong under one
-"India-China Relations" note). If summaries on this topic already exist —
-written before this note was — they should point to it too, not sit
-unlinked.
+This is the mechanism that makes a Mains Note a living topic page rather
+than a one-off write-up. Two kinds of dated content feed it:
 
-`ca_find_articles` with the entity/topic name and
-`content_kind: "daily_editorial_summary"`. For each real match, propose
-linking it to the user (which summary, why it fits) and, if there's a
-pointer from that summary genuinely missing from the note, propose adding it
-to the relevant dimension the same way described in the editorial-summary
-skill's "After committing" section. Wait for agreement on both before
-calling `ca_update_article` and `ca_link_mains_summary` — same confirmation
-rule as everywhere else in this pipeline.
+- **Editorial Summaries** — arguments, evaluations, expert positions.
+- **Daily news articles** — judgments, committee reports, bills, data
+  releases. A Supreme Court ruling on NOTA is filed as daily news, and it
+  belongs in the electoral-system note just as much as any summary does.
 
-Don't force a link where the summary doesn't actually bear on this topic —
-an unrelated match found by name alone is not a reason to connect them.
+### The rule: route to the section, don't append to the end
+
+A pointer goes into **the section it actually belongs to**, never into a
+"Recent Developments" dump at the bottom. That routing is the whole point —
+a student reading *Evolution* should see the 2024 judgment in its
+chronological place, and a student reading *Issues* should see the problem
+that judgment exposed.
+
+Worked example, a ruling striking down a provision of the electoral system:
+
+- the ruling itself, dated → **Evolution** (in chronological position)
+- the problem it exposed → **Issues and Challenges**
+- what the court directed → **Recommendations and Reforms**
+
+One development can legitimately touch two or three sections. It can also
+touch exactly one — don't manufacture entries to fill every heading.
+
+### Pointer format
+
+Each pointer is **one bullet**: the substance stated to the point, then the
+reference link. Never paste the source's paragraphs in — a note is a
+notebook of pointers, not an anthology.
+
+```html
+<li><strong>2024:</strong> SC struck down the electoral bonds scheme as
+violative of Article 19(1)(a).
+<a href="https://waytoias.com/current-affairs/articles/the-slug">Source</a></li>
+```
+
+Use the **exact `reference_url`** that `ca_link_to_mains_note` returns — do
+not compose a URL by hand from the title or guess the slug.
+
+Write the pointer so it stands on its own. The link is there for a student
+who wants the full explanation, not a substitute for saying what happened.
+
+### The workflow
+
+Do this after committing a new note, and whenever a development should enter
+an existing one:
+
+1. **Find the sources.** `ca_find_articles` on the topic/entity name — once
+   with `content_kind: "daily_editorial_summary"`, once with
+   `content_kind: "daily_current_affairs"`. Both feed the note.
+2. **Read the note as it stands now.** `ca_get_article` on the topic —
+   always immediately before proposing an edit, so you're working from the
+   current body and not a stale copy from earlier in the session.
+3. **Decide what actually adds something.** Skip a source whose substance is
+   already in the note. A name match is not a reason to link — if the
+   article doesn't genuinely bear on this topic, leave it out and say so.
+4. **Propose to the user, and wait.** State: which source, which section(s)
+   it goes into, and the exact bullet text you'd add. Never write first and
+   report after.
+5. **On agreement, make two calls:**
+   - `ca_update_article` — the note's full body with the pointers merged
+     into their sections, `confirm_change: "user-approved"` (plus
+     `confirm_live_edit` if the note is published).
+   - `ca_link_to_mains_note` — records the relation, `confirm_change:
+     "user-approved"`.
+
+   One agreement covers both calls. Don't ask twice for the same change.
+
+**Body edits replace the whole body**, so send the existing note with your
+additions merged in — never just the new bullets, which would wipe
+everything else.
+
+### What not to do here
+
+- Don't append a pointer to the end of the note because routing it was
+  harder.
+- Don't restate a development already covered — check before adding.
+- Don't link a source that doesn't genuinely bear on the topic.
+- Don't paste summary paragraphs into the note. Pointers, with links.
+- Don't create a second note on a topic that already has one. If the
+  existing note is thin, that's a reason to improve it in place.
 
 ## What not to do
 
