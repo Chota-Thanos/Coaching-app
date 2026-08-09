@@ -113,6 +113,26 @@ went live last time. If you're not sure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
+## After committing — check for Editorial Summaries to link back
+
+This note is the durable topic that many dated Editorial Summaries feed over
+time (several India-China summaries across months all belong under one
+"India-China Relations" note). If summaries on this topic already exist —
+written before this note was — they should point to it too, not sit
+unlinked.
+
+`ca_find_articles` with the entity/topic name and
+`content_kind: "daily_editorial_summary"`. For each real match, propose
+linking it to the user (which summary, why it fits) and, if there's a
+pointer from that summary genuinely missing from the note, propose adding it
+to the relevant dimension the same way described in the editorial-summary
+skill's "After committing" section. Wait for agreement on both before
+calling `ca_update_article` and `ca_link_mains_summary` — same confirmation
+rule as everywhere else in this pipeline.
+
+Don't force a link where the summary doesn't actually bear on this topic —
+an unrelated match found by name alone is not a reason to connect them.
+
 ## What not to do
 
 - Don't write about a topic you couldn't find real grounding for. Say so.

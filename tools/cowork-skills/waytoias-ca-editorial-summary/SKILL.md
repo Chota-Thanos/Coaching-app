@@ -108,6 +108,40 @@ went live last time. If you're not sure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
+## After committing — check for a Mains Note topic
+
+A summary is one dated piece; a Mains Note is the durable topic it feeds —
+many summaries contribute to one note over time (several India-China
+summaries across months all feed the one "India-China Relations" note).
+Do this after every `ca_commit`, once the summary has an id:
+
+1. **Search for the topic** — `ca_find_articles` with the entity/topic name
+   and `content_kind: "mains_topic_note"`.
+
+2. **If a topic exists:** read it with `ca_get_article`. Identify which of
+   its dimension sub-headings this summary's content actually adds to —
+   usually one or two, not all of them. Pull out only the pointers worth a
+   student remembering (a fact, a figure, a named argument), not the whole
+   summary. **Propose this to the user before touching anything**: which
+   dimension(s), what you'd add, in what form. Wait for agreement.
+
+   Once agreed: merge the new pointers into the topic's existing body under
+   the matching heading (`ca_get_article` again if time has passed, so
+   you're editing the current body, not a stale copy) and save with
+   `ca_update_article`, `confirm_change: "user-approved"` (plus
+   `confirm_live_edit` if the topic is published). Then record the link
+   itself with `ca_link_mains_summary`, same confirmation. Two calls, one
+   agreement — don't ask twice for the same change.
+
+3. **If no topic exists:** tell the user plainly — "no Mains Note exists yet
+   for X" — and propose creating one. Don't create it yourself. If they
+   agree, write it through the normal `waytoias-ca-mains-notes` flow, then
+   link the two with `ca_link_mains_summary`.
+
+4. **Never re-summarise the same ground into a second topic.** If a topic
+   already exists but looks thin, that's a reason to improve it in place
+   (step 2), never to start a competing one.
+
 ## What not to do
 
 - Don't summarise an editorial you couldn't actually find or read — say so.

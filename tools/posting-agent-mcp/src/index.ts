@@ -735,6 +735,109 @@ server.registerTool(
     }),
 );
 
+/**
+ * Editorial Summary → Mains Note linking.
+ *
+ * Structurally the same many-to-one shape as event → concept: many summaries
+ * (content_kind daily_editorial_summary) feed pointers into one durable Mains
+ * Note topic (mains_topic_note) — e.g. several India-China summaries across
+ * months all contribute to one "India-China Relations" note. Reuses the
+ * generic article-relations table with relation_type "mains_fodder", a type
+ * that already existed in the schema for exactly this and was unused.
+ *
+ * Deliberately no "compose a new topic" branch here, unlike ca_link_concept.
+ * When no matching topic exists, the skill proposes one to the user and waits
+ * — if agreed, the topic is created through the normal mains-notes posting
+ * flow (ca_parse + ca_commit), then linked with this tool. One creation path,
+ * not two.
+ *
+ * This tool only records the link; it does not touch the topic's body. Use
+ * ca_update_article for the actual merge, so there is exactly one place that
+ * asks for edit confirmation rather than two.
+ */
+server.registerTool(
+  'ca_link_mains_summary',
+  {
+    title: 'Link an Editorial Summary to its Mains Note topic',
+    description:
+      'Records that a summary contributed to a Mains Note topic — the same relationship ca_link_concept records for news and concepts, but for Editorial Summaries feeding a durable Mains Note. Find the topic first with ca_find_articles (content_kind: "mains_topic_note"). This tool ONLY creates the link; merging the summary\'s pointers into the topic\'s body is a separate ca_update_article call, proposed to and agreed by the user first. Safe to re-run: a link that already exists is reported, not duplicated.',
+    inputSchema: {
+      summary_article_id: z.number().int().positive().describe('The Editorial Summary — the source.'),
+      topic_article_id: z.number().int().positive().describe('The Mains Note — the target. From ca_find_articles.'),
+      note: z
+        .string()
+        .max(300)
+        .optional()
+        .describe('One line on what this summary added, e.g. "China\'s BRI stance after the 2024 border talks."'),
+      confirm_change: z
+        .literal('user-approved')
+        .describe(
+          'Required, same as ca_update_article. The user must have agreed to this link (and to the separate pointers merge, if any) before it is sent.',
+        ),
+    },
+  },
+  async ({ summary_article_id, topic_article_id, note, confirm_change }) =>
+    run(async () => {
+      if (confirm_change !== 'user-approved') {
+        throw new Error(
+          `Not linked. Propose the link (summary ${summary_article_id} → topic ${topic_article_id}) to the user and wait for agreement, then resend with confirm_change: "user-approved".`,
+        );
+      }
+
+      const [summary, topic] = await Promise.all([
+        api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${summary_article_id}`),
+        api.get<ArticleRow>(`/api/v1/current-affairs/admin/articles/${topic_article_id}`),
+      ]);
+      if (!summary) throw new Error(`No article with id ${summary_article_id} (summary).`);
+      if (!topic) throw new Error(`No article with id ${topic_article_id} (topic).`);
+      if (topic.content_kind !== 'mains_topic_note') {
+        throw new Error(`Article ${topic_article_id} is content_kind "${topic.content_kind}", not "mains_topic_note".`);
+      }
+
+      const existing = await api.get<{ outgoing?: Array<{ target_article_id: number }> }>(
+        `/api/v1/current-affairs/articles/${summary_article_id}/relations`,
+      );
+      if ((existing?.outgoing ?? []).some((rel) => rel.target_article_id === topic_article_id)) {
+        return {
+          linked: false,
+          reason: 'already linked',
+          summary: { id: summary.id, title: summary.title },
+          topic: { id: topic.id, title: topic.title },
+        };
+      }
+
+      try {
+        await api.post(`/api/v1/current-affairs/articles/${summary_article_id}/relations`, {
+          target_article_id: topic_article_id,
+          relation_type: 'mains_fodder',
+          label: 'Source Summary',
+          note,
+        });
+      } catch (error) {
+        // The check above has a race (two near-simultaneous calls can both
+        // pass it before either write lands), so the database's own unique
+        // constraint is the real guarantee against a duplicate row. A 409
+        // here means someone already made this same link — report it the
+        // same way the pre-check does, not as a failure.
+        if (error instanceof ApiError && error.status === 409) {
+          return {
+            linked: false,
+            reason: 'already linked',
+            summary: { id: summary.id, title: summary.title },
+            topic: { id: topic.id, title: topic.title },
+          };
+        }
+        throw error;
+      }
+
+      return {
+        linked: true,
+        summary: { id: summary.id, title: summary.title, status: summary.status },
+        topic: { id: topic.id, title: topic.title, status: topic.status },
+      };
+    }),
+);
+
 // ─── Generation ──────────────────────────────────────────────────────────────
 //
 // These *create* content that no human has read. None of them write anything —
