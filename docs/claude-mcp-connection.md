@@ -296,13 +296,17 @@ Three tools, meant to be used in order:
 **Always find → read → change.** An id guessed from a title is the one mistake
 here that silently rewrites the wrong article.
 
-**Editing a published article requires `confirm_live_edit:
-"update-live-article"`**, because the change is visible to students
-immediately. Drafts need no confirmation. *Unpublishing is deliberately
-exempt* — setting `status: "draft"` on a wrong live article works without
-confirmation, since taking bad content down is the safe direction. The tool
-refuses with an explanatory error rather than editing, so the guardrail cannot
-be tripped by accident.
+**Every edit needs `confirm_change: "user-approved"` — drafts included.**
+(Tightened 2026-08-08, commit `5276004`; originally only published articles
+were gated, which meant a draft could be revised silently. Posted content is
+the user's to change, not the agent's to revise on its own judgement.) A
+**published** article needs `confirm_live_edit: "update-live-article"` as
+well, since the change is visible to students immediately. *Unpublishing is
+exempt from the live-edit gate only* — setting `status: "draft"` on a wrong
+live article still needs `confirm_change`, but not `confirm_live_edit`, since
+taking bad content down is the safe direction. The tool refuses with an
+explanatory error rather than editing, so neither guardrail can be tripped by
+accident.
 
 `body` must be the **complete replacement** as HTML — not a fragment, not a
 diff. Markdown is converted automatically (§8), but only once the API change
@@ -315,7 +319,47 @@ DB, self-cleaning) including a concept-post case.
 
 ---
 
-## 10. Skill files
+## 10. Linking Editorial Summaries to their Mains Note topic
+
+Added 2026-08-09. The same many-to-one shape as event → concept (§1), for the
+Mains-prep side of current affairs: many dated Editorial Summaries
+(`daily_editorial_summary`) each feed pointers into one durable Mains Note
+topic (`mains_topic_note`) over time — several India-China summaries across
+months all belong under one "India-China Relations" note.
+
+One tool, `ca_link_mains_summary` — but it only **records the link**.
+Merging a summary's pointers into the topic's body is a separate
+`ca_update_article` call, so there is exactly one place that asks for edit
+confirmation, not two:
+
+1. `ca_find_articles` (content_kind `mains_topic_note`) — is there already a
+   topic for this entity?
+2. If yes: read it, identify which dimension(s) the summary actually adds
+   to, propose the specific addition to the user, wait for agreement.
+3. On agreement: `ca_update_article` to merge the pointers into the topic's
+   body (`confirm_change`, plus `confirm_live_edit` if published), then
+   `ca_link_mains_summary` (`confirm_change`) to record the relation.
+4. If no topic exists: propose creating one — **never created
+   automatically**, unlike `ca_link_concept`'s concept-composing branch. On
+   agreement, it's written through the normal mains-notes posting flow, then
+   linked.
+
+Reuses the generic `article_relations` table with `relation_type:
+"mains_fodder"` — a type that already existed in the schema, unused, before
+this. No migration, no new endpoint.
+
+**A real race was caught and fixed while testing this live**: two
+near-simultaneous calls can both pass the "already linked?" pre-check before
+either write lands, so the second hits the database's own unique constraint
+`(source_article_id, target_article_id, relation_type)` instead. That 409 is
+now caught and reported as `"already linked"`, the same as the pre-check
+path, rather than surfaced as a raw error. The constraint itself is the real
+guarantee against a duplicate row; the pre-check is only there to avoid an
+unnecessary round-trip in the normal, sequential case.
+
+---
+
+## 11. Skill files
 
 Eight standalone Cowork skills live in `tools/cowork-skills/` (five current
 affairs, three assessment), packaged as `.skill` files and uploaded via
