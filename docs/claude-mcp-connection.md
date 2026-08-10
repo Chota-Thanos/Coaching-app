@@ -319,34 +319,56 @@ DB, self-cleaning) including a concept-post case.
 
 ---
 
-## 10. Linking Editorial Summaries to their Mains Note topic
+## 10. Mains Notes — pointers, sources and concepts
 
 Added 2026-08-09. The same many-to-one shape as event → concept (§1), for the
-Mains-prep side of current affairs: many dated Editorial Summaries
-(`daily_editorial_summary`) each feed pointers into one durable Mains Note
-topic (`mains_topic_note`) over time — several India-China summaries across
+Mains-prep side: many dated pieces feed pointers into one durable Mains Note
+topic (`mains_topic_note`) over time — several India-China items across
 months all belong under one "India-China Relations" note.
 
-One tool, `ca_link_mains_summary` — but it only **records the link**.
-Merging a summary's pointers into the topic's body is a separate
-`ca_update_article` call, so there is exactly one place that asks for edit
-confirmation, not two:
+**A Mains Note is a notebook, not an encyclopedia.** It carries keywords,
+dated pointers and passing references; anything needing paragraphs of
+explanation goes in a **concept page** the note links to. That division is
+what stops notes becoming unusable as they accumulate material.
 
-1. `ca_find_articles` (content_kind `mains_topic_note`) — is there already a
-   topic for this entity?
-2. If yes: read it, identify which dimension(s) the summary actually adds
-   to, propose the specific addition to the user, wait for agreement.
-3. On agreement: `ca_update_article` to merge the pointers into the topic's
-   body (`confirm_change`, plus `confirm_live_edit` if published), then
-   `ca_link_mains_summary` (`confirm_change`) to record the relation.
-4. If no topic exists: propose creating one — **never created
-   automatically**, unlike `ca_link_concept`'s concept-composing branch. On
-   agreement, it's written through the normal mains-notes posting flow, then
-   linked.
+**Direction matters, and is deliberately asymmetric:**
+
+| Source | Pushes into a note? |
+|---|---|
+| Editorial Summary | **Yes** — a summary is Mains material by definition, so the summary skill checks for a topic when written |
+| Daily news | **No** — the *note* goes looking for news worth referencing; pushing from every routine story would trigger a topic hunt on appointments and awards |
+
+`ca_link_to_mains_note` accepts either kind as a source, and returns the
+source's public `reference_url` so pointers link back with a real URL rather
+than a guessed slug. It only **records the relation** — writing pointers into
+the body is a separate `ca_update_article` call, so there is exactly one
+place that asks for edit confirmation, not two.
+
+Pointers **route to the section they belong to** (a dated ruling into
+*Evolution* in chronological position, the problem it exposed into *Issues
+and Challenges*), never a "Recent Developments" dump at the end. This is why
+the skill's Format Library fixes heading names per subject — routing matches
+sections by name, so improvised headings have nowhere predictable to land.
+
+Concepts: notes use the same pool and the same `ca_link_concept` tool as
+daily news (verified live — the tool does not restrict the source's
+content_kind, so a note links to a concept exactly as a news article does),
+normally with `is_core: false`, since a topic note touches many concepts in
+passing rather than having one central one.
+
+A missing topic is **never created automatically**, unlike
+`ca_link_concept`'s concept-composing branch — it is proposed to the user and
+written through the normal mains-notes flow on agreement.
 
 Reuses the generic `article_relations` table with `relation_type:
 "mains_fodder"` — a type that already existed in the schema, unused, before
 this. No migration, no new endpoint.
+
+**A formatting bug this feature would have tripped**, fixed in `49a0603`:
+`looksLikeMarkdown` did not count `<a>` as real HTML, so a note body of
+pointers-with-links read as Markdown and the converter escaped every anchor
+into visible `&lt;a&gt;` — breaking exactly the reference links these notes
+exist to carry. Anchors now count as HTML (§8), with regression cover.
 
 **A real race was caught and fixed while testing this live**: two
 near-simultaneous calls can both pass the "already linked?" pre-check before

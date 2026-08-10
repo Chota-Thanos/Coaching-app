@@ -420,39 +420,16 @@ Not because a similar request went live last time. If you're not sure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
-## After committing — does this belong in a Mains Note?
+## Don't go looking for Mains Notes
 
-Some daily news is Mains fodder as well as Prelims fodder: a Supreme Court
-judgment, a committee report, a bill, a major data release. These belong in
-the durable topic note too — a ruling on the electoral system belongs in
-"Electoral System of India" as much as any editorial summary does.
+A daily news article is finished when it is committed (and its concept
+linked, if it has one). **Do not search for a Mains Note to feed it into.**
 
-Routine news usually doesn't: an appointment, an award, a minor scheme
-milestone. Judge honestly rather than linking everything.
-
-If it does qualify:
-
-1. `ca_find_articles` with the topic/entity name and
-   `content_kind: "mains_topic_note"`.
-2. If a note exists, read it with `ca_get_article`, and work out which
-   **section** this development belongs in — a dated ruling goes into
-   *Evolution* in its chronological place, the problem it exposed into
-   *Issues and Challenges*, the direction it gave into *Recommendations and
-   Reforms*. Never a "Recent Developments" dump at the bottom.
-3. **Propose to the user** — which note, which section(s), the exact bullet
-   text — and wait. Each pointer is one bullet: the substance to the point,
-   then a reference link back to this article using the exact
-   `reference_url` that `ca_link_to_mains_note` returns.
-4. On agreement: `ca_update_article` to merge the pointers into the note's
-   body (`confirm_change`, plus `confirm_live_edit` if published — the body
-   replaces the whole body, so send the existing note with your additions
-   merged in), then `ca_link_to_mains_note` to record the relation. One
-   agreement, two calls.
-5. If no note exists, say so and propose creating one — don't create it
-   yourself. Written through the `waytoias-ca-mains-notes` flow if agreed.
-
-Full detail lives in the `waytoias-ca-mains-notes` skill under "Pointers —
-how developments enter a note".
+Mains Notes do pull pointers from daily news, but that happens from the
+other side — when a note is written or updated, it goes looking for the news
+articles worth referencing. Pushing from here would mean every routine
+story triggers a topic-note hunt, and most daily news isn't Mains fodder at
+all.
 
 ## What not to do
 

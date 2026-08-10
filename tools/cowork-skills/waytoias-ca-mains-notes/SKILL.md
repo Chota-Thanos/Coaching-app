@@ -31,9 +31,17 @@ say so and stop; don't try to work around it.
 
 A Mains Note is the **durable topic page** — the one place a student returns
 to for everything on "Electoral System of India" or "India-China Relations".
-It should read the same and be just as useful in two years. Dated pieces
-(summaries, daily news) feed pointers *into* it; it is never itself a
+It should read the same and be just as useful in two years. It is never a
 write-up of one day's event.
+
+**A note is a notebook, not an encyclopedia.** It carries keywords, dated
+pointers and passing references, gathered from all around — not full
+explanations. A student scanning it should see *what* matters and *where to
+read more*, in a form that can be recalled in an exam hall. Anything that
+needs paragraphs of explanation belongs in a **concept page**, which the
+note links to (see "Concepts — where full explanations live"). Keeping
+explanation out is what stops these notes turning into unusable walls of
+text as they accumulate material over months.
 
 ### Always present, in order
 
@@ -210,15 +218,52 @@ went live last time. If you're not sure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
+## Concepts — where full explanations live
+
+A note gives keywords and passing references. When a term in it genuinely
+needs a full explanation — what electoral bonds *are*, how the Model Code of
+Conduct works, what the Basic Structure doctrine holds — that explanation
+belongs in a **concept page**, not in the note. The note carries the
+keyword and a link; the concept page carries the depth.
+
+This is the same concept pool the daily-news skill uses, so a concept
+written for a news article is reused by the note, and vice versa — one
+concept, many referrers.
+
+1. **Search first, always.** `ca_find_concepts` with the entity name. If a
+   concept already exists, **reuse that exact id** — never write a second
+   copy because the existing one looks thin. A duplicate splits the
+   concept's timeline and both halves are then wrong.
+2. **If none exists** and the term genuinely needs full treatment, propose
+   writing one to the user — what the concept is, and why the note can't
+   just carry a keyword for it. Wait for agreement.
+3. **On agreement**, `ca_link_concept` with `concept: {...}` composes and
+   links it in one call (it reuses silently if the slug or title already
+   matches, so this cannot create a duplicate by accident). Set `is_core`
+   to false for a note — a topic note touches many concepts in passing;
+   it rarely has one single "core" concept the way a news article does.
+
+**Don't create a concept for every term.** Most keywords in a note need no
+more than the keyword. Reserve concept pages for terms a student would
+genuinely stop and look up, and that recur across multiple topics.
+
 ## Pointers — how developments enter a note
 
 This is the mechanism that makes a Mains Note a living topic page rather
-than a one-off write-up. Two kinds of dated content feed it:
+than a one-off write-up. **The note does the looking** — it goes out and
+finds material worth referencing. Nothing pushes into it from the other
+side; a daily news article never hunts for a note to feed.
+
+Two kinds of dated content are worth pulling from:
 
 - **Editorial Summaries** — arguments, evaluations, expert positions.
 - **Daily news articles** — judgments, committee reports, bills, data
   releases. A Supreme Court ruling on NOTA is filed as daily news, and it
   belongs in the electoral-system note just as much as any summary does.
+
+*(The one exception in the other direction: the editorial-summary skill does
+check for an existing note when a summary is written, since a summary is
+Mains material by definition. Daily news does not.)*
 
 ### The rule: route to the section, don't append to the end
 
@@ -260,9 +305,11 @@ who wants the full explanation, not a substitute for saying what happened.
 Do this after committing a new note, and whenever a development should enter
 an existing one:
 
-1. **Find the sources.** `ca_find_articles` on the topic/entity name — once
-   with `content_kind: "daily_editorial_summary"`, once with
-   `content_kind: "daily_current_affairs"`. Both feed the note.
+1. **Go looking for the sources.** `ca_find_articles` on the topic/entity
+   name — once with `content_kind: "daily_editorial_summary"`, once with
+   `content_kind: "daily_current_affairs"`. Search on more than one phrasing
+   if the first returns little; an empty result usually means the search
+   term was too narrow, not that nothing exists.
 2. **Read the note as it stands now.** `ca_get_article` on the topic —
    always immediately before proposing an edit, so you're working from the
    current body and not a stale copy from earlier in the session.
@@ -292,8 +339,12 @@ everything else.
 - Don't restate a development already covered — check before adding.
 - Don't link a source that doesn't genuinely bear on the topic.
 - Don't paste summary paragraphs into the note. Pointers, with links.
+- Don't explain a concept at length inside the note — that's what a concept
+  page is for. Keyword plus link.
 - Don't create a second note on a topic that already has one. If the
   existing note is thin, that's a reason to improve it in place.
+- Don't create a second concept when `ca_find_concepts` already returned
+  one. Reuse the id.
 
 ## What not to do
 
