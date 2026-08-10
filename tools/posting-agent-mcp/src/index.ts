@@ -619,6 +619,12 @@ server.registerTool(
         .string()
         .optional()
         .describe('Only with concept.status "published", and only when the user asked for it in this request.'),
+      confirm_new_concept: z
+        .literal('user-approved')
+        .optional()
+        .describe(
+          'Required only when `concept` actually creates a NEW page — reusing an existing one (concept_article_id, or a title/slug that already matches) needs nothing. Creating a concept page is a structural decision: reserve it for an entity substantial enough to stand on its own and needing a full description, and put it to the user before sending this.',
+        ),
       is_core: z
         .boolean()
         .default(true)
@@ -642,7 +648,7 @@ server.registerTool(
         .max(50),
     },
   },
-  async ({ concept_article_id, concept, confirm_publish_ai_content, is_core, links }) =>
+  async ({ concept_article_id, concept, confirm_publish_ai_content, confirm_new_concept, is_core, links }) =>
     run(async () => {
       if (!concept_article_id && !concept) {
         throw new Error(
@@ -668,6 +674,22 @@ server.registerTool(
           conceptRow = existing;
           reused = true;
         } else {
+          // Creating a concept page is a decision about the site's structure,
+          // not a mechanical side effect of writing an article — a thin page
+          // on a passing term is worse than no page at all, and once created
+          // it is what every later article links to. Reuse stays frictionless
+          // (the branch above needs no confirmation); only genuine creation
+          // asks.
+          if (confirm_new_concept !== 'user-approved') {
+            throw new Error(
+              `No concept page exists for "${concept.title}", and one was not created. ` +
+                'A concept page is for an entity substantial enough to stand on its own and needing a full description — ' +
+                'an institution, statutory body, scheme, doctrine or index that recurs across topics — not a term mentioned in passing. ' +
+                'If it clears that bar, put it to the user (what the page would cover, and why a keyword alone is not enough), ' +
+                'then resend with confirm_new_concept: "user-approved". ' +
+                'If it does not, drop the concept argument and keep it as a keyword in the article instead.',
+            );
+          }
           const status = concept.status ?? 'draft';
           // Concept bodies are prose like any other; the same gate that stops
           // ca_commit publishing AI writing live applies to them.

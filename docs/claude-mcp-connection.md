@@ -356,6 +356,19 @@ content_kind, so a note links to a concept exactly as a news article does),
 normally with `is_core: false`, since a topic note touches many concepts in
 passing rather than having one central one.
 
+**Creating a new concept page requires `confirm_new_concept:
+"user-approved"`** (added 2026-08-09). Reuse is deliberately ungated —
+linking an existing concept, by id or by a matching title/slug, needs
+nothing, because reuse is always the outcome to prefer. Only genuine
+creation asks, since a thin page on a passing term is worse than no page:
+once it exists, every later article links to it. The bar is an entity
+substantial enough to stand on its own and needing a full description — an
+institution, statutory body, scheme, doctrine or index recurring across
+topics (the Monetary Policy Committee clears it; a phrase appearing in one
+topic does not). The refusal message states that bar and both ways forward,
+so the model can act on it without guessing. Affects **both** the daily-news
+and mains-notes skills, since both compose concepts.
+
 A missing topic is **never created automatically**, unlike
 `ca_link_concept`'s concept-composing branch — it is proposed to the user and
 written through the normal mains-notes flow on agreement.

@@ -230,22 +230,49 @@ This is the same concept pool the daily-news skill uses, so a concept
 written for a news article is reused by the note, and vice versa — one
 concept, many referrers.
 
+### Which terms earn a concept page
+
+**The bar is high, and deliberately so.** A thin page on a passing term is
+worse than no page at all — once it exists, every later article links to it.
+
+A concept page is for an entity **substantial enough to stand on its own and
+needing a full description**: an institution, statutory body, scheme,
+doctrine, index or law that recurs across topics. If the Monetary Policy
+Committee is in the news and you are writing a note about it, the MPC earns
+a page — it has a composition, a legal basis, a mandate and a history worth
+several paragraphs, and it will come up again in a dozen future notes.
+
+It does **not** apply to:
+- a term adequately handled by one line in the note
+- a phrase that appears in this one topic and nowhere else
+- a passing reference you would not expect a student to stop and look up
+- anything you are creating mainly so a keyword has somewhere to point
+
+When in doubt, keep it as a keyword. A keyword can be promoted to a page
+later; a thin page is awkward to undo.
+
+### The flow
+
 1. **Search first, always.** `ca_find_concepts` with the entity name. If a
    concept already exists, **reuse that exact id** — never write a second
    copy because the existing one looks thin. A duplicate splits the
-   concept's timeline and both halves are then wrong.
-2. **If none exists** and the term genuinely needs full treatment, propose
-   writing one to the user — what the concept is, and why the note can't
-   just carry a keyword for it. Wait for agreement.
-3. **On agreement**, `ca_link_concept` with `concept: {...}` composes and
-   links it in one call (it reuses silently if the slug or title already
-   matches, so this cannot create a duplicate by accident). Set `is_core`
-   to false for a note — a topic note touches many concepts in passing;
-   it rarely has one single "core" concept the way a news article does.
-
-**Don't create a concept for every term.** Most keywords in a note need no
-more than the keyword. Reserve concept pages for terms a student would
-genuinely stop and look up, and that recur across multiple topics.
+   concept's timeline and both halves are then wrong. Reuse needs no
+   confirmation from anyone; it is always the preferred outcome.
+2. **If none exists**, apply the bar above. If the term doesn't clear it,
+   leave it as a keyword and move on — don't mention it as a missed
+   opportunity.
+3. **If it does clear the bar, ask the user.** Say what the page would
+   cover and why a keyword alone isn't enough, then wait. **The tool
+   enforces this** — creating a new concept without
+   `confirm_new_concept: "user-approved"` is refused outright, and the
+   refusal explains the bar. Treat that refusal as the rule working, not an
+   error to route around.
+4. **On agreement**, `ca_link_concept` with `concept: {...}` and
+   `confirm_new_concept: "user-approved"` composes and links it in one call
+   (it still reuses silently if the slug or title already matches, so this
+   cannot create a duplicate by accident). Set `is_core` to false for a
+   note — a topic note touches many concepts in passing; it rarely has one
+   single "core" concept the way a news article does.
 
 ## Pointers — how developments enter a note
 
