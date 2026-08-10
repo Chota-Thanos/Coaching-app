@@ -71,19 +71,6 @@ Only pass `concept: {...}` to `ca_link_concept` when the search genuinely
 found nothing. Write that body evergreen: no "recently", no "this week", no
 dates tied to today's story. It has to still read correctly in three years.
 
-**Creating a new concept page needs the user's agreement.** A page is for an
-entity substantial enough to stand on its own and needing a full description
-— an institution, statutory body, scheme, doctrine or index that recurs
-across topics. Say what the page would cover and why, then wait, then send
-`confirm_new_concept: "user-approved"` alongside `concept: {...}`. The tool
-refuses without it and explains the bar; that refusal is the rule working,
-not an error to route around. Reusing an existing concept needs no
-confirmation — it is always the preferred outcome.
-
-If the entity doesn't clear that bar, don't create a page for it. A first
-occurrence with no concept is written as a single self-contained news
-article, which is the normal case.
-
 ### Structure the concept body — the same Format Library, written evergreen
 
 A concept isn't a separate document type with its own fixed spec. It's

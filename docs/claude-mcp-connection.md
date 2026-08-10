@@ -356,18 +356,37 @@ content_kind, so a note links to a concept exactly as a news article does),
 normally with `is_core: false`, since a topic note touches many concepts in
 passing rather than having one central one.
 
-**Creating a new concept page requires `confirm_new_concept:
-"user-approved"`** (added 2026-08-09). Reuse is deliberately ungated —
-linking an existing concept, by id or by a matching title/slug, needs
-nothing, because reuse is always the outcome to prefer. Only genuine
-creation asks, since a thin page on a passing term is worse than no page:
-once it exists, every later article links to it. The bar is an entity
-substantial enough to stand on its own and needing a full description — an
-institution, statutory body, scheme, doctrine or index recurring across
-topics (the Monetary Policy Committee clears it; a phrase appearing in one
-topic does not). The refusal message states that bar and both ways forward,
-so the model can act on it without guessing. Affects **both** the daily-news
-and mains-notes skills, since both compose concepts.
+**Creating a new concept page from a Mains Note requires
+`confirm_new_concept: "user-approved"`** (added 2026-08-09). The gate is
+**scoped by what is linking**, which `ca_link_concept` determines by looking
+up the linking articles' `content_kind` before creating anything:
+
+| Trigger | New concept page |
+|---|---|
+| Daily news article | **Created automatically** — unchanged, hands-off |
+| Mains Note | **Asks first** |
+| Reusing any existing concept | Never gated, either way |
+
+The asymmetry is deliberate. A news article's concept is the entity the
+story is *about*, chosen by the same research that produced the article, and
+that pipeline was already automatic and working — gating it would have
+broken a hands-off flow to solve a problem it doesn't have. A Mains Note
+mentions many entities in passing, so "does this one deserve its own page?"
+is a genuine editorial call every time. Reuse stays ungated everywhere
+because friction there would push toward duplicates, which is the failure
+this whole area exists to prevent.
+
+The bar, stated in the refusal message so the model can act on it without
+guessing: an entity substantial enough to stand on its own and needing a
+full description — an institution, statutory body, scheme, doctrine or index
+recurring across topics (the Monetary Policy Committee clears it; a phrase
+appearing in one topic does not).
+
+**Worth remembering as a pattern:** the first version of this gate was
+unscoped, and would have silently converted the working automatic daily-news
+concept flow into one needing approval. A guardrail added for one content
+type lands on every caller of a shared tool — check who else calls it before
+adding one.
 
 A missing topic is **never created automatically**, unlike
 `ca_link_concept`'s concept-composing branch — it is proposed to the user and

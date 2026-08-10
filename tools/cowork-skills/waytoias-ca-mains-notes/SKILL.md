@@ -263,10 +263,16 @@ later; a thin page is awkward to undo.
    opportunity.
 3. **If it does clear the bar, ask the user.** Say what the page would
    cover and why a keyword alone isn't enough, then wait. **The tool
-   enforces this** — creating a new concept without
-   `confirm_new_concept: "user-approved"` is refused outright, and the
-   refusal explains the bar. Treat that refusal as the rule working, not an
-   error to route around.
+   enforces this for notes** — creating a new concept from a Mains Note
+   without `confirm_new_concept: "user-approved"` is refused outright, and
+   the refusal explains the bar. Treat that refusal as the rule working, not
+   an error to route around.
+
+   *(Daily news is deliberately exempt: a news article's concept is the
+   entity the story is about, chosen by the same research that produced the
+   article, so it is created automatically there. A note is the opposite
+   case — it mentions many entities in passing, which is why the call
+   belongs to a human here.)*
 4. **On agreement**, `ca_link_concept` with `concept: {...}` and
    `confirm_new_concept: "user-approved"` composes and links it in one call
    (it still reuses silently if the slug or title already matches, so this
