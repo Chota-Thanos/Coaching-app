@@ -134,10 +134,31 @@ welfare.
 - *Ethical Dilemmas Involved* — the genuine tensions, both sides.
 - *Way Forward*.
 
-**History, Art and Culture / Geography** — if a topic fits none of the above
-cleanly, build from: *Overview → Features/Characteristics → Evolution or
-Distribution → Significance → Issues → Way Forward*, keeping the same
-fact-vs-list discipline.
+**History, Art and Culture** *(To be defined)*
+- Sections: *to be filled in.* Until then, use the fallback below and say so
+  in your report rather than presenting an invented shape as house style.
+
+**Geography** *(To be defined)*
+- Sections: *to be filled in.* Same fallback until then.
+
+**Fallback for any subject not yet defined above** — build from: *Overview →
+Features/Characteristics → Evolution or Distribution → Significance → Issues
+→ Way Forward*, keeping the same fact-vs-list discipline.
+
+<!-- FORMAT LIBRARY — subject templates.
+     Add or edit templates here, then re-save the skill (see "Adjusting the
+     format later"). Keep each entry in the same shape: a bold subject name,
+     then its sections as an italicised list, heading names written exactly
+     as they should appear in the note — pointers are routed to sections by
+     name, so renaming a heading here changes where developments land.
+     Add further subjects below this line. -->
+
+**A note on adding subjects:** heading names inside a template are
+load-bearing, not decorative. Pointers from summaries and daily news are
+routed to sections *by name*, so if you rename "Issues and Challenges" to
+something else in a template, existing notes built on the old name and new
+ones built on the new name will diverge. Rename deliberately, and expect to
+update existing notes of that subject if you do.
 
 ### Sections shared by every template
 
@@ -197,8 +218,10 @@ category names before writing one in.
 - **Category resolved?** An item with no category lands uncategorised.
 - **Nothing truncated** — this is the longest content type, so check the end
   of the note wasn't cut off in handling.
-- **The eight sections are actually all there**, in order — this is the
-  content type most likely to quietly lose a section under length pressure.
+- **Every section of the chosen template is there**, in order, with its
+  heading name written exactly as the template gives it — this is the
+  content type most likely to quietly lose a section under length pressure,
+  and a renamed heading is where later pointers fail to route.
 
 ## Publishing — read this before every `ca_commit` call
 
@@ -384,4 +407,28 @@ everything else.
 - Don't write about a topic you couldn't find real grounding for. Say so.
 - Don't invent a source name or citation to fill a thin section.
 - Don't publish live because it was convenient, only because it was asked.
-- Don't compress the eight sections into fewer to save time.
+- Don't drop sections from the chosen template to save time. Skipping one
+  that genuinely doesn't apply is fine; thinning the note because it got
+  long is not.
+- Don't invent a structure for a subject marked *To be defined*. Use the
+  fallback and say which you used.
+
+## Adjusting the format later
+
+This skill's format spec — the Format Library, the shared spine, the
+pointer-routing rules, the concept bar, or anything else in this file — is a
+persistent, editable spec, not something re-decided each run.
+
+If the user asks to change any of it, **update this skill and re-save it**
+(via the skill-saving tool, with overwrite) rather than only applying the
+change for one run. Editing files on disk does not persist to the installed
+skill; a real change has to go through re-saving the skill itself.
+
+Two things to be careful with when editing the Format Library:
+
+- **Heading names are load-bearing.** Pointers route to sections by name.
+  Renaming a heading in a template splits existing notes from new ones.
+- **A subject marked *To be defined* is deliberately empty**, not an
+  oversight. Filling one in is a real editorial decision — confirm the
+  section list with the user before writing it in, the same as any other
+  change to their content.

@@ -55,6 +55,51 @@ disagree with it — attribute opinions to the author ("the author argues
 that…"), not to fact. Keep your own voice mainly to the Evaluation section.
 500-700 words.
 
+### Format Library — variants by editorial type
+
+The six sections above are the **default**, and they fit most opinion
+pieces. Some editorial types carry a different kind of information and
+deserve their own shape — the same way the daily-news skill picks a template
+per story type rather than forcing one set of headings on everything.
+
+**How to use this library:** if a variant below matches the editorial, use
+its sections in place of the default body (the spine — Context first, Mains
+Angle last — stays either way). If none matches, use the default. A variant
+that is still marked *"To be defined"* has no agreed shape yet: use the
+default and say so plainly in your report, rather than inventing a
+structure and presenting it as house style.
+
+<!-- FORMAT LIBRARY — editorial variants.
+     Add or edit templates here, then re-save the skill (see "Adjusting the
+     format later"). Keep each entry in the same shape: a bold type name,
+     one line on when it applies, then its sections as a list. -->
+
+**General editorial / opinion piece** *(default — defined above)*
+- Context → The Core Argument → Supporting Points → Counter-View →
+  Evaluation → Mains Angle.
+
+**Judgment or legal commentary** *(To be defined)*
+- When it applies: an editorial arguing about a court ruling, a
+  constitutional question or a piece of legislation.
+- Sections: *to be filled in.*
+
+**Economic or data-led editorial** *(To be defined)*
+- When it applies: an editorial built on figures — a budget, an index, a
+  policy's measured effect.
+- Sections: *to be filled in.*
+
+**Foreign policy or international relations editorial** *(To be defined)*
+- When it applies: an editorial on a bilateral relationship, a treaty, or
+  India's position in a grouping.
+- Sections: *to be filled in.*
+
+**Social issue or governance editorial** *(To be defined)*
+- When it applies: an editorial on a welfare question, a vulnerable
+  section, or an administrative failure.
+- Sections: *to be filled in.*
+
+<!-- Add further editorial types below this line. -->
+
 ## Research and accuracy — this is what makes the content trustworthy
 
 - **Never invent a figure, date, name, rank or finding.** If you can't find
@@ -159,3 +204,21 @@ Do this after every `ca_commit`, once the summary has an id:
 - Don't invent a source name or URL to make the piece look better-cited.
 - Don't publish live because it was convenient, only because it was asked.
 - Don't skip or shrink the Counter-View section to save time.
+- Don't invent a shape for a variant marked *To be defined*. Use the default
+  and say which you used.
+
+## Adjusting the format later
+
+This skill's format spec — the default structure, the Format Library, the
+sourcing rules, or anything else in this file — is a persistent, editable
+spec, not something re-decided each run.
+
+If the user asks to change any of it, **update this skill and re-save it**
+(via the skill-saving tool, with overwrite) rather than only applying the
+change for one run. Editing files on disk does not persist to the installed
+skill; a real change has to go through re-saving the skill itself.
+
+A variant marked *To be defined* is deliberately empty, not an oversight.
+Filling one in is a real editorial decision — confirm the section list with
+the user before writing it in, the same as any other change to their
+content.
