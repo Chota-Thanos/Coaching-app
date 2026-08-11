@@ -24,6 +24,16 @@ a question paper.
    `assessment_commit` with `content_type: "mains"`. Default
    `publish_mode: "review"` — see "Publishing" below.
 
+**If `whoami` fails, how you reconnect depends on how you're running.**
+Running locally (Claude Desktop/Code, spawned on the user's machine): the
+user should fully quit and reopen Claude Desktop, or check their MCP config
+for a wrong path or key. Running as a **remote/online connected app**
+(Gemini's "custom connected app," or similar): a failed `whoami` almost
+always means the login expired, not that anything is broken — the server
+holds sessions in memory and a routine restart clears them silently. Tell
+the user to disconnect and reconnect this app wherever they manage
+connected apps for the assistant you're running in, which re-authorises it.
+
 ## Format
 
 Write a question with a full model answer, in the genuine UPSC Mains style.

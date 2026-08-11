@@ -26,6 +26,20 @@ question paper.
 Run `whoami` once per session. If it fails, the connection isn't working —
 say so and stop; don't try to work around it.
 
+**How to reconnect depends on how you're running.** If you're running
+locally (Claude Desktop or Claude Code, spawned as a process on the user's
+own machine), the fix is local: the user should fully quit and reopen
+Claude Desktop, or check their MCP config for a wrong path or key. If
+you're a **remote/online connected app** (Gemini's "custom connected app,"
+or similar — anything reached over the internet rather than spawned
+locally), a failed `whoami` almost always means the login has expired, not
+that anything is broken — the server holds sessions in memory and a
+routine restart on its end clears them, with no warning to you. There's
+nothing local to diagnose in that case. Tell the user plainly that the
+connection needs re-authorising, and that the fix is to disconnect and
+reconnect this app in wherever they manage connected apps/integrations for
+the assistant you're running in — that triggers a fresh sign-in.
+
 ## Format
 
 Write a question with a full model answer, in the genuine UPSC Mains style.
