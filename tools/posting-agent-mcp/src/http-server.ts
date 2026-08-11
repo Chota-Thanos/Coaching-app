@@ -38,6 +38,23 @@ const PORT = Number(process.env.MCP_HTTP_PORT ?? 4100);
 const HOST = process.env.MCP_HTTP_HOST ?? "127.0.0.1";
 const BEARER_TOKEN = process.env.MCP_HTTP_BEARER_TOKEN ?? "";
 
+/**
+ * The MCP SDK's Express helper includes DNS-rebinding protection: it checks
+ * the incoming `Host:` header against an allowlist, and defaults that list to
+ * localhost-only. Behind a reverse proxy, the `Host:` header is the PUBLIC
+ * hostname (nginx forwards it as-is — `proxy_set_header Host $host;`), not
+ * 127.0.0.1, so the default silently rejected every real request behind
+ * nginx with "Invalid Host: waytoias.com", before it ever reached the bearer
+ * -token check below. Caught by testing the deployed endpoint directly, not
+ * by local testing (loopback requests legitimately do send Host: 127.0.0.1).
+ * Configurable because this file is generic to whatever domain it's proxied
+ * behind, not hardcoded to one deployment.
+ */
+const ALLOWED_HOSTS = (process.env.MCP_ALLOWED_HOSTS ?? "waytoias.com,www.waytoias.com,127.0.0.1,localhost")
+  .split(",")
+  .map((h) => h.trim())
+  .filter(Boolean);
+
 if (!BEARER_TOKEN || BEARER_TOKEN.length < 32) {
   throw new Error(
     "MCP_HTTP_BEARER_TOKEN is not set (or is too short to be a real secret, minimum 32 characters). " +
@@ -75,7 +92,7 @@ function requireBearerToken(req: Request, res: Response, next: NextFunction): vo
   next();
 }
 
-const app = createMcpExpressApp({ host: HOST });
+const app = createMcpExpressApp({ host: HOST, allowedHosts: ALLOWED_HOSTS });
 
 // Unauthenticated on purpose: lets a deploy be verified (and an uptime
 // monitor configured) without handing out the bearer token to do it.
