@@ -420,7 +420,108 @@ unnecessary round-trip in the normal, sequential case.
 
 ---
 
-## 11. Skill files
+## 11. Remote access — connecting a client that can't run a local process
+
+Added 2026-08-11. Everything above assumes a client that runs *on this
+machine* and spawns `index.ts` as a child process over stdio. An AI product
+that runs somewhere else entirely — a hosted web app, a cloud agent platform
+— has no way to do that. It needs a URL.
+
+### The two entry points
+
+| File | Transport | For |
+|---|---|---|
+| `src/index.ts` | stdio | Local clients (Claude Desktop, Claude Code) — unchanged |
+| `src/http-server.ts` | Streamable HTTP | Remote clients, over a URL |
+
+Both call the same `createServer()` in `src/server-factory.ts` — one set of
+25 tools, registered identically either way. **Never add a tool to only one
+entry point.** `server-factory.ts` is the only file that should ever define
+a tool; the two entry points only decide how it's reached.
+
+`createServer()` returns a fresh, unconnected server on every call rather
+than a shared singleton. The stdio entry calls it once, at startup. The HTTP
+entry calls it **once per request** — stateless, the same pattern the MCP
+SDK ships in its own reference implementation: connect a fresh
+server+transport pair, handle the one request, close both. No session store,
+no resumable streams, nothing to leak between callers.
+
+### Why "local-only" was quietly doing security work
+
+Before this, the only thing standing between an attacker and the
+admin-level posting/editing key this server holds was: they'd need to be
+sitting at your PC. A remote URL removes that protection by definition, so
+something has to replace it — this is not optional hardening, it's the
+minimum for this to be safe to run at all.
+
+**`http-server.ts` refuses to start without `MCP_HTTP_BEARER_TOKEN`** set to
+at least 32 characters (checked at startup, not on first request — a
+missing secret fails loud, not silently-open). Every request to `/mcp` must
+carry it as `Authorization: Bearer <token>`, checked with
+`crypto.timingSafeEqual` rather than `===` — a secret guarding write access
+to a live site shouldn't leak how many leading characters an attacker
+guessed correctly via response timing. A wrong or missing token gets a bare
+401 with no detail about why, so a scanning attacker learns only that the
+endpoint exists.
+
+**This is single-tenant, deliberately.** A remote caller cannot supply their
+own `COACHING_API_KEY` — one is configured on the server, for one account
+(yours), exactly like the stdio version. The bearer token gates entry to
+that one identity; it is not a pass-through letting arbitrary callers act as
+arbitrary accounts. Anyone with the token acts as whatever account
+`COACHING_API_KEY` belongs to — treat it like a password.
+
+### Setup
+
+1. `cp tools/posting-agent-mcp/.env.example tools/posting-agent-mcp/.env`
+   and fill it in. Generate the bearer token with:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+2. Build: `npm --prefix tools/posting-agent-mcp run build` (also happens
+   automatically in `deploy.sh` — see below).
+3. Run it: `npm --prefix tools/posting-agent-mcp run start:http`, or let PM2
+   manage it (already wired into `ecosystem.config.cjs` as `coaching-mcp`,
+   binding to `127.0.0.1:4100` by default).
+4. **A reverse-proxy entry still needs to be added on the server** to expose
+   port 4100 over HTTPS at a real URL (e.g. `mcp.waytoias.com` or
+   `waytoias.com/mcp`). That's nginx config on the box, outside this repo —
+   §5 of `deployment.md` doesn't cover it yet because it didn't exist before
+   this. Do this before trusting the endpoint is actually reachable; `curl`
+   the public URL's `/health` (no auth needed) to confirm.
+5. Give the client being connected the public URL (`https://.../mcp`) and
+   the bearer token, formatted however that client expects a custom header.
+
+### `tools/posting-agent-mcp` is still not an npm workspace
+
+Deliberate, from when this package was first built (see
+`project_local_posting_mcp` in memory) — being in `workspaces` would make
+root `npm install`/`npm run build` install and build it on every deploy,
+whether or not this server is running. `deploy.sh` now has an explicit step
+for it instead: `npm --prefix tools/posting-agent-mcp install && ... run
+build`, guarded by a file check so a deploy on an older checkout without
+this folder doesn't fail.
+
+### What this does NOT do
+
+- **No OAuth.** Some remote-connector UIs (notably Claude.ai's own remote
+  connectors, an Enterprise/Team feature) expect an OAuth login flow, not a
+  static bearer token, when *adding* the connector. A bearer token works
+  for any client that lets you configure a custom header — many do — but
+  not for one that hard-requires OAuth's authorization-code flow. That
+  would be a separate, materially larger piece of work (an authorization
+  server, token issuance, redirect handling) — worth doing only once a
+  specific client that needs it is identified, not speculatively.
+- **No per-caller rate limiting or IP allowlisting.** The bearer-token gate
+  is genuinely required, but it's the only gate. If the URL becomes widely
+  known (logged somewhere, pasted into the wrong place), the token is the
+  entire remaining defence — rotate it if you ever suspect that.
+- **No multi-tenancy.** One key, one account, one bearer token. Connecting
+  a second AI product means giving it the same token, not minting it a
+  separate identity — there's no way today to tell, after the fact, which
+  connected client made a given change.
+
+## 12. Skill files
 
 Eight standalone Cowork skills live in `tools/cowork-skills/` (five current
 affairs, three assessment), packaged as `.skill` files and uploaded via

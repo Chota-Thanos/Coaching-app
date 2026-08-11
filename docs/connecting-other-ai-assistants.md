@@ -9,6 +9,16 @@ the connection works and how to repair it, and
 [`content-posting-runbook.md`](content-posting-runbook.md) for day-to-day
 posting.
 
+**Everything below assumes the assistant runs on this machine** and can
+spawn a local process — true for desktop apps like ChatGPT desktop or
+Cursor. If the product you want to connect runs somewhere else entirely (a
+hosted web app, a cloud agent platform) and has no way to launch a local
+process, it needs a URL instead — see
+[`claude-mcp-connection.md` §11](claude-mcp-connection.md#11-remote-access--connecting-a-client-that-cant-run-a-local-process)
+for the remote HTTP option, which is a materially different security
+picture (a public endpoint, not a file only you can run) and worth reading
+in full before setting up.
+
 ---
 
 ## 1. What you are connecting to

@@ -25,6 +25,15 @@ npm run db:migrate
 echo "🛠️ Building API and Web applications..."
 npm run build
 
+# 4b. tools/posting-agent-mcp is deliberately NOT an npm workspace (adding it
+# would make the two steps above install/build it on every deploy whether or
+# not this server is in use), so it needs its own explicit step here.
+if [ -f tools/posting-agent-mcp/package.json ]; then
+  echo "🔌 Building the MCP connector (posting-agent-mcp)..."
+  npm --prefix tools/posting-agent-mcp install
+  npm --prefix tools/posting-agent-mcp run build
+fi
+
 # 5. Restart application processes via PM2
 echo "🔄 Restarting application services..."
 if pm2 list | grep -q "coaching-api"; then
