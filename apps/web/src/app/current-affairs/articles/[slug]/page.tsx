@@ -163,11 +163,27 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             <dt className="sr-only">Publication date</dt>
             <dd>{formatDate(article.publication_date)}</dd>
           </div>
-          {article.source_name && (
+          {(article.source_name || article.source_url) && (
             <div className="flex items-center gap-2">
               <ExternalLink aria-hidden="true" className="h-4 w-4 text-civic" />
               <dt className="sr-only">Source</dt>
-              <dd>{article.source_name}</dd>
+              {/* The source URL was stored but never surfaced — a reader had no
+                  way to reach the original piece. Linked when we have one, and
+                  still shown as text when only the publication is known. */}
+              <dd>
+                {article.source_url ? (
+                  <a
+                    className="font-semibold text-civic underline decoration-civic/40 underline-offset-2 hover:decoration-civic"
+                    href={article.source_url}
+                    rel="noopener noreferrer nofollow"
+                    target="_blank"
+                  >
+                    {article.source_name ?? "Read the original"}
+                  </a>
+                ) : (
+                  article.source_name
+                )}
+              </dd>
             </div>
           )}
           {article.article_role === "concept" && article.incoming_relations[0] && (

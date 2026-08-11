@@ -129,9 +129,31 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
     (rel) => rel.label !== "Core Concept" && rel.relation_type !== "prerequisite"
   );
 
-  // 2. LINKED ARTICLES & REFERENCES: Regular linked articles (NOT concepts)
+  // 2. MAINS NOTE: the durable topic page this summary/news item feeds into.
+  // Split out from the generic "related" bucket because the relationship is a
+  // specific one a reader benefits from being told about — this dated piece is
+  // one entry in a topic they can study whole.
+  const mainsNoteRelations = article.outgoing_relations.filter(
+    (rel) => rel.relation_type === "mains_fodder"
+  );
+
+  // 3. LINKED ARTICLES & REFERENCES: Regular linked articles (NOT concepts,
+  // and not the Mains Note, which gets its own section above).
   const relatedArticles = article.outgoing_relations.filter(
-    (rel) => rel.target_article?.article_role !== "concept" && rel.relation_type !== "prerequisite"
+    (rel) =>
+      rel.target_article?.article_role !== "concept" &&
+      rel.relation_type !== "prerequisite" &&
+      rel.relation_type !== "mains_fodder"
+  );
+
+  // Source pieces feeding a Mains Note — the same relation seen from the
+  // topic's side. Named for what they are rather than the generic
+  // "Appears in N articles".
+  const sourceContributions = article.incoming_relations.filter(
+    (rel) => rel.relation_type === "mains_fodder"
+  );
+  const otherIncoming = article.incoming_relations.filter(
+    (rel) => rel.relation_type !== "mains_fodder"
   );
 
   return (
@@ -289,6 +311,41 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
           </section>
         )}
 
+        {/* MAINS NOTE — the durable topic this dated piece contributes to */}
+        {mainsNoteRelations.length > 0 && (
+          <section className="mt-5 rounded-xl border border-berry/25 bg-berry/5 p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-1.5">
+              <BookOpen className="h-5 w-5 text-berry" />
+              <h2 className="text-lg font-black text-ink">
+                Part of a Mains Note
+              </h2>
+            </div>
+            <p className="text-xs text-ink/65 mb-4 leading-relaxed">
+              This piece feeds into a durable topic note. Read the whole topic
+              in one place:
+            </p>
+            <div className="grid gap-3">
+              {mainsNoteRelations.map((rel) => (
+                <Link
+                  className="group rounded-xl border border-line bg-surface p-4 transition-all hover:border-berry hover:shadow-md"
+                  href={`/current-affairs/articles/${rel.target_article.slug}`}
+                  key={rel.id}
+                >
+                  <p className="text-sm font-black text-ink group-hover:text-berry">
+                    {rel.target_article.title}
+                  </p>
+                  {rel.note && (
+                    <p className="mt-1 text-xs text-ink/65 leading-relaxed">{rel.note}</p>
+                  )}
+                  <span className="mt-2 inline-block text-xs font-bold text-berry">
+                    Read the full topic note →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* 3. LINKED RELATED ARTICLES & CROSS REFERENCES */}
         {relatedArticles.length > 0 && (
           <section className="mt-5 rounded-xl border border-civic/20 bg-civic/5 p-5 shadow-xs">
@@ -429,13 +486,42 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
             </div>
           </section>
         )}
-        {article.incoming_relations.length > 0 && (
+        {/* Sources feeding this Mains Note — named, and showing what each
+            contributed, rather than folded into the generic count below. */}
+        {sourceContributions.length > 0 && (
+          <section className="rounded-lg border border-berry/25 bg-berry/5 p-4 shadow-sm">
+            <h2 className="text-base font-extrabold text-ink">
+              Built from {sourceContributions.length} source
+              {sourceContributions.length === 1 ? "" : "s"}
+            </h2>
+            <p className="mt-1 text-xs text-ink/65 leading-relaxed">
+              Summaries and news pieces this note draws on:
+            </p>
+            <div className="mt-3 grid gap-3">
+              {sourceContributions.map((relation) => (
+                <Link
+                  className="rounded-md border border-line bg-surface p-3 hover:border-berry"
+                  href={`/current-affairs/articles/${relation.source_article.slug}`}
+                  key={relation.id}
+                >
+                  <p className="text-sm font-semibold text-ink">
+                    {relation.source_article.title}
+                  </p>
+                  {relation.note && (
+                    <p className="mt-1 text-xs text-ink/65 leading-relaxed">{relation.note}</p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        {otherIncoming.length > 0 && (
           <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <h2 className="text-base font-extrabold text-ink">
-              Appears in {article.appearance_count} article{article.appearance_count === 1 ? "" : "s"}
+              Appears in {otherIncoming.length} article{otherIncoming.length === 1 ? "" : "s"}
             </h2>
             <div className="mt-3 grid gap-3">
-              {article.incoming_relations.map((relation) => (
+              {otherIncoming.map((relation) => (
                 <Link className="rounded-md border border-line p-3 text-sm font-semibold text-ink hover:border-civic" href={`/current-affairs/articles/${relation.source_article.slug}`} key={relation.id}>
                   {relation.label ?? relation.source_article.title}
                 </Link>

@@ -71,6 +71,23 @@ from or inspired by a real past paper; otherwise note the current year.
 - **Never invent a source link.**
 - Give full official names on first mention, then the abbreviation.
 
+## Source and SEO — fill these on every commit
+
+Passed per article in `ca_commit`. A question set is still a page on the site, so
+it needs to be findable.
+
+- `source_name` / `source_url` — where the underlying fact or ruling came
+  from, when there is one identifiable page. **Never invent a URL**; omit it
+  and say so rather than guessing.
+- `seo_title` — up to ~60 characters, leading with the topic a student would
+  search, e.g. *"Election Commission of India: Prelims Practice Questions"*.
+- `seo_description` — 140-160 characters saying what the questions cover and
+  at what level.
+- `keywords` — 5-10: the topic, the named bodies or statutes tested, the
+  exam stage, and the subject area.
+
+Write them from the finished set, so they describe what you actually wrote.
+
 ## Category and date — you can steer these, or leave them to the filer
 
 `ca_parse` picks a category from the live tree on its own. You can override

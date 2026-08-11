@@ -198,6 +198,41 @@ correct.
 - Wrap maths, statistics and percentages in single dollar signs for LaTeX
   (e.g. `$6.5\%$`, `$10^9$`).
 
+## Source and SEO — fill these on every commit
+
+Both are passed per article in `ca_commit`. Mains Notes currently have the
+worst coverage of any content type here — most have none of these fields —
+so treat them as part of writing the note, not an afterthought.
+
+### Source
+
+A note is built from many sources, so a single `source_url` rarely captures
+it. Use:
+
+- `source_name` — the principal bodies or documents the note draws on, e.g.
+  `"MHA / NCORD; Ministry of Law and Justice"`. Leave out rather than
+  padding with a vague label.
+- `source_url` — only when the note genuinely rests on **one** identifiable
+  document (a committee report, an Act's text). Otherwise omit it. The
+  per-pointer reference links inside the body carry the real sourcing.
+
+**Never invent a URL.**
+
+### SEO — every note
+
+- `seo_title` — up to ~60 characters, built on the topic name a student
+  would search: *"Electoral System of India: Structure, Issues and
+  Reforms"*.
+- `seo_description` — 140-160 characters saying what the note covers and
+  who it's for. A note is a study page, so say so: what a reader can revise
+  from it.
+- `keywords` — 5-10: the topic, its main institutions and statutes, the GS
+  paper, and the syllabus theme.
+
+Because a note accumulates pointers over months, revisit `seo_description`
+when the note's scope genuinely widens — but that's an edit like any other,
+so propose it and wait.
+
 ## Category and date — you can steer these, or leave them to the filer
 
 `ca_parse` picks a category from the live tree and works out a date on its

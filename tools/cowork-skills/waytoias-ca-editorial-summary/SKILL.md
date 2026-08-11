@@ -113,6 +113,42 @@ structure and presenting it as house style.
 - Wrap maths, statistics and percentages in single dollar signs for LaTeX
   (e.g. `$6.5\%$`, `$10^9$`).
 
+## Source and SEO — fill these on every commit
+
+Both are passed per article in `ca_commit`. Neither is optional in practice:
+an unsourced summary can't be checked, and an article with no SEO fields is
+invisible to search.
+
+### Source — required for a summary
+
+A summary represents someone else's argument, so the reader must be able to
+reach it.
+
+- `source_name` — the publication and, where known, the author:
+  `"The Hindu"`, `"Indian Express — Editorial"`.
+- `source_url` — **the exact URL you actually read.** It becomes a
+  clickable link on the article page.
+
+**Never invent a URL.** If you only have the topic, or your grounding came
+from a general search rather than one identifiable page, set `source_name`
+to the publication if you know it and **leave `source_url` out entirely** —
+then say so plainly in your report. A wrong link is worse than none.
+
+### SEO — every article, every content type
+
+- `seo_title` — up to ~60 characters. The topic in searchable words, not a
+  clever headline. Front-load the entity a student would type: *"Bankers'
+  Books Evidence Bill 2026: Key Changes and Concerns"*.
+- `seo_description` — 140-160 characters, one or two plain sentences saying
+  what the piece covers and what a reader gains. Not a truncated first
+  paragraph.
+- `keywords` — 5-10 entries. The named entities (Act, Bill, body, scheme,
+  index), the syllabus theme, and the exam paper. Real terms someone would
+  search; no keyword stuffing, no near-duplicates of one phrase.
+
+Write them from the finished piece, not before — they should describe what
+you actually wrote.
+
 ## Category and date — you can steer these, or leave them to the filer
 
 `ca_parse` picks a category from the live tree and works out a date on its
@@ -200,6 +236,37 @@ Write the concept body **evergreen**: no "recently", no "this week", no
 dates tied to this editorial. It has to still read correctly in three
 years, and it will be linked from future articles that have nothing to do
 with today's piece.
+
+### Link the concept inside the summary body, where it's needed
+
+The site shows linked concepts in their own panel, but that's *after* the
+argument. A reader meeting an unfamiliar Bill in paragraph two shouldn't
+have to hunt for the explanation — **put the link where the term first
+carries weight**, usually in Context or The Core Argument.
+
+One inline link per concept, on its first substantive mention:
+
+```html
+<p>The Lok Sabha passed the
+<a href="https://waytoias.com/current-affairs/articles/the-concept-slug">Bankers'
+Books Evidence Bill, 2026</a>, replacing a statute written for paper
+ledgers.</p>
+```
+
+Rules:
+
+- **Link the term itself**, not a trailing "(read more)". The linked words
+  should be the entity's name.
+- **Once per concept.** Linking every mention turns the summary into a mess
+  of blue text.
+- Use the concept's real URL —
+  `https://waytoias.com/current-affairs/articles/<concept-slug>` — taken
+  from what `ca_link_concept` returns, not composed from the title.
+- If you link a concept inline, still record the relation with
+  `ca_link_concept`; the inline link and the relation are two different
+  things and the panel depends on the relation.
+- Never link a concept that doesn't exist yet. Create it first (asking, per
+  above), then link.
 
 *(Daily news is exempt from the confirmation step — its concept is the
 entity the story is plainly about. Summaries and Mains Notes ask, because

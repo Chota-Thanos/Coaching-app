@@ -355,6 +355,35 @@ Treat these as load-bearing, not stylistic preferences:
 - Wrap maths, statistics and percentages in single dollar signs for LaTeX
   (e.g. `$6.5\%$`, `$10^9$`) — the site renders these specially.
 
+## Source and SEO — fill these on every commit
+
+Both are passed per article in `ca_commit`, and coverage is currently patchy
+— roughly a third of published daily news has SEO fields and fewer have a
+source URL. Fill them every time.
+
+### Source
+
+- `source_name` — the publication or official body: `"PIB"`,
+  `"The Hindu"`, `"Ministry of Finance"`.
+- `source_url` — **the exact page you actually read.** It becomes a
+  clickable link on the article.
+
+**Never invent a URL.** If your grounding came from a general search rather
+than one identifiable page, give `source_name` alone and omit `source_url`,
+then say so in your report. A wrong link is worse than none.
+
+### SEO
+
+- `seo_title` — up to ~60 characters. Lead with the entity or scheme name a
+  student would search, not the news framing.
+- `seo_description` — 140-160 characters, plainly stating what happened and
+  why it matters. Not a truncated first paragraph.
+- `keywords` — 5-10: the scheme/body/Act named, the ministry, the subject
+  area, and the exam relevance. Real search terms, no stuffing.
+
+Write them from the finished article, so they describe what you actually
+wrote.
+
 ## Category and date — you can steer these, or leave them to the filer
 
 `ca_parse` picks a category from the live tree and works out a date on its
