@@ -1,7 +1,7 @@
 "use client";
 
 import { Archive, Eye, FilePenLine, RefreshCw, Search, Trash2, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { AdminArticleDetail, AdminArticleSummary, CategoryNode, CreateAdminArticlePayload } from "../../../lib/api";
 import type { ContentKind } from "../../../lib/current-affairs";
@@ -70,6 +70,11 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
   });
   const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<AdminArticleDetail | null>(null);
+  // Set by an explicit "View" action (button click or ?view= URL param) right
+  // before loadDetail() runs, so the effect below knows to scroll once the
+  // panel is actually in the DOM — never on a background refresh (quick-edit
+  // save, etc.), which also calls loadDetail() but shouldn't jump the page.
+  const scrollToDetailOnLoad = useRef(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -129,6 +134,17 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
     setSelectedArticleId(articleId);
   }, [token]);
 
+  // Runs after React has actually committed #article-detail-panel to the DOM
+  // (useEffect always fires post-render, unlike a .then() chained directly
+  // off loadDetail — that ran the scrollIntoView query before the panel
+  // existed, so "View" appeared to do nothing on a fresh click).
+  useEffect(() => {
+    if (selectedDetail && scrollToDetailOnLoad.current) {
+      scrollToDetailOnLoad.current = false;
+      document.getElementById("article-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedDetail]);
+
   useEffect(() => {
     if (editId && token) {
       const articleId = Number(editId);
@@ -171,9 +187,8 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
   useEffect(() => {
     if (viewId && token) {
-      void loadDetail(Number(viewId)).then(() => {
-        document.getElementById("article-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      scrollToDetailOnLoad.current = true;
+      void loadDetail(Number(viewId));
       router.replace(window.location.pathname);
     }
   }, [viewId, token, router, loadDetail]);
@@ -479,9 +494,8 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                     <button
                       className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
                       onClick={() => {
-                        void loadDetail(article.id).then(() => {
-                          document.getElementById("article-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        });
+                        scrollToDetailOnLoad.current = true;
+                        void loadDetail(article.id);
                       }}
                       type="button"
                     >
