@@ -1,6 +1,6 @@
 ---
-name: waytoias-ca-editorial-summary
-description: Research, write and publish an editorial/opinion-piece summary for the WayToIAS UPSC coaching website's Current Affairs → Editorial Summaries section. Use whenever the user asks to summarise, write or post a newspaper editorial, opinion piece, or "editorial summary" for WayToIAS/waytoias.com (e.g. "summarise this editorial on federalism", "write today's editorial summary from this link", "post this opinion piece breakdown"). Do NOT use this for a plain news article (use waytoias-ca-daily-news) or a durable Mains topic note (use waytoias-ca-mains-notes). Requires the coaching-posting-agent MCP server (whoami, ca_parse, ca_commit tools) to be connected.
+name: "waytoias-ca-editorial-summary"
+description: "Research, write and publish an editorial/opinion-piece summary for the WayToIAS UPSC coaching website's Current Affairs → Editorial Summaries section. Use whenever the user asks to summarise, write or post a newspaper editorial, opinion piece, or \"editorial summary\" for WayToIAS/waytoias.com (e.g. \"summarise this editorial on federalism\", \"write today's editorial summary from this link\", \"post this opinion piece breakdown\"). Do NOT use this for a plain news article (use waytoias-ca-daily-news) or a durable Mains topic note (use waytoias-ca-mains-notes). Requires the coaching-posting-agent MCP server (whoami, ca_parse, ca_commit tools) to be connected."
 ---
 
 # Writing and posting Editorial Summaries for WayToIAS
@@ -15,12 +15,19 @@ not the filing step.
 
 ## The three-step flow
 
-1. **Research and write**, following the structure below, as plain markdown.
+1. **Research and write**, following the structure below, as plain HTML.
 2. **Hand it off for filing** — call `ca_parse` with your text as `raw_text`
    and `content_kind: "daily_editorial_summary"`. Its own AI resolves the
-   category and date and normalises the shape. Nothing is saved yet.
-3. **Review, then save** — check what came back (see "Before you commit"),
-   then call `ca_commit` with `content_kind: "daily_editorial_summary"`.
+   category and date and normalises the shape. Nothing is saved yet. Note:
+   `ca_parse` has been observed silently dropping the Mains Angle section
+   from the returned body — always diff the candidate's body against what
+   you sent, and re-add anything that went missing before committing.
+3. **Run the validator script** (see "Run the validator before every
+   commit" below) against the body you're about to send. Fix everything it
+   reports as an error. This is not optional and does not get skipped for
+   time — it is the actual mechanism that makes "Before you commit" real
+   instead of aspirational.
+4. **Commit** — call `ca_commit` with `content_kind: "daily_editorial_summary"`.
    Default `publish_mode: "review"` — see "Publishing" below.
 
 ## Before you start
@@ -28,166 +35,308 @@ not the filing step.
 Run `whoami` once per session. If it fails, the connection isn't working —
 say so and stop; don't try to work around it.
 
-## Structure
+## Run the validator before every commit
 
-This is a summary of someone else's argument, for Mains preparation — the
-reader wants the reasoning, not the news. If the user gives you a link to the
-actual editorial, read it and represent it faithfully; if they only give a
-topic, be explicit in the piece that you're synthesising the general debate
-rather than one named author's column.
+Manually re-reading a draft for length, heading count, and label quality is
+exactly the step that has failed before — it's easy to convince yourself a
+piece "reads fine" without actually counting words or headings, especially
+when writing several pieces in one sitting. Don't rely on that. Use the
+script below instead, every time, for every article, including edits to
+already-published pieces.
 
-Use these sections, in this order:
+**How to use it:**
+1. Write the script below to a file in the sandbox (e.g.
+   `/tmp/validate_editorial.py`) if it isn't already there this session.
+2. Write the article's body HTML to a second file.
+3. Run `python3 /tmp/validate_editorial.py <bodyfile.html>`.
+4. If it prints anything under `ERRORS`, fix the body and rerun until it
+   prints `none`. Items under `WARNINGS` are worth a manual look (commas in
+   a list of proper nouns or figures are usually fine) but aren't blocking.
+5. Only then call `ca_commit` or `ca_update_article`.
 
-1. **Context** — what prompted the editorial, with its date.
-2. **The Core Argument** — the author's central claim, stated plainly, in
-   your words but without softening or distorting it.
-3. **Supporting Points** — the evidence and reasoning offered, as bullets.
-4. **Counter-View** — the strongest opposing case, whether or not the
-   original piece acknowledges it. **This section is required.** A summary
-   with only one side isn't usable for a Mains answer, which has to show both.
-5. **Evaluation** — where the argument holds up and where it's weak. This is
-   your own analysis, clearly separated from the author's claims above it.
-6. **Mains Angle** — the GS paper and syllabus theme this maps to, plus one
-   practice question it could support.
+```python
+#!/usr/bin/env python3
+"""
+Validator for waytoias-ca-editorial-summary bodies.
+Usage: python3 validate_editorial.py <file.html>
+Exits non-zero if any HARD violation is found. Prints WARN items too.
+"""
+import sys, re, html
 
-**Voice:** represent the author's position faithfully even where you
-disagree with it — attribute opinions to the author ("the author argues
-that…"), not to fact. Keep your own voice mainly to the Evaluation section.
-500-700 words.
+BANNED_WORDS = ["artefact", "optics", "complementarity", "institutionalised",
+                 "institutionalized", "chilling effect", "the picture", "headwinds"]
+VAGUE_LABEL_HINTS = ["real ", "genuine concern", "significant", "an uncertain",
+                      "growing concern", "notable", "important to", "likely to",
+                      "already watching", "quietly", "concerns exist", "some concern"]
+ATTRIBUTION_HEDGES = ["the article says", "the editorial argues", "the article argues",
+                       "the editorial says"]
+MAX_WORDS = 32
+MAX_SUBSTANTIVE_HEADINGS = 4
+MIN_POINTS = 3
+MAX_POINTS = 6
+
+def strip_tags(s):
+    return html.unescape(re.sub(r"<[^>]+>", "", s)).strip()
+
+def word_count(s):
+    return len(re.findall(r"\S+", s))
+
+def check_sentences(text, where, errors, warns):
+    sentences = re.split(r'(?<=[.!?])["”’]?\s+(?=[A-Z"“])', text)
+    for s in sentences:
+        wc = word_count(s)
+        if wc > MAX_WORDS:
+            errors.append(f"[{where}] sentence too long ({wc} words): \"{s[:90]}...\"")
+        if s.count(";") >= 1:
+            warns.append(f"[{where}] semicolon found, check it isn't chaining two facts: \"{s[:90]}...\"")
+        if s.count(",") >= 3:
+            warns.append(f"[{where}] {s.count(',')} commas in one sentence, check for chaining: \"{s[:90]}...\"")
+
+def main(path):
+    raw = open(path, encoding="utf-8").read()
+    errors, warns = [], []
+
+    parts = re.split(r"(<h2>.*?</h2>)", raw, flags=re.S)
+    opening = parts[0]
+    if re.search(r"<ul>|<ol>", opening):
+        errors.append("Opening (before first heading) contains a list — must be plain <p> paragraphs.")
+    for s in re.findall(r"<p>(.*?)</p>", opening, flags=re.S):
+        check_sentences(strip_tags(s), "opening", errors, warns)
+
+    headings = []
+    i = 1
+    while i < len(parts):
+        h2_raw = parts[i]
+        heading_text = strip_tags(h2_raw)
+        body = parts[i+1] if i+1 < len(parts) else ""
+        headings.append((heading_text, body))
+        i += 2
+
+    substantive = [h for h in headings if h[0].strip().lower() not in ("conclusion", "mains angle")]
+    if len(substantive) > MAX_SUBSTANTIVE_HEADINGS:
+        errors.append(f"{len(substantive)} substantive headings found (max recommended {MAX_SUBSTANTIVE_HEADINGS}) — merge related sections.")
+
+    has_mains_angle = any(h[0].strip().lower() == "mains angle" for h in headings)
+    if not has_mains_angle:
+        errors.append("No 'Mains Angle' heading found — ca_parse may have dropped it, re-add before committing.")
+
+    slot_names = ["key arguments", "positives", "concerns", "causes", "impacts",
+                  "significance", "way forward", "a. positives", "b. concerns"]
+    for heading_text, body in headings:
+        low = heading_text.strip().lower()
+        if low in slot_names:
+            errors.append(f"Heading '{heading_text}' is a literal slot name — rewrite as a topic-specific question.")
+
+        if low == "conclusion":
+            if re.search(r"<ul>|<ol>", body):
+                errors.append("Conclusion contains a list — must be plain <p> paragraph(s).")
+            for s in re.findall(r"<p>(.*?)</p>", body, flags=re.S):
+                check_sentences(strip_tags(s), "Conclusion", errors, warns)
+            continue
+        if low == "mains angle":
+            continue
+
+        items = re.findall(r"<li>(.*?)</li>", body, flags=re.S)
+        n = len(items)
+        if n == 0:
+            errors.append(f"Heading '{heading_text}' has no numbered points at all.")
+        elif n < MIN_POINTS:
+            errors.append(f"Heading '{heading_text}' has only {n} point(s) — fold into a related section instead of its own heading.")
+        elif n > MAX_POINTS:
+            warns.append(f"Heading '{heading_text}' has {n} points — consider curating down toward {MAX_POINTS}.")
+
+        for item in items:
+            label_match = re.match(r"\s*<strong>(.*?)</strong>\s*:?", item)
+            label = strip_tags(label_match.group(1)) if label_match else None
+            rest = item[label_match.end():] if label_match else item
+            item_text = strip_tags(rest)
+            if label:
+                low_label = label.lower()
+                for hint in VAGUE_LABEL_HINTS:
+                    if hint in low_label:
+                        warns.append(f"[{heading_text}] label '{label}' may be too generic (paste-test it) — matched hint '{hint.strip()}'.")
+            check_sentences(item_text, heading_text, errors, warns)
+
+    full_text_lower = strip_tags(raw).lower()
+    for w in BANNED_WORDS:
+        if w in full_text_lower:
+            errors.append(f"Banned vague word found: '{w}'.")
+    for phrase in ATTRIBUTION_HEDGES:
+        if phrase in full_text_lower:
+            errors.append(f"Stray attribution hedge found: '{phrase}'.")
+
+    print("=== ERRORS (must fix before committing) ===")
+    if errors:
+        for e in errors:
+            print(" -", e)
+    else:
+        print(" none")
+    print("\n=== WARNINGS (re-check, may be false positives) ===")
+    if warns:
+        for w in warns:
+            print(" -", w)
+    else:
+        print(" none")
+
+    return 1 if errors else 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1]))
+```
+
+This script is a living part of the skill — if a new kind of violation shows
+up that the script doesn't catch, the right fix is to extend the script (and
+re-save the skill with the updated version), not to just try to remember to
+check for it manually next time.
+
+## How every piece is built
+
+Every editorial summary is a short structured story, in this shape:
+
+1. **Open with a plain paragraph — no heading, no bullets, no numbers.**
+   Two to four sentences, in `<p>` tags, that tell the reader what happened
+   in the order they'd naturally hear it: the general finding or event
+   first, then the specific figures or facts that back it, then whatever
+   minimum background is needed to follow the rest of the piece.
+
+2. **Everything after that is a question heading (`<h2>`) followed by a
+   numbered list (`<ol><li>`).** Each heading asks a specific question about
+   the topic (see "Headings" below). Each numbered point follows one shape:
+   a short bolded label, a colon, one plain sentence stating the point, and
+   — only when the source actually has one to give — a second sentence in
+   the same point giving the supporting detail, example, or figure.
+
+3. **Order the points the way they'd actually make sense** — usually
+   chronological (what happened first, second, third), or by how much
+   weight the editorial itself gives each one.
+
+4. **Close with a short plain paragraph (`<p>`), not a list** — the piece's
+   own stance or tone, written the same way as the opening. Use a
+   "Conclusion" heading.
+
+5. **Mains Angle stays as its own final section (`<h2>` + `<p>`)** — the GS
+   paper, syllabus theme, and a practice question. This is the one part you
+   compose yourself rather than draw from the editorial.
+
+### Aim for around three to four substantive headings, not five or more
+
+If two headings are both answering a version of "why did this happen" or
+"what's the concern here," they belong under one heading with a longer,
+combined numbered list — not two headings with two or three points each.
+
+### Don't create a heading for one or two points
+
+Fold thin sections into the neighbouring section they're most related to —
+usually the opening paragraph if it's scene-setting, or the argument
+section it supports, or occasionally into the Conclusion as prose if it's a
+forward-looking implication rather than an argument.
+
+### Headings — phrase every one around the topic, never the template label
+
+The section names below ("Causes," "Key Arguments," "Significance," and so
+on) are internal names for what kind of content goes where — never publish
+them as the literal heading. Write the actual `<h2>` as a specific question
+or statement naming the real subject. Only "Mains Angle" and a plain
+"Conclusion" are ever published literally.
+
+### The bolded label on every point — name the thing, don't summarise it
+
+Modelled on insightsonindia.com's own labels — never a verdict or a
+reaction, always the name of the actual thing being described: **"10-km
+Clearance Buffer for Wetland Reserves,"** **"Nationwide Parity Principle,"**
+**"Mandatory EIAs."** Each one could stand alone as a term in a glossary.
+
+- **Name the rule, mechanism, figure, principle, case, or event — not your
+  own take on it.**
+- **Paste test:** could this label be pasted into a completely different
+  article and still sort of fit? If yes, it's too generic — rewrite it to
+  include the number, name, date, or mechanism unique to this piece.
+- The sentence after the colon still does the explaining — the label's job
+  is only to name the point precisely.
+
+### Writing rules for every numbered point
+
+- **Say the reasoning, not just the result.**
+- **No word that stands in for an explanation instead of giving one** —
+  avoid *artefact*, *optics*, *complementarity*, *institutionalised*,
+  *chilling effect*, *the picture*, *headwinds*, or an unexplained *bias*.
+- **Keep each sentence to roughly 30 words, and never chain more than two
+  facts together with commas or a semicolon.**
+- **Use the source's exact figures** — a number, date, percentage, Article,
+  case name, or named institution, wherever the source gives you one.
+- **Full name, then abbreviation**, on first mention of any Act, scheme, or
+  body.
+- **Curate hard.** Roughly 4–6 numbered points per section.
+
+### Core rules
+
+- **Stay inside the editorial.** State each point directly, no "the article
+  says" hedging. Quotations are the one exception — verbatim, in quote
+  marks, attributed.
+- **Sections are adaptive, never forced.**
+- **No outside general knowledge.**
+
+### Which sections to build, and what each one is for
+
+Build only what the editorial supports, in this order: **(unheaded)
+Opening paragraph** → **Causes/Reasons** *(if present)* → **Key Arguments**
+(Strengths, Concerns — whichever are present) → **Significance**
+*(if present)* → **Impacts** *(if present)* → **Institutional/Legal
+References** *(if present)* → **Way Forward** *(only if the source itself
+proposes one)* → **Conclusion** → **Mains Angle**. Merge per "Aim for
+around three to four substantive headings" wherever two of these would
+otherwise be thin.
 
 ### Format Library — variants by editorial type
 
-The six sections above are the **default**, and they fit most opinion
-pieces. Some editorial types carry a different kind of information and
-deserve their own shape — the same way the daily-news skill picks a template
-per story type rather than forcing one set of headings on everything.
-
-**How to use this library:** if a variant below matches the editorial, use
-its sections in place of the default body (the spine — Context first, Mains
-Angle last — stays either way). If none matches, use the default. A variant
-that is still marked *"To be defined"* has no agreed shape yet: use the
-default and say so plainly in your report, rather than inventing a
-structure and presenting it as house style.
-
-<!-- FORMAT LIBRARY — editorial variants.
-     Add or edit templates here, then re-save the skill (see "Adjusting the
-     format later"). Keep each entry in the same shape: a bold type name,
-     one line on when it applies, then its sections as a list. -->
+The shape above is the **default**. If a variant below matches the piece,
+use its sections instead (spine stays: opening paragraph first, Mains
+Angle last). A variant marked *"To be defined"* has no agreed shape — use
+the default and say so, rather than inventing one.
 
 **General editorial / opinion piece** *(default — defined above)*
-- Context → The Core Argument → Supporting Points → Counter-View →
-  Evaluation → Mains Angle.
 
 **Judgment or legal commentary** *(To be defined)*
-- When it applies: an editorial arguing about a court ruling, a
-  constitutional question or a piece of legislation.
-- Sections: *to be filled in.*
-
 **Economic or data-led editorial** *(To be defined)*
-- When it applies: an editorial built on figures — a budget, an index, a
-  policy's measured effect.
-- Sections: *to be filled in.*
-
 **Foreign policy or international relations editorial** *(To be defined)*
-- When it applies: an editorial on a bilateral relationship, a treaty, or
-  India's position in a grouping.
-- Sections: *to be filled in.*
-
 **Social issue or governance editorial** *(To be defined)*
-- When it applies: an editorial on a welfare question, a vulnerable
-  section, or an administrative failure.
-- Sections: *to be filled in.*
 
-<!-- Add further editorial types below this line. -->
+## Research and accuracy
 
-## Research and accuracy — this is what makes the content trustworthy
-
-- **Never invent a figure, date, name, rank or finding.** If you can't find
-  it, leave it out. A shorter accurate piece beats a longer speculative one.
+- **Never invent a figure, date, name, rank or finding.**
 - **Attribute statistics by name in the text.**
-- **Never invent a source link.** Only cite a URL you actually fetched or
-  were given. If your grounding came from a general web search rather than
-  one identifiable page, don't attach a source URL at all.
-- Give the full official name of a body, scheme, Act or report on first
-  mention, then the abbreviation. Cite Articles/Sections precisely.
-- Wrap maths, statistics and percentages in single dollar signs for LaTeX
-  (e.g. `$6.5\%$`, `$10^9$`).
+- **Never invent a source link.**
+- Cite Articles/Sections precisely.
+- Wrap maths/statistics/percentages in single dollar signs for LaTeX.
 
-## Source and SEO — fill these on every commit
+## Category and date
 
-Both are passed per article in `ca_commit`. Neither is optional in practice:
-an unsourced summary can't be checked, and an article with no SEO fields is
-invisible to search.
-
-### Source — required for a summary
-
-A summary represents someone else's argument, so the reader must be able to
-reach it.
-
-- `source_name` — the publication and, where known, the author:
-  `"The Hindu"`, `"Indian Express — Editorial"`.
-- `source_url` — **the exact URL you actually read.** It becomes a
-  clickable link on the article page.
-
-**Never invent a URL.** If you only have the topic, or your grounding came
-from a general search rather than one identifiable page, set `source_name`
-to the publication if you know it and **leave `source_url` out entirely** —
-then say so plainly in your report. A wrong link is worse than none.
-
-### SEO — every article, every content type
-
-- `seo_title` — up to ~60 characters. The topic in searchable words, not a
-  clever headline. Front-load the entity a student would type: *"Bankers'
-  Books Evidence Bill 2026: Key Changes and Concerns"*.
-- `seo_description` — 140-160 characters, one or two plain sentences saying
-  what the piece covers and what a reader gains. Not a truncated first
-  paragraph.
-- `keywords` — 5-10 entries. The named entities (Act, Bill, body, scheme,
-  index), the syllabus theme, and the exam paper. Real terms someone would
-  search; no keyword stuffing, no near-duplicates of one phrase.
-
-Write them from the finished piece, not before — they should describe what
-you actually wrote.
-
-## Category and date — you can steer these, or leave them to the filer
-
-`ca_parse` picks a category from the live tree and works out a date on its
-own. You can override either by writing it directly into the text:
+`ca_parse` picks a category and date on its own, or you can override:
 
 ```
 Categories: Polity > Governance
 Date: 2024-03-15
 ```
 
-Without a `Date:` line, a piece about an older editorial risks landing under
-today by mistake. Call `list_current_affairs_categories` first if you want
-to see the live category names before writing one in.
+Call `list_current_affairs_categories` first if you want to see live
+category names before writing one in.
 
 ## Before you commit — check what `ca_parse` actually returned
 
-- **Category resolved?** An item with no category lands uncategorised.
-- **Date sane?**
-- **Both sides of the argument actually present** — the required
-  counter-view is the thing most likely to get thinned out; check it's
-  substantive, not a token sentence.
+This is what "Run the validator before every commit" above operationalises
+— run the script, then also sanity-check by eye:
 
-## Publishing — read this before every `ca_commit` call
+- **Category resolved and date sane?**
+- **Mains Angle still present?** (`ca_parse` has dropped it before.)
+- **Quotes are real quotes**, no stray "the article says" hedging.
+- **Every point carries a real figure, date, name, or example** where the
+  source has one — nothing generalised into vague language.
 
-**Default to `publish_mode: "review"`, always.** This saves the piece as a
-draft in the Articles Library — invisible to students — for a human to open
-in the normal article editor, then publish.
+## Publishing
 
-When content is generated through the app's own AI tools, the server itself
-refuses to publish it live without an extra confirmation. That automatic
-check does not see this path — from the server's point of view, you handing
-it text is the same as someone pasting in a Word document. **You are the
-only thing standing between what you write and the live site.**
-
-Use `publish_mode: "auto"` only when the user's message, in this exact
-request, explicitly asks for it to go live. Not because a similar request
-went live last time. If you're not sure, ask.
-
-Tell the user plainly, every time, which one happened and where it ended up.
+**Default to `publish_mode: "review"`, always.** Use `"auto"` only when the
+user's message, in this exact request, explicitly asks for it to go live.
+Tell the user plainly, every time, which happened and where it landed.
 
 ## Concepts — the entity the editorial argues about
 
@@ -242,7 +391,8 @@ with today's piece.
 The site shows linked concepts in their own panel, but that's *after* the
 argument. A reader meeting an unfamiliar Bill in paragraph two shouldn't
 have to hunt for the explanation — **put the link where the term first
-carries weight**, usually in Context or The Core Argument.
+carries weight**, usually in the opening paragraph or the first section
+that turns on it.
 
 One inline link per concept, on its first substantive mention:
 
@@ -272,59 +422,71 @@ Rules:
 entity the story is plainly about. Summaries and Mains Notes ask, because
 both name several entities while making their case.)*
 
+## Source and SEO — fill these on every commit
+
+Both are passed per article in `ca_commit`. Neither is optional in practice:
+an unsourced summary can't be checked, and an article with no SEO fields is
+invisible to search.
+
+### Source — required for a summary
+
+A summary represents someone else's argument, so the reader must be able to
+reach it.
+
+- `source_name` — the publication and, where known, the author:
+  `"The Hindu"`, `"Indian Express — Editorial"`.
+- `source_url` — **the exact URL you actually read.** It becomes a
+  clickable link on the article page.
+
+**Never invent a URL.** If you only have the topic, or your grounding came
+from a general search rather than one identifiable page, set `source_name`
+to the publication if you know it and **leave `source_url` out entirely** —
+then say so plainly in your report. A wrong link is worse than none.
+
+### SEO — every article
+
+- `seo_title` — up to ~60 characters. The topic in searchable words, not a
+  clever headline. Front-load the entity a student would type: *"Bankers'
+  Books Evidence Bill 2026: Key Changes and Concerns"*.
+- `seo_description` — 140-160 characters, one or two plain sentences saying
+  what the piece covers and what a reader gains. Not a truncated first
+  paragraph.
+- `keywords` — 5-10 entries. The named entities (Act, Bill, body, scheme,
+  index), the syllabus theme, and the exam paper. Real terms someone would
+  search; no keyword stuffing, no near-duplicates of one phrase.
+
+Write them from the finished piece, not before — they should describe what
+you actually wrote.
+
 ## After committing — check for a Mains Note topic
 
-A summary is one dated piece; a Mains Note is the durable topic it feeds —
-many summaries contribute to one note over time (several India-China
-summaries across months all feed the one "India-China Relations" note).
-Do this after every `ca_commit`, once the summary has an id:
-
-1. **Search for the topic** — `ca_find_articles` with the entity/topic name
-   and `content_kind: "mains_topic_note"`.
-
-2. **If a topic exists:** read it with `ca_get_article`. Identify which of
-   its **section headings** this summary's content actually adds to —
-   usually one or two, not all of them. A note's sections are named things
-   (*Issues and Challenges*, *Evolution*, *Recommendations and Reforms*, and
-   so on, depending on subject); route each pointer to the section it truly
-   belongs to, never to a "Recent Developments" dump at the bottom.
-
-   Pull out only the pointers worth a student remembering (a fact, a figure,
-   a named argument), not the whole summary. Each pointer is one bullet:
-   the substance to the point, then a reference link back to this summary —
-   using the exact `reference_url` that `ca_link_to_mains_note` returns,
-   never a hand-composed URL.
-
-   **Propose this to the user before touching anything**: which section(s),
-   and the exact bullet text. Wait for agreement.
-
-   Once agreed: merge the new pointers into the topic's existing body under
-   the matching headings (`ca_get_article` again if time has passed, so
-   you're editing the current body, not a stale copy) and save with
-   `ca_update_article`, `confirm_change: "user-approved"` (plus
-   `confirm_live_edit` if the topic is published) — the body replaces the
-   whole body, so send the existing note with your additions merged in, not
-   just the new bullets. Then record the link with `ca_link_to_mains_note`,
-   same confirmation. Two calls, one agreement — don't ask twice for the
-   same change.
-
-3. **If no topic exists:** tell the user plainly — "no Mains Note exists yet
-   for X" — and propose creating one. Don't create it yourself. If they
-   agree, write it through the normal `waytoias-ca-mains-notes` flow, then
-   link the two with `ca_link_to_mains_note`.
-
-4. **Never re-summarise the same ground into a second topic.** If a topic
-   already exists but looks thin, that's a reason to improve it in place
-   (step 2), never to start a competing one.
+1. **Search** — `ca_find_articles` with the entity/topic name and
+   `content_kind: "mains_topic_note"`.
+2. **If a topic exists:** read it, identify which section(s) this adds to,
+   propose the exact addition to the user, then merge in and save with
+   `confirm_change: "user-approved"` (+ `confirm_live_edit` if published),
+   and record the link with `ca_link_to_mains_note`.
+3. **If no topic exists:** tell the user and propose creating one — don't
+   create it yourself.
+4. **Never re-summarise into a second competing topic.**
 
 ## What not to do
 
-- Don't summarise an editorial you couldn't actually find or read — say so.
-- Don't invent a source name or URL to make the piece look better-cited.
-- Don't publish live because it was convenient, only because it was asked.
-- Don't skip or shrink the Counter-View section to save time.
-- Don't invent a shape for a variant marked *To be defined*. Use the default
-  and say which you used.
+- Don't summarise an editorial you couldn't find or read — say so.
+- Don't invent a source name, URL, figure, date, or finding.
+- Don't publish live unless explicitly asked.
+- Don't force a section, or give one or two points their own heading.
+- Don't publish a slot name as a literal heading.
+- Don't put the opening or Conclusion in a list.
+- Don't chain three or more facts into one sentence, anywhere.
+- Don't label a point with a verdict or a mood when a specific name, rule,
+  figure, or event is available.
+- Don't reach for an abstract word in place of a plain description.
+- Don't assert a causal claim without its reasoning in the same point.
+- Don't hedge a directly-stated point behind "the article says."
+- Don't add your own verdict in the Conclusion.
+- Don't invent a shape for a *To be defined* Format Library variant.
+- **Don't skip running the validator script** — for one article or four.
 - Don't create a concept page for every entity the editorial names. One
   piece is about one thing; the rest are mentions.
 - Don't create a second concept when `ca_find_concepts` already returned
@@ -332,16 +494,9 @@ Do this after every `ca_commit`, once the summary has an id:
 
 ## Adjusting the format later
 
-This skill's format spec — the default structure, the Format Library, the
-sourcing rules, or anything else in this file — is a persistent, editable
-spec, not something re-decided each run.
+This skill's format spec, including the validator script, is a persistent,
+editable spec. If the user asks to change any of it, **update this skill
+and re-save it** — and if a new violation type shows up that the validator
+doesn't catch, extend the script itself in the same edit, not just the
+prose rules around it.
 
-If the user asks to change any of it, **update this skill and re-save it**
-(via the skill-saving tool, with overwrite) rather than only applying the
-change for one run. Editing files on disk does not persist to the installed
-skill; a real change has to go through re-saving the skill itself.
-
-A variant marked *To be defined* is deliberately empty, not an oversight.
-Filling one in is a real editorial decision — confirm the section list with
-the user before writing it in, the same as any other change to their
-content.

@@ -127,6 +127,51 @@ request, explicitly asks for it to go live. If unsure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
+## Correcting something already posted
+
+A piece that is already on the site can be edited in place. Use this
+whenever something turns out to be wrong — a bad figure, a wrong date, a
+mis-stated fact, a clumsy heading. **Never re-post a corrected copy.** A
+second piece about the same thing splits its trail in two and leaves both
+halves wrong; the fix is always an edit, never a new post.
+
+Three tools, in this order — do not skip a step:
+
+1. `ca_find_articles` — find it by text from its title or body. Searches
+   drafts and published alike.
+2. `ca_get_article` — read the full current body before changing anything.
+   A rewrite composed from memory of what you posted drops details that
+   were right. Read it first, every time.
+3. `ca_update_article` — send only the fields that change. Everything you
+   leave out stays exactly as it is, so a single wrong figure does not mean
+   resupplying the whole piece.
+
+`body` must be the complete replacement, as HTML — not a fragment, not a
+description of the change. Same tags as when posting: `<p>`, `<h2>`,
+`<strong>`, `<ul><li>`.
+
+**Never change a posted piece on your own judgement — not even a draft,
+not even an obvious mistake.** If you notice something wrong while doing
+other work, say so and stop there. Tell the user which piece it is, what
+looks wrong, and what you would change it to, then wait. Only once they
+agree, in this request, do you send the edit with
+`confirm_change: "user-approved"`. The tool refuses without it and names
+the fields you were about to change — that refusal is the rule working,
+not an error to route around.
+
+### Editing something that is already live
+
+If the piece's status is `published`, students are reading it right now.
+That edit needs `confirm_live_edit: "update-live-article"` **as well as**
+`confirm_change` — say plainly that it is live when you ask.
+
+Taking something down is the one thing that doesn't need the live gate: set
+`status: "draft"` on a live piece that is wrong (still ask first). If a fix
+will take a while to get right, pull it down and correct it as a draft.
+
+Say plainly, every time, which piece you changed, what you changed in it,
+and whether it was live.
+
 ## What not to do
 
 - Don't fabricate data, a committee name, or a citation to fill out the
