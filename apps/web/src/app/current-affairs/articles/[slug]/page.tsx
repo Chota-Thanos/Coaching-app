@@ -22,25 +22,99 @@ function paragraphs(body: string): string[] {
   return body.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);
 }
 
+/**
+ * Fallback description, used only when an article has no `seo_description`.
+ * Bodies are HTML, so the tags have to come out first — without this the meta
+ * description literally began "&lt;p&gt;The Lok Sabha...", which is what was
+ * being served to search engines for every article.
+ */
 function articleDescription(body: string): string {
-  const compact = body.replace(/\s+/g, " ").trim();
-  return compact.length > 155 ? `${compact.slice(0, 155).trim()}...` : compact;
+  const text = body
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > 155 ? `${text.slice(0, 155).trim()}…` : text;
+}
+
+/** Search terms every current-affairs page should carry, beyond its own topic. */
+const CA_BASE_KEYWORDS = [
+  "current affairs",
+  "UPSC current affairs",
+  "daily current affairs",
+  "UPSC preparation",
+  "IAS preparation",
+  "WayToIAS",
+];
+
+/** The exam-stage terms students actually search, per content type. */
+function contentKindKeywords(contentKind: string): string[] {
+  if (contentKind === "daily_current_affairs" || contentKind === "prelims_pyq") {
+    return ["current affairs for prelims", "UPSC prelims current affairs", "prelims preparation"];
+  }
+  if (
+    contentKind === "daily_editorial_summary" ||
+    contentKind === "mains_topic_note" ||
+    contentKind === "mains_pyq" ||
+    contentKind === "mains_summary" ||
+    contentKind === "mains_article"
+  ) {
+    return ["current affairs for mains", "UPSC mains current affairs", "editorial analysis", "mains answer writing"];
+  }
+  return [];
+}
+
+/**
+ * Article keywords, best source first: what the writer/AI actually chose for
+ * this piece, then its category and exam stage, then the site-wide terms.
+ * `keywords` was being ignored entirely in favour of `institute_tags`, which
+ * is empty on virtually every article — so every page carried the same
+ * generic three-word list.
+ */
+function articleKeywords(article: {
+  keywords?: string[] | null;
+  institute_tags?: string[] | null;
+  content_kind: string;
+  category?: { name: string } | null;
+}): string[] {
+  const own = [...(article.keywords ?? []), ...(article.institute_tags ?? [])].filter(Boolean);
+  const category = article.category?.name ? [article.category.name] : [];
+  const merged = [...own, ...category, ...contentKindKeywords(article.content_kind), ...CA_BASE_KEYWORDS];
+  // De-duplicate case-insensitively, keeping the first (most specific) form.
+  const seen = new Set<string>();
+  return merged.filter((k) => {
+    const key = k.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
   try {
     const article = await getArticleBySlug(slug);
-    const description = articleDescription(article.body);
+    // Prefer what the writer chose for search; fall back to the body only when
+    // no seo_description exists. Both fields were being ignored before.
+    const description = article.seo_description?.trim() || articleDescription(article.body);
+    const title = article.seo_title?.trim() || article.title;
     const image = article.assets.find((asset) => ["thumbnail", "image"].includes(asset.asset_type))?.file_url;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
     const articleUrl = `${baseUrl}${articleHref(article.slug)}`;
 
     return {
-      title: article.title,
+      title,
       description,
-      alternates: { canonical: articleHref(article.slug) },
+      keywords: articleKeywords(article),
+      alternates: { canonical: article.canonical_url?.trim() || articleHref(article.slug) },
       openGraph: {
+        // Open Graph is for humans sharing a link, so the real headline reads
+        // better there than a keyword-shaped SEO title.
         title: article.title,
         description,
         type: "article",
@@ -79,11 +153,11 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: article.title,
-    description: articleDescription(article.body),
+    description: article.seo_description?.trim() || articleDescription(article.body),
     datePublished: article.publication_date,
     dateModified: article.publication_date,
     articleSection: article.category?.name || "General Studies",
-    keywords: article.institute_tags ? article.institute_tags.join(", ") : "UPSC, Current Affairs, WayToIAS",
+    keywords: articleKeywords(article).join(", "),
     image: heroAsset?.file_url ? [heroAsset.file_url] : undefined,
     mainEntityOfPage: articleUrl,
     author: {

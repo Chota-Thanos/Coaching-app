@@ -25,7 +25,7 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     path: "daily-news",
     label: "Prelims Current Affairs",
     shortLabel: "Daily News",
-    description: "Daily current affairs updates for prelims revision, organized by month and category.",
+    description: "Daily current affairs for UPSC prelims — updated every day, organised by month and subject. Free current affairs for prelims preparation, covering schemes, polity, economy, environment and science.",
     contentKind: "daily_current_affairs",
     contentFamily: "prelims",
     filterMode: "month"
@@ -34,7 +34,7 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     path: "concepts",
     label: "Prelims Concepts",
     shortLabel: "Concepts",
-    description: "Reusable topic primers referenced across daily news articles — read once, revise anytime.",
+    description: "UPSC current affairs concept primers — evergreen explainers of the schemes, bodies, laws and indices behind the news. Read once, revise anytime for prelims.",
     contentKind: "daily_current_affairs",
     contentFamily: "prelims",
     filterMode: "month",
@@ -44,7 +44,7 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     path: "editorial-summary",
     label: "Editorial Summary",
     shortLabel: "Editorials",
-    description: "Exam-focused editorial summaries for mains answer enrichment and issue tracking.",
+    description: "Daily editorial summaries for UPSC mains — arguments, counter-views and evaluation from leading newspapers. Current affairs for mains answer writing and issue tracking.",
     contentKind: "daily_editorial_summary",
     contentFamily: "mains",
     filterMode: "month"
@@ -53,7 +53,7 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     path: "mains-topic-notes",
     label: "Mains Topic Notes",
     shortLabel: "Mains Notes",
-    description: "Structured topic notes for mains themes, arguments, data points, and examples.",
+    description: "UPSC mains current affairs topic notes — structured, syllabus-mapped notes with arguments, data, committees and examples. Current affairs for mains revision in one place.",
     contentKind: "mains_topic_note",
     contentFamily: "mains",
     filterMode: "month"
@@ -62,7 +62,7 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     path: "prelims-pyq",
     label: "Prelims PYQ",
     shortLabel: "Prelims PYQ",
-    description: "Previous year prelims questions linked with current affairs categories.",
+    description: "UPSC prelims previous year questions (PYQ) mapped to current affairs topics — practise prelims MCQs by subject and year.",
     contentKind: "prelims_pyq",
     contentFamily: "prelims",
     filterMode: "year"
@@ -71,7 +71,7 @@ export const CURRENT_AFFAIRS_HUBS: CurrentAffairsHub[] = [
     path: "mains-pyq",
     label: "Mains PYQ",
     shortLabel: "Mains PYQ",
-    description: "Previous year mains questions organized by syllabus and current affairs category.",
+    description: "UPSC mains previous year questions (PYQ) organised by GS paper, syllabus theme and current affairs topic — with model answer approaches.",
     contentKind: "mains_pyq",
     contentFamily: "mains",
     filterMode: "year"

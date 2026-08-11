@@ -35,9 +35,33 @@ export async function generateMetadata({ params, searchParams }: HubPageProps): 
 
   const path = hubHref(hub, { category, month, year, page: normalizePage(query.page) });
   const title = titleParts.join(" — ");
+
+  // Hub pages are what rank for the broad searches ("upsc current affairs"),
+  // so they carry the stage-specific terms plus the site-wide ones. A filtered
+  // view also carries its own category/month, which is what someone searching
+  // "polity current affairs august 2026" is actually after.
+  const stageKeywords =
+    hub.contentFamily === "mains"
+      ? ["current affairs for mains", "UPSC mains current affairs", "editorial analysis", "mains answer writing"]
+      : ["current affairs for prelims", "UPSC prelims current affairs", "prelims preparation"];
+  const keywords = [
+    hub.label,
+    ...stageKeywords,
+    ...(category ? [`${category} current affairs`, category] : []),
+    ...(month ? [`${month} current affairs`] : []),
+    ...(year ? [`current affairs ${year}`] : []),
+    "current affairs",
+    "UPSC current affairs",
+    "daily current affairs",
+    "UPSC preparation",
+    "IAS preparation",
+    "WayToIAS",
+  ].filter((value, index, all) => all.findIndex((v) => v.toLowerCase() === value.toLowerCase()) === index);
+
   return {
     title,
     description: hub.description,
+    keywords,
     alternates: { canonical: path },
     openGraph: {
       title,
