@@ -364,6 +364,7 @@ up the linking articles' `content_kind` before creating anything:
 | Trigger | New concept page |
 |---|---|
 | Daily news article | **Created automatically** — unchanged, hands-off |
+| Editorial Summary | **Asks first** |
 | Mains Note | **Asks first** |
 | Reusing any existing concept | Never gated, either way |
 
@@ -371,10 +372,16 @@ The asymmetry is deliberate. A news article's concept is the entity the
 story is *about*, chosen by the same research that produced the article, and
 that pipeline was already automatic and working — gating it would have
 broken a hands-off flow to solve a problem it doesn't have. A Mains Note
-mentions many entities in passing, so "does this one deserve its own page?"
-is a genuine editorial call every time. Reuse stays ungated everywhere
-because friction there would push toward duplicates, which is the failure
-this whole area exists to prevent.
+mentions many entities in passing, and an Editorial Summary argues about one
+while naming several more along the way, so in both "does this one deserve
+its own page?" is a genuine editorial call every time. Reuse stays ungated
+everywhere because friction there would push toward duplicates, which is the
+failure this whole area exists to prevent.
+
+Summaries were added to the gated set on 2026-08-11, after a real gap: a
+published summary on a financial-evidence Bill had no concept attached and
+no concept existed for the law, so a reader meeting the Bill for the first
+time had nowhere to go for what it actually is.
 
 The bar, stated in the refusal message so the model can act on it without
 guessing: an entity substantial enough to stand on its own and needing a

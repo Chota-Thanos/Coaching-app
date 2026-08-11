@@ -153,6 +153,58 @@ went live last time. If you're not sure, ask.
 
 Tell the user plainly, every time, which one happened and where it ended up.
 
+## Concepts — the entity the editorial argues about
+
+An editorial argues *about* something: a Bill, an Act, a scheme, an
+institution, a doctrine. That entity usually deserves a concept page — the
+evergreen explainer of what it actually is — so a student who hasn't met it
+before can follow the argument. The summary carries the argument; the
+concept carries the definition.
+
+**A summary with no concept attached is the common gap.** If the editorial
+turns on an entity a reader might not know, check before you finish.
+
+### Which entity earns a page
+
+The bar is the same as everywhere else: an entity **substantial enough to
+stand on its own and needing a full description** — an institution,
+statutory body, scheme, doctrine, law or index that recurs across topics.
+
+An editorial names several things in passing while making its case. Usually
+**only one** of them is what the piece is actually about; that's the
+candidate. The rest stay as ordinary mentions.
+
+### The flow
+
+1. **Search first, always.** `ca_find_concepts` with the entity name, and
+   try more than one phrasing — a law is often filed under its formal name
+   rather than the phrase the editorial used. If a concept exists,
+   **reuse that exact id**; never write a second copy because the existing
+   one looks thin. Reuse needs no confirmation and is always the preferred
+   outcome.
+2. **If none exists**, apply the bar. If the entity doesn't clear it, leave
+   the summary without a concept — that's a normal outcome, not a failure.
+3. **If it does clear the bar, ask the user.** Say what the page would
+   cover and why the summary reads incompletely without it, then wait.
+   **The tool enforces this** — creating a new concept from a summary
+   without `confirm_new_concept: "user-approved"` is refused outright, and
+   the refusal restates the bar. Treat that refusal as the rule working,
+   not an error to route around.
+4. **On agreement**, `ca_link_concept` with `concept: {...}` and
+   `confirm_new_concept: "user-approved"` composes and links it in one call
+   (it still reuses silently if the slug or title already matches, so this
+   cannot create a duplicate by accident). Use `is_core: true` — for a
+   summary there is normally exactly one entity the piece is about.
+
+Write the concept body **evergreen**: no "recently", no "this week", no
+dates tied to this editorial. It has to still read correctly in three
+years, and it will be linked from future articles that have nothing to do
+with today's piece.
+
+*(Daily news is exempt from the confirmation step — its concept is the
+entity the story is plainly about. Summaries and Mains Notes ask, because
+both name several entities while making their case.)*
+
 ## After committing — check for a Mains Note topic
 
 A summary is one dated piece; a Mains Note is the durable topic it feeds —
@@ -206,6 +258,10 @@ Do this after every `ca_commit`, once the summary has an id:
 - Don't skip or shrink the Counter-View section to save time.
 - Don't invent a shape for a variant marked *To be defined*. Use the default
   and say which you used.
+- Don't create a concept page for every entity the editorial names. One
+  piece is about one thing; the rest are mentions.
+- Don't create a second concept when `ca_find_concepts` already returned
+  one. Reuse the id.
 
 ## Adjusting the format later
 

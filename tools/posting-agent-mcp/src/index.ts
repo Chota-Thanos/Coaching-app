@@ -623,7 +623,7 @@ server.registerTool(
         .literal('user-approved')
         .optional()
         .describe(
-          'Required only when `concept` creates a NEW page AND a Mains Note is among the linking articles. Daily news creates concepts automatically — its concept is the entity the story is about, so no confirmation is needed there. Reusing an existing concept (concept_article_id, or a title/slug that already matches) never needs it either. A Mains Note mentions many entities in passing, so whether one deserves its own page is an editorial call: put it to the user before sending this.',
+          'Required only when `concept` creates a NEW page AND a Mains Note or an Editorial Summary is among the linking articles. Daily news creates concepts automatically — its concept is the entity the story is about, so no confirmation is needed there. Reusing an existing concept (concept_article_id, or a title/slug that already matches) never needs it either. A note mentions many entities in passing, and a summary argues about one while naming several more, so whether any deserves its own page is an editorial call: put it to the user before sending this.',
         ),
       is_core: z
         .boolean()
@@ -679,16 +679,22 @@ server.registerTool(
           // on a passing term is worse than no page at all, and once created
           // it is what every later article links to.
           //
-          // But that judgement only needs a human in the Mains-note flow. A
+          // But that judgement only needs a human in the Mains-prep flows. A
           // news article's concept is the entity the story is *about*, chosen
           // by the same research that produced the article, and creating it
           // has been automatic and working; gating it would break a hands-off
-          // pipeline to solve a problem it does not have. A Mains Note is the
-          // opposite case: it mentions many entities in passing, so "does this
-          // one deserve a page?" is a real editorial call every time.
+          // pipeline to solve a problem it does not have.
+          //
+          // Mains Notes and Editorial Summaries are the opposite case. A note
+          // mentions many entities in passing. A summary argues *about* an
+          // entity, and its analysis names several more along the way — so
+          // "which of these deserves a page?" is a real editorial call in both,
+          // and the wrong answer leaves a thin page the whole site then links
+          // to.
           //
           // Reuse is never gated either way — it is always the outcome to
           // prefer, and friction there would push toward duplicates.
+          const ASK_FIRST_KINDS = new Set(['mains_topic_note', 'daily_editorial_summary']);
           const linkingKinds = await Promise.all(
             links.slice(0, 5).map(async (l) => {
               try {
@@ -699,17 +705,23 @@ server.registerTool(
               }
             }),
           );
-          const askFirst = linkingKinds.some((k) => k === 'mains_topic_note');
+          const gatingKind = linkingKinds.find((k) => k !== undefined && ASK_FIRST_KINDS.has(k));
 
-          if (askFirst && confirm_new_concept !== 'user-approved') {
+          if (gatingKind && confirm_new_concept !== 'user-approved') {
+            const why =
+              gatingKind === 'daily_editorial_summary'
+                ? 'An Editorial Summary argues about one entity and names several more in passing, so a new concept page needs the user first.'
+                : 'A Mains Note mentions many entities in passing, so a new concept page needs the user first.';
+            const fallback =
+              gatingKind === 'daily_editorial_summary'
+                ? 'If it does not, drop the concept argument — the summary stands on its own without one.'
+                : 'If it does not, drop the concept argument and keep it as a keyword in the note instead.';
             throw new Error(
-              `No concept page exists for "${concept.title}", and one was not created. ` +
-                'A Mains Note mentions many entities in passing, so a new concept page needs the user first. ' +
+              `No concept page exists for "${concept.title}", and one was not created. ${why} ` +
                 'The bar: an entity substantial enough to stand on its own and needing a full description — ' +
-                'an institution, statutory body, scheme, doctrine or index that recurs across topics — not a term mentioned in passing. ' +
+                'an institution, statutory body, scheme, doctrine, law or index that recurs across topics — not a term mentioned in passing. ' +
                 'If it clears that bar, put it to the user (what the page would cover, and why a keyword alone is not enough), ' +
-                'then resend with confirm_new_concept: "user-approved". ' +
-                'If it does not, drop the concept argument and keep it as a keyword in the note instead.',
+                `then resend with confirm_new_concept: "user-approved". ${fallback}`,
             );
           }
           const status = concept.status ?? 'draft';
