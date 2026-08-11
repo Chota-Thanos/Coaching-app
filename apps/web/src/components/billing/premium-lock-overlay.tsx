@@ -8,13 +8,20 @@ interface PremiumLockOverlayProps {
   description: string;
   planName?: string;
   ctaText?: string;
+  /** Defaults to pricing. Point it at /login when the ask is to sign in, not to pay. */
+  ctaHref?: string;
+  secondaryCtaText?: string;
+  secondaryCtaHref?: string;
 }
 
 export function PremiumLockOverlay({
   title,
   description,
   planName = "Premium",
-  ctaText = "View Pricing Plans"
+  ctaText = "View Pricing Plans",
+  ctaHref = "/pricing",
+  secondaryCtaText,
+  secondaryCtaHref
 }: PremiumLockOverlayProps) {
   return (
     <div className="flex flex-col items-center justify-center border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50/50 rounded-2xl p-8 sm:p-12 text-center shadow-md my-6 max-w-2xl mx-auto relative overflow-hidden">
@@ -40,11 +47,19 @@ export function PremiumLockOverlay({
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/pricing"
+            href={ctaHref}
             className="inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 px-6 text-sm font-black text-white shadow-md shadow-indigo-150 hover:bg-indigo-700 transition"
           >
             {ctaText}
           </Link>
+          {secondaryCtaText && secondaryCtaHref && (
+            <Link
+              href={secondaryCtaHref}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-indigo-200 bg-white px-6 text-sm font-black text-indigo-700 hover:border-indigo-400 transition"
+            >
+              {secondaryCtaText}
+            </Link>
+          )}
         </div>
       </div>
     </div>

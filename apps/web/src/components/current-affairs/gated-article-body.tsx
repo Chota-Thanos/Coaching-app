@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Layers3, Loader2, Sparkles, Star } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
-import { useSubscription } from "../../lib/use-subscription";
 import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
 import { StudentArticleActions } from "./student-article-actions";
 import { InteractivePrelimsPyq, InteractiveMainsPyq } from "./interactive-pyq";
@@ -18,36 +17,34 @@ type Props = {
 };
 
 
+/** Articles a signed-out visitor may read per day before being asked to log in. */
+const SIGNED_OUT_DAILY_LIMIT = 5;
+
 export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   const { token, isInitialized } = useAuth();
-  const { hasEntitlement, loading } = useSubscription(token);
   const [isDailyLimitReached, setIsDailyLimitReached] = useState(false);
   const [checkingLimit, setCheckingLimit] = useState(true);
   const [readCount, setReadCount] = useState<number | null>(null);
 
-  const isMains = article.content_family === "mains";
+  const isSignedIn = Boolean(token);
 
   useEffect(() => {
-    if (!isInitialized || loading) return;
+    if (!isInitialized) return;
 
-    // Check if subscription gives CA Pro access (daily_reads & editorial_access)
-    const hasCAPro = hasEntitlement("current_affairs.editorial_access");
-    
-    if (isMains) {
-      // Mains content always requires subscription
-      setCheckingLimit(false);
-      return;
-    }
-
-    // Prelims / Daily News content limit check
-    if (hasCAPro || hasEntitlement("current_affairs.daily_reads")) {
-      // Premium users have unlimited access
+    // Signed-in readers get everything, every content type, no counting.
+    //
+    // Subscription entitlements (`current_affairs.editorial_access`,
+    // `current_affairs.daily_reads`) are deliberately NOT consulted here for
+    // now — the plans and entitlements still exist server-side, so restoring
+    // paid gating later means re-adding the check, not rebuilding it.
+    if (isSignedIn) {
       setIsDailyLimitReached(false);
+      setReadCount(null);
       setCheckingLimit(false);
       return;
     }
 
-    // Free users: Check localStorage for daily read limit (5 articles/day)
+    // Signed-out visitors: a few free reads, then an invitation to log in.
     try {
       const todayStr = new Date().toDateString();
       const rawData = localStorage.getItem("coaching_hub_reads");
@@ -61,14 +58,13 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
       }
 
       if (readData.readSlugs.includes(article.slug)) {
-        // Already read this article today, allow reading
+        // Already read this article today — re-reading it is always allowed,
+        // so a refresh or a back-navigation never costs another read.
         setIsDailyLimitReached(false);
         setReadCount(readData.count);
-      } else if (readData.count >= 5) {
-        // Read limit reached
+      } else if (readData.count >= SIGNED_OUT_DAILY_LIMIT) {
         setIsDailyLimitReached(true);
       } else {
-        // Increment read count
         readData.count += 1;
         readData.readSlugs.push(article.slug);
         localStorage.setItem("coaching_hub_reads", JSON.stringify(readData));
@@ -76,13 +72,15 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
         setReadCount(readData.count);
       }
     } catch (e) {
+      // A blocked or full localStorage must not cost a reader the article.
       console.error("Failed to check daily read limit", e);
+      setIsDailyLimitReached(false);
     } finally {
       setCheckingLimit(false);
     }
-  }, [article.slug, isMains, isInitialized, loading, hasEntitlement]);
+  }, [article.slug, isInitialized, isSignedIn]);
 
-  if (!isInitialized || loading || checkingLimit) {
+  if (!isInitialized || checkingLimit) {
     return (
       <div className="flex justify-center py-24">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
@@ -90,27 +88,20 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
     );
   }
 
-  // Gating for Mains Articles
-  if (isMains && !hasEntitlement("current_affairs.editorial_access")) {
-    return (
-      <div className="mt-6">
-        <PremiumLockOverlay
-          title="Unlock Premium Mains Editorial Analysis"
-          description="Get access to daily editorial summaries, GS topic-wise mains analysis, issue briefs, and integrated answer writing exercises with Current Affairs Pro."
-          planName="Current Affairs Pro"
-        />
-      </div>
-    );
-  }
-
-  // Gating for Daily Reads limit
+  // Signed-out reader who has used their free reads: ask them to sign in,
+  // not to pay — an account is all that is required right now.
   if (isDailyLimitReached) {
+    const next = encodeURIComponent(`/current-affairs/articles/${article.slug}`);
     return (
       <div className="mt-6">
         <PremiumLockOverlay
-          title="Daily Free Reading Limit Reached"
-          description="You have read your 5 free articles for today. Upgrade to Current Affairs Pro for unlimited access to all articles, editorial summaries, and notes workspace."
-          planName="Current Affairs Pro"
+          title="Log in to keep reading"
+          description={`You have read your ${SIGNED_OUT_DAILY_LIMIT} free articles for today. Log in — it is free — for unlimited access to current affairs, editorial summaries, mains notes and the notes workspace.`}
+          planName="Free account"
+          ctaText="Log in to continue"
+          ctaHref={`/login?next=${next}`}
+          secondaryCtaText="Create a free account"
+          secondaryCtaHref={`/register?next=${next}`}
         />
       </div>
     );
@@ -162,9 +153,15 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
         {readCount !== null && (
           <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-800">
             <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
-            <span>Free Tier read: {readCount} of 5 daily articles read today. Upgrade to Current Affairs Pro for unlimited access.</span>
-            <Link href="/pricing" className="ml-auto text-xs font-black text-amber-700 hover:text-amber-900 underline uppercase tracking-wider shrink-0">
-              Upgrade
+            <span>
+              Article {readCount} of {SIGNED_OUT_DAILY_LIMIT} free reads today. Log in — free — for
+              unlimited access.
+            </span>
+            <Link
+              href={`/login?next=${encodeURIComponent(`/current-affairs/articles/${article.slug}`)}`}
+              className="ml-auto text-xs font-black text-amber-700 hover:text-amber-900 underline uppercase tracking-wider shrink-0"
+            >
+              Log in
             </Link>
           </div>
         )}
