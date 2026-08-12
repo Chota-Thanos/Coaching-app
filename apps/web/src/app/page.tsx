@@ -111,10 +111,21 @@ export default function HomePage() {
   useEffect(() => {
     const fetchPublicArticles = async () => {
       try {
-        const res = await fetch(`${browserBaseUrl}/api/v1/current-affairs/frontend/articles?limit=3`);
+        // content_kind is a required query param on this endpoint (no default) —
+        // omitting it made every request here fail schema validation with a 400,
+        // which the `if (res.ok)` check swallowed without ever logging, so
+        // latestArticles stayed permanently empty. That empty state is invisible
+        // on this page's own marketing section (it falls back to placeholder
+        // cards below) but shows up plainly as "Articles are being published" in
+        // the signed-in dashboard's Daily Feed widget, which has no such fallback.
+        const res = await fetch(
+          `${browserBaseUrl}/api/v1/current-affairs/frontend/articles?content_kind=daily_current_affairs&limit=5`
+        );
         if (res.ok) {
           const data = await res.json();
           setLatestArticles(data.items || []);
+        } else {
+          console.error("Failed to fetch public current affairs preview", res.status, await res.text());
         }
       } catch (err) {
         console.error("Failed to fetch public current affairs preview", err);
@@ -2211,12 +2222,20 @@ export default function HomePage() {
                 </h2>
                 <Link href="/current-affairs/daily-news" className="text-xs font-bold text-emerald-600 hover:underline">All →</Link>
               </div>
-              {/* Category tabs */}
+              {/* Category tabs. "Editorials" used to link to /current-affairs/editorials,
+                  a naive slug of the label — but the real hub path is
+                  editorial-summary, so it 404'd. Mapped explicitly instead of
+                  deriving the path from the label. */}
               <div className="snap-scroll-x px-3 pt-2.5 pb-2">
-                {["Daily News", "Editorials", "Economy", "PIB"].map((cat, i) => (
+                {[
+                  { label: "Daily News", path: "daily-news" },
+                  { label: "Editorials", path: "editorial-summary" },
+                  { label: "Economy", path: "economy" },
+                  { label: "PIB", path: "pib" }
+                ].map(({ label: cat, path }, i) => (
                   <Link
                     key={cat}
-                    href={`/current-affairs/${cat.toLowerCase().replace(" ", "-")}`}
+                    href={`/current-affairs/${path}`}
                     className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold border ${i === 0 ? "bg-emerald-600 text-white border-emerald-600" : "bg-surface text-slate-500 border-slate-200 hover:border-emerald-300"}`}
                   >
                     {cat}
