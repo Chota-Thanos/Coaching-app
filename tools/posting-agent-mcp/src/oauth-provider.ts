@@ -1,28 +1,17 @@
 /**
- * A minimal, real OAuth 2.1 authorization server for this connector — the
+ * A persistent OAuth 2.1 authorization server for this connector — the
  * identity/login layer some clients (Gemini's "custom connected apps," for
  * one) require before they'll add a remote MCP server at all. The MCP SDK
  * supplies the protocol machinery (PKCE, discovery, dynamic client
  * registration, token exchange — see http-server.ts's use of
  * `mcpAuthRouter`); this file supplies WHO is allowed to log in.
  *
- * Deliberately not a second user system. "Login" here is a direct call to
- * this app's own `POST /api/v1/auth/login` — the exact endpoint the real
- * website uses — so there is exactly one password database and one place
- * password rules and email verification live. This file trusts none of that
- * itself, only the response, and then checks the returned role against the
- * same allow-list (`admin`, `moderator`, `content_editor`) the website's own
- * `requireAdminOrEditor` guard uses.
- *
- * Storage is in-memory (Maps), not a database table. A process restart (a
- * deploy) invalidates every issued code/token, so an already-connected
- * client would need to click through the login once more. That's a
- * deliberate trade for a low-traffic, single-admin tool — persisting this
- * would mean a new migration on the main app's schema, or a second local
- * datastore, for a problem that in practice means "log in again after a
- * deploy," which is rare and cheap. Worth revisiting only if that becomes
- * genuinely annoying.
+ * Storage is persisted to disk (oauth-store.json) so process restarts,
+ * PM2 reloads, and server reboots maintain registered clients and active
+ * tokens without breaking existing client connections.
  */
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Response } from "express";
 import type { OAuthRegisteredClientsStore } from "@modelcontextprotocol/sdk/server/auth/clients.js";
@@ -40,6 +29,8 @@ const ALLOWED_ROLES = new Set(["admin", "moderator", "content_editor"]);
 const CODE_TTL_MS = 5 * 60 * 1000; // must be exchanged for a token quickly
 const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+
+const STORE_PATH = process.env.MCP_OAUTH_STORE_PATH || path.join(process.cwd(), "oauth-store.json");
 
 interface PendingCode {
   client: OAuthClientInformationFull;
@@ -65,23 +56,52 @@ interface RefreshTokenRecord {
   revoked: boolean;
 }
 
-export class InMemoryClientsStore implements OAuthRegisteredClientsStore {
-  private readonly clients = new Map<string, OAuthClientInformationFull>();
+interface PersistedData {
+  clients?: Array<[string, OAuthClientInformationFull]>;
+  accessTokens?: Array<[string, AccessTokenRecord]>;
+  refreshTokens?: Array<[string, RefreshTokenRecord]>;
+}
+
+function loadPersistedData(): PersistedData {
+  try {
+    if (existsSync(STORE_PATH)) {
+      const raw = readFileSync(STORE_PATH, "utf-8");
+      return JSON.parse(raw) as PersistedData;
+    }
+  } catch (err) {
+    console.error("[MCP OAuth] Failed to load persisted OAuth store:", err);
+  }
+  return {};
+}
+
+function savePersistedData(data: PersistedData): void {
+  try {
+    const dir = path.dirname(STORE_PATH);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[MCP OAuth] Failed to save persisted OAuth store:", err);
+  }
+}
+
+export class PersistentClientsStore implements OAuthRegisteredClientsStore {
+  constructor(
+    private readonly clients: Map<string, OAuthClientInformationFull>,
+    private readonly onSave: () => void,
+  ) {}
 
   async getClient(clientId: string): Promise<OAuthClientInformationFull | undefined> {
     return this.clients.get(clientId);
   }
 
-  /**
-   * The router (handlers/register.js) already generated client_id,
-   * client_id_issued_at and client_secret before calling this — we only
-   * need to remember what it hands us and return it back.
-   */
   async registerClient(
     client: Omit<OAuthClientInformationFull, "client_id" | "client_id_issued_at">,
   ): Promise<OAuthClientInformationFull> {
     const full = client as OAuthClientInformationFull;
     this.clients.set(full.client_id, full);
+    this.onSave();
     return full;
   }
 }
@@ -124,15 +144,6 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/**
- * Renders the login form itself. All the original OAuth request parameters
- * travel as hidden fields — they are public request parameters to begin
- * with (this is exactly what a browser's own query string already carried),
- * not secrets, so round-tripping them through the form is safe. This is
- * what lets `/mcp-oauth/login` (a plain Express route with real access to
- * `req.body`, unlike this file's `authorize()` callback) reconstruct the
- * original request after the user submits their credentials.
- */
 function renderLoginPage(options: {
   client: OAuthClientInformationFull;
   params: AuthorizationParams;
@@ -190,22 +201,30 @@ function renderLoginPage(options: {
 }
 
 export class WebsiteOAuthProvider implements OAuthServerProvider {
-  readonly clientsStore = new InMemoryClientsStore();
+  readonly clientsStore: PersistentClientsStore;
 
+  private readonly clients: Map<string, OAuthClientInformationFull>;
   private readonly codes = new Map<string, PendingCode>();
-  private readonly accessTokens = new Map<string, AccessTokenRecord>();
-  private readonly refreshTokens = new Map<string, RefreshTokenRecord>();
+  private readonly accessTokens: Map<string, AccessTokenRecord>;
+  private readonly refreshTokens: Map<string, RefreshTokenRecord>;
 
-  constructor(private readonly apiUrl: string) {}
+  constructor(private readonly apiUrl: string) {
+    const persisted = loadPersistedData();
+    this.clients = new Map(persisted.clients || []);
+    this.accessTokens = new Map(persisted.accessTokens || []);
+    this.refreshTokens = new Map(persisted.refreshTokens || []);
 
-  /**
-   * Called by the SDK's /authorize handler once client_id, redirect_uri and
-   * the PKCE parameters are already validated. This always renders the
-   * login form rather than ever issuing a code directly — the real
-   * credential check happens in the separate `/mcp-oauth/login` POST route
-   * registered in http-server.ts, because THIS callback's signature only
-   * receives `res`, not the request body a submitted login form needs.
-   */
+    this.clientsStore = new PersistentClientsStore(this.clients, () => this.save());
+  }
+
+  private save(): void {
+    savePersistedData({
+      clients: Array.from(this.clients.entries()),
+      accessTokens: Array.from(this.accessTokens.entries()),
+      refreshTokens: Array.from(this.refreshTokens.entries()),
+    });
+  }
+
   async authorize(client: OAuthClientInformationFull, params: AuthorizationParams, res: Response): Promise<void> {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(renderLoginPage({ client, params }));
@@ -225,8 +244,6 @@ export class WebsiteOAuthProvider implements OAuthServerProvider {
     if (pending.client.client_id !== client.client_id) {
       throw new Error("This authorization code was not issued to this client.");
     }
-    // Single-use, and only ever valid briefly — matches the login form's
-    // hidden fields having no purpose beyond that one round trip.
     this.codes.delete(authorizationCode);
     if (Date.now() - pending.createdAt > CODE_TTL_MS) {
       throw new Error("Authorization code expired — please sign in again.");
@@ -248,12 +265,10 @@ export class WebsiteOAuthProvider implements OAuthServerProvider {
     }
     if (record.expiresAt < Date.now()) {
       this.refreshTokens.delete(refreshToken);
+      this.save();
       throw new Error("Refresh token expired — please sign in again.");
     }
 
-    // Reused rather than rotated, for simplicity — a real theft-detection
-    // scheme would rotate and burn the old one; not worth the complexity for
-    // a single-admin tool where the token never leaves the client + server.
     return this.issueTokens(
       client.client_id,
       scopes ?? record.scopes,
@@ -268,6 +283,7 @@ export class WebsiteOAuthProvider implements OAuthServerProvider {
     if (!record) throw new Error("Invalid access token.");
     if (record.expiresAt < Date.now() / 1000) {
       this.accessTokens.delete(token);
+      this.save();
       throw new Error("Access token expired.");
     }
     return {
@@ -279,18 +295,19 @@ export class WebsiteOAuthProvider implements OAuthServerProvider {
     };
   }
 
-  /** RFC 7009: revoking an unknown or already-revoked token is still success. */
   async revokeToken(client: OAuthClientInformationFull, request: OAuthTokenRevocationRequest): Promise<void> {
     const access = this.accessTokens.get(request.token);
-    if (access && access.clientId === client.client_id) this.accessTokens.delete(request.token);
+    if (access && access.clientId === client.client_id) {
+      this.accessTokens.delete(request.token);
+    }
 
     const refresh = this.refreshTokens.get(request.token);
-    if (refresh && refresh.clientId === client.client_id) refresh.revoked = true;
+    if (refresh && refresh.clientId === client.client_id) {
+      refresh.revoked = true;
+    }
+    this.save();
   }
 
-  // ── Used only by the /mcp-oauth/login route in http-server.ts ──────────
-
-  /** The one real credential check in this whole file. */
   async checkLogin(email: string, password: string) {
     return verifyWebsiteLogin(this.apiUrl, email, password);
   }
@@ -327,6 +344,8 @@ export class WebsiteOAuthProvider implements OAuthServerProvider {
         revoked: false,
       });
     }
+
+    this.save();
 
     return {
       access_token: accessToken,
