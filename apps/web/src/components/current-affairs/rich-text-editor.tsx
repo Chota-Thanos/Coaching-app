@@ -54,6 +54,14 @@ const REWORD_MODES: { value: string; label: string }[] = [
   { value: "grammar", label: "Fix grammar" }
 ];
 
+// One-click shortcuts for the combos people reach for most — still fully
+// equivalent to ticking the same boxes by hand and pressing Apply.
+const REWORD_COMBOS: { label: string; modes: string[] }[] = [
+  { label: "Simplify + Fix grammar", modes: ["simplify", "grammar"] },
+  { label: "Concise + Exam tone", modes: ["concise", "exam_tone"] },
+  { label: "Expand + Fix grammar", modes: ["expand", "grammar"] }
+];
+
 const HIGHLIGHT_COLORS = [
   { name: "Yellow", value: "#fef08a", class: "bg-[#fef08a]" },
   { name: "Green", value: "#bbf7d0", class: "bg-[#bbf7d0]" },
@@ -84,6 +92,7 @@ export function RichTextMarkdownEditor({
   const { token } = useAuth();
   const [rewording, setRewording] = useState(false);
   const [rewordMenu, setRewordMenu] = useState(false);
+  const [selectedModes, setSelectedModes] = useState<string[]>([]);
 
   const extensions = useMemo(() => {
     const list = [
@@ -152,9 +161,17 @@ export function RichTextMarkdownEditor({
     }
   };
 
-  const rewordSelection = async (mode: string) => {
+  const toggleRewordMode = (value: string) => {
+    setSelectedModes((prev) => (prev.includes(value) ? prev.filter((m) => m !== value) : [...prev, value]));
+  };
+
+  const rewordSelection = async (modes: string[]) => {
     setRewordMenu(false);
     if (!editor || !token) return;
+    if (modes.length === 0) {
+      alert("Select at least one type of change first.");
+      return;
+    }
     const { from, to, empty } = editor.state.selection;
     if (empty) {
       alert("Select the text you want to reword first.");
@@ -167,7 +184,7 @@ export function RichTextMarkdownEditor({
       const res = await authenticatedPost<{ text: string }>(
         "/api/v1/current-affairs/admin/agent/reword",
         token,
-        { text: selected, mode }
+        { text: selected, modes }
       );
       const cleanText = (res?.text || "")
         .replace(/^```(?:html)?\s*/i, "")
@@ -176,6 +193,7 @@ export function RichTextMarkdownEditor({
         .replace(/<\/code>$/i, "")
         .trim();
       editor.chain().focus().deleteRange({ from, to }).insertContent(cleanText).run();
+      setSelectedModes([]);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Rewording failed.");
     } finally {
@@ -462,15 +480,47 @@ export function RichTextMarkdownEditor({
                 <ChevronDown className="h-3 w-3" />
               </button>
               {rewordMenu && (
-                <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-line bg-surface py-1 shadow-lg">
+                <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-lg border border-line bg-surface py-1.5 shadow-lg">
+                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-ink/40">
+                    Pick one or more, then Apply
+                  </div>
                   {REWORD_MODES.map((m) => (
-                    <button
+                    <label
                       key={m.value}
+                      className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-ink/80 hover:bg-violet-50 hover:text-violet-700 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedModes.includes(m.value)}
+                        onChange={() => toggleRewordMode(m.value)}
+                        className="h-3.5 w-3.5 rounded border-line accent-violet-600"
+                      />
+                      {m.label}
+                    </label>
+                  ))}
+                  <div className="px-3 pt-1.5">
+                    <button
                       type="button"
-                      onClick={() => void rewordSelection(m.value)}
+                      onClick={() => void rewordSelection(selectedModes)}
+                      disabled={selectedModes.length === 0}
+                      className="w-full rounded-md bg-violet-600 px-2 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Apply{selectedModes.length > 0 ? ` (${selectedModes.length})` : ""}
+                    </button>
+                  </div>
+
+                  <div className="my-1.5 h-[1px] bg-line/70" />
+                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-ink/40">
+                    Quick combos
+                  </div>
+                  {REWORD_COMBOS.map((combo) => (
+                    <button
+                      key={combo.label}
+                      type="button"
+                      onClick={() => void rewordSelection(combo.modes)}
                       className="block w-full px-3 py-1.5 text-left text-xs font-semibold text-ink/80 hover:bg-violet-50 hover:text-violet-700"
                     >
-                      {m.label}
+                      {combo.label}
                     </button>
                   ))}
                 </div>

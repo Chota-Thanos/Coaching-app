@@ -91,11 +91,24 @@ export const commitPostingAgentSchema = z.object({
 
 // ── Editor rewording (Phase 6) ───────────────────────────────────────────────
 
-export const rewordSchema = z.object({
-  text: z.string().trim().min(1).max(20000),
-  mode: z.enum(["concise", "expand", "simplify", "exam_tone", "grammar"]).default("exam_tone"),
-  instructions: z.string().trim().max(2000).optional()
-});
+const rewordModeEnum = z.enum(["concise", "expand", "simplify", "exam_tone", "grammar"]);
+
+// Accepts either the legacy single `mode` (still what the MCP tool sends) or
+// the newer `modes` array (the editor's multi-select combo, e.g. simplify +
+// grammar applied together in one pass). Both normalise to `modes: string[]`
+// so reword.service.ts only has to handle one shape.
+export const rewordSchema = z
+  .object({
+    text: z.string().trim().min(1).max(20000),
+    mode: rewordModeEnum.optional(),
+    modes: z.array(rewordModeEnum).min(1).max(5).optional(),
+    instructions: z.string().trim().max(2000).optional()
+  })
+  .transform(({ text, mode, modes, instructions }) => ({
+    text,
+    modes: Array.from(new Set(modes && modes.length > 0 ? modes : [mode || "exam_tone"])),
+    instructions
+  }));
 
 export type ExtractSourceInput = z.output<typeof extractSourceSchema>;
 export type ParsePostingAgentInput = z.output<typeof parsePostingAgentSchema>;

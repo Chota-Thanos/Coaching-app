@@ -122,7 +122,8 @@ export function hasAiCredentials(): boolean {
 async function generateTextWithVertexAI(
   model: string,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  jsonMode = true
 ): Promise<string> {
   const keyJson = process.env.GOOGLE_CLOUD_KEY_JSON;
   const auth = new GoogleAuth({
@@ -185,7 +186,7 @@ async function generateTextWithVertexAI(
             contents: [{ role: "user", parts: [{ text: `System prompt:\n${systemPrompt}\n\nUser prompt:\n${userPrompt}` }] }],
             generationConfig: {
               temperature: 0.7,
-              responseMimeType: "application/json"
+              ...(jsonMode ? { responseMimeType: "application/json" } : {})
             }
           })
         }
@@ -241,7 +242,8 @@ async function generateTextWithGemini(
   model: string,
   systemPrompt: string,
   userPrompt: string,
-  geminiKey: string
+  geminiKey: string,
+  jsonMode = true
 ): Promise<string> {
   let attempts = 0;
   const maxAttempts = 4;
@@ -261,7 +263,7 @@ async function generateTextWithGemini(
             contents: [{ role: "user", parts: [{ text: `System prompt:\n${systemPrompt}\n\nUser prompt:\n${userPrompt}` }] }],
             generationConfig: {
               temperature: 0.7,
-              responseMimeType: "application/json"
+              ...(jsonMode ? { responseMimeType: "application/json" } : {})
             }
           })
         }
@@ -307,7 +309,16 @@ async function generateTextWithGemini(
 }
 
 // Call AI API via node-fetch
-export async function generateText(systemPrompt: string, userPrompt: string): Promise<string> {
+//
+// `jsonMode` defaults to true because most callers (article/quiz generation,
+// router/auditor agents) ask the model for a specific JSON schema and parse
+// the result with parseJsonRobust. Callers that want plain prose or HTML back
+// (the Reword-AI editor tool, style-guide extraction) must pass `false` —
+// otherwise Gemini/Vertex are forced into `responseMimeType: "application/json"`
+// regardless of what the prompt actually asked for, and invent a JSON wrapper
+// object (e.g. `{ "rewritten_content": "..." }`) around the prose, which then
+// leaks into the article body verbatim since nothing downstream parses it.
+export async function generateText(systemPrompt: string, userPrompt: string, jsonMode = true): Promise<string> {
   const openAiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
   const isVertexAi = !!(
@@ -346,7 +357,7 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
     let lastError: any = null;
     for (const model of models) {
       try {
-        return await generateTextWithVertexAI(model, systemPrompt, userPrompt);
+        return await generateTextWithVertexAI(model, systemPrompt, userPrompt, jsonMode);
       } catch (err: any) {
         lastError = err;
         console.warn(`[Vertex AI Router] Model ${model} failed: ${err.message || err}. Trying next fallback model...`);
@@ -358,7 +369,7 @@ export async function generateText(systemPrompt: string, userPrompt: string): Pr
     let lastError: any = null;
     for (const model of models) {
       try {
-        return await generateTextWithGemini(model, systemPrompt, userPrompt, geminiKey);
+        return await generateTextWithGemini(model, systemPrompt, userPrompt, geminiKey, jsonMode);
       } catch (err: any) {
         lastError = err;
         console.warn(`[Gemini Router] Model ${model} failed: ${err.message || err}. Trying next fallback model...`);
@@ -1483,7 +1494,8 @@ Include details on:
 
 Return ONLY the Markdown style instructions. Do not wrap the output in markdown code blocks.`;
 
-  return generateText(systemPrompt, sourceText);
+  // Plain Markdown prose, not JSON — see the note on generateText's jsonMode param.
+  return generateText(systemPrompt, sourceText, false);
 }
 
 export async function draftMainsQuestionAI(

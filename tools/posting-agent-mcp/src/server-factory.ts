@@ -1218,10 +1218,11 @@ server.registerTool(
   {
     title: 'Reword a passage',
     description:
-      'Rewrites a passage in the platform house style without inventing facts. Modes: concise, expand, simplify, exam_tone, grammar.',
+      'Rewrites a passage in the platform house style without inventing facts. Modes: concise, expand, simplify, exam_tone, grammar. Pass several in `modes` (e.g. ["simplify","grammar"]) to apply them together in one unified rewrite instead of one at a time.',
     inputSchema: {
       text: z.string().min(1).max(20000),
       mode: z.enum(['concise', 'expand', 'simplify', 'exam_tone', 'grammar']).optional(),
+      modes: z.array(z.enum(['concise', 'expand', 'simplify', 'exam_tone', 'grammar'])).min(1).max(5).optional(),
       instructions: z.string().max(2000).optional(),
     },
   },
