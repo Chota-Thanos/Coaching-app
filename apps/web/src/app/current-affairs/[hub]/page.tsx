@@ -301,7 +301,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
       </div>
 
       {/* Main list */}
-      <GatedArticleList articles={articles.items} isMains={isMains} />
+      <GatedArticleList articles={articles.items} />
 
       {/* Pagination */}
       <div className="mt-5">

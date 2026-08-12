@@ -1,41 +1,28 @@
 "use client";
 
-import { useAuth } from "../auth/auth-context";
-import { useSubscription } from "../../lib/use-subscription";
 import { ArticleList } from "./article-list";
-import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
 import type { ArticleSummary } from "../../lib/api";
-import { Loader2 } from "lucide-react";
 
 type Props = {
   articles: ArticleSummary[];
-  isMains: boolean;
 };
 
-export function GatedArticleList({ articles, isMains }: Props) {
-  const { token, isInitialized } = useAuth();
-  const { hasEntitlement, loading } = useSubscription(token);
-
-  if (isMains) {
-    if (!isInitialized || loading) {
-      return (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
-        </div>
-      );
-    }
-
-    const hasAccess = hasEntitlement("current_affairs.editorial_access");
-    if (!hasAccess) {
-      return (
-        <PremiumLockOverlay
-          title="Unlock Mains Editorial Summaries & Topic Notes"
-          description="Get access to daily editorial summaries, GS topic-wise mains analysis, issue briefs, and integrated answer writing exercises with Current Affairs Pro."
-          planName="Current Affairs Pro"
-        />
-      );
-    }
-  }
-
+/**
+ * Browsing/listing current-affairs content — including the Mains hub
+ * (Editorial Summaries, Mains Notes, Mains PYQ) — is open to everyone,
+ * signed in or not. This used to hard-block the Mains listing behind
+ * `current_affairs.editorial_access` with no login option at all, just a
+ * "View Pricing Plans" button, for both signed-out visitors and signed-in
+ * users without a paid plan. That contradicted the access model already in
+ * place on the article-detail page (GatedArticleBody): subscription
+ * entitlements are deliberately not enforced right now, and the only limit
+ * is a per-article, sign-in-nudging read count for signed-out visitors,
+ * applied when they open an article — not when they browse the list.
+ *
+ * The plan/entitlement machinery still exists server-side, so restoring a
+ * paid gate here later means re-adding the `useSubscription` check this
+ * file used to have (see git history), not rebuilding it.
+ */
+export function GatedArticleList({ articles }: Props) {
   return <ArticleList articles={articles} />;
 }
