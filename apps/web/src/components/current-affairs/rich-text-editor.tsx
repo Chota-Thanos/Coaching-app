@@ -14,6 +14,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
+import { Details, DetailsSummary, DetailsContent } from "@tiptap/extension-details";
 
 import {
   Bold,
@@ -42,7 +43,8 @@ import {
   Unlink,
   Wand2,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Search
 } from "lucide-react";
 import { authenticatedPost, useAuth } from "../auth/auth-context";
 
@@ -111,6 +113,24 @@ export function RichTextMarkdownEditor({
       TableRow,
       TableHeader,
       TableCell,
+      // Hidden-detail pointers: a short label (<summary>) stays always visible,
+      // its fuller explanation (<div data-type="detailsContent">) stays hidden
+      // until a reader clicks the magnifying-glass toggle. persist: false (the
+      // default) is deliberate — it keeps the open/closed state out of node
+      // attrs entirely, so whatever an editor leaves it toggled to while
+      // writing never gets saved into the HTML. The saved <details> tag never
+      // carries an `open` attribute, so it always renders closed for readers,
+      // regardless of how it was left mid-edit.
+      Details.configure({
+        persist: false,
+        renderToggleButton: ({ element, isOpen }) => {
+          element.setAttribute("aria-label", isOpen ? "Hide detail" : "Show detail");
+          element.textContent = isOpen ? "🔎 Hide detail" : "🔍 Show detail";
+          element.className = "pointer-detail-toggle";
+        }
+      }),
+      DetailsSummary,
+      DetailsContent,
     ];
     const unique: any[] = [];
     const names = new Set<string>();
@@ -462,6 +482,21 @@ export function RichTextMarkdownEditor({
               title="Insert Table"
             >
               <TableIcon className="h-4 w-4" />
+            </button>
+
+            {/* Hidden-detail pointer: select the point's full explanation
+                first, then click this to turn it into a short always-visible
+                label (typed into the empty line it creates) with the
+                explanation hidden behind a magnifying-glass toggle. */}
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().setDetails().run()}
+              className={`p-1.5 rounded-md transition-all ${
+                editor.isActive("details") ? "bg-civic/10 text-civic" : "text-ink/70 hover:text-civic hover:bg-civic/5"
+              }`}
+              title="Turn selection into a pointer with hidden detail (magnifying glass)"
+            >
+              <Search className="h-4 w-4" />
             </button>
 
             <span className="rte-sep h-4 w-[1px] bg-line/80 mx-1" />

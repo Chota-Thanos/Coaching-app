@@ -190,7 +190,10 @@ attribute — a bulleted line with a bold label, never its own heading. A
 **list field** genuinely has several points — it gets its own `##` heading
 with a real bulleted list under it (`-` lines in your Markdown), never a
 paragraph of sentences run together. Never emit a `##` heading for a single
-short fact.
+short fact. Each point in a list field becomes one of the collapsed
+label/detail pointers described under "Pointer format" below, once it's
+filed — you write the point in plain Markdown here; the exact `<details>`
+tags are the filing step's job, not something to hand-compose at this stage.
 
 **Voice:** write for permanence — avoid "recently", "last month", or
 anything that dates the note. Where a fact is genuinely time-bound (a
@@ -389,21 +392,50 @@ touch exactly one — don't manufacture entries to fill every heading.
 
 ### Pointer format
 
-Each pointer is **one bullet**: the substance stated to the point, then the
-reference link. Never paste the source's paragraphs in — a note is a
-notebook of pointers, not an anthology.
+Each pointer is a **collapsed-by-default pair**: a short label a student can
+scan in an instant, and the fuller explanation behind it, opened only when
+they click. This is the "notebook, not encyclopedia" rule taken one step
+further — the always-visible line itself stays terse; the reasoning,
+figures and reference link only appear on demand.
 
 ```html
-<li><strong>2024:</strong> SC struck down the electoral bonds scheme as
-violative of Article 19(1)(a).
-<a href="https://waytoias.com/current-affairs/articles/the-slug">Source</a></li>
+<details><summary><strong>2024:</strong> SC struck down electoral bonds scheme</summary><div data-type="detailsContent">Held violative of Article 19(1)(a) — anonymous political donations breach the voter's right to information. <a href="https://waytoias.com/current-affairs/articles/the-slug">Source</a></div></details>
 ```
+
+Copy that shape exactly — three tags, always in this order:
+
+- `<details>...</details>` wraps the whole pointer.
+- `<summary>...</summary>` is the label — **always visible**. A few words: a
+  date, a name, a ruling's headline, a named formula. Never put the
+  reference link here.
+- `<div data-type="detailsContent">...</div>` is the explanation — **hidden
+  until clicked**. The reasoning, the figures and the reference link all go
+  here. Keep `data-type="detailsContent"` exactly as written — the site's
+  rich text editor keys off that exact attribute; a plain `<div>` without it
+  still displays fine on the live page (the browser doesn't care) but loses
+  its hidden/shown behaviour the moment someone opens the note in the
+  Visual Editor tab and saves.
+
+**Don't wrap this in `<li>`/`<ul>`.** Stack pointers directly, one `<details>`
+block after another — the site gives each one its own "→" marker, so it
+still reads as a list without needing real list markup. (A `<details>`
+nested inside a list item gets silently pulled out of it the first time the
+note is opened in the Visual Editor — the arrow marker exists specifically
+so pointers don't need `<li>` to look like one.)
 
 Use the **exact `reference_url`** that `ca_link_to_mains_note` returns — do
 not compose a URL by hand from the title or guess the slug.
 
-Write the pointer so it stands on its own. The link is there for a student
-who wants the full explanation, not a substitute for saying what happened.
+Write the label so it stands on its own as a scan-line, and the explanation
+so it stands on its own as the full picture — a student who never opens a
+point should still know what it is; one who does open it shouldn't need to
+go back to the label to make sense of it.
+
+*(New notes written from scratch get this same shape automatically — the
+filing step that turns your draft into the stored HTML already knows this
+format for `mains_topic_note`. This section is what you follow by hand when
+adding a pointer to a note that already exists, since that goes straight to
+`ca_update_article` rather than back through the filing step.)*
 
 ### The workflow
 

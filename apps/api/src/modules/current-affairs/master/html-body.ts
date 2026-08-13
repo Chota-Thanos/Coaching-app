@@ -28,7 +28,11 @@ export function looksLikeMarkdown(text: string): boolean {
   // exist to carry. Treating any real anchor as "already HTML" is the safer
   // failure: the worst case is prose left unconverted and visible in review,
   // versus links silently broken on a published page.
-  if (/<\/?(p|h[1-6]|ul|ol|li|strong|em|div|a)\b/i.test(text)) return false; // already has real HTML
+  //
+  // `details`/`summary` are here for the same reason: a Mains Note pointer's
+  // hidden-detail wrapper (<details><summary>label</summary>...</details>) is
+  // real HTML that must never be run through the Markdown converter.
+  if (/<\/?(p|h[1-6]|ul|ol|li|strong|em|div|a|details|summary)\b/i.test(text)) return false; // already has real HTML
   return /^#{1,6}\s/m.test(text) || /^[-*]\s/m.test(text) || /\*\*[^*]+\*\*/.test(text);
 }
 

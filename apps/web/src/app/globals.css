@@ -357,6 +357,124 @@ img {
   color: rgb(var(--c-ink));
 }
 
+/* Pointer disclosure — a point's short label (<summary>) stays always
+   visible; its fuller explanation stays hidden until a reader opens it via
+   the magnifying-glass toggle. Plain native <details>/<summary>, so the
+   show/hide behaviour needs no JavaScript on the read side — this only
+   styles it. Used by Mains Notes pointers, but not specific to them.
+
+   Deliberately NOT nested inside <ul><li> — Tiptap's list-item content model
+   only accepts a <details> block after a leading paragraph, so one authored
+   as a list item's first (and only) child gets silently lifted out of the
+   <li> the moment someone opens the note in the Visual Editor, leaving an
+   empty bullet behind. Standalone <details> blocks, stacked directly one
+   after another, sidestep that entirely — the "→" marker below gives them
+   the same scannable list look without needing real <li> semantics. */
+.article-body details {
+  position: relative;
+  margin: 0 0 0.6rem;
+  padding-left: 1.15rem;
+}
+
+.article-body details::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  color: rgb(var(--s-400));
+  font-weight: 700;
+}
+
+/* A <details> a legacy pointer still nests inside a real <li> (old content,
+   or a hand-edit that didn't follow the new convention) already has the
+   list's own bullet marker — don't double it up with the arrow above. */
+.article-body li > details {
+  margin: 0;
+  padding-left: 0;
+}
+
+.article-body li > details::before {
+  content: none;
+}
+
+.article-body details summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  list-style: none;
+  color: rgb(var(--c-ink));
+}
+
+.article-body details summary::-webkit-details-marker {
+  display: none;
+}
+
+.article-body details summary::before {
+  content: "🔍";
+  font-size: 0.8em;
+  opacity: 0.45;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.article-body details summary:hover::before {
+  opacity: 0.85;
+}
+
+.article-body details[open] summary::before {
+  opacity: 1;
+}
+
+.article-body details[open] summary {
+  margin-bottom: 0.3rem;
+}
+
+.article-body details > div[data-type="detailsContent"] {
+  color: rgb(var(--s-600));
+  line-height: 1.7;
+}
+
+/* The Visual Editor auto-wraps plain text in a <p> (detailsContent's content
+   model is "block+") — without this it inherits the article body's normal
+   1.25rem paragraph spacing, which is too much air for a small detail box. */
+.article-body details > div[data-type="detailsContent"] p {
+  margin: 0;
+}
+
+/* Same block as authored in the Visual Editor (before it's serialized to the
+   plain <details>/<summary> above) — the extension renders it as a div/button
+   NodeView instead of the semantic tags, so it needs its own selectors. */
+.tiptap-prosemirror div[data-type="details"] {
+  margin: 0 0 0.5rem;
+  border-left: 2px solid rgb(var(--c-line));
+  padding-left: 0.6rem;
+}
+
+.tiptap-prosemirror div[data-type="details"] > button.pointer-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--c-line));
+  background: rgb(var(--s-50));
+  color: rgb(var(--s-600));
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tiptap-prosemirror div[data-type="details"] > button.pointer-detail-toggle:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.tiptap-prosemirror div[data-type="detailsContent"][hidden] {
+  display: none;
+}
+
 /* Tiptap Editor Styling */
 .tiptap-prosemirror {
   outline: none;

@@ -156,7 +156,9 @@ export function detectFactHeadingSprawl(bodyHtml: string): boolean {
   let shortNoListCount = 0;
   for (const section of sections) {
     const afterHeading = section.replace(/^<h[1-6][^>]*>.*?<\/h[1-6]>/is, "");
-    if (/<ul|<ol/i.test(afterHeading)) continue; // has a real list underneath — not a bare fact
+    // <details> is a Mains Note pointer (collapsed label + hidden explanation) —
+    // a section built from several of these is a real list, just not a <ul> one.
+    if (/<ul|<ol|<details/i.test(afterHeading)) continue; // has a real list underneath — not a bare fact
     const text = afterHeading.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     if (text.length > 0 && text.length <= 160) shortNoListCount += 1;
   }
@@ -397,6 +399,40 @@ export async function parsePostingAgent(input: ParsePostingAgentInput): Promise<
   };
   const roleGuidance = roleGuidanceByMode[roleMode];
 
+  // Mains Notes present their list-style points (Evolution, Issues and
+  // Challenges, Recommendations, etc.) as collapsed-by-default pairs — a
+  // short always-visible label plus a fuller explanation hidden until a
+  // reader clicks it — instead of a plain bullet. This is the one place that
+  // produces this content type's final HTML regardless of how the writer
+  // drafted it, so it's the deterministic place to teach the exact shape
+  // rather than relying on the writer to hand-type the tags correctly.
+  const mainsNotePointerGuidance =
+    input.content_kind === "mains_topic_note"
+      ? `
+
+MAINS NOTE POINTER FORMAT (applies only to this content type):
+Inside list-style sections that genuinely have several distinct points
+(Evolution, Issues and Challenges, Recommendations and Reforms, Components
+and Constituents, Pillars of Cooperation, and similar — whichever the
+template section actually is), write each point as a collapsed-by-default
+pair instead of a plain <li>:
+
+<details><summary>SHORT LABEL</summary><div data-type="detailsContent">FULLER EXPLANATION, ending with the source link if the source material supplies one.</div></details>
+
+- <summary> is the scan-line — a student should recognise the point from it
+  alone without opening it. A few words: a date, a named formula, a ruling's
+  headline. Never put a link inside <summary>.
+- <div data-type="detailsContent">...</div> holds the reasoning, figures and
+  the source link, and stays hidden until a reader opens it. Keep the
+  data-type="detailsContent" attribute exactly as written — it is not
+  decorative, the site's rich text editor keys off it.
+- Do not wrap this in <li>/<ul>. Stack <details> blocks directly, one point
+  after another — nesting one inside a list item silently breaks it the first
+  time the note is opened in the site's Visual Editor.
+- This is for genuine multi-point lists only. A section that is really one
+  short fact (e.g. Syllabus Mapping) stays plain text, not a <details> block.`
+      : "";
+
   // Load the house rules an admin saved for this content type in AI Settings.
   // Until now only the *generation* path read these, so an uploaded document
   // ignored rules the same content type obeyed when the AI wrote it.
@@ -418,9 +454,9 @@ EDITOR MARKERS (the editor may embed these in the source; when present they OVER
 
 STRICT RULES:
 - Do NOT invent facts. Only restructure and lightly copy-edit the provided text. If the source is thin, keep the article thin — never fabricate.
-- "body" must be clean HTML, matching this platform's article format exactly: paragraphs as <p>, section headings as <h2>, bold as <strong>, bullet lists as <ul><li>...</li></ul>. Do not use Markdown syntax (##, **, -, *) anywhere in "body" — every real article on the platform is stored as HTML, and Markdown left in this field renders as literal punctuation to readers, not formatting. Remove site chrome, ads, share buttons, cookie notices.
+- "body" must be clean HTML, matching this platform's article format exactly: paragraphs as <p>, section headings as <h2>, bold as <strong>, bullet lists as <ul><li>...</li></ul>${input.content_kind === "mains_topic_note" ? " (except the collapsed-pointer sections — see MAINS NOTE POINTER FORMAT below)" : ""}. Do not use Markdown syntax (##, **, -, *) anywhere in "body" — every real article on the platform is stored as HTML, and Markdown left in this field renders as literal punctuation to readers, not formatting. Remove site chrome, ads, share buttons, cookie notices.
 - "excerpt" is a 1-2 sentence summary.
-
+${mainsNotePointerGuidance}
 CATEGORY CLASSIFICATION:
 - You are given the platform's live category tree with numeric ids and human paths.
 - For each article, choose "category_node_ids": the id(s) of the MOST SPECIFIC matching node(s). An article may belong to MULTIPLE category trees at once — include every relevant tree, but be precise, not greedy.
