@@ -264,6 +264,30 @@ img {
   color: rgb(var(--c-ink));
 }
 
+/* Tailwind's preflight reset sets list-style: none on every <ul>/<ol> by
+   default. The Visual Editor (.tiptap-prosemirror) explicitly restores
+   markers for its own view (see below), but .article-body — the actual
+   published article and this editor's own Preview tab — never got the same
+   treatment, so bullets have been invisible on every real article page with
+   a bulleted list, not just new content. Nested sub-lists get a different
+   marker per level, matching normal browser/editor convention, so a
+   sub-point visibly reads as "under" its parent rather than identical to it. */
+.article-body ul {
+  list-style-type: disc;
+}
+
+.article-body ul ul {
+  list-style-type: circle;
+}
+
+.article-body ul ul ul {
+  list-style-type: square;
+}
+
+.article-body ol {
+  list-style-type: decimal;
+}
+
 .article-body ul,
 .article-body ol {
   margin: 0 0 1.25rem 1.5rem;
@@ -274,6 +298,12 @@ img {
 
 .article-body li {
   margin-bottom: 0.5rem;
+}
+
+.article-body li > ul,
+.article-body li > ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
 }
 
 /* Scrollbar */
@@ -395,6 +425,17 @@ img {
 
 .article-body li > details::before {
   content: none;
+}
+
+/* A sub-point — a <details> nested inside a parent point's hidden detail,
+   for when the parent point itself breaks down into several distinct
+   sub-points that each deserve their own label + hidden explanation — gets
+   a left guide and tighter spacing so it visibly reads as a level down from
+   its parent rather than another top-level point. */
+.article-body details details {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  border-left: 2px solid rgb(var(--c-line));
 }
 
 .article-body details summary {

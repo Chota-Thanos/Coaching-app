@@ -430,7 +430,24 @@ pair instead of a plain <li>:
   after another — nesting one inside a list item silently breaks it the first
   time the note is opened in the site's Visual Editor.
 - This is for genuine multi-point lists only. A section that is really one
-  short fact (e.g. Syllabus Mapping) stays plain text, not a <details> block.`
+  short fact (e.g. Syllabus Mapping) stays plain text, not a <details> block.
+
+SUB-POINTS — when one point genuinely breaks down further:
+A point can itself have several distinct sub-points (e.g. a body's
+"Composition" naming multiple members, or a point with two or three
+sub-arguments). Two ways to structure that — pick whichever fits, and never
+nest more than this one extra level:
+
+- Sub-points that are simple, short facts: a plain list INSIDE the parent's
+  detailsContent (bullets render correctly on the site — this is fine):
+  <details><summary>Composition</summary><div data-type="detailsContent">It comprises:<ul><li>A retired Supreme Court judge (Chairperson).</li><li>The Chief Election Commissioner.</li></ul></div></details>
+- Sub-points substantial enough to deserve their own scan-then-expand
+  treatment: nest further <details> blocks directly inside the parent's
+  detailsContent, after its own explanation text:
+  <details><summary>Federal Structure Concerns</summary><div data-type="detailsContent">Two specific worries dominate the debate.<details><summary>Centre-State power imbalance</summary><div data-type="detailsContent">...</div></details><details><summary>Erosion of fiscal autonomy</summary><div data-type="detailsContent">...</div></details></div></details>
+
+Only go one level deep. If a sub-point needs its own further breakdown, that
+is usually a sign it should be promoted to its own top-level point instead.`
       : "";
 
   // Load the house rules an admin saved for this content type in AI Settings.

@@ -251,6 +251,19 @@ it for the fuller explanation:
 - This is for genuine multi-point lists only. "Syllabus Mapping" and
   "Concept" are single facts/definitions and stay plain <p> text.
 
+SUB-POINTS — when one point genuinely breaks down further: a point can
+itself have several distinct sub-points (e.g. a body's "Composition" naming
+multiple members). Two ways to structure that, pick whichever fits, and
+never nest more than this one extra level:
+- Simple, short sub-facts: a plain list INSIDE the parent's detailsContent —
+  <details><summary>Composition</summary><div data-type="detailsContent">It comprises:<ul><li>A retired judge.</li><li>The CEC.</li></ul></div></details>
+- Sub-points substantial enough for their own scan-then-expand treatment:
+  nest further <details> blocks inside the parent's detailsContent, after
+  its own explanation —
+  <details><summary>Federal Structure Concerns</summary><div data-type="detailsContent">Two worries dominate.<details><summary>Centre-State imbalance</summary><div data-type="detailsContent">...</div></details><details><summary>Fiscal autonomy erosion</summary><div data-type="detailsContent">...</div></details></div></details>
+If a sub-point needs its own further breakdown, promote it to a top-level
+point instead of nesting a third level.
+
 ${COMMON_RULES}`,
   outputSchema: {
     type: "object",
@@ -263,7 +276,7 @@ ${COMMON_RULES}`,
             ...COMMON_PROPERTIES,
             sections: sectionsProperty(
               "The eight sections described in the brief, in order.",
-              'Clean HTML, never Markdown. See POINTER FORMAT in the brief for list-style sections — collapsed <details><summary>label</summary><div data-type="detailsContent">explanation</div></details> pairs, not <li>.'
+              'Clean HTML, never Markdown. See POINTER FORMAT in the brief for list-style sections — collapsed <details><summary>label</summary><div data-type="detailsContent">explanation</div></details> pairs, not <li>. See SUB-POINTS for a point that itself breaks into several distinct sub-points.'
             )
           }
         }

@@ -437,6 +437,32 @@ format for `mains_topic_note`. This section is what you follow by hand when
 adding a pointer to a note that already exists, since that goes straight to
 `ca_update_article` rather than back through the filing step.)*
 
+### Sub-points — when one point genuinely breaks down further
+
+A point can itself have several distinct sub-points — a body's
+"Composition" naming multiple members, or a point with two or three
+sub-arguments. Two ways to structure that, pick whichever fits, and never
+nest more than this one extra level:
+
+**Simple, short sub-facts** — a plain bulleted list inside the parent's
+`detailsContent` (bullets render correctly on the live site):
+
+```html
+<details><summary>Composition</summary><div data-type="detailsContent">It comprises:<ul><li>A retired Supreme Court judge (Chairperson).</li><li>The Chief Election Commissioner.</li><li>The respective State Election Commissioners.</li></ul></div></details>
+```
+
+**Sub-points substantial enough to deserve their own scan-then-expand
+treatment** — nest further `<details>` blocks directly inside the parent's
+`detailsContent`, after its own explanation text:
+
+```html
+<details><summary>Federal Structure Concerns</summary><div data-type="detailsContent">Two specific worries dominate the debate.<details><summary>Centre-State power imbalance</summary><div data-type="detailsContent">...</div></details><details><summary>Erosion of fiscal autonomy</summary><div data-type="detailsContent">...</div></details></div></details>
+```
+
+Only go one level deep. If a sub-point needs its own further breakdown,
+that's usually a sign it should be promoted to its own top-level point
+instead of nesting a third layer.
+
 ### The workflow
 
 Do this after committing a new note, and whenever a development should enter
