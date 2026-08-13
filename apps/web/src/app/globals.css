@@ -410,7 +410,7 @@ img {
   display: none;
 }
 
-.article-body details summary::before {
+.article-body details summary::after {
   content: "🔍";
   font-size: 0.8em;
   opacity: 0.45;
@@ -418,11 +418,11 @@ img {
   transition: opacity 0.15s ease;
 }
 
-.article-body details summary:hover::before {
+.article-body details summary:hover::after {
   opacity: 0.85;
 }
 
-.article-body details[open] summary::before {
+.article-body details[open] summary::after {
   opacity: 1;
 }
 
