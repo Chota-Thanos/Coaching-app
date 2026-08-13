@@ -246,6 +246,17 @@ export function convertGeneratedToArticle(params: {
     // `heading` rather than `section_title`, and returned `content` as an array
     // of paragraphs rather than a string. Both produced an empty article until
     // this branch stopped assuming one shape.
+    //
+    // The heading wrapper's own syntax must match whatever the section content
+    // itself is written in — mains_topic_note's brief now asks its AI for real
+    // HTML content (so its list-style points can use <details> pointers), so a
+    // "## heading" markdown wrapper around HTML content would make the whole
+    // joined body look like it has real HTML tags in it, which is exactly what
+    // ensureHtmlBody's "already HTML, don't convert" check looks for — leaving
+    // this "##" sitting unconverted as literal punctuation for readers. Every
+    // other content type here still writes Markdown content, so their heading
+    // wrapper stays Markdown too.
+    const headingIsHtml = contentKind === "mains_topic_note";
     body = (item.sections as Record<string, unknown>[])
       .map((section) => {
         const heading =
@@ -256,7 +267,8 @@ export function convertGeneratedToArticle(params: {
         const raw = section.content ?? section.body ?? section.text;
         const content = typeof raw === "string" ? raw.trim() : renderUnknownShape(raw, 3);
         if (!heading && !content) return "";
-        return heading ? `## ${heading}\n\n${content}` : content;
+        if (!heading) return content;
+        return headingIsHtml ? `<h2>${heading}</h2>\n${content}` : `## ${heading}\n\n${content}`;
       })
       .filter(Boolean)
       .join("\n\n");

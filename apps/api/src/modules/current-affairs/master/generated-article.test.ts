@@ -27,6 +27,49 @@ test("sections become markdown headings", () => {
   assert.match(article.body, /## Analysis\n\nRates were held at 6\.5%\./);
 });
 
+test("mains_topic_note sections become HTML headings, not markdown", () => {
+  // mains_topic_note's brief asks its AI for real HTML content (so its
+  // list-style points can carry <details> pointers) — a markdown "##" heading
+  // wrapped around that HTML would make the joined body contain real HTML
+  // tags without actually being consistently HTML, which trips
+  // ensureHtmlBody's "already has real HTML, don't convert" check and leaves
+  // the "##" sitting there as literal punctuation for a reader.
+  const article = convertGeneratedToArticle({
+    contentKind: "mains_topic_note",
+    item: {
+      title: "Delimitation of Constituencies",
+      sections: [
+        { section_title: "Overview", content: "<p>Delimitation redraws constituency boundaries.</p>" },
+        {
+          section_title: "Evolution",
+          content:
+            '<details><summary>1952: First Delimitation Commission Act</summary>' +
+            '<div data-type="detailsContent">Parliament enacted the first Act.</div></details>'
+        }
+      ]
+    }
+  });
+
+  assert.match(article.body, /<h2>Overview<\/h2>\n<p>Delimitation redraws constituency boundaries\.<\/p>/);
+  assert.match(article.body, /<h2>Evolution<\/h2>\n<details>/);
+  assert.doesNotMatch(article.body, /##/);
+});
+
+test("other content types keep markdown headings even with a mains_topic_note-shaped body", () => {
+  // Guards the branch stays scoped to mains_topic_note specifically, rather
+  // than accidentally flipping every content type to HTML headings.
+  const article = convertGeneratedToArticle({
+    contentKind: "daily_editorial_summary",
+    item: {
+      title: "Editorial on federalism",
+      sections: [{ section_title: "Core Argument", content: "The author argues for greater devolution." }]
+    }
+  });
+
+  assert.match(article.body, /## Core Argument\n\nThe author argues for greater devolution\./);
+  assert.doesNotMatch(article.body, /<h2>/);
+});
+
 test("a prelims question becomes a readable question body", () => {
   const article = convertGeneratedToArticle({
     contentKind: "prelims_pyq",

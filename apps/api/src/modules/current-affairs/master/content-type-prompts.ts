@@ -108,14 +108,17 @@ const COMMON_PROPERTIES = {
   }
 };
 
-const sectionsProperty = (guidance: string) => ({
+const sectionsProperty = (
+  guidance: string,
+  contentFieldDescription = "Markdown. Bullet lists for facts and figures."
+) => ({
   type: "array",
   description: guidance,
   items: {
     type: "object",
     properties: {
       section_title: { type: "string" },
-      content: { type: "string", description: "Markdown. Bullet lists for facts and figures." },
+      content: { type: "string", description: contentFieldDescription },
       display_order: { type: "integer" }
     }
   }
@@ -224,6 +227,30 @@ Use these sections, in this order:
 Write for an evergreen note: avoid "recently", "last month" and other phrasing
 that dates. Where a fact is time-bound, state the year. 800-1200 words.
 
+EACH SECTION'S "content" MUST BE CLEAN HTML, NOT MARKDOWN: paragraphs as <p>,
+bold as <strong>, plain bullet lists as <ul><li>...</li></ul>. Never emit "##",
+"**" or "-" markdown syntax — this is a study page, and Markdown left in the
+field renders as literal punctuation to a reader, not formatting.
+
+POINTER FORMAT — for any section that is genuinely a list of several distinct
+points (a "Dimensions" sub-heading, "Committees, Reports and Data", "Case
+Studies and Examples", "Way Forward", "Constitutional and Legal Basis" if it
+lists several provisions): write each point as a collapsed-by-default pair
+instead of a plain <li>, so a student sees a short scannable label and opens
+it for the fuller explanation:
+
+<details><summary>SHORT LABEL</summary><div data-type="detailsContent">FULLER EXPLANATION</div></details>
+
+- <summary> is the always-visible scan line — a few words: a name, a date, a
+  named formula. Never put a citation or link inside <summary>.
+- <div data-type="detailsContent">...</div> is hidden until a reader opens it
+  — the reasoning, the figures, the citation. Keep the attribute exactly as
+  written: "data-type=\"detailsContent\"".
+- Do not wrap this in <li>/<ul> — stack <details> blocks directly, one point
+  after another.
+- This is for genuine multi-point lists only. "Syllabus Mapping" and
+  "Concept" are single facts/definitions and stay plain <p> text.
+
 ${COMMON_RULES}`,
   outputSchema: {
     type: "object",
@@ -234,7 +261,10 @@ ${COMMON_RULES}`,
           type: "object",
           properties: {
             ...COMMON_PROPERTIES,
-            sections: sectionsProperty("The eight sections described in the brief, in order.")
+            sections: sectionsProperty(
+              "The eight sections described in the brief, in order.",
+              'Clean HTML, never Markdown. See POINTER FORMAT in the brief for list-style sections — collapsed <details><summary>label</summary><div data-type="detailsContent">explanation</div></details> pairs, not <li>.'
+            )
           }
         }
       }
