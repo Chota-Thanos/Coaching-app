@@ -1,7 +1,7 @@
 "use client";
 
 import { Archive, Eye, FilePenLine, RefreshCw, Search, Trash2, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { AdminArticleDetail, AdminArticleSummary, CategoryNode, CreateAdminArticlePayload } from "../../../lib/api";
 import type { ContentKind } from "../../../lib/current-affairs";
@@ -70,11 +70,11 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
   });
   const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<AdminArticleDetail | null>(null);
-  // Set by an explicit "View" action (button click or ?view= URL param) right
-  // before loadDetail() runs, so the effect below knows to scroll once the
-  // panel is actually in the DOM — never on a background refresh (quick-edit
-  // save, etc.), which also calls loadDetail() but shouldn't jump the page.
-  const scrollToDetailOnLoad = useRef(false);
+  // Whether the View modal is open. Deliberately separate from
+  // selectedDetail/selectedArticleId (which a background refresh — e.g.
+  // quick-edit save — also updates without wanting to pop a modal open) so
+  // "View" is the only thing that ever flips this to true.
+  const [viewModalOpen, setViewModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -134,17 +134,6 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
     setSelectedArticleId(articleId);
   }, [token]);
 
-  // Runs after React has actually committed #article-detail-panel to the DOM
-  // (useEffect always fires post-render, unlike a .then() chained directly
-  // off loadDetail — that ran the scrollIntoView query before the panel
-  // existed, so "View" appeared to do nothing on a fresh click).
-  useEffect(() => {
-    if (selectedDetail && scrollToDetailOnLoad.current) {
-      scrollToDetailOnLoad.current = false;
-      document.getElementById("article-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [selectedDetail]);
-
   useEffect(() => {
     if (editId && token) {
       const articleId = Number(editId);
@@ -187,7 +176,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
 
   useEffect(() => {
     if (viewId && token) {
-      scrollToDetailOnLoad.current = true;
+      setViewModalOpen(true);
       void loadDetail(Number(viewId));
       router.replace(window.location.pathname);
     }
@@ -494,7 +483,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                     <button
                       className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
                       onClick={() => {
-                        scrollToDetailOnLoad.current = true;
+                        setViewModalOpen(true);
                         void loadDetail(article.id);
                       }}
                       type="button"
@@ -776,16 +765,34 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
         </div>
       )}
 
-      {selectedDetail && (
-        <div id="article-detail-panel">
-          <AdminArticleDetailPanel
-            article={selectedDetail}
-            onRefresh={async () => {
-              if (selectedArticleId) await loadDetail(selectedArticleId);
-              await loadArticles();
-            }}
-            onSelectArticleId={loadDetail}
-          />
+      {/* View Article Modal */}
+      {viewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-midnight/60 backdrop-blur-sm p-4">
+          <div className="relative flex w-full max-w-5xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <button
+              className="absolute top-4 right-4 z-10 h-8 w-8 rounded-full border border-line bg-surface hover:bg-paper text-ink/70 hover:text-ink flex items-center justify-center font-bold text-sm transition-all"
+              onClick={() => setViewModalOpen(false)}
+              type="button"
+            >
+              ✕
+            </button>
+            <div className="overflow-y-auto p-6">
+              {selectedDetail ? (
+                <AdminArticleDetailPanel
+                  article={selectedDetail}
+                  onRefresh={async () => {
+                    if (selectedArticleId) await loadDetail(selectedArticleId);
+                    await loadArticles();
+                  }}
+                  onSelectArticleId={loadDetail}
+                />
+              ) : (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-civic" />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
