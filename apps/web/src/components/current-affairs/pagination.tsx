@@ -8,9 +8,10 @@ type PaginationProps = {
   category?: string;
   month?: string;
   year?: string;
+  perPage?: number;
 };
 
-export function Pagination({ hub, page, totalPages, category, month, year }: PaginationProps) {
+export function Pagination({ hub, page, totalPages, category, month, year, perPage }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1)
@@ -19,7 +20,7 @@ export function Pagination({ hub, page, totalPages, category, month, year }: Pag
   return (
     <nav aria-label="Article pages" className="flex flex-wrap items-center justify-center gap-2 pt-3">
       {page > 1 && (
-        <a className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-ink" href={hubHref(hub, { category, month, year, page: page - 1 })}>
+        <a className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-ink" href={hubHref(hub, { category, month, year, per_page: perPage, page: page - 1 })}>
           Previous
         </a>
       )}
@@ -34,7 +35,7 @@ export function Pagination({ hub, page, totalPages, category, month, year }: Pag
               className={`grid h-10 min-w-10 place-items-center rounded-md border px-3 text-sm font-bold ${
                 candidate === page ? "border-civic bg-civic text-white" : "border-line bg-surface text-ink"
               }`}
-              href={hubHref(hub, { category, month, year, page: candidate })}
+              href={hubHref(hub, { category, month, year, per_page: perPage, page: candidate })}
             >
               {candidate}
             </a>
@@ -42,7 +43,7 @@ export function Pagination({ hub, page, totalPages, category, month, year }: Pag
         );
       })}
       {page < totalPages && (
-        <a className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-ink" href={hubHref(hub, { category, month, year, page: page + 1 })}>
+        <a className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-bold text-ink" href={hubHref(hub, { category, month, year, per_page: perPage, page: page + 1 })}>
           Next
         </a>
       )}

@@ -20,6 +20,14 @@ function clean(value: string | undefined): string | undefined {
   return value && value !== "all" ? value : undefined;
 }
 
+const PAGE_SIZE_OPTIONS = [12, 25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 50;
+
+function normalizePageSize(value: string | undefined): number {
+  const parsed = Number(value);
+  return PAGE_SIZE_OPTIONS.includes(parsed as (typeof PAGE_SIZE_OPTIONS)[number]) ? parsed : DEFAULT_PAGE_SIZE;
+}
+
 export async function generateMetadata({ params, searchParams }: HubPageProps): Promise<Metadata> {
   const [{ hub: hubPath }, query] = await Promise.all([params, searchParams]);
   const hub = getHub(hubPath);
@@ -85,12 +93,13 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
 
   const category = clean(firstValue(query.category));
   const page = normalizePage(query.page);
+  const perPage = normalizePageSize(firstValue(query.per_page));
   const month = hub.filterMode === "month" ? clean(firstValue(query.month)) : undefined;
   const year = hub.filterMode === "year" ? clean(firstValue(query.year)) : undefined;
 
   const [filters, articles] = await Promise.all([
     getArticleFilters(hub.contentKind, hub.contentFamily),
-    getArticles({ contentKind: hub.contentKind, articleRole: hub.articleRole, category, month, year, page })
+    getArticles({ contentKind: hub.contentKind, articleRole: hub.articleRole, category, month, year, page, limit: perPage })
   ]);
 
   const isMains = hub.contentFamily === "mains";
@@ -173,6 +182,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
             <FilterPanel
               filters={filters}
               hub={hub}
+              perPage={perPage}
               selectedCategory={category}
               selectedMonth={month}
               selectedYear={year}
@@ -185,6 +195,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
           <FilterPanel
             filters={filters}
             hub={hub}
+            perPage={perPage}
             selectedCategory={category}
             selectedMonth={month}
             selectedYear={year}
@@ -294,10 +305,27 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
       </div>
 
       {/* Article count + pagination context */}
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold text-muted">
-          Page {articles.page} of {articles.total_pages}
+          Page {articles.page} of {articles.total_pages} — {articles.total} article{articles.total === 1 ? "" : "s"}
         </p>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="font-semibold text-muted">Show:</span>
+          {PAGE_SIZE_OPTIONS.map((size) => (
+            <Link
+              key={size}
+              className={`rounded-md px-2 py-1 font-bold transition-all ${
+                size === perPage ? "bg-civic text-white" : "border border-line bg-surface text-ink hover:border-civic"
+              }`}
+              // Changing page size resets to page 1 — the old page number can
+              // point past the end, or mid-way through content, once the
+              // page holds a different number of articles.
+              href={hubHref(hub, { category, month, year, per_page: size, page: 1 })}
+            >
+              {size}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Main list */}
@@ -310,6 +338,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
           hub={hub}
           month={month}
           page={articles.page}
+          perPage={perPage}
           totalPages={articles.total_pages}
           year={year}
         />
@@ -319,6 +348,7 @@ export default async function HubPage({ params, searchParams }: HubPageProps) {
       <MobileFilterSheet
         filters={filters}
         hub={hub}
+        perPage={perPage}
         selectedCategory={category}
         selectedMonth={month}
         selectedYear={year}

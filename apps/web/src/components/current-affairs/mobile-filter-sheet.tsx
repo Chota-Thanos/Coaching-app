@@ -12,6 +12,7 @@ type MobileFilterSheetProps = {
   selectedCategory?: string;
   selectedMonth?: string;
   selectedYear?: string;
+  perPage?: number;
 };
 
 export function MobileFilterSheet(props: MobileFilterSheetProps) {

@@ -12,6 +12,7 @@ type FilterPanelProps = {
   selectedCategory?: string;
   selectedMonth?: string;
   selectedYear?: string;
+  perPage?: number;
 };
 
 function categoryValue(category: CategoryNode): string {
@@ -23,7 +24,8 @@ export function FilterPanel({
   filters,
   selectedCategory,
   selectedMonth,
-  selectedYear
+  selectedYear,
+  perPage
 }: FilterPanelProps) {
   const categories = filters.categories;
 
@@ -132,6 +134,9 @@ export function FilterPanel({
     >
       <input name="page" type="hidden" value="1" />
       <input name="category" type="hidden" value={finalCategoryValue} />
+      {/* Applying a filter shouldn't silently reset the reader's chosen page
+          size back to the default. */}
+      {perPage && <input name="per_page" type="hidden" value={perPage} />}
 
       {hasGsPapers && (
         <select

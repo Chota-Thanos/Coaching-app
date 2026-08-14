@@ -32,7 +32,10 @@ export const frontendArticleListQuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   year: z.string().regex(/^\d{4}$/).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(30).default(12)
+  // Cap raised from 30 -> 100: the hub pages want up to 50/page (or a reader-
+  // controlled page size), which the old cap silently truncated every request
+  // above 30 down to. Default stays 12 for any caller that doesn't ask.
+  limit: z.coerce.number().int().min(1).max(100).default(12)
 });
 
 export const frontendArticleFiltersQuerySchema = z.object({

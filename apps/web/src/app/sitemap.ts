@@ -5,12 +5,15 @@ import { CURRENT_AFFAIRS_HUBS, articleHref, hubHref } from "../lib/current-affai
 export const revalidate = 3600;
 
 /**
- * The frontend list endpoint caps `limit` at 30 and rejects anything larger.
- * The previous version asked for 100, so every request failed validation and
- * was swallowed by a .catch(() => null) — the published sitemap contained
- * zero articles, only the static and hub routes. Page through instead.
+ * The frontend list endpoint's `limit` cap (currently 100, raised from an
+ * earlier 30). An older version of this file asked for 100 when the cap was
+ * still 30, so every request failed validation and was swallowed by a
+ * .catch(() => null) — the published sitemap contained zero articles, only
+ * the static and hub routes. Still pages through rather than assuming one
+ * request covers everything, so this stays correct regardless of what the
+ * cap is set to.
  */
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 100;
 /** Safety stop, so a bad total_pages can never spin forever. */
 const MAX_PAGES_PER_HUB = 40;
 

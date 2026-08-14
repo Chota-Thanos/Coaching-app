@@ -208,7 +208,14 @@ export async function listFrontendArticles(options: FrontendArticleListQuery & {
     page,
     limit,
     total,
-    pageCount: Math.ceil(total / limit)
+    // Every other field here is snake_case, matching the rest of this API —
+    // this one was camelCase (pageCount), while the frontend's
+    // ArticleListResponse type and the <Pagination> component have always
+    // read total_pages. Confirmed live: the hub pages' article count and
+    // page-size selector both work off `total` correctly, but pagination
+    // controls never rendered because total_pages never actually reached the
+    // frontend under that name. Renaming it is the fix.
+    total_pages: Math.ceil(total / limit)
   };
 }
 
