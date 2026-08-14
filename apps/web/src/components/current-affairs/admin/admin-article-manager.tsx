@@ -20,6 +20,7 @@ import {
   useAuth
 } from "../../auth/auth-context";
 import { AdminArticleDetailPanel } from "./admin-article-detail-panel";
+import { RenderedContent } from "../rendered-content";
 
 type ArticleFilters = {
   contentKind: string;
@@ -75,6 +76,11 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
   // quick-edit save — also updates without wanting to pop a modal open) so
   // "View" is the only thing that ever flips this to true.
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  // The View modal's own management tools (assets, cross-linking) are
+  // secondary to actually reading the piece, and start collapsed for that
+  // reason — a fresh "View" used to open straight into an asset-upload form
+  // and a relation-linking tool with no way to read the article at all.
+  const [showManagementTools, setShowManagementTools] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -177,6 +183,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
   useEffect(() => {
     if (viewId && token) {
       setViewModalOpen(true);
+      setShowManagementTools(false);
       void loadDetail(Number(viewId));
       router.replace(window.location.pathname);
     }
@@ -484,6 +491,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                       className="inline-flex h-8 items-center justify-center gap-1 px-3 rounded-lg border border-slate-200 bg-surface text-xs font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all"
                       onClick={() => {
                         setViewModalOpen(true);
+                        setShowManagementTools(false);
                         void loadDetail(article.id);
                       }}
                       type="button"
@@ -776,16 +784,64 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
             >
               ✕
             </button>
-            <div className="overflow-y-auto p-6">
+            <div className="overflow-y-auto p-6 space-y-6">
               {selectedDetail ? (
-                <AdminArticleDetailPanel
-                  article={selectedDetail}
-                  onRefresh={async () => {
-                    if (selectedArticleId) await loadDetail(selectedArticleId);
-                    await loadArticles();
-                  }}
-                  onSelectArticleId={loadDetail}
-                />
+                <>
+                  {/* Read the article itself — the reason "View" is clicked in the
+                      first place. Uses the same RenderedContent + .article-body
+                      class as the live site, so this is exactly what a reader
+                      would see (including collapsed pointer details). */}
+                  <section className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
+                        {statusLabel(selectedDetail.status)}
+                      </span>
+                      <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
+                        {selectedDetail.content_kind.replace(/_/g, " ")}
+                      </span>
+                      {selectedDetail.category && (
+                        <span className="rounded bg-paper px-2 py-0.5 text-[10px] font-bold text-ink/65">
+                          {selectedDetail.category.name}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-extrabold text-ink/40">ID: #{selectedDetail.id}</span>
+                    </div>
+                    <h2 className="text-xl font-black text-ink">{selectedDetail.title}</h2>
+                    <div className="article-body rounded-lg border border-line bg-paper/40 p-4 text-sm">
+                      <RenderedContent content={selectedDetail.body} />
+                      {selectedDetail.sections.map((section) => (
+                        <section className="mt-6 border-t border-line/40 pt-4" key={section.id}>
+                          <h3 className="text-base font-bold text-ink mb-2">{section.heading}</h3>
+                          <RenderedContent content={section.body} />
+                        </section>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Assets, cross-linking and relation management — collapsed by
+                      default so reading isn't buried behind them on open. */}
+                  <section className="border-t border-line/60 pt-4">
+                    <button
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-civic hover:text-civic/80 transition-all"
+                      onClick={() => setShowManagementTools((open) => !open)}
+                      type="button"
+                    >
+                      {showManagementTools ? "Hide" : "Manage"} images, cross-linking &amp; relations
+                    </button>
+                    {showManagementTools && (
+                      <div className="mt-4">
+                        <AdminArticleDetailPanel
+                          article={selectedDetail}
+                          onRefresh={async () => {
+                            if (selectedArticleId) await loadDetail(selectedArticleId);
+                            await loadArticles();
+                          }}
+                          onSelectArticleId={loadDetail}
+                        />
+                      </div>
+                    )}
+                  </section>
+                </>
               ) : (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-civic" />
