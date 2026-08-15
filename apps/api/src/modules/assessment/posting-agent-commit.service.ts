@@ -1,6 +1,6 @@
 import { one } from "../../db.js";
 import { saveQuestionsDraft } from "./questions.service.js";
-import { loadAssessmentTaxonomyTree } from "./posting-agent.service.js";
+import { loadAssessmentTaxonomyTree, loadQuestionNatures } from "./posting-agent.service.js";
 import type { CommitAssessmentAgentInput, AssessmentAgentQuestion } from "./posting-agent.schemas.js";
 
 const EXAM_LEVEL_SLUG_CANDIDATES: Record<"gk" | "aptitude" | "mains", string[]> = {
@@ -64,6 +64,11 @@ export async function commitAssessmentAgent(
 
   const examLevelId = await resolveExamLevelId(input.exam_id, input.content_type);
   const { byId } = await loadAssessmentTaxonomyTree(input.exam_id, input.content_type);
+  // Question nature is checked the same way taxonomy is — required only when
+  // the exam actually has natures configured to choose from, so an exam with
+  // none set up yet is never blocked (mirrors how a bare/undefined taxonomy
+  // tree would never block a commit either — there'd be nothing to assign).
+  const availableNatures = await loadQuestionNatures(input.exam_id);
 
   const prepared: Record<string, unknown>[] = [];
   const failed: AssessmentCommitResult["failed"] = [];
@@ -81,6 +86,13 @@ export async function commitAssessmentAgent(
       failed.push({
         statement: q.question_statement,
         error: `No ${isMains ? "paper" : "subject"} node assigned — set the taxonomy before publishing.`
+      });
+      continue;
+    }
+    if (availableNatures.length > 0 && !q.question_nature_id) {
+      failed.push({
+        statement: q.question_statement,
+        error: `No question_nature_id assigned — this exam has ${availableNatures.length} configured (see list_question_natures); assign one before publishing.`
       });
       continue;
     }
