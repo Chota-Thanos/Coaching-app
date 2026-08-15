@@ -216,7 +216,11 @@ export const listQuestionsQuerySchema = listQuerySchema.extend({
   content_type: z.enum(["gk", "aptitude"]).optional(),
   subject_node_ids: arrayOrCSVCoerce,
   topic_node_ids: arrayOrCSVCoerce,
-  subtopic_node_ids: arrayOrCSVCoerce
+  subtopic_node_ids: arrayOrCSVCoerce,
+  // Text search against the current version's statement/supplementary text —
+  // didn't exist at all before; there was no way to find a specific posted
+  // question to correct without already knowing its id.
+  search: z.string().trim().min(1).optional()
 });
 
 export const questionCountsQuerySchema = z.object({

@@ -1357,5 +1357,232 @@ server.registerTool(
     }),
 );
 
+// ─── Correcting an already-posted question ──────────────────────────────────
+//
+// A question's content lives in a *version* row (question_versions) — editing
+// it means posting a brand-new version, not patching the old one in place;
+// its taxonomy links are a separate row replaced wholesale, not per-field.
+// Both /versions and /taxonomy therefore need the *complete* set of values —
+// assessment_update_question fetches the current question first and merges
+// only the fields actually supplied over the current ones, so a caller only
+// has to say what's changing, same as ca_update_article.
+
+interface QuestionVersionRow {
+  question_statement: string;
+  supplementary_statement: string | null;
+  statements_facts: unknown[];
+  question_prompt: string | null;
+  options: unknown[];
+  correct_answer: unknown;
+  explanation: string | null;
+}
+
+interface QuestionTaxonomyLinkRow {
+  exam_id: number;
+  exam_level_id: number;
+  subject_node_id: number | null;
+  source_node_id: number | null;
+  topic_node_id: number | null;
+  subtopic_node_id: number | null;
+  question_nature_id: number | null;
+}
+
+interface QuestionRow {
+  id: number;
+  status: string;
+  question_family: string;
+  current_version: QuestionVersionRow;
+  taxonomy_links: QuestionTaxonomyLinkRow[];
+}
+
+server.registerTool(
+  'assessment_find_questions',
+  {
+    title: 'Find a posted question to correct',
+    description:
+      'Searches posted questions (GK, CSAT/aptitude, or Mains) by text in the question statement or supplementary statements — every status included by default, since a wrong question is often still a draft. Use this FIRST when something needs fixing, to get the id. Returns short summaries; call assessment_get_question to read one before changing it.',
+    inputSchema: {
+      search: z.string().min(2).describe('Text from the question statement, e.g. "Delimitation Commission".'),
+      content_type: z.enum(['gk', 'aptitude']).optional().describe('Omit to search both objective content types.'),
+      status: z
+        .enum(['draft', 'in_review', 'approved', 'published', 'archived'])
+        .optional()
+        .describe('Omit to search every status.'),
+      limit: z.number().int().positive().max(100).optional(),
+    },
+  },
+  async ({ search, content_type, status, limit }) =>
+    run(async () => {
+      const rows = await api.get<QuestionRow[]>('/api/v1/assessment/questions', {
+        search,
+        content_type,
+        status,
+        limit: limit ?? 25,
+      });
+      return {
+        count: rows.length,
+        questions: rows.map((q) => ({
+          id: q.id,
+          question_statement: q.current_version?.question_statement,
+          status: q.status,
+          question_family: q.question_family,
+          subject_node_id: q.taxonomy_links?.[0]?.subject_node_id ?? null,
+        })),
+        note:
+          rows.length === 0
+            ? 'Nothing matched. Widen the search text before concluding the question does not exist.'
+            : undefined,
+      };
+    }),
+);
+
+server.registerTool(
+  'assessment_get_question',
+  {
+    title: 'Read one posted question in full',
+    description:
+      'Returns a single question including its full current content and taxonomy links, whatever its status. Read the question before correcting it — a rewrite composed from memory tends to drop details that were right, and fields you do not pass to assessment_update_question are carried over from exactly what this returns.',
+    inputSchema: {
+      question_id: z.number().int().positive().describe('From assessment_find_questions.'),
+    },
+  },
+  async ({ question_id }) => run(() => api.get(`/api/v1/assessment/questions/${question_id}`)),
+);
+
+server.registerTool(
+  'assessment_update_question',
+  {
+    title: 'Correct a posted question',
+    description:
+      'Edits an already-posted question — the fix for one that turns out to be factually wrong, mis-tagged, or mis-classified. Only the fields passed are changed; call assessment_get_question first and everything you leave out keeps its current value.\n\n' +
+      'NEVER edit on your own judgement. Every change to anything already posted — drafts included — must be put to the user and agreed by them first, then sent with confirm_change. If you notice something wrong while doing other work, say so and wait; do not fix it silently. A published question needs confirm_live_edit as well, since students are reading it. To pull a live question down instead of fixing it in place, set status to "draft".\n\n' +
+      'Does not cover Mains-only fields (word_limit, marks, directive, model answer detail) — those live in a separate table this tool does not touch.',
+    inputSchema: {
+      question_id: z.number().int().positive().describe('From assessment_find_questions.'),
+      question_statement: z.string().min(1).optional(),
+      supp_question_statement: z.string().optional(),
+      question_prompt: z.string().optional(),
+      options: z
+        .array(z.object({ label: z.string(), text: z.string() }))
+        .optional()
+        .describe('The complete replacement option set — not a single option fixed in isolation.'),
+      correct_answer: z.string().optional().describe('The label of the correct option.'),
+      explanation: z.string().optional().describe('Clean HTML (<p>, <strong>), never Markdown — see assessment_commit.'),
+      taxonomy_node_ids: z
+        .array(z.number().int().positive())
+        .max(6)
+        .optional()
+        .describe('Ordered root → leaf path from list_assessment_taxonomy. Replaces the existing path outright.'),
+      question_nature_id: z.number().int().positive().optional().describe('From list_question_natures.'),
+      status: z
+        .enum(['draft', 'in_review', 'approved', 'published', 'archived'])
+        .optional()
+        .describe('Set "draft" to unpublish something wrong while it is being fixed.'),
+      confirm_change: z
+        .literal('user-approved')
+        .optional()
+        .describe(
+          'Required for EVERY edit, drafts included. Send it only after the user has seen what you propose to change and agreed to it in this request. Never edit a question on your own judgement.',
+        ),
+      confirm_live_edit: z
+        .literal('update-live-question')
+        .optional()
+        .describe(
+          'Required IN ADDITION to confirm_change when the target is currently published, because students are reading it right now.',
+        ),
+    },
+  },
+  async ({ question_id, confirm_change, confirm_live_edit, ...fields }) =>
+    run(async () => {
+      const current = await api.get<QuestionRow>(`/api/v1/assessment/questions/${question_id}`);
+      if (!current) throw new Error(`No question with id ${question_id}.`);
+
+      const changed = Object.entries(fields).filter(([, v]) => v !== undefined);
+      if (changed.length === 0) {
+        throw new Error('No fields to change were supplied.');
+      }
+
+      // Editing anything already posted is the user's call, not the agent's —
+      // drafts included. Their content is not ours to revise on our own
+      // judgement, so the gate is on every edit rather than only on live ones.
+      if (confirm_change !== 'user-approved') {
+        throw new Error(
+          `Question ${question_id} (status: ${current.status}) was not changed. ` +
+            `Every edit must be agreed by the user first. Show them what you propose to change to ` +
+            `${changed.map(([k]) => k).join(', ')}, and once they agree, resend with confirm_change: "user-approved".`,
+        );
+      }
+
+      // A published question is being read right now, so it carries a second
+      // gate on top of the user's agreement. Unpublishing is exempt from this
+      // one: pulling wrong content down is the safe direction.
+      const isUnpublishing = fields.status !== undefined && fields.status !== 'published';
+      if (current.status === 'published' && confirm_live_edit !== 'update-live-question' && !isUnpublishing) {
+        throw new Error(
+          `Question ${question_id} is PUBLISHED — this edit would change what students see immediately. ` +
+            'Confirm that with the user too, then resend with confirm_live_edit: "update-live-question" alongside confirm_change. ' +
+            'To take it offline instead, set status: "draft" (needs confirm_change only).',
+        );
+      }
+
+      const results: Record<string, unknown> = { updated: true, id: question_id };
+
+      const touchesContent =
+        fields.question_statement !== undefined ||
+        fields.supp_question_statement !== undefined ||
+        fields.question_prompt !== undefined ||
+        fields.options !== undefined ||
+        fields.correct_answer !== undefined ||
+        fields.explanation !== undefined;
+
+      if (touchesContent) {
+        const cv = current.current_version;
+        const newVersion = await api.post(`/api/v1/assessment/questions/${question_id}/versions`, {
+          question_statement: fields.question_statement ?? cv.question_statement,
+          supplementary_statement: fields.supp_question_statement ?? cv.supplementary_statement,
+          statements_facts: cv.statements_facts,
+          question_prompt: fields.question_prompt ?? cv.question_prompt,
+          // Stored shape is {key, text} (key = the option label), not {label, text} —
+          // matches the convention every existing question was already saved
+          // under, so mixed shapes never end up in the same table.
+          options: fields.options ? fields.options.map((o) => ({ key: o.label, text: o.text })) : cv.options,
+          correct_answer: fields.correct_answer ? { key: fields.correct_answer } : cv.correct_answer,
+          explanation: fields.explanation ?? cv.explanation,
+        });
+        results.new_version = newVersion;
+      }
+
+      const touchesTaxonomy = fields.taxonomy_node_ids !== undefined || fields.question_nature_id !== undefined;
+      if (touchesTaxonomy) {
+        const link = current.taxonomy_links?.[0];
+        if (!link) {
+          throw new Error(
+            `Question ${question_id} has no existing taxonomy link to merge with — set taxonomy_node_ids covering the full path (subject at minimum) rather than a partial change.`,
+          );
+        }
+        const path = fields.taxonomy_node_ids;
+        const updatedTaxonomy = await api.put(`/api/v1/assessment/questions/${question_id}/taxonomy`, {
+          exam_id: link.exam_id,
+          exam_level_id: link.exam_level_id,
+          subject_node_id: path?.[0] ?? link.subject_node_id,
+          source_node_id: path?.[1] ?? link.source_node_id ?? undefined,
+          topic_node_id: path?.[2] ?? link.topic_node_id ?? undefined,
+          subtopic_node_id: path?.[3] ?? link.subtopic_node_id ?? undefined,
+          question_nature_id: fields.question_nature_id ?? link.question_nature_id ?? undefined,
+        });
+        results.taxonomy = updatedTaxonomy;
+      }
+
+      if (fields.status !== undefined) {
+        const updatedStatus = await api.patch(`/api/v1/assessment/questions/${question_id}`, {
+          status: fields.status,
+        });
+        results.status = updatedStatus;
+      }
+
+      return results;
+    }),
+);
+
 return server;
 }

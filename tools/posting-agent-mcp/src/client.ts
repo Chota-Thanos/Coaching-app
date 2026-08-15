@@ -49,7 +49,7 @@ export function loadConfig(): ApiConfig {
 export class CoachingApi {
   constructor(private readonly config: ApiConfig) {}
 
-  private async request<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: 'GET' | 'POST' | 'PATCH' | 'PUT', path: string, body?: unknown): Promise<T> {
     const controller = new AbortController();
     // AI parse calls routinely run past a minute on long documents; the default
     // fetch timeout would abort a request the server is still happily working on.
@@ -92,5 +92,10 @@ export class CoachingApi {
   /** Partial update — only the supplied fields change. Used for corrections. */
   patch<T>(path: string, body: unknown): Promise<T> {
     return this.request<T>('PATCH', path, body);
+  }
+
+  /** Full replacement of a sub-resource (e.g. a question's taxonomy links). */
+  put<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>('PUT', path, body);
   }
 }

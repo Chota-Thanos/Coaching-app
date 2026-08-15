@@ -421,6 +421,16 @@ export async function listQuestions(
   if (options.content_type) {
     addCondition(conditions, params, "atn.content_type = ?", options.content_type);
   }
+  if (options.search) {
+    // addCondition's sql.replace("?", ...) only substitutes the first "?" it
+    // finds, so a two-placeholder OR condition needs building by hand here
+    // rather than through addCondition.
+    params.push(`%${options.search}%`);
+    const searchParamPosition = params.length;
+    conditions.push(
+      `(qv.question_statement ilike $${searchParamPosition} or qv.supplementary_statement ilike $${searchParamPosition})`
+    );
+  }
 
   // Question privacy filter: Students/anonymous can see public questions (creator is null or admin/editor) or their own private questions
   if (!options.is_admin) {
