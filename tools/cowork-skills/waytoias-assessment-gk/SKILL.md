@@ -278,18 +278,22 @@ everything still collapsed onto one.
 
 A separate tag from the taxonomy tree — a difficulty/type classification
 (e.g. "Factual", "Analytical") the exam has its own configured list of.
+Treated the same way as taxonomy: assigned on every question, checked
+before you commit, and **`assessment_commit` rejects any question without
+one whenever the exam has natures configured at all** — same guard as a
+missing taxonomy node, not a bug to route around. (An exam with none
+configured yet is never blocked — there'd be nothing to assign.)
+
 `assessment_parse` auto-classifies each question's `question_nature_id`
-against that live list the same way it auto-classifies taxonomy — nothing
-extra to do when passing parsed candidates through unchanged.
+against the exam's live list the same way it auto-classifies taxonomy —
+nothing extra to do when passing parsed candidates through unchanged.
 
 **When you build the `questions` array yourself instead** (Statement-I/II,
 or anything else where wording matters — see above), carry the
 `question_nature_id` the parse candidate returned over into what you send
 `assessment_commit`, or look one up yourself with `list_question_natures` if
-writing a question that never went through parse at all. It's optional, not
-required like `taxonomy_node_ids` — `assessment_commit` will not reject a
-question over a missing one, so leave it out rather than guessing if
-nothing in the exam's list genuinely fits.
+writing a question that never went through parse at all — same discipline
+as filling in a taxonomy node yourself when parse didn't find one.
 
 ## Publishing — read this before every `assessment_commit` call
 
@@ -363,7 +367,8 @@ knowing if you're also working from the Mains skill in the same session.
 ## What not to do
 
 - Don't fabricate a `correct_answer` you're not sure of — flag it instead.
-- Don't invent a taxonomy node to force a commit through.
+- Don't invent a taxonomy node or a question nature to force a commit
+  through.
 - Don't publish live because it seemed like what they'd want — only because
   they asked, in this request.
 - Don't default every question to plain stem-plus-4-options when the content
