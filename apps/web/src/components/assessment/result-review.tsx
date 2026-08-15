@@ -10,6 +10,7 @@ import { authenticatedGet, useAuth, authenticatedPost, authenticatedDelete, auth
 import { SignInPanel } from "../auth/sign-in-panel";
 import { FullTourSegment } from "../app/full-tour-segment";
 import { isFullTourActiveForPage } from "../../lib/full-tour";
+import { RenderedContent } from "../current-affairs/rendered-content";
 
 const RESULTS_TOUR_STEPS = [
   {
@@ -1305,9 +1306,10 @@ export function ResultReview({ resultId }: { resultId: string }) {
                             <CircleAlert className="h-3.5 w-3.5 text-indigo-650" aria-hidden="true" />
                             Explanation
                           </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-650">
-                            {question.question_version.explanation}
-                          </p>
+                          <RenderedContent
+                            className="article-body mt-2 text-sm leading-6 text-slate-650"
+                            content={question.question_version.explanation}
+                          />
                         </div>
                       )}
 
@@ -1476,9 +1478,10 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                     <CircleAlert className="h-3.5 w-3.5 text-indigo-650" aria-hidden="true" />
                                     Explanation
                                   </p>
-                                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-650">
-                                    {q.question_version.explanation}
-                                  </p>
+                                  <RenderedContent
+                                    className="article-body mt-2 text-sm leading-6 text-slate-650"
+                                    content={q.question_version.explanation}
+                                  />
                                 </div>
                               )}
 
