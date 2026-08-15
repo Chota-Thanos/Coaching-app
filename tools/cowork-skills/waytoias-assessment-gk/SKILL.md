@@ -1,6 +1,6 @@
 ---
 name: waytoias-assessment-gk
-description: Write and post GK / Prelims General Studies MCQs into the WayToIAS UPSC coaching website's question bank (test series), in the real formats UPSC and state PCS papers use — statement-based, Statement-I/II, pairs and multi-column rows, identify-from-clues, assertion-with-basis, relationship-among-statements, cross-topic — not just generic stem-plus-4-options. Use whenever the user asks to write, draft, make or add GK questions, Prelims General Studies MCQs, or practice questions for the WayToIAS test series/question bank (e.g. "make 5 GK questions on Panchayati Raj", "add prelims MCQs on the Indian economy", "write a 2026-style analytical question on Sagarmala"). Do NOT use for CSAT/aptitude (use waytoias-assessment-csat), Mains (use waytoias-assessment-mains), or Current Affairs → Prelims PYQ Library questions (use waytoias-ca-prelims-pyq). Requires the coaching-posting-agent MCP server (whoami, list_exams, assessment_parse, assessment_commit, list_assessment_taxonomy).
+description: Write and post GK / Prelims General Studies MCQs into the WayToIAS UPSC coaching website's question bank (test series), in the real formats UPSC and state PCS papers use — statement-based, Statement-I/II, pairs and multi-column rows, identify-from-clues, assertion-with-basis, relationship-among-statements, cross-topic — not just generic stem-plus-4-options. Use whenever the user asks to write, draft, make or add GK questions, Prelims General Studies MCQs, or practice questions for the WayToIAS test series/question bank (e.g. "make 5 GK questions on Panchayati Raj", "add prelims MCQs on the Indian economy", "write a 2026-style analytical question on Sagarmala"). Do NOT use for CSAT/aptitude (use waytoias-assessment-csat), Mains (use waytoias-assessment-mains), or Current Affairs → Prelims PYQ Library questions (use waytoias-ca-prelims-pyq). Requires the coaching-posting-agent MCP server (whoami, list_exams, assessment_parse, assessment_commit, list_assessment_taxonomy, list_question_natures, assessment_find_questions, assessment_get_question, assessment_update_question).
 ---
 
 # Writing and posting GK questions for WayToIAS
@@ -306,6 +306,60 @@ immediately.
 
 Tell the user plainly which happened and where the questions ended up.
 
+## Correcting something already posted
+
+A question already on the site can be edited in place. Use this whenever
+something turns out to be wrong — a bad answer key, a shaky explanation, a
+mis-tagged category. **Never re-post a corrected copy.** A duplicate splits
+its attempt history in two and leaves both halves wrong; the fix is always
+an edit, never a new question.
+
+Three tools, in this order — do not skip a step:
+
+1. `assessment_find_questions` — find it by text from the question
+   statement. Searches every status, drafts included.
+2. `assessment_get_question` — read the full current content and taxonomy
+   before changing anything. A rewrite composed from memory of what you
+   posted drops details that were right. Read it first, every time.
+3. `assessment_update_question` — send only the fields that change.
+   Everything you leave out stays exactly as it is, so fixing one wrong
+   option does not mean resupplying the whole question.
+
+`options`, if you're changing any, must be the complete replacement set —
+all four, not just the one that was wrong. `explanation` is HTML, same as
+when posting — write it, don't paste raw prose. `taxonomy_node_ids`, if
+you're changing taxonomy, replaces the whole path — the tool fills in
+whichever levels you don't pass from what's currently saved, so you only
+need to give the level that's actually wrong.
+
+**Never change a posted question on your own judgement — not even a draft,
+not even an obvious mistake.** If you notice something wrong while doing
+other work, say so and stop there. Tell the user which question it is, what
+looks wrong, and what you would change it to, then wait. Only once they
+agree, in this request, do you send the edit with
+`confirm_change: "user-approved"`. The tool refuses without it and names
+the fields you were about to change — that refusal is the rule working,
+not an error to route around.
+
+### Editing something that is already live
+
+If the question's status is `published`, students are reading it right
+now. That edit needs `confirm_live_edit: "update-live-question"` **as
+well as** `confirm_change` — say plainly that it is live when you ask.
+
+Taking something down is the one thing that doesn't need the live gate:
+set `status: "draft"` on a live question that is wrong (still ask first).
+If a fix will take a while to get right, pull it down and correct it as a
+draft.
+
+Say plainly, every time, which question you changed, what you changed in
+it, and whether it was live.
+
+**Doesn't cover Mains-only fields** (word limit, marks, directive, model
+answer detail) — those live in a separate part of the schema this tool
+doesn't reach. Not relevant here since this skill is GK-only, but worth
+knowing if you're also working from the Mains skill in the same session.
+
 ## What not to do
 
 - Don't fabricate a `correct_answer` you're not sure of — flag it instead.
@@ -316,3 +370,7 @@ Tell the user plainly which happened and where the questions ended up.
   supports a richer, more realistic format.
 - Don't let a batch or session settle into a recognisable shape — see
   "Keeping questions unpredictable" above.
+- Don't re-post a corrected copy of a question instead of editing it in
+  place.
+- Don't change anything already posted — drafts included — without the
+  user agreeing first, in this request.
