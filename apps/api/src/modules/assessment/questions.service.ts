@@ -881,8 +881,8 @@ export async function saveQuestionsDraft(
             qSourceId,  // maps to subject_area_node_id
             qTopicId,   // maps to theme_node_id
             qSubtopicId, // maps to topic_node_id
-            null, // subtopic_node_id
-            null  // question_nature_id
+            null, // subtopic_node_id — mains only has 4 real levels
+            natureId
           ]
         );
       } else {

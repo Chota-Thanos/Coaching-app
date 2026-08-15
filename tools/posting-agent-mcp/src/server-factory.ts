@@ -177,6 +177,27 @@ server.registerTool(
     ),
 );
 
+server.registerTool(
+  'list_question_natures',
+  {
+    title: 'List question natures',
+    description:
+      'Lists the exam\'s configured "question nature" tags (e.g. Factual, Analytical) — a difficulty/type classification separate from the subject/topic taxonomy tree. Returns ids for question_nature_id in assessment_commit. Admin-configured per exam, so read this rather than guessing a value.',
+    inputSchema: {
+      exam_id: z.number().int().positive().optional(),
+      search: z.string().optional().describe('Free-text name search.'),
+      limit: z.number().int().positive().max(200).optional(),
+    },
+  },
+  async (args) =>
+    run(() =>
+      api.get(
+        '/api/v1/assessment/question-natures',
+        args,
+      ),
+    ),
+);
+
 // ─── Current affairs ─────────────────────────────────────────────────────────
 
 server.registerTool(
@@ -1255,7 +1276,7 @@ server.registerTool(
   {
     title: 'Parse assessment questions',
     description:
-      'Phase 2 for question banks. Splits a document into questions (GK, CSAT/aptitude, or Mains), extracts stems/options/answers/explanations, and classifies each into the deepest matching taxonomy node. Returns candidates for review — nothing is saved yet.',
+      'Phase 2 for question banks. Splits a document into questions (GK, CSAT/aptitude, or Mains), extracts stems/options/answers/explanations, classifies each into the deepest matching taxonomy node, and separately tags a best-fit question_nature_id from the exam\'s configured list. Returns candidates for review — nothing is saved yet.',
     inputSchema: {
       raw_text: z.string().optional(),
       file_path: z.string().optional(),
@@ -1316,6 +1337,12 @@ server.registerTool(
               .max(6)
               .optional()
               .describe('Ordered root → leaf path from list_assessment_taxonomy.'),
+            question_nature_id: z
+              .number()
+              .int()
+              .positive()
+              .optional()
+              .describe('Difficulty/type tag id from list_question_natures. Optional — omit if none genuinely fits.'),
           }),
         )
         .min(1)

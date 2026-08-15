@@ -94,6 +94,7 @@ export async function commitAssessmentAgent(
       word_limit: q.word_limit,
       marks: q.marks,
       directive: q.directive,
+      question_nature_id: q.question_nature_id ?? null,
       ...slots
     });
   }

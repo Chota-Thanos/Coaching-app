@@ -56,7 +56,11 @@ export const assessmentAgentQuestionSchema = z.object({
   marks: z.number().positive().optional(),
   directive: z.string().trim().optional(),
   // Ordered taxonomy node ids, root → leaf.
-  taxonomy_node_ids: z.array(idSchema).max(6).optional()
+  taxonomy_node_ids: z.array(idSchema).max(6).optional(),
+  // Difficulty/type tag (e.g. "Factual", "Analytical") from the exam's own
+  // configured assessment.question_natures list — a separate classification
+  // dimension from the subject/topic taxonomy tree.
+  question_nature_id: idSchema.optional()
 });
 
 export const commitAssessmentAgentSchema = z.object({

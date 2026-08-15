@@ -37,6 +37,9 @@ export interface AssessmentAgentCandidate {
   /** Ordered taxonomy node ids, root → leaf. */
   taxonomy_node_ids: number[];
   taxonomy_path: string;
+  /** Difficulty/type tag id from the exam's configured question_natures list, if one matched. */
+  question_nature_id?: number;
+  question_nature_name?: string;
   warnings: string[];
 }
 
@@ -155,6 +158,68 @@ ${JSON.stringify(items.map((text, index) => ({ index, text: text.slice(0, 500) }
   }
 }
 
+export interface QuestionNatureRow {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+}
+
+/**
+ * Loads the exam's configured question_natures — a difficulty/type tag
+ * (e.g. "Factual", "Analytical") admins define per exam, independent of the
+ * subject/topic taxonomy tree. Live/admin-configurable, so this is never
+ * hardcoded — same reasoning as loadAssessmentTaxonomyTree.
+ */
+export async function loadQuestionNatures(examId: number): Promise<QuestionNatureRow[]> {
+  const rows = await query<{ id: string | number; name: string; slug: string; description: string | null }>(
+    `select id, name, slug, description
+       from assessment.question_natures
+      where exam_id = $1 and is_active is not false
+      order by display_order, name`,
+    [examId]
+  );
+  return rows.map((row) => ({ id: Number(row.id), name: row.name, slug: row.slug, description: row.description }));
+}
+
+/**
+ * Classifies each question against the exam's configured question_natures.
+ * Mirrors classifyDeepest's shape (one LLM call, whole list, index-based
+ * assignments) but this is a flat tag list, not a tree — no ancestry to
+ * reconstruct.
+ */
+async function classifyNature(items: string[], natures: QuestionNatureRow[]): Promise<(number | null)[]> {
+  const empty = items.map(() => null as number | null);
+  if (items.length === 0 || natures.length === 0) return empty;
+  const validIds = new Set(natures.map((n) => n.id));
+
+  const systemPrompt = `You classify each exam question by its "question nature" — a difficulty/type tag configured on an Indian UPSC coaching platform, e.g. distinguishing a plain factual-recall question from an analytical/reasoning one.
+For each question, pick the id of the single best-fitting nature from the list below. Only use ids that appear in the list. If genuinely none fits, use null — don't force a weak match.
+Return ONLY JSON: {"assignments":[{"index":number,"nature_id":number|null}]}`;
+  const userPrompt = `QUESTION NATURES (id, name, description):
+${JSON.stringify(natures.map((n) => ({ id: n.id, name: n.name, description: n.description })))}
+
+QUESTIONS:
+${JSON.stringify(items.map((text, index) => ({ index, text: text.slice(0, 500) })))}`;
+
+  try {
+    const parsed = parseJsonRobust(await generateText(systemPrompt, userPrompt));
+    const assignments: unknown[] = Array.isArray(parsed?.assignments) ? parsed.assignments : [];
+    const out = items.map(() => null as number | null);
+    for (const raw of assignments) {
+      const entry = (raw ?? {}) as Record<string, unknown>;
+      const idx = Number(entry.index);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= items.length) continue;
+      const natureId = Number(entry.nature_id);
+      out[idx] = validIds.has(natureId) ? natureId : null;
+    }
+    return out;
+  } catch (err) {
+    console.error("[Assessment Agent] Question-nature classification failed:", err);
+    return empty;
+  }
+}
+
 async function acquireText(
   raw_text: string | undefined,
   source: AssessmentExtractSourceInput | undefined
@@ -200,7 +265,12 @@ export async function parseAssessmentAgent(input: ParseAssessmentAgentInput): Pr
   const questions: Record<string, unknown>[] = Array.isArray(quiz?.questions) ? quiz.questions : [];
   const { entries, byId } = await loadAssessmentTaxonomyTree(input.exam_id, input.content_type);
   const statements = questions.map((q) => String(q.question_statement ?? ""));
-  const leafIds = await classifyDeepest(statements, entries);
+  const [leafIds, natures] = await Promise.all([
+    classifyDeepest(statements, entries),
+    loadQuestionNatures(input.exam_id)
+  ]);
+  const natureIds = await classifyNature(statements, natures);
+  const natureById = new Map(natures.map((n) => [n.id, n]));
 
   const isMains = input.content_type === "mains";
   const candidates: AssessmentAgentCandidate[] = questions.map((q, index) => {
@@ -211,6 +281,12 @@ export async function parseAssessmentAgent(input: ParseAssessmentAgentInput): Pr
       warnings.push("No taxonomy node matched — assign one before publishing.");
     }
     const taxonomyPath = leafId != null ? byId.get(leafId)?.path ?? "" : "";
+
+    // Question nature is informational, not a hard requirement like taxonomy —
+    // omitted is fine when nothing in the exam's configured list fits, unlike
+    // an unmatched taxonomy node which blocks publishing.
+    const natureId = natureIds[index] ?? null;
+    const natureName = natureId != null ? natureById.get(natureId)?.name : undefined;
 
     const options = Array.isArray(q.options)
       ? (q.options as Record<string, unknown>[]).map((opt, i) => ({
@@ -235,6 +311,8 @@ export async function parseAssessmentAgent(input: ParseAssessmentAgentInput): Pr
       directive: isMains && q.directive ? String(q.directive).trim() : undefined,
       taxonomy_node_ids: taxonomyIds,
       taxonomy_path: taxonomyPath,
+      question_nature_id: natureId ?? undefined,
+      question_nature_name: natureName,
       warnings
     };
   });

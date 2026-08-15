@@ -1024,10 +1024,34 @@ Return ONLY JSON:
     [alts, options.quizType]
   );
 
+  // This fallback only runs when no admin has configured a custom prompt in
+  // AI Settings for this content type — it needs to carry the same rigor
+  // parseQuizAI's prompt does (the path an uploaded/pasted question paper
+  // goes through), not a bare stub, so a fresh/unconfigured AI Settings setup
+  // still produces correctly-shaped questions rather than a weaker baseline.
   let systemPrompt = instructionRow
     ? instructionRow.prompt
     : `You are a UPSC assessment expert. Write ${count} questions about the user's prompt/text.
 ${isPassage ? "For passage mode, provide a passage_title, a passage_text, and a list of questions based on it." : ""}
+
+FIELD BOUNDARIES — keep these three fields separate, do not let one bleed into another:
+- question_statement: ONLY the opening framing, one or two sentences (e.g.
+  "With reference to the Election Commission of India, consider the
+  following statements:"). Never include the numbered statements themselves.
+- supp_question_statement: every numbered fact/statement/claim the student
+  must evaluate, as a clean newline-separated numbered list ("1. ...\\n2. ...").
+  Omit entirely for a plain single-sentence question with no list to evaluate.
+- question_prompt: the closing call-to-action ("Which of the statements
+  given above is/are correct?", "Select the answer using the code given
+  below:"). Omit for a plain single-sentence question.
+
+EXPLANATION — output as clean HTML (<p>, <strong>, <ul><li>), never Markdown
+("**bold**" renders as literal asterisks on this site, not bold text).
+Structure: state the answer first, go through each statement/part in turn
+with the reasoning that proves its verdict (including what makes an
+incorrect one tempting), then close with a short self-contained paragraph
+on the underlying concept.
+
 Ensure math expressions are in LaTeX using single $ signs.
 Return only valid JSON.`;
 
@@ -1127,9 +1151,18 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
             items: {
               type: "object",
               properties: {
-                question_statement: { type: "string" },
-                supp_question_statement: { type: "string" },
-                question_prompt: { type: "string" },
+                question_statement: {
+                  type: "string",
+                  description: "ONLY the opening framing, one or two sentences. Never the numbered statements themselves."
+                },
+                supp_question_statement: {
+                  type: "string",
+                  description: 'Every numbered statement/claim to evaluate, as "1. ...\\n2. ...". Omit for a plain single-sentence question.'
+                },
+                question_prompt: {
+                  type: "string",
+                  description: 'The closing call-to-action, e.g. "Which of the statements given above is/are correct?". Omit for a plain single-sentence question.'
+                },
                 options: {
                   type: "array",
                   items: {
@@ -1142,7 +1175,10 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
                   }
                 },
                 correct_answer: { type: "string" },
-                explanation: { type: "string" }
+                explanation: {
+                  type: "string",
+                  description: "Clean HTML (<p>, <strong>, <ul><li>), never Markdown — this site renders it as plain text, so \"**bold**\" would show as literal asterisks."
+                }
               }
             }
           }
@@ -1323,7 +1359,8 @@ Crucially, raw inputs are often scrambled, out of order, or contain interleaved 
    - The command word instructing how to answer (e.g., "Discuss", "Analyze", "Examine", "Critically Evaluate", "Elucidate", "Comment"). Identify it even if it is embedded deep inside the question text.
 
 6. **Explanation (explanation)**:
-   - Extract the model answer, structural framework, key points, or pedagogical explanation. It might be labeled as "Model Answer", "Approach", "Suggested Answer", "Explanation", or just a block of paragraphs. If not provided, generate a brief structured answer framework.`
+   - Extract the model answer, structural framework, key points, or pedagogical explanation. It might be labeled as "Model Answer", "Approach", "Suggested Answer", "Explanation", or just a block of paragraphs. If not provided, generate a brief structured answer framework.
+   - Output as clean HTML (<p>, <strong>, <ul><li> for structured points), not Markdown — "**bold**" renders as literal asterisks on this site, never as bold text.`
     : `You are a state-of-the-art UPSC assessment parser and structured information extractor. Your goal is to parse raw multiple-choice questions (MCQs) that might be copied from books, worksheets, or OCR dumps, and format them into structured JSON.
 Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. For example, the options may come before the question, or the correct answer/explanation might be placed at the very top or in the middle. You must analyze the text logically to identify the components of each question, regardless of their order:
 
@@ -1354,10 +1391,20 @@ Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. 
    - Locate the pedagogical explanation explaining why the correct option is right and others are wrong.
    - If no explanation is provided in the raw text, you MUST generate a high-quality, comprehensive educational explanation explaining the concepts, correct statements, and why incorrect ones are wrong.
    - **Formatting & Structure Rules**:
-     * You MUST automatically format the explanation using Markdown to make it highly readable and structured.
-     * Use **bold text** for key terms, core concepts, article numbers, historical dates, and specific correct/incorrect statement references (e.g. "**Statement 1 is correct** because...", "**Statement 2 is incorrect** because...").
-     * Break large blocks of text into smaller, digestible paragraphs (maximum 2-3 sentences per paragraph) organized logically.
-     * Structure the explanation with clear sections/paragraphs separated by newlines, such as a general concept introduction, a statement-by-statement breakdown, and a concluding summary.
+     * Output MUST BE CLEAN HTML, NOT MARKDOWN: paragraphs as <p>, bold as
+       <strong>, never "**" or other Markdown syntax. The site that displays
+       this renders it as plain text with no Markdown interpretation at all —
+       "**bold**" would show literal asterisks to a student, not bold text.
+     * Use <strong> for key terms, core concepts, article numbers, historical
+       dates, and specific correct/incorrect statement references (e.g.
+       "<strong>Statement 1 is correct</strong> because...").
+     * Break large blocks of text into smaller, digestible paragraphs (each
+       its own <p>, maximum 2-3 sentences) organized logically.
+     * Structure the explanation with clear <p> sections: state the answer
+       first, then a statement-by-statement (or part-by-part) breakdown
+       covering both why each correct part is right and why each incorrect
+       part is wrong (including the trap it plays on), then a concluding <p>
+       giving a short, self-contained overview of the underlying concept.
 
  7. **Passage**:
    - If a group of questions are preceded by a shared reading passage or logical puzzle/case, extract the title under "passage_title" and body under "passage_text". Keep individual questions in the "questions" array.
@@ -1401,9 +1448,18 @@ STRICT RULE: The output must strictly conform to the JSON schema. Do not output 
             items: {
               type: "object",
               properties: {
-                question_statement: { type: "string", description: "Main question statement" },
-                supp_question_statement: { type: "string", description: "Optional list of statements/facts" },
-                question_prompt: { type: "string", description: "Optional question prompt (e.g. 'Which of the statements given above is/are correct?')" },
+                question_statement: {
+                  type: "string",
+                  description: "ONLY the opening framing, one or two sentences — never the numbered statements themselves."
+                },
+                supp_question_statement: {
+                  type: "string",
+                  description: 'Every numbered statement/claim to evaluate, as "1. ...\\n2. ...". Omit for a plain single-sentence question.'
+                },
+                question_prompt: {
+                  type: "string",
+                  description: 'The closing call-to-action, e.g. "Which of the statements given above is/are correct?". Omit for a plain single-sentence question.'
+                },
                 options: {
                   type: "array",
                   items: {
@@ -1416,7 +1472,10 @@ STRICT RULE: The output must strictly conform to the JSON schema. Do not output 
                   }
                 },
                 correct_answer: { type: "string", description: "A, B, C, or D" },
-                explanation: { type: "string", description: "Detailed pedagogical explanation" }
+                explanation: {
+                  type: "string",
+                  description: "Clean HTML (<p>, <strong>, <ul><li>), never Markdown — this site renders it as plain text, so \"**bold**\" would show as literal asterisks."
+                }
               },
               required: ["question_statement", "options", "correct_answer"]
             }
