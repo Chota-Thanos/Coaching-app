@@ -136,6 +136,12 @@ export function AdminAssessmentTaxonomyManager() {
   const [editingNode, setEditingNode] = useState<TaxonomyNode | null>(null);
   const [form, setForm] = useState<FormState>(initialFormState);
 
+  // When creating (not editing), lets the admin add several sibling nodes
+  // at the same tree position in one submit instead of reopening the modal
+  // and re-walking the parent chain for every single name.
+  const [bulkNamesMode, setBulkNamesMode] = useState(false);
+  const [bulkNamesText, setBulkNamesText] = useState("");
+
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [examForm, setExamForm] = useState<ExamFormState>(initialExamFormState);
 
@@ -394,14 +400,58 @@ export function AdminAssessmentTaxonomyManager() {
     return list;
   }, [roots, childrenMap]);
 
-  // Parents list for parent selection (exclude subtopics, and current editing node itself to avoid cycles)
-  const parentOptions = useMemo(() => {
-    return currentNodes.filter(node => {
-      const isSubtopic = node.node_type === "subtopic";
+  // The chain of ancestors (root first) that form.parentId currently resolves
+  // to, so the "choose the tree step by step" picker below can show one
+  // dropdown per depth instead of one long flat list of every node in the tree.
+  const parentAncestorChain = useMemo(() => {
+    const byId = new Map<number, TaxonomyNode>();
+    currentNodes.forEach((n) => byId.set(n.id, n));
+    const chain: TaxonomyNode[] = [];
+    let current = form.parentId ? byId.get(Number(form.parentId)) : undefined;
+    while (current) {
+      chain.unshift(current);
+      current = current.parent_id ? byId.get(Number(current.parent_id)) : undefined;
+    }
+    return chain;
+  }, [form.parentId, currentNodes]);
+
+  const rootStepOptions = useMemo(() => {
+    return [...roots].sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+  }, [roots]);
+
+  // One entry per depth: its options and the currently-chosen value at that
+  // depth. Stops adding a further step once the deepest chosen node is a
+  // subtopic (a leaf type that can't have children of its own).
+  const parentSteps = useMemo(() => {
+    const first = parentAncestorChain[0];
+    const steps: { options: TaxonomyNode[]; value: string }[] = [
+      { options: rootStepOptions, value: first ? String(first.id) : "" }
+    ];
+    for (const [i, node] of parentAncestorChain.entries()) {
+      if (node.node_type === "subtopic") break;
       const isSelf = editingNode ? node.id === editingNode.id : false;
-      return !isSubtopic && !isSelf && node.is_active;
-    });
-  }, [currentNodes, editingNode]);
+      if (isSelf) break;
+      const children = (childrenMap.get(node.id) || [])
+        .filter((child) => !(editingNode && child.id === editingNode.id))
+        .slice()
+        .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+      const next = parentAncestorChain[i + 1];
+      steps.push({ options: children, value: next ? String(next.id) : "" });
+    }
+    return steps;
+  }, [parentAncestorChain, rootStepOptions, childrenMap, editingNode]);
+
+  // Choosing a real node at step i sets it directly as the parent (you don't
+  // have to drill to the deepest level — a mid-tree node is a valid parent
+  // too). Clearing a step falls back to whatever was chosen one step up.
+  const handleParentStepChange = (stepIndex: number, value: string): void => {
+    if (value) {
+      updateForm("parentId", value);
+      return;
+    }
+    const previous = stepIndex === 0 ? undefined : parentAncestorChain[stepIndex - 1];
+    updateForm("parentId", previous ? String(previous.id) : "");
+  };
 
   // Auto set default node type on tab changes
   useEffect(() => {
@@ -410,6 +460,8 @@ export function AdminAssessmentTaxonomyManager() {
       ...initialFormState,
       nodeType: activeTab === "mains" ? "paper" : "subject"
     });
+    setBulkNamesMode(false);
+    setBulkNamesText("");
   }, [activeTab]);
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]): void => {
@@ -445,6 +497,19 @@ export function AdminAssessmentTaxonomyManager() {
       .replace(/(^-|-$)/g, "");
   };
 
+  // Parses one line of the bulk "add multiple items here" textarea:
+  // "Name | slug | description" — only the name is required.
+  function parseBulkNameLine(line: string): { name: string; slug?: string; description?: string } | null {
+    const parts = line.split("|").map((part) => part.trim());
+    const name = parts[0] ?? "";
+    if (!name) return null;
+    return {
+      name,
+      slug: parts[1] ? makeSlug(parts[1]) : undefined,
+      description: parts[2] || undefined
+    };
+  }
+
   // Node editing actions
   const handleEditClick = (node: TaxonomyNode) => {
     setEditingNode(node);
@@ -458,6 +523,8 @@ export function AdminAssessmentTaxonomyManager() {
       displayOrder: String(node.display_order),
       isActive: node.is_active
     });
+    setBulkNamesMode(false);
+    setBulkNamesText("");
     setMessage(null);
     setModalOpen(true);
   };
@@ -468,6 +535,8 @@ export function AdminAssessmentTaxonomyManager() {
       ...initialFormState,
       nodeType: activeTab === "mains" ? "paper" : "subject"
     });
+    setBulkNamesMode(false);
+    setBulkNamesText("");
     setMessage(null);
     setModalOpen(true);
   };
@@ -497,40 +566,74 @@ export function AdminAssessmentTaxonomyManager() {
     event.preventDefault();
     if (!token || !selectedExamId) return;
 
-    const payload: Record<string, any> = {
+    // Fields shared by every node this submit creates/updates — only
+    // name/slug/description vary per item in bulk mode.
+    const basePayload: Record<string, any> = {
       exam_id: Number(selectedExamId),
       parent_id: form.parentId ? Number(form.parentId) : null,
       node_type: form.nodeType,
-      name: form.name,
-      slug: form.slug || makeSlug(form.name),
-      description: form.description || null,
       image_url: canUseImage && form.imageUrl.trim() ? form.imageUrl.trim() : null,
       display_order: Number(form.displayOrder || 0),
       is_active: form.isActive
     };
 
     if (activeTab !== "mains") {
-      payload.content_type = activeTab;
+      basePayload.content_type = activeTab;
     }
+
+    const url = activeTab === "mains"
+      ? "/api/v1/assessment/mains/taxonomy-nodes"
+      : "/api/v1/assessment/taxonomy-nodes";
 
     setSaving(true);
     setMessage(null);
     try {
       if (editingNode) {
         // Update existing node
-        const url = activeTab === "mains"
-          ? `/api/v1/assessment/mains/taxonomy-nodes/${editingNode.id}`
-          : `/api/v1/assessment/taxonomy-nodes/${editingNode.id}`;
-        
-        await authenticatedPatch<TaxonomyNode>(url, token, payload);
+        const payload = {
+          ...basePayload,
+          name: form.name,
+          slug: form.slug || makeSlug(form.name),
+          description: form.description || null
+        };
+        await authenticatedPatch<TaxonomyNode>(`${url}/${editingNode.id}`, token, payload);
         setMessage({ text: "Taxonomy node updated successfully.", type: "success" });
         setEditingNode(null);
+      } else if (bulkNamesMode) {
+        // Create several sibling nodes at the same resolved tree position in
+        // one go — the admin only types the new names, not the ancestor path.
+        const items = bulkNamesText
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map(parseBulkNameLine)
+          .filter((item): item is { name: string; slug?: string; description?: string } => item !== null);
+
+        if (items.length === 0) {
+          setMessage({ text: "Add at least one name to bulk-create.", type: "error" });
+          setSaving(false);
+          return;
+        }
+
+        let created = 0;
+        for (const item of items) {
+          await authenticatedPost<TaxonomyNode>(url, token, {
+            ...basePayload,
+            name: item.name,
+            slug: item.slug || makeSlug(item.name),
+            description: item.description || form.description || null
+          });
+          created++;
+        }
+        setMessage({ text: `Created ${created} new node${created > 1 ? "s" : ""} at the selected location.`, type: "success" });
       } else {
-        // Create new node
-        const url = activeTab === "mains"
-          ? "/api/v1/assessment/mains/taxonomy-nodes"
-          : "/api/v1/assessment/taxonomy-nodes";
-        
+        // Create a single new node
+        const payload = {
+          ...basePayload,
+          name: form.name,
+          slug: form.slug || makeSlug(form.name),
+          description: form.description || null
+        };
         await authenticatedPost<TaxonomyNode>(url, token, payload);
         setMessage({ text: "Taxonomy node created successfully.", type: "success" });
       }
@@ -539,6 +642,8 @@ export function AdminAssessmentTaxonomyManager() {
         ...initialFormState,
         nodeType: activeTab === "mains" ? "paper" : "subject"
       });
+      setBulkNamesMode(false);
+      setBulkNamesText("");
       setModalOpen(false);
       await loadNodes();
     } catch (err) {
@@ -1172,49 +1277,90 @@ export function AdminAssessmentTaxonomyManager() {
                 </select>
               </label>
 
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Parent Node (Reassign Taxonomy Link)
-                <select
-                  className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
-                  onChange={(e) => updateForm("parentId", e.target.value)}
-                  value={form.parentId}
-                >
-                  <option value="">No Parent (Root level)</option>
-                  {parentOptions.map((parent) => (
-                    <option key={parent.id} value={parent.id}>
-                      [Level {(nodeDepthMap.get(parent.id) ?? 0) + 1}] {parent.name}
-                    </option>
+              <div className="grid gap-1.5 text-sm font-bold text-ink">
+                Category Tree Location (choose step by step)
+                <div className="space-y-2">
+                  {parentSteps.map((step, i) => (
+                    <select
+                      key={i}
+                      className="h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
+                      onChange={(e) => handleParentStepChange(i, e.target.value)}
+                      value={step.value}
+                    >
+                      <option value="">
+                        {i === 0 ? "-- Root level (no parent) --" : "-- Create directly here, no deeper --"}
+                      </option>
+                      {step.options.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.name} ({opt.node_type.replace(/_/g, " ")})
+                        </option>
+                      ))}
+                    </select>
                   ))}
-                </select>
-              </label>
+                </div>
+                <span className="text-[11px] font-normal text-ink/50">
+                  {parentAncestorChain.length > 0
+                    ? `New node${bulkNamesMode ? "s" : ""} will be created under: ${parentAncestorChain.map((n) => n.name).join(" → ")}`
+                    : `New node${bulkNamesMode ? "s" : ""} will be created at the root level.`}
+                </span>
+              </div>
+
+              {!editingNode && (
+                <label className="flex items-center gap-2 text-sm font-bold text-ink select-none cursor-pointer">
+                  <input
+                    checked={bulkNamesMode}
+                    className="h-4 w-4 rounded text-civic"
+                    onChange={(e) => setBulkNamesMode(e.target.checked)}
+                    type="checkbox"
+                  />
+                  Add multiple items at this location at once
+                </label>
+              )}
+
+              {bulkNamesMode && !editingNode ? (
+                <label className="grid gap-1 text-sm font-bold text-ink">
+                  Names (one per line — optionally "Name | slug | description")
+                  <textarea
+                    className="min-h-32 rounded-xl border border-line px-3 py-2 text-sm font-normal font-mono outline-none focus:border-civic resize-y"
+                    onChange={(e) => setBulkNamesText(e.target.value)}
+                    value={bulkNamesText}
+                    placeholder={"Fundamental Rights\nDirective Principles | dpsp\nFederalism | federalism | Centre-state relations"}
+                  />
+                  <span className="text-[11px] font-normal text-ink/50">
+                    Each line becomes one node at the location selected above — no need to retype the parent chain per item.
+                  </span>
+                </label>
+              ) : (
+                <>
+                  <label className="grid gap-1 text-sm font-bold text-ink">
+                    Category Title
+                    <input
+                      className="h-11 rounded-xl border border-line px-3 text-sm font-normal outline-none focus:border-civic"
+                      onBlur={() => {
+                        if (!form.slug) updateForm("slug", makeSlug(form.name));
+                      }}
+                      onChange={(e) => updateForm("name", e.target.value)}
+                      required
+                      value={form.name}
+                      placeholder="Enter category title"
+                    />
+                  </label>
+
+                  <label className="grid gap-1 text-sm font-bold text-ink">
+                    Slug
+                    <input
+                      className="h-11 rounded-xl border border-line px-3 text-sm font-normal outline-none focus:border-civic"
+                      onChange={(e) => updateForm("slug", makeSlug(e.target.value))}
+                      required
+                      value={form.slug}
+                      placeholder="slug-value"
+                    />
+                  </label>
+                </>
+              )}
 
               <label className="grid gap-1 text-sm font-bold text-ink">
-                Category Title
-                <input
-                  className="h-11 rounded-xl border border-line px-3 text-sm font-normal outline-none focus:border-civic"
-                  onBlur={() => {
-                    if (!form.slug) updateForm("slug", makeSlug(form.name));
-                  }}
-                  onChange={(e) => updateForm("name", e.target.value)}
-                  required
-                  value={form.name}
-                  placeholder="Enter category title"
-                />
-              </label>
-
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Slug
-                <input
-                  className="h-11 rounded-xl border border-line px-3 text-sm font-normal outline-none focus:border-civic"
-                  onChange={(e) => updateForm("slug", makeSlug(e.target.value))}
-                  required
-                  value={form.slug}
-                  placeholder="slug-value"
-                />
-              </label>
-
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Description
+                Description {bulkNamesMode && "(fallback for lines without their own | description)"}
                 <textarea
                   className="min-h-20 rounded-xl border border-line px-3 py-2 text-sm font-normal outline-none focus:border-civic resize-y"
                   onChange={(e) => updateForm("description", e.target.value)}
@@ -1223,7 +1369,7 @@ export function AdminAssessmentTaxonomyManager() {
                 />
               </label>
 
-              {canUseImage ? (
+              {canUseImage && !bulkNamesMode ? (
                 <div className="grid gap-2 text-sm font-bold text-ink">
                   Category Image
                   <div className="grid gap-3 sm:grid-cols-[112px,1fr]">
@@ -1268,11 +1414,11 @@ export function AdminAssessmentTaxonomyManager() {
                     Image is available for levels 1-3. This category is level {formDepth + 1}.
                   </span>
                 </div>
-              ) : (
+              ) : !bulkNamesMode ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
                   Image option is limited to the first 3 category levels. This category is level {formDepth + 1}.
                 </div>
-              )}
+              ) : null}
 
               <div className="grid gap-3 grid-cols-2">
                 <label className="grid gap-1 text-sm font-bold text-ink">
@@ -1301,7 +1447,7 @@ export function AdminAssessmentTaxonomyManager() {
                   disabled={saving || uploadingImage}
                   type="submit"
                 >
-                  {saving ? "Saving..." : editingNode ? "Update Node" : "Create Node"}
+                  {saving ? "Saving..." : editingNode ? "Update Node" : bulkNamesMode ? "Create Nodes" : "Create Node"}
                 </button>
                 <button
                   className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-surface text-slate-700 hover:bg-slate-50 font-bold text-sm px-4 transition-colors"

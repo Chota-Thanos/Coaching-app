@@ -78,6 +78,15 @@ export function QuizManagerBulkReassign({
 }: BulkReassignProps) {
   if (!bulkModalOpen) return null;
 
+  // Any select below that is already showing a value (not its blank
+  // "-- Select --" option) was pre-filled because every selected item
+  // shares that value — surface that so it isn't mistaken for a default.
+  const hasPrefill = Boolean(
+    bulkForm.exam_id || bulkForm.exam_level_id || bulkForm.subject_node_id ||
+    bulkForm.source_node_id || bulkForm.topic_node_id || bulkForm.subtopic_node_id ||
+    bulkForm.question_nature_id || bulkForm.status
+  );
+
   return (
     <div className="fixed inset-0 bg-midnight/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-surface w-full max-w-md rounded-2xl shadow-xl flex flex-col border border-line animate-in zoom-in-95 duration-200">
@@ -99,6 +108,16 @@ export function QuizManagerBulkReassign({
         </div>
 
         <div className="p-6 space-y-4">
+          {hasPrefill ? (
+            <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+              Pre-filled with the category / nature / status already shared by all selected items. Fields still on "-- Select --" mean the selection is mixed there — change only what you want to reassign.
+            </p>
+          ) : (
+            <p className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              The selected items don't share any category, nature or status in common — every field starts blank.
+            </p>
+          )}
+
           <label className="grid gap-1.5 text-xs font-black text-ink font-bold">
             Target Examination *
             <select

@@ -262,6 +262,18 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
     }
   }
 
+  // Opens the bulk-reassign modal, pre-filling the target category with
+  // whatever category the currently selected articles already share (if
+  // any) instead of always starting blank.
+  function openBulkReassign() {
+    const selected = articles.filter((a) => selectedArticleIds.includes(Number(a.id)));
+    const firstCatId = selected[0]?.category?.id ?? null;
+    const allShareCategory = selected.length > 0 && firstCatId !== null &&
+      selected.every((a) => (a.category?.id ?? null) === firstCatId);
+    setBulkReassignCategoryId(allShareCategory ? String(firstCatId) : "");
+    setBulkReassignOpen(true);
+  }
+
   async function handleBulkReassign() {
     if (!token || selectedArticleIds.length === 0 || !bulkReassignCategoryId) {
       setMessage("Target category is required.");
@@ -578,7 +590,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setBulkReassignOpen(true)}
+              onClick={openBulkReassign}
               className="inline-flex h-8 items-center justify-center px-3.5 rounded-full bg-white/10 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/5 active:scale-[0.98]"
             >
               Reassign Category
@@ -624,7 +636,17 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                   Select a target category to reassign {selectedArticleIds.length} selected article{selectedArticleIds.length > 1 ? "s" : ""}.
                 </p>
               </div>
-              
+
+              {bulkReassignCategoryId ? (
+                <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  Pre-filled with the category already shared by all selected articles — change it below only if you want to reassign them elsewhere.
+                </p>
+              ) : (
+                <p className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  The selected articles don't share one category in common — pick a target below.
+                </p>
+              )}
+
               <div className="space-y-2">
                 <label className="text-xs font-bold text-ink uppercase tracking-wider">Target Category</label>
                 <select

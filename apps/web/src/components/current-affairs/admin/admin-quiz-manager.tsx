@@ -150,6 +150,25 @@ function formatTestType(type: string) {
   return type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// Returns the value a given field holds across every item, or "" when the
+// selection is empty or the items disagree on that field — used to pre-fill
+// the bulk-reassign modal with whatever category/nature the selected items
+// already share, instead of always starting blank.
+function sharedFieldValue(items: any[], field: string): string {
+  if (items.length === 0) return "";
+  let shared: string | null = null;
+  for (const item of items) {
+    const raw = item?.[field];
+    const val = raw === null || raw === undefined || raw === "" ? "" : String(raw);
+    if (shared === null) {
+      shared = val;
+    } else if (shared !== val) {
+      return "";
+    }
+  }
+  return shared || "";
+}
+
 export function AdminQuizManager({ 
   initialRepo = "gk", 
   hideRepoTabs = false,
@@ -762,6 +781,28 @@ export function AdminQuizManager({
         setSelectedQuestionIds([]);
       }
     }
+  };
+
+  // Opens the bulk-reassign modal, pre-filling it with whatever taxonomy /
+  // nature / status the currently selected items already share — so the
+  // admin sees "what these already have in common" instead of a blank form,
+  // and only needs to touch the fields that actually need to change.
+  const openBulkModal = () => {
+    const selected = activeRepo === "mains"
+      ? quizzes.filter(q => selectedQuizIds.includes(q.id))
+      : questions.filter(q => selectedQuestionIds.includes(q.id));
+
+    setBulkForm({
+      exam_id: sharedFieldValue(selected, "exam_id"),
+      exam_level_id: sharedFieldValue(selected, "exam_level_id"),
+      subject_node_id: sharedFieldValue(selected, "subject_node_id"),
+      source_node_id: sharedFieldValue(selected, "source_node_id"),
+      topic_node_id: sharedFieldValue(selected, "topic_node_id"),
+      subtopic_node_id: sharedFieldValue(selected, "subtopic_node_id"),
+      question_nature_id: sharedFieldValue(selected, "question_nature_id"),
+      status: sharedFieldValue(selected, "status")
+    });
+    setBulkModalOpen(true);
   };
 
   // Bulk Edit Categories & Nature submit
@@ -2171,7 +2212,7 @@ export function AdminQuizManager({
           </span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setBulkModalOpen(true)}
+              onClick={openBulkModal}
               className="inline-flex h-9 items-center justify-center px-4 rounded-xl bg-civic hover:bg-civic/90 active:scale-[0.98] text-white text-xs font-bold shadow-sm transition-all"
               type="button"
             >
