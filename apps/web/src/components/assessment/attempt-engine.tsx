@@ -32,6 +32,7 @@ import { authenticatedGet, authenticatedPost, authenticatedPut, guestAwareGet, g
 import { getOrCreateGuestToken, setPendingGuestClaim } from "../../lib/guest";
 import { FullTourSegment } from "../app/full-tour-segment";
 import { isFullTourActiveForPage } from "../../lib/full-tour";
+import { renderMathAndMarkdown, useKaTeX } from "../current-affairs/admin/katex-renderer";
 
 const ATTEMPT_TOUR_STEPS = [
   {
@@ -85,6 +86,10 @@ function timeLabel(seconds: number): string {
 export function AttemptEngine({ attemptId }: AttemptEngineProps) {
   const router = useRouter();
   const { token, isInitialized } = useAuth();
+  // Question content is real HTML now (Rich Text Editor / AI-authored), and
+  // frequently carries LaTeX math — this screen used to render everything as
+  // raw escaped text with no HTML or math support at all.
+  useKaTeX();
 
   // Guests get the same real attempt-taking screen as logged-in users — only the
   // result reveal is gated behind sign-in (see submit() and result-review.tsx).
@@ -440,18 +445,21 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                       </div>
 
                       <div className="space-y-2">
-                        <h3 className="text-sm font-bold leading-snug text-slate-900 md:text-base">
-                          {q.question_version.question_statement}
-                        </h3>
+                        <h3
+                          className="text-sm font-bold leading-snug text-slate-900 md:text-base"
+                          dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_statement)}
+                        />
                         {q.question_version.supplementary_statement && (
-                          <p className="whitespace-pre-wrap text-xs sm:text-sm leading-relaxed text-slate-500 bg-slate-50/40 p-3 rounded-xl italic">
-                            {q.question_version.supplementary_statement}
-                          </p>
+                          <div
+                            className="text-xs sm:text-sm leading-relaxed text-slate-500 bg-slate-50/40 p-3 rounded-xl italic"
+                            dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.supplementary_statement)}
+                          />
                         )}
                         {q.question_version.question_prompt && (
-                          <p className="text-xs sm:text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-150">
-                            {q.question_version.question_prompt}
-                          </p>
+                          <p
+                            className="text-xs sm:text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-150"
+                            dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_prompt)}
+                          />
                         )}
                       </div>
 
@@ -479,7 +487,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                               }`}>
                                 {key}
                               </span>
-                              <span className="mt-0.5">{optionText(option, optIdx)}</span>
+                              <span className="mt-0.5" dangerouslySetInnerHTML={renderMathAndMarkdown(optionText(option, optIdx))} />
                             </button>
                           );
                         })}
@@ -493,17 +501,20 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
             <>
               <div className="space-y-4">
                 <h2 className="text-lg font-black leading-snug text-slate-900 md:text-xl">
-                  {activeIndex + 1}. {activeQuestion.question_version.question_statement}
+                  {activeIndex + 1}.{" "}
+                  <span dangerouslySetInnerHTML={renderMathAndMarkdown(activeQuestion.question_version.question_statement)} />
                 </h2>
                 {activeQuestion.question_version.supplementary_statement && (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-500 bg-slate-50/40 p-3.5 rounded-xl italic">
-                    {activeQuestion.question_version.supplementary_statement}
-                  </p>
+                  <div
+                    className="text-sm leading-relaxed text-slate-500 bg-slate-50/40 p-3.5 rounded-xl italic"
+                    dangerouslySetInnerHTML={renderMathAndMarkdown(activeQuestion.question_version.supplementary_statement)}
+                  />
                 )}
                 {activeQuestion.question_version.question_prompt && (
-                  <p className="text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-150">
-                    {activeQuestion.question_version.question_prompt}
-                  </p>
+                  <p
+                    className="text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-150"
+                    dangerouslySetInnerHTML={renderMathAndMarkdown(activeQuestion.question_version.question_prompt)}
+                  />
                 )}
               </div>
 
@@ -740,7 +751,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                           }`}>
                             {key}
                           </span>
-                          <span className="mt-0.5">{optionText(option, index)}</span>
+                          <span className="mt-0.5" dangerouslySetInnerHTML={renderMathAndMarkdown(optionText(option, index))} />
                         </button>
                       );
                     })}

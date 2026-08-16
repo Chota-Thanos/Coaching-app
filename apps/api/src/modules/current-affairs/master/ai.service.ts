@@ -1039,8 +1039,9 @@ FIELD BOUNDARIES — keep these three fields separate, do not let one bleed into
   "With reference to the Election Commission of India, consider the
   following statements:"). Never include the numbered statements themselves.
 - supp_question_statement: every numbered fact/statement/claim the student
-  must evaluate, as a clean newline-separated numbered list ("1. ...\\n2. ...").
-  Omit entirely for a plain single-sentence question with no list to evaluate.
+  must evaluate, as clean HTML — <ol><li>...</li><li>...</li></ol> — never
+  plain "1. ...\\n2. ..." text or Markdown. Omit entirely for a plain
+  single-sentence question with no list to evaluate.
 - question_prompt: the closing call-to-action ("Which of the statements
   given above is/are correct?", "Select the answer using the code given
   below:"). Omit for a plain single-sentence question.
@@ -1157,7 +1158,7 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
                 },
                 supp_question_statement: {
                   type: "string",
-                  description: 'Every numbered statement/claim to evaluate, as "1. ...\\n2. ...". Omit for a plain single-sentence question.'
+                  description: "Every numbered statement/claim to evaluate, as clean HTML: <ol><li>...</li><li>...</li></ol>, never Markdown or plain \"1. ...\\n2. ...\" text. Omit for a plain single-sentence question."
                 },
                 question_prompt: {
                   type: "string",
@@ -1372,7 +1373,10 @@ Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. 
 2. **Supplementary Statement (supp_question_statement)**:
    - Contains any lists of facts, conditions, statements, or reasons that the student needs to evaluate (e.g., "1. The northern part of India was divided... 2. The Bahmani Kingdom...").
    - Extract these statements even if they are poorly formatted, lumped into a single line, separated by semicolons (e.g., "• statement 1; 2. statement 2"), or prefix-bulleted (e.g., "• 1) To end the...").
-   - Format them clearly as a clean, newline-separated numbered list: "1. [First statement]\\n2. [Second statement]" etc. Remove any original scrambled bullets.
+   - Format them as clean HTML, not Markdown or plain numbered text — an
+     ordered list: <ol><li>[First statement]</li><li>[Second statement]</li></ol>.
+     The list markup itself provides the numbering; don't also write "1."/"2."
+     inside each <li>. Remove any original scrambled bullets.
 
 3. **Question Prompt (question_prompt)**:
    - The specific question or call-to-action that instructs the student what to find (e.g., "Which of the statements given above are correct?", "How many of the above reasons were correct?", "Select the correct answer using the code given below").
@@ -1454,7 +1458,7 @@ STRICT RULE: The output must strictly conform to the JSON schema. Do not output 
                 },
                 supp_question_statement: {
                   type: "string",
-                  description: 'Every numbered statement/claim to evaluate, as "1. ...\\n2. ...". Omit for a plain single-sentence question.'
+                  description: "Every numbered statement/claim to evaluate, as clean HTML: <ol><li>...</li><li>...</li></ol>, never Markdown or plain \"1. ...\\n2. ...\" text. Omit for a plain single-sentence question."
                 },
                 question_prompt: {
                   type: "string",

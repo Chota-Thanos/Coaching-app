@@ -48,19 +48,38 @@ export function useKaTeX() {
   return loaded;
 }
 
+/** Same real-HTML detection rendered-content.tsx uses — a genuine tag, not a stray `<`/`>`. */
+const HAS_REAL_HTML_TAG = /<\/?(p|h[1-6]|ul|ol|li|strong|em|div|span|a|br|b|i)\b/i;
+
 // Render Markdown and KaTeX LaTeX formulas to HTML
 export function renderMathAndMarkdown(text: string | undefined): { __html: string } {
   if (!text) return { __html: "" };
-  
-  let html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 
-  // Bold **text**
-  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-  // Italic *text*
-  html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+  let html: string;
+  if (HAS_REAL_HTML_TAG.test(text)) {
+    // Already real HTML (Rich Text Editor output, or an AI-authored field —
+    // both write <p>/<strong>/<ul><li> directly now). Escaping it here first,
+    // the way the plain-text path below does, would turn every tag into
+    // literal "&lt;p&gt;" text on screen instead of rendering it — that
+    // regression is exactly why this branch exists. Only the KaTeX pass below
+    // still needs to run; real HTML has no reason to also carry "**bold**"
+    // markdown syntax.
+    html = text;
+  } else {
+    // Legacy plain text: still-installed skills, and any content authored
+    // before the switch to real HTML, use "**bold**"/"*italic*" markdown
+    // instead. Escape first so a literal "<" in old content (e.g. "x < y")
+    // can't be misread as a tag, then convert the markdown syntax.
+    html = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Bold **text**
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    // Italic *text*
+    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+  }
 
   // Get KaTeX library from window if available
   const katex = typeof window !== "undefined" ? (window as any).katex : null;

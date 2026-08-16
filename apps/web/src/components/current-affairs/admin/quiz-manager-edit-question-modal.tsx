@@ -1,6 +1,7 @@
 "use client";
 
 import { X, Loader2, CheckCircle2 } from "lucide-react";
+import { RichTextMarkdownEditor } from "../rich-text-editor";
 
 type Exam = {
   id: number;
@@ -107,15 +108,12 @@ export function QuizManagerEditQuestionModal({
             />
           </label>
 
-          <label className="grid gap-1.5 text-xs font-black text-ink">
-            Supplementary statement (Facts, paragraphs - Optional)
-            <textarea
-              value={editQuestionForm.supplementary_statement || ""}
-              onChange={(e) => setEditQuestionForm((prev: any) => ({ ...prev, supplementary_statement: e.target.value }))}
-              className="min-h-[60px] rounded-lg border border-line p-3 text-sm font-medium outline-none focus:border-civic"
-              rows={2}
-            />
-          </label>
+          <RichTextMarkdownEditor
+            label="Supplementary Statement / List (Facts, conditions, LaTeX - Optional)"
+            value={editQuestionForm.supplementary_statement || ""}
+            onChange={(val) => setEditQuestionForm((prev: any) => ({ ...prev, supplementary_statement: val }))}
+            minHeightClass="min-h-[100px]"
+          />
 
           <label className="grid gap-1.5 text-xs font-black text-ink">
             Question Prompt (e.g. 'Which options are correct?' - Optional)

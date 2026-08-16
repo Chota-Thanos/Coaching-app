@@ -10,7 +10,7 @@ import { authenticatedGet, useAuth, authenticatedPost, authenticatedDelete, auth
 import { SignInPanel } from "../auth/sign-in-panel";
 import { FullTourSegment } from "../app/full-tour-segment";
 import { isFullTourActiveForPage } from "../../lib/full-tour";
-import { RenderedContent } from "../current-affairs/rendered-content";
+import { renderMathAndMarkdown, useKaTeX } from "../current-affairs/admin/katex-renderer";
 
 const RESULTS_TOUR_STEPS = [
   {
@@ -116,6 +116,7 @@ function TabButton({
 export function ResultReview({ resultId }: { resultId: string }) {
   const router = useRouter();
   const { token, user } = useAuth();
+  useKaTeX();
   const [review, setReview] = useState<ResultReviewType | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("summary");
@@ -874,9 +875,10 @@ export function ResultReview({ resultId }: { resultId: string }) {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-semibold text-slate-800 line-clamp-2">
-                            {q.question_version.question_statement}
-                          </p>
+                          <p
+                            className="text-sm font-semibold text-slate-800 line-clamp-2"
+                            dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_statement)}
+                          />
                         </div>
 
                         {/* Quick actions in checklist */}
@@ -1239,18 +1241,21 @@ export function ResultReview({ resultId }: { resultId: string }) {
 
                     {/* Question body */}
                     <div className="p-4">
-                      <h3 className="text-sm font-bold leading-snug text-ink md:text-base">
-                        {question.question_version.question_statement}
-                      </h3>
+                      <h3
+                        className="text-sm font-bold leading-snug text-ink md:text-base"
+                        dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.question_statement)}
+                      />
                       {question.question_version.supplementary_statement && (
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
-                          {question.question_version.supplementary_statement}
-                        </p>
+                        <div
+                          className="mt-2 text-sm leading-6 text-muted"
+                          dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.supplementary_statement)}
+                        />
                       )}
                       {question.question_version.question_prompt && (
-                        <p className="mt-2 text-sm font-bold text-ink">
-                          {question.question_version.question_prompt}
-                        </p>
+                        <p
+                          className="mt-2 text-sm font-bold text-ink"
+                          dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.question_prompt)}
+                        />
                       )}
 
                       {/* Options */}
@@ -1285,7 +1290,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                   >
                                     {key}
                                   </span>
-                                  <span className="flex-1 text-slate-800">{optionText(option, optIndex)}</span>
+                                  <span className="flex-1 text-slate-800" dangerouslySetInnerHTML={renderMathAndMarkdown(optionText(option, optIndex))} />
                                   {isCorrect && (
                                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
                                   )}
@@ -1306,9 +1311,9 @@ export function ResultReview({ resultId }: { resultId: string }) {
                             <CircleAlert className="h-3.5 w-3.5 text-indigo-650" aria-hidden="true" />
                             Explanation
                           </p>
-                          <RenderedContent
+                          <div
                             className="article-body mt-2 text-sm leading-6 text-slate-650"
-                            content={question.question_version.explanation}
+                            dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.explanation)}
                           />
                         </div>
                       )}
@@ -1413,18 +1418,21 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                 </div>
                               </div>
 
-                              <h3 className="text-sm font-bold leading-snug text-ink md:text-base">
-                                {q.question_version.question_statement}
-                              </h3>
+                              <h3
+                                className="text-sm font-bold leading-snug text-ink md:text-base"
+                                dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_statement)}
+                              />
                               {q.question_version.supplementary_statement && (
-                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
-                                  {q.question_version.supplementary_statement}
-                                </p>
+                                <div
+                                  className="mt-2 text-sm leading-6 text-muted"
+                                  dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.supplementary_statement)}
+                                />
                               )}
                               {q.question_version.question_prompt && (
-                                <p className="mt-2 text-sm font-bold text-ink">
-                                  {q.question_version.question_prompt}
-                                </p>
+                                <p
+                                  className="mt-2 text-sm font-bold text-ink"
+                                  dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_prompt)}
+                                />
                               )}
 
                               {q.question_format?.question_family === "mains_subjective" ? (
@@ -1458,7 +1466,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                           >
                                             {key}
                                           </span>
-                                          <span className="flex-1 text-slate-800">{optionText(option, optIndex)}</span>
+                                          <span className="flex-1 text-slate-800" dangerouslySetInnerHTML={renderMathAndMarkdown(optionText(option, optIndex))} />
                                           {isCorrect && (
                                             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
                                           )}
@@ -1478,9 +1486,9 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                     <CircleAlert className="h-3.5 w-3.5 text-indigo-650" aria-hidden="true" />
                                     Explanation
                                   </p>
-                                  <RenderedContent
+                                  <div
                                     className="article-body mt-2 text-sm leading-6 text-slate-650"
-                                    content={q.question_version.explanation}
+                                    dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.explanation)}
                                   />
                                 </div>
                               )}

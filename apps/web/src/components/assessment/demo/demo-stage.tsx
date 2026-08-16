@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import type { DemoRow, DemoState } from './demo-script';
 import { demoSubjects, focusId } from './demo-script';
-import { RenderedContent } from '../../current-affairs/rendered-content';
+import { renderMathAndMarkdown } from '../../current-affairs/admin/katex-renderer';
 
 /**
  * Renders one frame of the scripted demo as a faithful mock of the real
@@ -537,7 +537,7 @@ function ResultScreen({ state }: { state: DemoState }) {
             <p className="text-[10px] font-extrabold uppercase tracking-widest text-civic">
               Explanation
             </p>
-            <RenderedContent className="article-body mt-1.5 text-xs leading-relaxed text-muted" content={q.explanation} />
+            <div className="article-body mt-1.5 text-xs leading-relaxed text-muted" dangerouslySetInnerHTML={renderMathAndMarkdown(q.explanation)} />
           </div>
           <div
             data-demo-focus={focusId.markRevision}
