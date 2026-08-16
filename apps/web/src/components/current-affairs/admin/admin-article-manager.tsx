@@ -108,6 +108,16 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
     return categories.filter((category) => category.content_family === family);
   }, [categories, filters.contentKind]);
 
+  // The status shared by every currently-selected article, or null if the
+  // selection is empty or mixed — shown directly on the floating bulk-action
+  // bar so "what state is this group in" doesn't require opening a modal.
+  const selectedArticlesSharedStatus = useMemo(() => {
+    const selected = articles.filter((a) => selectedArticleIds.includes(Number(a.id)));
+    const first = selected[0];
+    if (!first) return null;
+    return selected.every((a) => a.status === first.status) ? first.status : null;
+  }, [articles, selectedArticleIds]);
+
   const loadCategories = useCallback(async () => {
     if (!token) return;
     const records = await authenticatedGet<CategoryNode[]>("/api/v1/current-affairs/categories?limit=200", token);
@@ -236,6 +246,25 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
+
+  async function handleBulkPublish() {
+    if (!token || selectedArticleIds.length === 0) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      for (const id of selectedArticleIds) {
+        await authenticatedPatch(`/api/v1/current-affairs/articles/${id}`, token, { status: "published" });
+      }
+      setMessage(`Successfully published ${selectedArticleIds.length} articles.`);
+      setSelectedArticleIds([]);
+      await loadArticles();
+    } catch (err: any) {
+      console.error(err);
+      setMessage("Error publishing some articles: " + (err.message || err));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleBulkDelete() {
     if (!token || selectedArticleIds.length === 0) return;
@@ -583,9 +612,16 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
       {/* Floating Bulk Actions Bar */}
       {selectedArticleIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 bg-midnight text-white px-6 py-3.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 border border-white/10 backdrop-blur-md bg-opacity-95">
-          <span className="text-xs font-black tracking-wider uppercase text-white/80">
-            {selectedArticleIds.length} Article{selectedArticleIds.length > 1 ? "s" : ""} selected
-          </span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-black tracking-wider uppercase text-white/80">
+              {selectedArticleIds.length} Article{selectedArticleIds.length > 1 ? "s" : ""} selected
+            </span>
+            <span className="text-[10px] font-bold text-white/50 capitalize">
+              {selectedArticlesSharedStatus
+                ? `Current status: ${statusLabel(selectedArticlesSharedStatus)}`
+                : "Mixed statuses in selection"}
+            </span>
+          </div>
           <div className="h-4 w-[1px] bg-white/20" />
           <div className="flex items-center gap-2">
             <button
@@ -594,6 +630,14 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
               className="inline-flex h-8 items-center justify-center px-3.5 rounded-full bg-white/10 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/5 active:scale-[0.98]"
             >
               Reassign Category
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkPublish}
+              disabled={saving}
+              className="inline-flex h-8 items-center justify-center px-3.5 rounded-full bg-civic hover:bg-civic/90 text-white text-xs font-bold transition-all border border-civic/20 active:scale-[0.98] disabled:opacity-60"
+            >
+              Publish Selected
             </button>
             <button
               type="button"

@@ -783,6 +783,17 @@ export function AdminQuizManager({
     }
   };
 
+  // The status shared by every currently-selected item, or null if the
+  // selection is empty or mixed — shown directly on the floating bulk-action
+  // bar so "what state is this group in" doesn't require opening a modal.
+  const selectedItemsSharedStatus = useMemo(() => {
+    const selected = activeRepo === "mains"
+      ? quizzes.filter(q => selectedQuizIds.includes(q.id))
+      : questions.filter(q => selectedQuestionIds.includes(q.id));
+    if (selected.length === 0) return null;
+    return sharedFieldValue(selected, "status") || null;
+  }, [activeRepo, quizzes, selectedQuizIds, questions, selectedQuestionIds]);
+
   // Opens the bulk-reassign modal, pre-filling it with whatever taxonomy /
   // nature / status the currently selected items already share — so the
   // admin sees "what these already have in common" instead of a blank form,
@@ -880,6 +891,49 @@ export function AdminQuizManager({
       } catch (err: any) {
         console.error(err);
         showMessage("Failed to update questions taxonomy: " + (err.message || err), "error");
+      } finally {
+        setSavingBulk(false);
+      }
+    }
+  };
+
+  // One-click bulk publish — reuses the bulk-taxonomy endpoints with only
+  // `status` set, so it doesn't force picking an exam/level first the way
+  // the full Bulk Reassign modal does.
+  const handleBulkPublish = async () => {
+    if (!token) return;
+
+    if (activeRepo === "mains") {
+      if (selectedQuizIds.length === 0) return;
+      setSavingBulk(true);
+      try {
+        await authenticatedPost("/api/v1/assessment/admin/test-templates/bulk-taxonomy", token, {
+          ids: selectedQuizIds,
+          status: "published"
+        });
+        showMessage(`Successfully published ${selectedQuizIds.length} quizzes!`);
+        setSelectedQuizIds([]);
+        void loadQuizzes();
+      } catch (err: any) {
+        console.error(err);
+        showMessage("Failed to publish quizzes: " + (err.message || err), "error");
+      } finally {
+        setSavingBulk(false);
+      }
+    } else {
+      if (selectedQuestionIds.length === 0) return;
+      setSavingBulk(true);
+      try {
+        await authenticatedPost("/api/v1/assessment/admin/questions/bulk-taxonomy", token, {
+          ids: selectedQuestionIds,
+          status: "published"
+        });
+        showMessage(`Successfully published ${selectedQuestionIds.length} questions!`);
+        setSelectedQuestionIds([]);
+        void loadQuizzes();
+      } catch (err: any) {
+        console.error(err);
+        showMessage("Failed to publish questions: " + (err.message || err), "error");
       } finally {
         setSavingBulk(false);
       }
@@ -2207,9 +2261,16 @@ export function AdminQuizManager({
       {/* FLOATING BULK ACTIONS BAR */}
       {((activeRepo === "mains" ? selectedQuizIds.length : selectedQuestionIds.length) > 0) && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl py-3.5 px-6 flex items-center justify-between gap-6 z-50 text-white animate-in slide-in-from-bottom-6 duration-200">
-          <span className="text-xs font-black">
-            {activeRepo === "mains" ? selectedQuizIds.length : selectedQuestionIds.length} {activeRepo === "mains" ? "Quizzes" : "Questions"} Selected
-          </span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-black">
+              {activeRepo === "mains" ? selectedQuizIds.length : selectedQuestionIds.length} {activeRepo === "mains" ? "Quizzes" : "Questions"} Selected
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">
+              {selectedItemsSharedStatus
+                ? `Current status: ${formatStatus(selectedItemsSharedStatus).label}`
+                : "Mixed statuses in selection"}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={openBulkModal}
@@ -2217,6 +2278,14 @@ export function AdminQuizManager({
               type="button"
             >
               Bulk Reassign
+            </button>
+            <button
+              onClick={handleBulkPublish}
+              disabled={savingBulk}
+              className="inline-flex h-9 items-center justify-center px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold shadow-sm transition-all disabled:opacity-60"
+              type="button"
+            >
+              Publish Selected
             </button>
             <button
               onClick={handleBulkDelete}
