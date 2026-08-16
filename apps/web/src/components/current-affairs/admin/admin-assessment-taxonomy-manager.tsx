@@ -400,46 +400,62 @@ export function AdminAssessmentTaxonomyManager() {
     return list;
   }, [roots, childrenMap]);
 
-  // The chain of ancestors (root first) that form.parentId currently resolves
-  // to, so the "choose the tree step by step" picker below can show one
-  // dropdown per depth instead of one long flat list of every node in the tree.
-  const parentAncestorChain = useMemo(() => {
+  // The chain of ancestors (root first) that a given parentId string resolves
+  // to, so the "choose the tree step by step" picker can show one dropdown
+  // per depth instead of one long flat list of every node in the tree. Used
+  // by both the single/bulk-names "Add Node" modal and the Bulk Outline
+  // Import modal's "starting location" picker.
+  function buildAncestorChain(parentIdStr: string, nodes: TaxonomyNode[]): TaxonomyNode[] {
     const byId = new Map<number, TaxonomyNode>();
-    currentNodes.forEach((n) => byId.set(n.id, n));
+    nodes.forEach((n) => byId.set(n.id, n));
     const chain: TaxonomyNode[] = [];
-    let current = form.parentId ? byId.get(Number(form.parentId)) : undefined;
+    let current = parentIdStr ? byId.get(Number(parentIdStr)) : undefined;
     while (current) {
       chain.unshift(current);
       current = current.parent_id ? byId.get(Number(current.parent_id)) : undefined;
     }
     return chain;
-  }, [form.parentId, currentNodes]);
+  }
+
+  // One entry per depth: its options and the currently-chosen value at that
+  // depth. Stops adding a further step once the deepest chosen node is a
+  // subtopic (a leaf type that can't have children of its own).
+  function buildParentSteps(
+    ancestorChain: TaxonomyNode[],
+    rootOptions: TaxonomyNode[],
+    childrenByParent: Map<number, TaxonomyNode[]>,
+    excludeNodeId?: number
+  ): { options: TaxonomyNode[]; value: string }[] {
+    const first = ancestorChain[0];
+    const steps: { options: TaxonomyNode[]; value: string }[] = [
+      { options: rootOptions, value: first ? String(first.id) : "" }
+    ];
+    for (const [i, node] of ancestorChain.entries()) {
+      if (node.node_type === "subtopic") break;
+      if (excludeNodeId && node.id === excludeNodeId) break;
+      const children = (childrenByParent.get(node.id) || [])
+        .filter((child) => !(excludeNodeId && child.id === excludeNodeId))
+        .slice()
+        .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+      const next = ancestorChain[i + 1];
+      steps.push({ options: children, value: next ? String(next.id) : "" });
+    }
+    return steps;
+  }
 
   const rootStepOptions = useMemo(() => {
     return [...roots].sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
   }, [roots]);
 
-  // One entry per depth: its options and the currently-chosen value at that
-  // depth. Stops adding a further step once the deepest chosen node is a
-  // subtopic (a leaf type that can't have children of its own).
-  const parentSteps = useMemo(() => {
-    const first = parentAncestorChain[0];
-    const steps: { options: TaxonomyNode[]; value: string }[] = [
-      { options: rootStepOptions, value: first ? String(first.id) : "" }
-    ];
-    for (const [i, node] of parentAncestorChain.entries()) {
-      if (node.node_type === "subtopic") break;
-      const isSelf = editingNode ? node.id === editingNode.id : false;
-      if (isSelf) break;
-      const children = (childrenMap.get(node.id) || [])
-        .filter((child) => !(editingNode && child.id === editingNode.id))
-        .slice()
-        .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
-      const next = parentAncestorChain[i + 1];
-      steps.push({ options: children, value: next ? String(next.id) : "" });
-    }
-    return steps;
-  }, [parentAncestorChain, rootStepOptions, childrenMap, editingNode]);
+  const parentAncestorChain = useMemo(
+    () => buildAncestorChain(form.parentId, currentNodes),
+    [form.parentId, currentNodes]
+  );
+
+  const parentSteps = useMemo(
+    () => buildParentSteps(parentAncestorChain, rootStepOptions, childrenMap, editingNode?.id),
+    [parentAncestorChain, rootStepOptions, childrenMap, editingNode]
+  );
 
   // Choosing a real node at step i sets it directly as the parent (you don't
   // have to drill to the deepest level — a mid-tree node is a valid parent
@@ -453,6 +469,31 @@ export function AdminAssessmentTaxonomyManager() {
     updateForm("parentId", previous ? String(previous.id) : "");
   };
 
+  // Same step-by-step picker, but for the Bulk Outline Import modal — lets
+  // an existing node be chosen as the starting position so the pasted
+  // outline only needs to list the NEW nodes from there down, instead of
+  // retyping the whole ancestor path in the text every time.
+  const [bulkImportParentId, setBulkImportParentId] = useState("");
+
+  const bulkImportAncestorChain = useMemo(
+    () => buildAncestorChain(bulkImportParentId, currentNodes),
+    [bulkImportParentId, currentNodes]
+  );
+
+  const bulkImportParentSteps = useMemo(
+    () => buildParentSteps(bulkImportAncestorChain, rootStepOptions, childrenMap),
+    [bulkImportAncestorChain, rootStepOptions, childrenMap]
+  );
+
+  const handleBulkImportParentStepChange = (stepIndex: number, value: string): void => {
+    if (value) {
+      setBulkImportParentId(value);
+      return;
+    }
+    const previous = stepIndex === 0 ? undefined : bulkImportAncestorChain[stepIndex - 1];
+    setBulkImportParentId(previous ? String(previous.id) : "");
+  };
+
   // Auto set default node type on tab changes
   useEffect(() => {
     setEditingNode(null);
@@ -462,6 +503,7 @@ export function AdminAssessmentTaxonomyManager() {
     });
     setBulkNamesMode(false);
     setBulkNamesText("");
+    setBulkImportParentId("");
   }, [activeTab]);
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]): void => {
@@ -790,7 +832,15 @@ export function AdminAssessmentTaxonomyManager() {
         throw new Error("No outline items detected.");
       }
       
+      // If a starting location was chosen above, every line in the pasted
+      // outline nests under it — depth 0 in the text becomes one level below
+      // the chosen node, not the tree root — so the outline only needs to
+      // list the NEW nodes, not the ancestor path that already exists.
+      const baseDepth = bulkImportAncestorChain.length;
       const parentStack: (number | null)[] = new Array(10).fill(null);
+      bulkImportAncestorChain.forEach((node, idx) => {
+        parentStack[idx] = node.id;
+      });
       let createdCount = 0;
       let reusedCount = 0;
 
@@ -811,19 +861,30 @@ export function AdminAssessmentTaxonomyManager() {
       for (let i = 0; i < parsedNodes.length; i++) {
         const item = parsedNodes[i];
         if (!item) continue;
-        const { name, depth } = item;
+        const { name, depth: relDepth } = item;
+        const depth = relDepth + baseDepth;
         setBulkProgress(`Importing node ${i + 1}/${parsedNodes.length}: "${name}"...`);
 
         const parentId = depth > 0 ? parentStack[depth - 1] : null;
 
-        // Determine node type based on outline depth
-        let nodeType: TaxonomyNode["node_type"] = "subject";
-        if (activeTab === "mains") {
-          const types: TaxonomyNode["node_type"][] = ["paper", "subject_area", "theme", "topic", "subtopic"];
-          nodeType = types[Math.min(depth, 4)] || "subtopic";
-        } else {
-          const types: TaxonomyNode["node_type"][] = ["subject", "source_bucket", "topic", "subtopic"];
-          nodeType = types[Math.min(depth, 3)] || "subtopic";
+        // Determine node type. Prefer matching whatever type an existing
+        // sibling under this exact parent already uses — matters when
+        // starting under a chosen node (rather than the root), since that
+        // branch may have been hand-built with types that don't line up
+        // with the standard depth-based guess below (e.g. a "topic" node
+        // sitting directly under a "subject", skipping "source_bucket").
+        let nodeType: TaxonomyNode["node_type"] | undefined = currentDbNodes.find(
+          (n) => (n.parent_id === parentId || (!n.parent_id && !parentId)) && n.id !== parentId
+        )?.node_type;
+
+        if (!nodeType) {
+          if (activeTab === "mains") {
+            const types: TaxonomyNode["node_type"][] = ["paper", "subject_area", "theme", "topic", "subtopic"];
+            nodeType = types[Math.min(depth, 4)] || "subtopic";
+          } else {
+            const types: TaxonomyNode["node_type"][] = ["subject", "source_bucket", "topic", "subtopic"];
+            nodeType = types[Math.min(depth, 3)] || "subtopic";
+          }
         }
 
         // Idempotent duplication verification
@@ -872,6 +933,7 @@ export function AdminAssessmentTaxonomyManager() {
         type: "success"
       });
       setBulkText("");
+      setBulkImportParentId("");
       setBulkModalOpen(false);
       await loadNodes();
     } catch (err: any) {
@@ -1127,7 +1189,11 @@ export function AdminAssessmentTaxonomyManager() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBulkModalOpen(true)}
+                  onClick={() => {
+                    setBulkImportParentId("");
+                    setBulkText("");
+                    setBulkModalOpen(true);
+                  }}
                   disabled={!selectedExamId}
                   className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-bold px-4 disabled:opacity-50 transition-all shadow-sm"
                 >
@@ -1481,6 +1547,34 @@ export function AdminAssessmentTaxonomyManager() {
             </div>
 
             <div className="space-y-4">
+              <div className="grid gap-1.5 text-sm font-bold text-ink">
+                Starting Location (choose step by step, optional)
+                <div className="space-y-2">
+                  {bulkImportParentSteps.map((step, i) => (
+                    <select
+                      key={i}
+                      className="h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm font-normal outline-none focus:border-civic"
+                      onChange={(e) => handleBulkImportParentStepChange(i, e.target.value)}
+                      value={step.value}
+                    >
+                      <option value="">
+                        {i === 0 ? "-- Root level (paste a full new tree) --" : "-- Stop here, no deeper --"}
+                      </option>
+                      {step.options.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.name} ({opt.node_type.replace(/_/g, " ")})
+                        </option>
+                      ))}
+                    </select>
+                  ))}
+                </div>
+                <span className="text-[11px] font-normal text-ink/50">
+                  {bulkImportAncestorChain.length > 0
+                    ? `The outline below will be created under: ${bulkImportAncestorChain.map((n) => n.name).join(" → ")} — no need to include that path in the text.`
+                    : "Leave blank to import a full outline from the root, as before. Pick a node above to instead only paste the new nodes that go under it."}
+                </span>
+              </div>
+
               <div className="bg-slate-50 border border-line rounded-2xl p-4 text-xs space-y-2 text-slate-600">
                 <span className="font-bold text-slate-700 block">Indentation Rules:</span>
                 <p>Use spaces (e.g. 2 spaces per level) or tabs to define nesting. The importer verifies existing nodes to prevent duplication.</p>
