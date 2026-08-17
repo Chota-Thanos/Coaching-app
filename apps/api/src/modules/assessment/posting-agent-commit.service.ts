@@ -68,7 +68,11 @@ export async function commitAssessmentAgent(
   // the exam actually has natures configured to choose from, so an exam with
   // none set up yet is never blocked (mirrors how a bare/undefined taxonomy
   // tree would never block a commit either — there'd be nothing to assign).
-  const availableNatures = await loadQuestionNatures(input.exam_id);
+  // Deliberately NOT enforced for CSAT/aptitude: a natural, well-fitting
+  // nature classification doesn't exist for most CSAT questions the way it
+  // does for GK/Mains, so requiring one there would block real questions
+  // rather than catch a genuine gap.
+  const availableNatures = input.content_type === "aptitude" ? [] : await loadQuestionNatures(input.exam_id);
 
   const prepared: Record<string, unknown>[] = [];
   const failed: AssessmentCommitResult["failed"] = [];

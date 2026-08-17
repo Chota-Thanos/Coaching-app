@@ -87,34 +87,26 @@ one.** If one is missing, use `list_assessment_taxonomy` with
 `tree: "objective"` (and `search`) to find the right node yourself rather
 than dropping the question.
 
-### Question nature
+### Question nature (optional for CSAT — don't force it)
 
 A separate tag from the taxonomy tree — a difficulty/type classification
-(this exam's current list is Basic/Intermediate/Advance, but always check
-`list_question_natures` rather than assuming it stays that way). **Same
-guard as taxonomy: `assessment_commit` rejects any question without one
-whenever the exam has natures configured at all** — not a bug to route
-around.
+(this exam's current list is Basic/Intermediate/Advance; check
+`list_question_natures` rather than assuming it stays that way). **Unlike
+GK, this is never required for CSAT — `assessment_commit` will not reject
+a CSAT question for missing one, even when the exam has natures
+configured.** A clean difficulty tag doesn't exist for most CSAT questions
+the way it does for a GK fact-recall item, so leave it blank rather than
+forcing a fit.
 
-`assessment_parse` auto-classifies each question's `question_nature_id`
-against the exam's live list — nothing extra to do when passing parsed
-candidates through unchanged. If one is missing after parsing, or you built
-the `questions` array yourself instead of passing candidates through, look
-it up with `list_question_natures` rather than guessing or dropping the
-question.
-
-Judge the level by how much work the answer actually takes, not by
-question type (comprehension/reasoning/numeracy can each land at any
-level):
-
-- **Basic** — one comprehension detail stated directly in the passage, or
-  a single-step calculation/logical move.
-- **Intermediate** — connecting two or three details across a passage, or
-  a multi-step calculation/reasoning chain.
-- **Advance** — synthesising the whole passage (inference, tone, the
-  author's actual position rather than a stated one), or a
-  reasoning/numeracy chain with several dependent steps where getting one
-  link wrong flips the answer.
+`assessment_parse` still auto-classifies `question_nature_id` when it finds
+a genuine match — pass that through if it's there. If it's missing, or the
+match looks like a stretch, just omit it; there's no need to look one up
+yourself or hold the question back over it. If you do want to assign one
+deliberately, judge it by how much work the answer actually takes:
+**Basic** — a single stated detail or a one-step calculation.
+**Intermediate** — connecting two or three details, or a multi-step chain.
+**Advance** — synthesising a whole passage, or a reasoning/numeracy chain
+with several dependent steps.
 
 ## Publishing — read this before every `assessment_commit` call
 
