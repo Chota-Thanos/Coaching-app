@@ -1463,7 +1463,7 @@ server.registerTool(
     description:
       'Edits an already-posted question — the fix for one that turns out to be factually wrong, mis-tagged, or mis-classified. Only the fields passed are changed; call assessment_get_question first and everything you leave out keeps its current value.\n\n' +
       'NEVER edit on your own judgement. Every change to anything already posted — drafts included — must be put to the user and agreed by them first, then sent with confirm_change. If you notice something wrong while doing other work, say so and wait; do not fix it silently. A published question needs confirm_live_edit as well, since students are reading it. To pull a live question down instead of fixing it in place, set status to "draft".\n\n' +
-      'Does not cover Mains-only fields (word_limit, marks, directive, model answer detail) — those live in a separate table this tool does not touch.',
+      'For a Mains question, explanation updates the model answer (mains has no separate explanation field shown anywhere), and key_points/directive/marks/word_limit are also editable here — all route to the mains-specific table automatically.',
     inputSchema: {
       question_id: z.number().int().positive().describe('From assessment_find_questions.'),
       question_statement: z.string().min(1).optional(),
@@ -1472,14 +1472,25 @@ server.registerTool(
       options: z
         .array(z.object({ label: z.string(), text: z.string() }))
         .optional()
-        .describe('The complete replacement option set — not a single option fixed in isolation.'),
-      correct_answer: z.string().optional().describe('The label of the correct option.'),
-      explanation: z.string().optional().describe('Clean HTML (<p>, <strong>), never Markdown — see assessment_commit.'),
+        .describe('The complete replacement option set — not a single option fixed in isolation. Objective questions only.'),
+      correct_answer: z.string().optional().describe('The label of the correct option. Objective questions only.'),
+      explanation: z
+        .string()
+        .optional()
+        .describe('Clean HTML (<p>, <strong>), never Markdown — see assessment_commit. For Mains, this is the model answer.'),
+      key_points: z
+        .array(z.string())
+        .max(12)
+        .optional()
+        .describe('Mains only. The complete replacement set of evaluation points.'),
+      directive: z.string().optional().describe('Mains only, e.g. "Discuss", "Critically examine".'),
+      marks: z.number().positive().optional().describe('Mains only.'),
+      word_limit: z.number().int().positive().optional().describe('Mains only.'),
       taxonomy_node_ids: z
         .array(z.number().int().positive())
         .max(6)
         .optional()
-        .describe('Ordered root → leaf path from list_assessment_taxonomy. Replaces the existing path outright.'),
+        .describe('Ordered root → leaf path from list_assessment_taxonomy. Replaces the existing path outright. Objective questions only — see list_assessment_taxonomy tree: "mains" for the Mains equivalent; Mains taxonomy is not yet editable through this tool.'),
       question_nature_id: z.number().int().positive().optional().describe('From list_question_natures.'),
       status: z
         .enum(['draft', 'in_review', 'approved', 'published', 'archived'])
@@ -1533,6 +1544,14 @@ server.registerTool(
       }
 
       const results: Record<string, unknown> = { updated: true, id: question_id };
+      const isMains = current.question_family === 'mains_subjective';
+
+      // Mains-only fields don't exist on an objective question, and the
+      // reverse (options/correct_answer already excluded above by schema
+      // description, taxonomy below) shouldn't silently no-op either.
+      if (!isMains && (fields.key_points !== undefined || fields.directive !== undefined || fields.marks !== undefined || fields.word_limit !== undefined)) {
+        throw new Error(`Question ${question_id} is not a Mains question — key_points/directive/marks/word_limit only apply to Mains.`);
+      }
 
       const touchesContent =
         fields.question_statement !== undefined ||
@@ -1559,8 +1578,30 @@ server.registerTool(
         results.new_version = newVersion;
       }
 
+      // Mains model_answer/key_points/directive/marks/word_limit live in a
+      // separate table (mains_question_details) the /versions endpoint above
+      // never touches — route those through the dedicated mains endpoint.
+      // explanation doubles as model_answer for Mains (see assessment_commit).
+      const mainsDetails: Record<string, unknown> = {};
+      if (isMains && fields.explanation !== undefined) mainsDetails.model_answer = fields.explanation;
+      if (fields.key_points !== undefined) mainsDetails.key_points = fields.key_points;
+      if (fields.directive !== undefined) mainsDetails.directive = fields.directive;
+      if (fields.marks !== undefined) mainsDetails.marks = fields.marks;
+      if (fields.word_limit !== undefined) mainsDetails.word_limit = fields.word_limit;
+      if (Object.keys(mainsDetails).length > 0) {
+        const updatedDetails = await api.patch(`/api/v1/assessment/mains/questions/${question_id}`, {
+          details: mainsDetails,
+        });
+        results.mains_details = updatedDetails;
+      }
+
       const touchesTaxonomy = fields.taxonomy_node_ids !== undefined || fields.question_nature_id !== undefined;
-      if (touchesTaxonomy) {
+      if (touchesTaxonomy && isMains) {
+        throw new Error(
+          `Question ${question_id} is a Mains question — taxonomy_node_ids/question_nature_id here only update the objective-question taxonomy table, which is not what Mains uses. Mains taxonomy correction isn't supported through this tool yet.`,
+        );
+      }
+      if (touchesTaxonomy && !isMains) {
         const link = current.taxonomy_links?.[0];
         if (!link) {
           throw new Error(

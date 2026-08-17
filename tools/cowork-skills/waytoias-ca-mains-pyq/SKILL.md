@@ -88,7 +88,7 @@ easy mistake — check your own draft against this before finishing.
   certain, say so to the user rather than guessing.
 - **Never invent a source link.**
 - Give full official names on first mention, then the abbreviation.
-- Wrap maths and statistics in single dollar signs for LaTeX (e.g. `$6.5\%$`).
+- Wrap only genuine mathematical expressions in single dollar signs for LaTeX (e.g. `$\frac{a}{b}$`, `$10^9$`) — a plain number, year, or percentage in ordinary prose is not a formula and stays as normal text.
 
 ## Source and SEO — fill these on every commit
 

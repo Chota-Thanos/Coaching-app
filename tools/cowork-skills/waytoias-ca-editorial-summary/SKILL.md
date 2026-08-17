@@ -321,7 +321,7 @@ the default and say so, rather than inventing one.
 - **Attribute statistics by name in the text.**
 - **Never invent a source link.**
 - Cite Articles/Sections precisely.
-- Wrap maths/statistics/percentages in single dollar signs for LaTeX.
+- Wrap only genuine mathematical expressions (formulas, equations, fractions, exponents) in single dollar signs for LaTeX — a plain number, year, or percentage in ordinary prose is not a formula and stays as normal text, never wrapped.
 
 ## Category and date
 

@@ -15,6 +15,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { Details, DetailsSummary, DetailsContent } from "@tiptap/extension-details";
+import { useKaTeX, renderMathAndMarkdown } from "./admin/katex-renderer";
 
 import {
   Bold,
@@ -92,6 +93,11 @@ export function RichTextMarkdownEditor({
 }: RichTextMarkdownEditorProps) {
   const [tab, setTab] = useState<"visual" | "html" | "preview">("visual");
   const { token } = useAuth();
+  // Loads the KaTeX CDN assets so the Preview tab can actually render any
+  // $...$/$$...$$ LaTeX in the content — without this, math shows as raw
+  // dollar-sign text even in "Preview", the one tab meant to show the real
+  // result.
+  useKaTeX();
   const [rewording, setRewording] = useState(false);
   const [rewordMenu, setRewordMenu] = useState(false);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
@@ -645,9 +651,11 @@ export function RichTextMarkdownEditor({
           <div
             className={`w-full p-4 max-h-[520px] overflow-y-auto bg-paper/10 text-sm leading-relaxed article-body prose prose-civic max-w-none select-text ${minHeightClass}`}
             style={{ minHeight: "250px" }}
-            dangerouslySetInnerHTML={{
-              __html: value || `<p class="text-ink/40 italic">Nothing to preview yet...</p>`,
-            }}
+            dangerouslySetInnerHTML={
+              value
+                ? renderMathAndMarkdown(value)
+                : { __html: `<p class="text-ink/40 italic">Nothing to preview yet...</p>` }
+            }
           />
         )}
       </div>

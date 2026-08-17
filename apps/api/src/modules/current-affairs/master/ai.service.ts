@@ -929,7 +929,7 @@ Return ONLY a valid JSON object matching:
       const auditorSystemPrompt = `You are a UPSC editorial validation auditor agent.
 Your task is to audit and correct the generated draft content:
 1. Ensure every article record contains "suggested_category_slug". Set it to "${routedCategorySlug || "uncategorized"}" if missing.
-2. Verify all math, statistics, and algebraic expressions are wrapped in LaTeX inline equations using single $ symbols (e.g., $10^5$, $\\sqrt{\\pi}$).
+2. Verify genuine mathematical/algebraic expressions — formulas, equations, fractions, exponents (e.g. $10^5$, $\\sqrt{\\pi}$) — are wrapped in LaTeX inline equations using single $ symbols. A plain number, year, or percentage sitting in ordinary prose (e.g. "in 2016", "grew by 6.5%") is NOT a formula and must stay as plain text, never wrapped in $ signs — only wrap where there is an actual mathematical operation, relationship, or notation.
 3. Verify that tags and SEO metadata is present.
 4. Clean up any raw markdown code blocks or invalid structures.
 
@@ -1053,7 +1053,7 @@ with the reasoning that proves its verdict (including what makes an
 incorrect one tempting), then close with a short self-contained paragraph
 on the underlying concept.
 
-Ensure math expressions are in LaTeX using single $ signs.
+Genuine math expressions (formulas, equations, fractions, exponents) go in LaTeX using single $ signs — a plain number, year, or percentage in ordinary prose is not a formula and must stay plain text, never wrapped in $ signs.
 Return only valid JSON.`;
 
   // 3. Fetch style guide
@@ -1107,8 +1107,9 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
   // Hardcoded rule for mathematical formulas and LaTeX preservation
   systemPrompt = `${systemPrompt}\n\n[MATHEMATICAL FORMULAS & LATEX RULES]:
 - Keep all mathematical equations, variables, and expressions exactly the same. Do NOT convert them to plain text.
-- Wrap all mathematical expressions, variables, formulas, fractions, equations, and mathematical notations inside LaTeX inline code using single dollar signs (e.g. $x^2 + y^2 = z^2$ or $\\frac{a}{b}$ or $5x - 3 = 12$).
-- Make sure that options (A, B, C, D) and explanations also strictly preserve this LaTeX wrapping for any variables, numbers, or expressions.`;
+- Wrap genuine mathematical expressions, formulas, fractions, equations, and mathematical notation inside LaTeX inline code using single dollar signs (e.g. $x^2 + y^2 = z^2$ or $\\frac{a}{b}$ or $5x - 3 = 12$).
+- Make sure options (A, B, C, D) and explanations preserve this LaTeX wrapping wherever it already applies.
+- A plain number, year, mark value, or percentage that is NOT part of an actual mathematical expression (e.g. "in 2016", "score of 4.5", "a 6.5% rate") is NOT a formula — leave it as ordinary text, never wrapped in $ signs. Only wrap where there's a real operation, variable, or mathematical relationship.`;
 
   if (options.instructions) {
     systemPrompt = `${systemPrompt}\n\nAdditional instructions from User:\n${options.instructions}`;
@@ -1196,7 +1197,7 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
   if (hasAiCredentials()) {
     try {
       const auditorSystemPrompt = `You are a UPSC assessment validation auditor agent.
-Ensure all mathematical formulas, CSAT variables, and probability stats are written in LaTeX format using single $ delimiters (e.g., $x^2 = 9$, $\\frac{a}{b}$).
+Ensure genuine mathematical formulas and CSAT variables/equations are written in LaTeX format using single $ delimiters (e.g., $x^2 = 9$, $\\frac{a}{b}$). A plain number, year, or percentage that isn't part of an actual formula is not LaTeX — leave it as ordinary text.
 Remove any raw markdown wrappers outside of JSON block.
 
 Return ONLY the corrected JSON data.`;
@@ -1415,8 +1416,9 @@ Crucially, raw inputs are often scrambled, abruptly formatted, or out of order. 
 
 8. **Mathematical Formulas and LaTeX Support**:
    - Do NOT convert mathematical equations, variables, or expressions to plain text. Keep them exactly as they are.
-   - You MUST preserve all mathematical formulas, equations, fractions, square roots, and variables exactly, wrapping them in LaTeX inline code syntax using single dollar signs (e.g. $x^2 + y^2 = z^2$ or $\\frac{a}{b}$).
+   - You MUST preserve all genuine mathematical formulas, equations, fractions, square roots, and variables exactly, wrapping them in LaTeX inline code syntax using single dollar signs (e.g. $x^2 + y^2 = z^2$ or $\\frac{a}{b}$).
    - This rule applies strictly to all fields: question_statement, supp_question_statement, question_prompt, options, and explanation.
+   - Do NOT wrap a plain number, year, or percentage that is not part of an actual mathematical expression — that stays as ordinary text.
 
 STRICT RULE: The output must strictly conform to the JSON schema. Do not output any introductory or concluding text, only the raw JSON.`;
 
@@ -1498,7 +1500,7 @@ STRICT RULE: The output must strictly conform to the JSON schema. Do not output 
   if (hasAiCredentials()) {
     try {
       const auditorSystemPrompt = `You are a UPSC assessment validation auditor agent.
-Ensure all mathematical formulas, CSAT variables, and probability stats are written in LaTeX format using single $ delimiters (e.g., $x^2 = 9$, $\\frac{a}{b}$).
+Ensure genuine mathematical formulas and CSAT variables/equations are written in LaTeX format using single $ delimiters (e.g., $x^2 = 9$, $\\frac{a}{b}$). A plain number, year, or percentage that isn't part of an actual formula is not LaTeX — leave it as ordinary text.
 Remove any raw markdown wrappers outside of JSON block.
 
 Return ONLY the corrected JSON data.`;

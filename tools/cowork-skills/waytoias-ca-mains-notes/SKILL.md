@@ -212,8 +212,10 @@ correct.
   search rather than one identifiable page, don't attach a source URL.
 - Give the full official name of a body, scheme, Act or report on first
   mention, then the abbreviation. Cite Articles/Sections precisely.
-- Wrap maths, statistics and percentages in single dollar signs for LaTeX
-  (e.g. `$6.5\%$`, `$10^9$`).
+- Wrap only genuine mathematical expressions — formulas, equations,
+  fractions, exponents (e.g. `$10^9$`, `$\frac{a}{b}$`) — in single dollar
+  signs for LaTeX. A plain number, year, or percentage sitting in ordinary
+  prose is not a formula — leave it as normal text, never wrapped.
 
 ## Source and SEO — fill these on every commit
 

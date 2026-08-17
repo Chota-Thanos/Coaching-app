@@ -396,7 +396,7 @@ Everything you write is going in front of people preparing for a real exam. Trea
 - **Attribute statistics by name** in the text — "according to the Economic Survey 2024-25", not a bare number.
 - **Never invent a source link.** Only cite a URL you actually fetched or were given. If your grounding came from a general web search rather than one identifiable page, don't attach a source URL at all — a plausible-looking fake link is worse than no link. See "Preferred sources, and always link them" under Title and Source for which outlets to reach for first and why fetching the real page, rather than stopping at a search snippet, should be the default.
 - **Spell out names on first mention.** Give the full official name of a body, scheme, Act or report on first mention, then the abbreviation: "Monetary Policy Committee (MPC)", then "MPC". Cite Articles/Sections precisely (e.g. "Article 356").
-- **Maths formatting:** wrap maths, statistics and percentages in single dollar signs for LaTeX (e.g. `$6.5\%$`, `$10^9$`) — the site renders these specially.
+- **Maths formatting:** wrap only genuine mathematical expressions — formulas, equations, fractions, exponents (e.g. `$10^9$`, `$\frac{a}{b}$`) — in single dollar signs for LaTeX; the site renders these specially. A plain number, year, or percentage sitting in ordinary prose (e.g. "grew 6.5% in FY26", "since 2016") is not a formula — leave it as normal text, never wrapped in $ signs.
 
 ## SEO — fill these on every commit
 

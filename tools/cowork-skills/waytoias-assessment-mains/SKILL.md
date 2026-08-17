@@ -85,7 +85,7 @@ it's the most common way a "critical" answer ends up one-sided.
 
 - **Never invent data, a committee name, or a citation.** If you're not
   certain, leave it out rather than guessing.
-- Wrap maths and statistics in single dollar signs for LaTeX (e.g. `$6.5\%$`).
+- Wrap only genuine mathematical expressions in single dollar signs for LaTeX (e.g. `$\frac{a}{b}$`, `$10^9$`) — a plain number, year, mark value, or percentage sitting in ordinary prose (e.g. "adopted in 2016", "target of 4%") is not a formula and stays as normal text, never wrapped in $ signs.
 
 ## Building `assessment_commit`'s fields
 
