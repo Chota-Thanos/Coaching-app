@@ -110,6 +110,7 @@ export async function commitAssessmentAgent(
       word_limit: q.word_limit,
       marks: q.marks,
       directive: q.directive,
+      key_points: q.key_points ?? [],
       question_nature_id: q.question_nature_id ?? null,
       ...slots
     });

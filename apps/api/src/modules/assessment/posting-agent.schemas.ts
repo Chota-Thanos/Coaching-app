@@ -50,11 +50,17 @@ export const assessmentAgentQuestionSchema = z.object({
     .array(z.object({ label: z.string().trim(), text: z.string().trim() }))
     .optional(),
   correct_answer: z.string().trim().optional(),
+  // For mains, this becomes the question's model_answer — the full
+  // structured reference answer (intro/body/conclusion, points, examples).
   explanation: z.string().trim().optional(),
   // Mains-only fields.
   word_limit: z.number().int().positive().optional(),
   marks: z.number().positive().optional(),
   directive: z.string().trim().optional(),
+  // Mains-only. Short, specific, checkable claims a grader should look for —
+  // feeds the AI answer-evaluation feature directly (separate from
+  // explanation/model_answer, and not auto-extracted by assessment_parse).
+  key_points: z.array(z.string().trim().min(1)).max(12).optional(),
   // Ordered taxonomy node ids, root → leaf.
   taxonomy_node_ids: z.array(idSchema).max(6).optional(),
   // Difficulty/type tag (e.g. "Factual", "Analytical") from the exam's own

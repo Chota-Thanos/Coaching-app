@@ -1,6 +1,6 @@
 ---
 name: waytoias-assessment-mains
-description: Write and post Mains subjective questions with model answers into the WayToIAS UPSC coaching website's question bank (test series). Use whenever the user asks to write, draft, make or add Mains questions, answer-writing practice, or subjective questions for the WayToIAS test series/question bank (e.g. "write a mains question on judicial review for the test series", "add a 15-mark question on federalism to the question bank"). Do NOT use this for GK or CSAT objective questions (use waytoias-assessment-gk / waytoias-assessment-csat), or for a question specifically meant for the Current Affairs → Mains PYQ Library (use waytoias-ca-mains-pyq instead). Requires the coaching-posting-agent MCP server (whoami, list_exams, assessment_parse, assessment_commit, list_assessment_taxonomy tools) to be connected.
+description: Write and post Mains subjective questions with model answers into the WayToIAS UPSC coaching website's question bank (test series). Use whenever the user asks to write, draft, make or add Mains questions, answer-writing practice, or subjective questions for the WayToIAS test series/question bank (e.g. "write a mains question on judicial review for the test series", "add a 15-mark question on federalism to the question bank"). Do NOT use this for GK or CSAT objective questions (use waytoias-assessment-gk / waytoias-assessment-csat), or for a question specifically meant for the Current Affairs → Mains PYQ Library (use waytoias-ca-mains-pyq instead). Requires the coaching-posting-agent MCP server (whoami, list_exams, assessment_parse, assessment_commit, list_assessment_taxonomy, list_question_natures tools) to be connected.
 ---
 
 # Writing and posting Mains questions for WayToIAS
@@ -46,23 +46,33 @@ Write a question with a full model answer, in the genuine UPSC Mains style.
   against; don't write a one-sided answer to it.
 - **Marks and word limit that match convention** — 10 marks / 150 words, or
   15 marks / 250 words. Pick whichever fits the question's scope.
-- **Answer approach** — a short structural skeleton: what the introduction
-  establishes, what each body paragraph covers, what the conclusion does.
-  Keep this separate from the model answer itself.
-- **Model answer** — a complete answer written to the stated word limit,
-  actually following the skeleton, with real data, committee names and
-  examples woven into the argument rather than listed at the end.
+- **Model answer** — plan a short structural skeleton first (what the
+  introduction establishes, what each body paragraph covers, what the
+  conclusion does), then write the complete answer following it, to the
+  stated word limit, with real data, committee names and examples woven
+  into the argument rather than listed at the end. The skeleton is a
+  drafting step, not a separate thing to hand off — there's no field for
+  it in the question bank; only the finished answer gets saved.
+- **Key evaluation points** — 4 to 8 short, specific, checkable claims a
+  grader should look for in a student's answer (e.g. "Must cite Kesavananda
+  Bharati v. State of Kerala (1973)", "Must name at least two elements of
+  the basic structure"). These feed the site's AI answer-evaluation feature
+  directly — see "Building `assessment_commit`'s fields" below — so don't
+  skip them; a question with none makes every student submission against it
+  harder to grade well.
 
 Write it out plainly:
 
 ```
 Q1. <directive> <question> (<marks> marks, <word limit> words)
 
-Answer Approach:
-<skeleton>
-
 Model Answer:
 <full answer>
+
+Key Evaluation Points:
+- <point>
+- <point>
+...
 ```
 
 ## Balance
@@ -77,7 +87,35 @@ it's the most common way a "critical" answer ends up one-sided.
   certain, leave it out rather than guessing.
 - Wrap maths and statistics in single dollar signs for LaTeX (e.g. `$6.5\%$`).
 
-## Taxonomy — checking `assessment_parse`'s work
+## Building `assessment_commit`'s fields
+
+`assessment_parse` only extracts one shared explanation-like field — it
+doesn't know about `key_points` at all, and won't split your "Key
+Evaluation Points" list out on its own. **Always build the `questions`
+array for `assessment_commit` yourself**, rather than passing parsed
+candidates through unchanged:
+
+- **`explanation`** — the full Model Answer text. This becomes the
+  question's `model_answer` in the database (the field the app's own
+  question editor labels "Grading Model Answer / Structured Framework") —
+  write it as clean HTML (`<p>`, `<strong>`), not Markdown.
+- **`key_points`** — an array of strings, one per evaluation point, e.g.
+  `["Must cite Kesavananda Bharati (1973)", "Must name judicial review as
+  part of the basic structure"]`. Genuinely separate from `explanation` —
+  omitting it doesn't fail the commit, but it leaves the AI evaluation
+  feature with nothing to check a student's answer against.
+- **`directive`, `marks`, `word_limit`** — send these as their own fields,
+  not just as words inside `question_statement`. The directive word
+  naturally also appears in the question's phrasing ("Discuss the...") —
+  that's correct and expected — but the `directive` field itself is read
+  separately when a student's answer is graded, so both need to be right.
+- **`question_prompt`** — optional, and means something different here than
+  in GK/CSAT: a short instruction shown to the student near the answer box
+  (e.g. "Write your answer in the space provided"), not part of the
+  question itself. Fine to leave blank — nothing defaults it for you if you
+  do, so only set it if you want a specific instruction to show.
+
+## Taxonomy and Question Nature — checking `assessment_parse`'s work
 
 The Mains path is `paper → subject_area → theme → topic`, root to leaf —
 **a different tree from GK/CSAT.** Before committing, check the question got
@@ -85,6 +123,22 @@ a `taxonomy_node_ids` — **`assessment_commit` rejects any question without
 one.** If missing, use `list_assessment_taxonomy` with `tree: "mains"` (and
 `search`) to find the right node. Using an objective-tree node id here files
 the question somewhere no student doing the Mains paper will ever see it.
+
+### Question nature
+
+A separate tag from the taxonomy tree — a difficulty/type classification
+the exam has its own configured list of (check `list_question_natures`
+rather than assuming a value). **Same guard as taxonomy: `assessment_commit`
+rejects any question without one whenever the exam has natures configured
+at all** — not a bug to route around. (Unlike CSAT, this is not relaxed for
+Mains — a difficulty tag genuinely fits a Mains question the way it does a
+GK one.)
+
+`assessment_parse` auto-classifies `question_nature_id` the same way it
+classifies taxonomy. Since you're building the `questions` array by hand
+for Mains anyway (see above), carry the parsed candidate's
+`question_nature_id` over, or look one up yourself with
+`list_question_natures` if it's missing.
 
 ## Publishing — read this before every `assessment_commit` call
 
@@ -105,5 +159,8 @@ Tell the user plainly which happened and where it ended up.
 - Don't write a one-sided answer to a directive that demands balance.
 - Don't use an objective-tree taxonomy node — this question belongs on the
   Mains tree only.
+- Don't skip `key_points` when you have genuine grading criteria to give —
+  it's a separate field from the model answer, and it's what the AI
+  evaluation feature actually checks a student's answer against.
 - Don't publish live because it seemed like what they'd want — only because
   they asked, in this request.

@@ -1328,10 +1328,17 @@ server.registerTool(
               .optional()
               .describe('Objective questions only. Labels are usually A–D.'),
             correct_answer: z.string().optional().describe('The label of the correct option.'),
-            explanation: z.string().optional(),
+            explanation: z.string().optional().describe('For mains, this becomes the model_answer — the full structured reference answer.'),
             word_limit: z.number().int().positive().optional().describe('Mains only.'),
             marks: z.number().positive().optional().describe('Mains only.'),
             directive: z.string().optional().describe('Mains only, e.g. "Discuss", "Critically examine".'),
+            key_points: z
+              .array(z.string())
+              .max(12)
+              .optional()
+              .describe(
+                'Mains only. Short, specific, checkable claims a grader should look for — feeds the AI answer-evaluation feature directly. Not auto-extracted by assessment_parse; build this yourself.',
+              ),
             taxonomy_node_ids: z
               .array(z.number().int().positive())
               .max(6)

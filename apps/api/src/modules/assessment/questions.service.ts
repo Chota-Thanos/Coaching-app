@@ -865,14 +865,15 @@ export async function saveQuestionsDraft(
           `
             insert into assessment.mains_question_details
               (question_id, word_limit, marks, directive, model_answer, answer_framework, key_points, evaluation_rubric)
-            values ($1, $2, coalesce($3, 0), $4, $5, '{}'::jsonb, '[]'::jsonb, '{}'::jsonb)
+            values ($1, $2, coalesce($3, 0), $4, $5, '{}'::jsonb, $6, '{}'::jsonb)
           `,
           [
             questionId,
             q.word_limit || 250,
             q.marks || 15,
             q.directive || null,
-            q.explanation || null
+            q.explanation || null,
+            JSON.stringify(q.key_points ?? [])
           ]
         );
 
