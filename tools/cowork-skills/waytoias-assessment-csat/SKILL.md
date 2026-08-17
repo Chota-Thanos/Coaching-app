@@ -1,6 +1,6 @@
 ---
 name: waytoias-assessment-csat
-description: Write and post CSAT / Aptitude questions (reasoning, comprehension, numeracy) into the WayToIAS UPSC coaching website's question bank (test series). Use whenever the user asks to write, draft, make or add CSAT questions, aptitude questions, reasoning questions, or comprehension-passage questions for the WayToIAS test series/question bank (e.g. "add some CSAT reasoning questions", "write a comprehension passage with 3 questions for CSAT"). Do NOT use this for GK/general studies questions (use waytoias-assessment-gk) or Mains questions (use waytoias-assessment-mains). Requires the coaching-posting-agent MCP server (whoami, list_exams, assessment_parse, assessment_commit, list_assessment_taxonomy tools) to be connected.
+description: Write and post CSAT / Aptitude questions (reasoning, comprehension, numeracy) into the WayToIAS UPSC coaching website's question bank (test series). Use whenever the user asks to write, draft, make or add CSAT questions, aptitude questions, reasoning questions, or comprehension-passage questions for the WayToIAS test series/question bank (e.g. "add some CSAT reasoning questions", "write a comprehension passage with 3 questions for CSAT"). Do NOT use this for GK/general studies questions (use waytoias-assessment-gk) or Mains questions (use waytoias-assessment-mains). Requires the coaching-posting-agent MCP server (whoami, list_exams, assessment_parse, assessment_commit, list_assessment_taxonomy, list_question_natures tools) to be connected.
 ---
 
 # Writing and posting CSAT / Aptitude questions for WayToIAS
@@ -78,13 +78,43 @@ rewrite it.
   reasoning questions must show the actual working.
 - Don't repeat the same passage or logic pattern across a whole batch.
 
-## Taxonomy — checking `assessment_parse`'s work
+## Taxonomy and Question Nature — checking `assessment_parse`'s work
 
-The path is `subject → source_bucket → topic → subtopic`, root to leaf.
-Before committing, check every question actually got a `taxonomy_node_ids` —
-**`assessment_commit` rejects any question without one.** If one is missing,
-use `list_assessment_taxonomy` with `tree: "objective"` (and `search`) to
-find the right node yourself rather than dropping the question.
+The taxonomy path is `subject → source_bucket → topic → subtopic`, root to
+leaf. Before committing, check every question actually got a
+`taxonomy_node_ids` — **`assessment_commit` rejects any question without
+one.** If one is missing, use `list_assessment_taxonomy` with
+`tree: "objective"` (and `search`) to find the right node yourself rather
+than dropping the question.
+
+### Question nature
+
+A separate tag from the taxonomy tree — a difficulty/type classification
+(this exam's current list is Basic/Intermediate/Advance, but always check
+`list_question_natures` rather than assuming it stays that way). **Same
+guard as taxonomy: `assessment_commit` rejects any question without one
+whenever the exam has natures configured at all** — not a bug to route
+around.
+
+`assessment_parse` auto-classifies each question's `question_nature_id`
+against the exam's live list — nothing extra to do when passing parsed
+candidates through unchanged. If one is missing after parsing, or you built
+the `questions` array yourself instead of passing candidates through, look
+it up with `list_question_natures` rather than guessing or dropping the
+question.
+
+Judge the level by how much work the answer actually takes, not by
+question type (comprehension/reasoning/numeracy can each land at any
+level):
+
+- **Basic** — one comprehension detail stated directly in the passage, or
+  a single-step calculation/logical move.
+- **Intermediate** — connecting two or three details across a passage, or
+  a multi-step calculation/reasoning chain.
+- **Advance** — synthesising the whole passage (inference, tone, the
+  author's actual position rather than a stated one), or a
+  reasoning/numeracy chain with several dependent steps where getting one
+  link wrong flips the answer.
 
 ## Publishing — read this before every `assessment_commit` call
 
