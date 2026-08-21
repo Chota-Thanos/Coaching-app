@@ -1158,7 +1158,34 @@ export async function addQuestionsToUserTest(
     );
 
     if (attempts.rows.length > 0) {
-      throw new Error("Cannot add questions to a test that has already been attempted.");
+      const error = new Error("This test has already been attempted, so more questions can't be added to it.") as Error & { statusCode?: number };
+      error.name = "test_already_attempted";
+      error.statusCode = 409;
+      throw error;
+    }
+
+    // Enforce the same per-test question cap createUserCustomTest applies —
+    // otherwise a test could be grown past its tier's limit one add-questions
+    // call at a time.
+    const requestedCount = categories?.length
+      ? categories.reduce((sum, c) => sum + c.question_count, 0)
+      : questionIds.length;
+    const existingCountResult = await client.query<{ count: string }>(
+      `select count(*)::text as count from assessment.test_question_items where test_template_id = $1`,
+      [testId]
+    );
+    const existingCount = Number(existingCountResult.rows[0]?.count ?? 0);
+    const isMainsTest = row.test_type === "mains_test";
+    const entitlements = await getUserEntitlements(userId);
+    const hasPremium = entitlements.some((e) => e.entitlement_key === "assessment.premium_tests");
+    const cap = getQuestionCap(hasPremium, isMainsTest);
+    if (existingCount + requestedCount > cap) {
+      const error = new Error(
+        `${isMainsTest ? "Mains" : "GK/CSAT"} tests are limited to ${cap} questions${hasPremium ? " on Assessment Premium" : " on the free tier"}. This test already has ${existingCount}.${hasPremium ? "" : " Upgrade to Assessment Premium for a higher limit."}`
+      ) as Error & { statusCode?: number };
+      error.name = "question_cap_exceeded";
+      error.statusCode = 403;
+      throw error;
     }
 
     // Resolve category specs (any taxonomy level) into concrete question ids,

@@ -279,7 +279,7 @@ export default function CustomTestDetailPage() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     <Link
-                      href={`/assessment/${contentParam === "aptitude" ? "csat" : contentParam}?test_template_id=${test.id}`}
+                      href={`/assessment/custom-test/create?mode=manual&tab=existing&content_type=${contentParam}&test_template_id=${test.id}`}
                       className="w-full h-10 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
                     >
                       <PlusCircle className="h-4 w-4 text-slate-500" />
@@ -351,7 +351,7 @@ export default function CustomTestDetailPage() {
                   Go to the syllabus page and select categories to inject questions, or upload a document in the AI parser.
                 </p>
                 <Link
-                  href={`/assessment/${contentParam === "aptitude" ? "csat" : contentParam}?test_template_id=${test.id}`}
+                  href={`/assessment/custom-test/create?mode=manual&tab=existing&content_type=${contentParam}&test_template_id=${test.id}`}
                   className="mt-4 inline-flex items-center gap-1 rounded-xl border border-slate-200 hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold text-slate-700 transition"
                 >
                   <PlusCircle className="h-3.5 w-3.5 text-slate-500" />

@@ -639,6 +639,16 @@ export async function registerAssessmentTestRoutes(server: FastifyInstance): Pro
     });
   });
 
+  // Lifetime free-test allowance usage — lets the create-test wizard show
+  // "X of 3 free tests used" before the student picks categories, instead of
+  // only finding out at submit time via requireFreeTestAllowance's 403.
+  server.get("/api/v1/assessment/user/free-test-usage", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      return getFreeTestUsage(user.id);
+    });
+  });
+
   // Helper: check user has assessment.premium_tests entitlement
   async function requireAssessmentPremium(userId: number, reply: any): Promise<boolean> {
     const entitlements = await getUserEntitlements(userId);

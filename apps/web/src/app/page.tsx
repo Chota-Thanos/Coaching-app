@@ -63,17 +63,6 @@ export default function HomePage() {
   const { token, user, isInitialized } = useAuth();
   const { hasAnyActive, subscriptions, loading: loadingSub } = useSubscription(token);
 
-  // Dynamic Subjects & Quick Test States
-  const [objectiveSubjects, setObjectiveSubjects] = useState<any[]>([]);
-  const [mainsSubjects, setMainsSubjects] = useState<any[]>([]);
-  
-  const [quickTestType, setQuickTestType] = useState<"gk" | "aptitude" | "mains">("gk");
-  const [quickSelectedSubjects, setQuickSelectedSubjects] = useState<number[]>([]);
-  const [quickNumQuestions, setQuickNumQuestions] = useState<number>(10);
-  const [quickTestName, setQuickTestName] = useState<string>("");
-  const [buildingQuickTest, setBuildingQuickTest] = useState(false);
-  const [quickTestError, setQuickTestError] = useState<string | null>(null);
-
   // Data states
   const [stats, setStats] = useState<any>(null);
   const [topicMetrics, setTopicMetrics] = useState<any[]>([]);
@@ -173,7 +162,6 @@ export default function HomePage() {
     };
     fetchDiagnosticTest();
   }, []);
-  const heroTestHref = diagnosticTestId ? `/assessment/tests/${diagnosticTestId}` : "/assessment/custom-test/create";
 
   // Fetch student dashboard data when logged in
   useEffect(() => {
@@ -185,10 +173,6 @@ export default function HomePage() {
         setStats(statsData);
         const metricsData = await authenticatedGet<any[]>("/api/v1/assessment/me/topic-metrics", token);
         setTopicMetrics(metricsData || []);
-        const objNodes = await authenticatedGet<any[]>("/api/v1/assessment/taxonomy-nodes?exam_id=1&node_type=subject&limit=100", token);
-        setObjectiveSubjects(objNodes || []);
-        const mainsNodes = await authenticatedGet<any[]>("/api/v1/assessment/mains/taxonomy-nodes?exam_id=1&limit=100", token);
-        setMainsSubjects(mainsNodes || []);
         const notesData = await authenticatedGet<any[]>("/api/v1/current-affairs/me/articles?limit=3", token);
         setUserNotes(notesData || []);
         const collectionsData = await authenticatedGet<any[]>("/api/v1/current-affairs/me/collections", token);
@@ -209,91 +193,6 @@ export default function HomePage() {
     };
     fetchDashboardData();
   }, [token]);
-
-  // Synchronize Quick Test subjects selection and name
-  useEffect(() => {
-    if (quickTestType === "gk") {
-      const gk = objectiveSubjects.filter(n => n.content_type === "gk").map(n => n.id);
-      setQuickSelectedSubjects(gk);
-      setQuickTestName("Quick GS Practice Test");
-    } else if (quickTestType === "aptitude") {
-      const csat = objectiveSubjects.filter(n => n.content_type === "aptitude").map(n => n.id);
-      setQuickSelectedSubjects(csat);
-      setQuickTestName("Quick CSAT Practice Test");
-    } else {
-      const mains = mainsSubjects.filter(n => n.node_type === "paper" || n.node_type === "subject").map(n => n.id);
-      setQuickSelectedSubjects(mains);
-      setQuickTestName("Quick Mains Subjective Test");
-    }
-    setQuickTestError(null);
-  }, [quickTestType, objectiveSubjects, mainsSubjects]);
-
-  const handleCreateQuickTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (quickSelectedSubjects.length === 0) {
-      setQuickTestError("Select at least one subject to generate test.");
-      return;
-    }
-    setBuildingQuickTest(true);
-    setQuickTestError(null);
-    try {
-      const allPickedQuestionIds: number[] = [];
-
-      // Step 1: Query and compile question pools for each selected subject
-      for (const subjectId of quickSelectedSubjects) {
-        let url = "";
-        if (quickTestType === "mains") {
-          url = `/api/v1/assessment/mains/questions?exam_id=1&topic_node_id=${subjectId}&limit=500`;
-        } else {
-          url = `/api/v1/assessment/questions?exam_id=1&content_type=${quickTestType}&subject_node_ids=${subjectId}&limit=500`;
-        }
-
-        const data = await authenticatedGet<any[]>(url, token || "");
-        if (data && data.length > 0) {
-          const shuffled = [...data].sort(() => Math.random() - 0.5);
-          // Allocate questions proportionally or evenly
-          const perSubjectCount = Math.max(1, Math.round(quickNumQuestions / quickSelectedSubjects.length));
-          const picked = shuffled
-            .slice(0, Math.min(perSubjectCount, shuffled.length))
-            .map((q) => q.id);
-          allPickedQuestionIds.push(...picked);
-        }
-      }
-
-      if (allPickedQuestionIds.length === 0) {
-        throw new Error("No questions were found in the selected categories. Try checking other categories.");
-      }
-
-      // Slice to match the exact target quantity
-      const finalPickedIds = allPickedQuestionIds.slice(0, quickNumQuestions);
-
-      // Step 2: Create custom test
-      const response = await authenticatedPost<{ id: number }>(
-        "/api/v1/assessment/user/custom-tests",
-        token || "",
-        {
-          title: quickTestName.trim() || `Quick ${quickTestType.toUpperCase()} Test`,
-          exam_id: 1,
-          exam_level_id: 1, // Fallback exam level
-          question_ids: finalPickedIds,
-          test_type: quickTestType === "mains" ? "mains_test" : "sectional_test"
-        }
-      );
-
-      // Step 3: Start attempt
-      const attemptId = await authenticatedPost<any>(
-        `/api/v1/assessment/test-templates/${response.id}/attempts/start`,
-        token || "",
-        {}
-      );
-
-      // Step 4: Navigate to attempts page
-      router.push(`/assessment/attempts/${attemptId.id ?? attemptId}`);
-    } catch (err: any) {
-      setQuickTestError(err.message || "Failed to generate custom test.");
-      setBuildingQuickTest(false);
-    }
-  };
 
   // Derived dashboard vars
   const username = user?.username ?? "Student";
@@ -474,12 +373,12 @@ export default function HomePage() {
                     Take the free diagnostic test
                   </Link>
                   <Link
-                    href="/assessment/gk?view=builder"
+                    href="/assessment/custom-test/create"
                     className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] px-6 py-3.5 text-sm font-bold text-[var(--ink)] hover:border-[#c9c4f9] hover:bg-[var(--panel-2)] transition"
                     id="hero-custom-test"
                   >
                     <BookOpen className="h-4 w-4" />
-                    Build a custom test
+                    Create Test
                   </Link>
                 </div>
 
@@ -2017,194 +1916,25 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Quick Custom Test Builder */}
-            <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm space-y-5">
-              <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-indigo-600" />
-                <div>
-                  <h3 className="text-sm font-black text-slate-800">Quick Custom Test Builder</h3>
-                  <p className="text-[10px] text-slate-500 font-medium">Generate and start a custom mock test instantly</p>
+            {/* Create Test CTA — replaces the old inline Quick Custom Test Builder;
+                test creation now lives entirely in the step-by-step wizard. */}
+            <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <Target className="h-5 w-5" />
                 </div>
-              </div>
-
-              <form onSubmit={handleCreateQuickTest} className="space-y-4">
-                {/* 1. Test Type Selection */}
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Test Type</label>
-                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                    {[
-                      { value: "gk", label: "GS Prelims" },
-                      { value: "aptitude", label: "CSAT Drill" },
-                      { value: "mains", label: "Mains subjective" }
-                    ].map((tab) => (
-                      <button
-                        key={tab.value}
-                        type="button"
-                        onClick={() => setQuickTestType(tab.value as any)}
-                        className={`text-center py-2 text-xs font-black rounded-lg transition-all ${
-                          quickTestType === tab.value
-                            ? "bg-surface text-slate-900 shadow-sm border border-slate-100"
-                            : "text-slate-500 hover:text-slate-700"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-black text-slate-800">Build a focused practice test</h3>
+                  <p className="text-[10px] text-slate-500 font-medium">Pick your subjects manually, or let AI build one for you — under a minute either way.</p>
                 </div>
-
-                {/* 2. Subjects Selector */}
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Include Subjects</label>
-                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1 border border-slate-100 rounded-xl">
-                    {/* Render GK subjects */}
-                    {quickTestType === "gk" && (
-                      objectiveSubjects.filter(n => n.content_type === "gk").length > 0 ? (
-                        objectiveSubjects.filter(n => n.content_type === "gk").map((sub) => {
-                          const isChecked = quickSelectedSubjects.includes(sub.id);
-                          return (
-                            <button
-                              key={sub.id}
-                              type="button"
-                              onClick={() => {
-                                setQuickSelectedSubjects(prev =>
-                                  prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
-                                );
-                              }}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                isChecked
-                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
-                                  : "bg-surface border-slate-100 text-slate-600 hover:bg-slate-50"
-                              }`}
-                            >
-                              {sub.name}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <p className="text-xs text-slate-400 p-2">Loading GK subjects...</p>
-                      )
-                    )}
-
-                    {/* Render CSAT subjects */}
-                    {quickTestType === "aptitude" && (
-                      objectiveSubjects.filter(n => n.content_type === "aptitude").length > 0 ? (
-                        objectiveSubjects.filter(n => n.content_type === "aptitude").map((sub) => {
-                          const isChecked = quickSelectedSubjects.includes(sub.id);
-                          return (
-                            <button
-                              key={sub.id}
-                              type="button"
-                              onClick={() => {
-                                setQuickSelectedSubjects(prev =>
-                                  prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
-                                );
-                              }}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                isChecked
-                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
-                                  : "bg-surface border-slate-100 text-slate-600 hover:bg-slate-50"
-                              }`}
-                            >
-                              {sub.name}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <p className="text-xs text-slate-400 p-2">Loading CSAT subjects...</p>
-                      )
-                    )}
-
-                    {/* Render Mains subjects */}
-                    {quickTestType === "mains" && (
-                      mainsSubjects.filter(n => n.node_type === "paper" || n.node_type === "subject").length > 0 ? (
-                        mainsSubjects.filter(n => n.node_type === "paper" || n.node_type === "subject").map((sub) => {
-                          const isChecked = quickSelectedSubjects.includes(sub.id);
-                          return (
-                            <button
-                              key={sub.id}
-                              type="button"
-                              onClick={() => {
-                                setQuickSelectedSubjects(prev =>
-                                  prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
-                                );
-                              }}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                isChecked
-                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold"
-                                  : "bg-surface border-slate-100 text-slate-600 hover:bg-slate-50"
-                              }`}
-                            >
-                              {sub.name}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <p className="text-xs text-slate-400 p-2">Loading Mains papers...</p>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {/* 3. Questions Count & Title */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Question Count</label>
-                    <div className="flex gap-2">
-                      {[10, 25, 50, 100].map((count) => (
-                        <button
-                          key={count}
-                          type="button"
-                          onClick={() => setQuickNumQuestions(count)}
-                          className={`flex-1 py-2 rounded-xl border text-xs font-black transition-all ${
-                            quickNumQuestions === count
-                              ? "bg-midnight border-slate-900 text-white"
-                              : "bg-surface border-slate-150 text-slate-600 hover:bg-slate-50"
-                          }`}
-                        >
-                          {count}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Test Name</label>
-                    <input
-                      type="text"
-                      className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-800 focus:outline-indigo-650"
-                      placeholder="My Practice Test"
-                      value={quickTestName}
-                      onChange={(e) => setQuickTestName(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Error log */}
-                {quickTestError && (
-                  <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 leading-relaxed">
-                    ⚠️ {quickTestError}
-                  </p>
-                )}
-
-                {/* Action button */}
-                <button
-                  type="submit"
-                  disabled={buildingQuickTest}
-                  className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-black text-white disabled:opacity-60 transition-colors shadow-sm"
+                <Link
+                  href="/assessment/custom-test/create"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-black text-white shadow-sm transition"
                 >
-                  {buildingQuickTest ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Generating test and attempt...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Create &amp; Start Custom Test
-                    </>
-                  )}
-                </button>
-              </form>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Create Test
+                </Link>
+              </div>
             </div>
 
           </div>
