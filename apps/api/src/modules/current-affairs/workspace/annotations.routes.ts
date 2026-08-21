@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { idParamSchema, parse, withValidation } from "../../../common/http.js";
 import { requireAuth } from "../../auth/guards.js";
+import { assertCanAddHighlight, assertCanAddNote } from "../../billing/free-tier.js";
 import {
   createHighlightSchema,
   createNoteSchema,
@@ -21,6 +22,7 @@ export async function registerCurrentAffairsAnnotationRoutes(server: FastifyInst
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
+      await assertCanAddHighlight(user.id, params.id);
       const body = parse(createHighlightSchema, request.body);
       const record = await createHighlight(params.id, body, user.id);
       if (!record) return reply.notFound("Fork not found.");
@@ -53,6 +55,7 @@ export async function registerCurrentAffairsAnnotationRoutes(server: FastifyInst
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
+      await assertCanAddNote(user.id, params.id);
       const body = parse(createNoteSchema, request.body);
       const record = await createNote(params.id, body, user.id);
       if (!record) return reply.notFound("Fork not found.");

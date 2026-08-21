@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { registerCurrentAffairsAiNotesRoutes } from "./workspace/ai-notes.routes.js";
 import { registerCurrentAffairsAnnotationRoutes } from "./workspace/annotations.routes.js";
 import { registerCurrentAffairsCollectionRoutes } from "./workspace/collections.routes.js";
 import { registerCurrentAffairsForkRoutes } from "./workspace/forks.routes.js";
@@ -13,4 +14,5 @@ export async function registerCurrentAffairsWorkspaceRoutes(server: FastifyInsta
   await registerCurrentAffairsAnnotationRoutes(server);
   await registerCurrentAffairsStudentArticleRoutes(server);
   await registerCurrentAffairsCollectionRoutes(server);
+  await registerCurrentAffairsAiNotesRoutes(server);
 }

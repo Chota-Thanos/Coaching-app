@@ -129,52 +129,10 @@ function RepositorySuggestionPanel({
   }, [articles]);
 
   async function addArticle(article: StudentMasterArticle): Promise<void> {
-    if (!selectedCollectionId) return;
+    if (!selectedCollectionId || !token) return;
     setAddingId(article.id);
     setMessage(null);
     try {
-      if (!token) {
-        const guestForksStr = localStorage.getItem("waytoias_guest_forks");
-        const guestForks = guestForksStr ? JSON.parse(guestForksStr) : [];
-
-        if (guestForks.length >= 3) {
-          alert("⚡ You've reached the Guest limit of 3 saved articles. Please sign in or register to save unlimited articles and sync your repositories to the cloud!");
-          window.location.href = `/login?next=/current-affairs/workspace`;
-          return;
-        }
-
-        const alreadyAdded = guestForks.some(
-          (f: any) =>
-            f.master_article_id === article.id &&
-            (f.collection_ids ?? []).includes(selectedCollectionId)
-        );
-        if (alreadyAdded) {
-          setMessage("Already added to this repository.");
-          return;
-        }
-
-        const existingFork = guestForks.find((f: any) => f.master_article_id === article.id);
-        if (existingFork) {
-          existingFork.collection_ids = [...(existingFork.collection_ids ?? []), selectedCollectionId];
-        } else {
-          guestForks.push({
-            id: -(guestForks.length + 1),
-            master_article_id: article.id,
-            master_article: article,
-            collection_ids: [selectedCollectionId],
-            student_id: 0,
-            custom_tags: [],
-            revision_state: "new",
-            created_at: new Date().toISOString()
-          });
-        }
-
-        localStorage.setItem("waytoias_guest_forks", JSON.stringify(guestForks));
-        await onChanged();
-        setMessage(`Added locally to guest repository.`);
-        return;
-      }
-
       await authenticatedPost(`/api/v1/current-affairs/articles/${article.id}/fork`, token, {
         collection_id: selectedCollectionId
       });
@@ -336,37 +294,10 @@ export function WorkspaceDashboard() {
   }, [isInitialized, searchParams]);
 
   const loadWorkspace = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      if (!token) {
-        // Guest mode data fetching
-        const publicArticlesRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}/api/v1/current-affairs/articles?limit=10`
-        );
-        const publicArticles = await publicArticlesRes.json();
-        
-        const guestCollectionsStr = localStorage.getItem("waytoias_guest_collections");
-        const guestForksStr = localStorage.getItem("waytoias_guest_forks");
-        
-        const guestCollections = guestCollectionsStr ? JSON.parse(guestCollectionsStr) : [];
-        const guestForks = guestForksStr ? JSON.parse(guestForksStr) : [];
-        
-        setState({
-          dashboard: {
-            stats: { saved_articles: guestForks.length, completed_articles: 0, due_revisions: 0, reading_seconds_7d: 0 },
-            continue_reading: [],
-            due_revisions: [],
-            latest_unread: [],
-            recommended_articles: publicArticles || []
-          },
-          forks: guestForks,
-          collections: guestCollections,
-          studentArticles: []
-        });
-        return;
-      }
-
       const [dashboard, forks, collections, studentArticles] = await Promise.all([
         authenticatedGet<ReadingDashboard>("/api/v1/current-affairs/me/reading-dashboard?limit=6", token),
         authenticatedGet<StudentFork[]>("/api/v1/current-affairs/me/forks?limit=100", token),
@@ -434,28 +365,16 @@ export function WorkspaceDashboard() {
     );
   }
 
+  if (!token) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
+        <WorkspaceSignIn />
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-4 pb-16 pt-5">
-      {!token && (
-        <section className="rounded-xl border border-indigo-150 bg-gradient-to-r from-indigo-50 to-blue-50 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm">
-          <div>
-            <h2 className="text-sm font-black text-indigo-900 flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-600" />
-              Try it out! (Guest Mode)
-            </h2>
-            <p className="text-xs text-indigo-700/80 mt-1 leading-relaxed max-w-xl">
-              You are experiencing Notes Space as a guest. You can create repositories, browse suggested current affairs, and add up to 3 articles. 
-              <strong> Sign in or create a free account</strong> to unlock unlimited notes, write custom bullet summaries, and sync your work permanently in the cloud.
-            </p>
-          </div>
-          <Link
-            className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 text-xs font-black text-white hover:bg-indigo-700 shadow transition-all text-center"
-            href="/login?next=/current-affairs/workspace"
-          >
-            Sign In / Register
-          </Link>
-        </section>
-      )}
       <section className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-civic">

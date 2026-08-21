@@ -2,9 +2,11 @@
 
 import { Sparkles, Brain, BookOpen, Bookmark, CheckCircle2, ChevronRight, HelpCircle, Save, Loader2, Award, Clock, AlertCircle } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
-import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { authenticatedGet, authenticatedPost, useAuth, ApiError } from "../../auth/auth-context";
 import type { CategoryNode, StudentCollection, StudentArticle } from "../../../lib/api";
 import { tabStripClass, tabButtonClass } from "../../ui/tabs";
+import { useSubscription } from "../../../lib/use-subscription";
+import { PremiumLockOverlay } from "../../billing/premium-lock-overlay";
 
 type Option = {
   label: string;
@@ -55,16 +57,21 @@ export function WorkspaceAiHelper() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
 
+  const { hasEntitlement } = useSubscription(token);
+  const hasAiAccess = hasEntitlement("current_affairs.notes_workspace") || hasEntitlement("current_affairs.editorial_access");
+
   // Guide generator states
   const [guideTopic, setGuideTopic] = useState("");
   const [generatingGuide, setGeneratingGuide] = useState(false);
-  const [generatedGuide, setGeneratedGuide] = useState<{ title: string; body: string; source: "ai" | "template" } | null>(null);
+  const [generatedGuide, setGeneratedGuide] = useState<{ title: string; body: string } | null>(null);
+  const [guideError, setGuideError] = useState<string | null>(null);
 
   // Assessment states
   const [quizTopic, setQuizTopic] = useState("");
-  const [quizType, setQuizType] = useState<"gk" | "maths" | "passage">("gk");
+  const [quizType, setQuizType] = useState<"gk" | "aptitude" | "passage">("gk");
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
-  const [generatedQuiz, setGeneratedQuiz] = useState<(Quiz & { source: "ai" | "template" }) | null>(null);
+  const [generatedQuiz, setGeneratedQuiz] = useState<Quiz | null>(null);
+  const [quizError, setQuizError] = useState<string | null>(null);
   
   // Quiz playing states
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
@@ -104,72 +111,23 @@ export function WorkspaceAiHelper() {
     void loadWorkspaceMeta();
   }, [loadWorkspaceMeta]);
 
-  // Generate study notes. The backend AI endpoint requires an admin/editor
-  // role, so for students this always 403s and falls through to the
-  // client-side template below — that template is a generic fill-in-the-blanks
-  // outline, not real AI output, and must be labeled as such (never as "AI
-  // generated"), or it misleads students into treating placeholder text as fact.
+  // Generate study notes via the real, student-facing AI endpoint (gated
+  // server-side behind Current Affairs Pro — see assertHasAiNotesAccess).
   const handleGenerateGuide = async () => {
     if (!guideTopic.trim() || !token) return;
     setGeneratingGuide(true);
     setGeneratedGuide(null);
-
-    // Simulate generation steps for UI richness
-    await new Promise((r) => setTimeout(r, 1200));
+    setGuideError(null);
 
     try {
-      // Try backend AI generation
-      const res = await authenticatedPost<any>("/api/v1/current-affairs/admin/ai/generate", token, {
-        content_type: "mains_ca",
-        topics: [guideTopic],
-        ai_provider: "openai",
-        ai_model: "gpt-4o-mini",
-        subject_id: selectedSubjectId ? Number(selectedSubjectId) : undefined
-      });
-      
-      const art = res.articles?.[0];
-      if (art) {
-        const sectionsList = art.sections || [];
-        const bodyContent = sectionsList.map((sec: any) => `## ${sec.section_title}\n\n${sec.content}`).join("\n\n");
-        setGeneratedGuide({
-          title: art.title || `Study Notes: ${guideTopic}`,
-          body: bodyContent,
-          source: "ai"
-        });
-      } else {
-        throw new Error("No article returned");
-      }
-    } catch {
-      // Fallback: generic fill-in-the-blanks outline. Not AI-generated, not
-      // fact-checked — a starting structure only.
-      const mainTopic = guideTopic.trim();
-      const capitalizedTopic = mainTopic.charAt(0).toUpperCase() + mainTopic.slice(1);
-
-      const fallbackTitle = `Study Outline Template: ${capitalizedTopic}`;
-      const fallbackBody = `## Syllabus Connection
-- **GS Paper II & III**: Governance, Public Policy, Regulatory Institutions, and Technology-driven development models.
-
-## 1. Context & Introduction
-The subject of **${capitalizedTopic}** has emerged as a central pillar of India's current developmental roadmap. Recent debates surrounding this area emphasize the need for legal safeguards, balanced federal allocation, and public participation to ensure efficacy.
-
-## 2. Key Pillars & Provisions
-*   **Decentralized Implementation**: Delegating monitoring mandates to block-level and district bodies to guarantee local customization.
-*   **Statutory Autonomy**: Empowering enforcement commissions with independent funding and quasi-judicial authority.
-*   **Digital Integration**: Transitioning registration and compliance mechanisms to secure real-time web portals.
-
-## 3. Core Constraints & Challenges
-1.  **Jurisdictional Conflicts**: Overlap of responsibilities between central boards and state-level ministries leads to bureaucratic delays.
-2.  **Infrastructure Gaps**: Lack of digital literacy and hardware infrastructure among rural administrative agencies.
-3.  **Fiscal Underutilization**: Funds allocated for training and local audit schemes often remain unspent due to complex disbursement procedures.
-
-## 4. Proposed Way Forward
-To maximize the developmental impact of **${capitalizedTopic}**, the government must establish a unified inter-state council. Additionally, standardizing service agreements and conducting mandatory quarterly training workshops will strengthen the capacity of grassroot administrative officers.`;
-
-      setGeneratedGuide({
-        title: fallbackTitle,
-        body: fallbackBody,
-        source: "template"
-      });
+      const note = await authenticatedPost<{ title: string; body: string }>(
+        "/api/v1/current-affairs/me/ai/generate-notes",
+        token,
+        { topic: guideTopic }
+      );
+      setGeneratedGuide({ title: note.title || `Study Notes: ${guideTopic}`, body: note.body });
+    } catch (err) {
+      setGuideError(err instanceof ApiError ? err.message : "Could not generate notes. Please try again.");
     } finally {
       setGeneratingGuide(false);
     }
@@ -211,139 +169,27 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
     }
   };
 
-  // Generate self-assessment quiz. Same as the study guide generator above:
-  // the backend endpoint is admin/editor-only, so students always fall through
-  // to the fixed-pattern template questions below — label those honestly.
+  // Generate self-assessment quiz via the real, student-facing AI endpoint
+  // (gated server-side behind Current Affairs Pro).
   const handleGenerateQuiz = async () => {
     if (!quizTopic.trim() || !token) return;
     setGeneratingQuiz(true);
     setGeneratedQuiz(null);
+    setQuizError(null);
     setQuizSubmitted(false);
     setUserAnswers({});
     setActiveQuizQuestionIdx(0);
-    
-    await new Promise((r) => setTimeout(r, 1500));
 
     try {
-      // Try calling backend generator
-      const res = await authenticatedPost<any>("/api/v1/current-affairs/admin/ai/generate-quiz", token, {
+      const res = await authenticatedPost<Quiz>("/api/v1/current-affairs/me/ai/generate-quiz", token, {
+        topic: quizTopic,
         quiz_type: quizType,
-        prompt: quizTopic,
-        ai_provider: "openai",
-        ai_model: "gpt-4o-mini",
         count: 2
       });
-      
-      if (res && res.questions) {
-        setGeneratedQuiz({
-          passage_title: res.passage_title,
-          passage_text: res.passage_text,
-          questions: res.questions,
-          source: "ai"
-        });
-      } else {
-        throw new Error("Invalid schema");
-      }
-    } catch {
-      // Fallback: Client-side dynamic generator
-      const topic = quizTopic.trim();
-      const capitalized = topic.charAt(0).toUpperCase() + topic.slice(1);
-      
-      let mockQuiz: Quiz;
-      
-      if (quizType === "passage") {
-        mockQuiz = {
-          passage_title: `Comprehension Case Study: ${capitalized} Development`,
-          passage_text: `The implementation of ${capitalized} policies has generated complex administrative dialogues across federal structures. While central planning committees emphasize the necessity of uniform legal frameworks, state administrations argue that regional challenges demand flexible guidelines. The primary point of contention involves resource allocation and statutory accountability. A critical review indicates that where local panchayats were given financial autonomy, execution rates increased by 40%. Conversely, highly centralized monitoring systems resulted in project gridlocks. Therefore, balancing federal supervision with grassroots autonomy is vital for sustainable implementation.`,
-          questions: [
-            {
-              question_statement: "Based on the case study above, which of the following represents the most effective policy layout?",
-              question_prompt: "Select the correct option:",
-              options: [
-                { label: "A", text: "Completely centralized monitoring systems.", is_correct: false },
-                { label: "B", text: "Federal supervision balanced with grassroots autonomy.", is_correct: true },
-                { label: "C", text: "Absolute financial independence to central committees.", is_correct: false },
-                { label: "D", text: "Discontinuing uniform legal frameworks entirely.", is_correct: false }
-              ],
-              correct_answer: "B",
-              explanation: "The passage states that centralized monitoring resulted in project gridlocks, whereas local autonomy increased execution. It concludes that balancing federal supervision with grassroots autonomy is vital."
-            },
-            {
-              question_statement: "According to the passage, giving financial autonomy to local panchayats had what effect?",
-              question_prompt: "Select the correct option:",
-              options: [
-                { label: "A", text: "Execution rates increased by 40%.", is_correct: true },
-                { label: "B", text: "It created severe project gridlocks.", is_correct: false },
-                { label: "C", text: "It reduced federal supervision to zero.", is_correct: false },
-                { label: "D", text: "It triggered intense judicial reviews.", is_correct: false }
-              ],
-              correct_answer: "A",
-              explanation: "The text explicitly mentions that execution rates increased by 40% where local panchayats were given financial autonomy."
-            }
-          ]
-        };
-      } else if (quizType === "maths") {
-        mockQuiz = {
-          questions: [
-            {
-              question_statement: `Consider the growth equation of ${capitalized} investments represented by the function: $f(t) = P(1 + r)^t$, where $P = 5000$, $r = 0.08$, and $t = 2$ years. Find the final investment value.`,
-              question_prompt: "Solve the equation:",
-              options: [
-                { label: "A", text: "$5400$", is_correct: false },
-                { label: "B", text: "$5800$", is_correct: false },
-                { label: "C", text: "$5832$", is_correct: true },
-                { label: "D", text: "$6000$", is_correct: false }
-              ],
-              correct_answer: "C",
-              explanation: `Using the formula $f(t) = P(1 + r)^t$, we calculate: $f(2) = 5000(1 + 0.08)^2 = 5000(1.1664) = 5832$.`
-            },
-            {
-              question_statement: `The ratio of central to state contributions for ${capitalized} funding is represented by $X : Y = 3 : 2$. If the total funding package is $W = $50,000, find the central contribution.`,
-              question_prompt: "Select the correct calculation:",
-              options: [
-                { label: "A", text: "$30,000$", is_correct: true },
-                { label: "B", text: "$20,000$", is_correct: false },
-                { label: "C", text: "$25,000$", is_correct: false },
-                { label: "D", text: "$15,000$", is_correct: false }
-              ],
-              correct_answer: "A",
-              explanation: `Central contribution is calculated as $X / (X + Y) * W = 3/5 * 50,000 = 30,000$.`
-            }
-          ]
-        };
-      } else {
-        mockQuiz = {
-          questions: [
-            {
-              question_statement: `With reference to the statutory regulations of ${capitalized} in India, consider the following statements:`,
-              supp_question_statement: `1. All operational guidelines are drafted by constitutional committees under GS-III.\n2. Local state ministries hold exclusive veto power over funding allocations.`,
-              question_prompt: "Which of the statements given above is/are correct?",
-              options: [
-                { label: "A", text: "1 only", is_correct: false },
-                { label: "B", text: "2 only", is_correct: false },
-                { label: "C", text: "Both 1 and 2", is_correct: false },
-                { label: "D", text: "Neither 1 nor 2", is_correct: true }
-              ],
-              correct_answer: "D",
-              explanation: "Statement 1 is incorrect: Operational guidelines are drafted by executive and statutory departments, not constitutional committees. Statement 2 is incorrect: State ministries do not hold exclusive veto power; allocations are managed via federal consensus panels."
-            },
-            {
-              question_statement: `Which of the following bodies is responsible for evaluating the national implementation index of ${capitalized} schemes?`,
-              question_prompt: "Select the correct body:",
-              options: [
-                { label: "A", text: "NITI Aayog", is_correct: true },
-                { label: "B", text: "Finance Commission of India", is_correct: false },
-                { label: "C", text: "Supreme Court Oversight Bench", is_correct: false },
-                { label: "D", text: "Reserve Bank of India Monetary Council", is_correct: false }
-              ],
-              correct_answer: "A",
-              explanation: "NITI Aayog is the premier policy think tank responsible for designing indexes to rank state performance across national socio-economic policies."
-            }
-          ]
-        };
-      }
-
-      setGeneratedQuiz({ ...mockQuiz, source: "template" });
+      if (!res.questions || res.questions.length === 0) throw new Error("No questions returned.");
+      setGeneratedQuiz(res);
+    } catch (err) {
+      setQuizError(err instanceof ApiError ? err.message : "Could not generate a quiz. Please try again.");
     } finally {
       setGeneratingQuiz(false);
     }
@@ -375,6 +221,16 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
     });
     return { correct, total: generatedQuiz.questions.length };
   };
+
+  if (!hasAiAccess) {
+    return (
+      <PremiumLockOverlay
+        title="AI Notes Helper is a Current Affairs Pro feature"
+        description="Generate real AI study notes and self-assessment quizzes from any topic, then save them straight into your repositories. Upgrade to Current Affairs Pro to unlock it."
+        planName="Current Affairs Pro"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -505,7 +361,14 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
               </div>
             )}
 
-            {!generatingGuide && !generatedGuide && (
+            {guideError && !generatingGuide && (
+              <div className="flex items-start gap-2 rounded-xl border border-berry/30 bg-berry/5 p-4 text-sm text-berry">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{guideError}</span>
+              </div>
+            )}
+
+            {!generatingGuide && !generatedGuide && !guideError && (
               <div className="rounded-2xl border border-dashed border-line bg-surface p-12 text-center text-sm text-ink/60 shadow-sm flex flex-col items-center justify-center gap-3">
                 <BookOpen className="h-8 w-8 text-ink/40" />
                 <p>No study notes generated yet. Enter a topic on the left to start.</p>
@@ -516,11 +379,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
               <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm space-y-5 animate-in fade-in duration-200">
                 <div className="flex items-start justify-between border-b border-line pb-4 gap-4">
                   <div>
-                    {generatedGuide.source === "ai" ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-civic">AI generated notes</span>
-                    ) : (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-saffron">Starter template — not AI, not fact-checked</span>
-                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-civic">AI generated notes</span>
                     <h3 className="text-xl font-black text-ink mt-0.5">{generatedGuide.title}</h3>
                   </div>
                   <button
@@ -533,15 +392,6 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                     Save to Library
                   </button>
                 </div>
-
-                {generatedGuide.source === "template" && (
-                  <div className="flex items-start gap-2 rounded-lg border border-saffron/30 bg-saffron/5 p-3 text-xs text-ink/70">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-saffron mt-0.5" />
-                    <span>
-                      This is a generic structural outline, not real AI analysis of "{guideTopic}" — it's the same skeleton for every topic. Replace every placeholder point with verified facts from your saved articles before treating it as study material.
-                    </span>
-                  </div>
-                )}
 
                 <article className="prose prose-sm max-w-none text-ink text-sm leading-relaxed whitespace-pre-wrap font-sans p-4 bg-paper/30 rounded-xl border border-line/40">
                   {generatedGuide.body}
@@ -588,7 +438,7 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
                   className="h-10 rounded-lg border border-line bg-surface px-3 text-xs font-normal outline-none focus:border-civic"
                 >
                   <option value="gk">General Knowledge Statements</option>
-                  <option value="maths">Mathematical LaTeX equations</option>
+                  <option value="aptitude">Quantitative Aptitude</option>
                   <option value="passage">Case Study Reading Passage</option>
                 </select>
               </label>
@@ -626,7 +476,14 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
               </div>
             )}
 
-            {!generatingQuiz && !generatedQuiz && (
+            {quizError && !generatingQuiz && (
+              <div className="flex items-start gap-2 rounded-xl border border-berry/30 bg-berry/5 p-4 text-sm text-berry">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{quizError}</span>
+              </div>
+            )}
+
+            {!generatingQuiz && !generatedQuiz && !quizError && (
               <div className="rounded-2xl border border-dashed border-line bg-surface p-12 text-center text-sm text-ink/60 shadow-sm flex flex-col items-center justify-center gap-3">
                 <Award className="h-8 w-8 text-ink/40" />
                 <p>No assessment active. Type a topic on the left to generate a practice quiz.</p>
@@ -635,19 +492,10 @@ To maximize the developmental impact of **${capitalizedTopic}**, the government 
 
             {!generatingQuiz && generatedQuiz && (
               <div className="space-y-4">
-                {generatedQuiz.source === "template" ? (
-                  <div className="flex items-start gap-2 rounded-lg border border-saffron/30 bg-saffron/5 p-3 text-xs text-ink/70">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-saffron mt-0.5" />
-                    <span>
-                      <strong className="text-saffron">Practice template, not AI-generated.</strong> These questions follow a fixed pattern with "{quizTopic}" substituted in — they are not real-time analysis of the topic. Use them for format practice only, not as verified facts.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 rounded-lg border border-civic/20 bg-civic/5 p-3 text-xs font-bold text-civic">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    AI-generated assessment
-                  </div>
-                )}
+                <div className="flex items-center gap-2 rounded-lg border border-civic/20 bg-civic/5 p-3 text-xs font-bold text-civic">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI-generated assessment
+                </div>
 
                 {/* Passage card if reading passage is selected */}
                 {quizType === "passage" && generatedQuiz.passage_text && (

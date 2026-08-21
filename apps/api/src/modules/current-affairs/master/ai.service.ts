@@ -1665,6 +1665,43 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
   };
 }
 
+// Student-facing "AI Notes Helper" (current-affairs workspace) — deliberately
+// separate from generateContentAffairsAI, which is the heavier admin
+// publishing pipeline (research grounding, style guides, multi-article
+// batches) meant for master content, not a single personal study note. This
+// is intentionally simple, and intentionally has no non-AI fallback: the
+// previous version of this feature fell back to a hardcoded template when
+// generation failed and presented it in the UI, which is exactly the "not
+// really AI" gap this function exists to close. Callers should surface a
+// real error instead of synthesizing fake content.
+export async function generateStudentNotesAI(
+  options: { topic: string; instructions?: string }
+): Promise<{ title: string; body: string }> {
+  if (!hasAiCredentials()) {
+    throw new Error("AI notes generation is not configured on this server.");
+  }
+
+  const systemPrompt = `You are a UPSC current affairs study-notes writer, helping a student build their personal notes.
+Given a topic, write a concise, well-structured study note in Markdown (use ## headings and bullet points).
+Cover: context/background, key facts, significance for UPSC Prelims/Mains, and a short conclusion.
+Do not fabricate specific statistics, dates, or names you are not confident about — prefer clearly-flagged qualitative points over invented precision.
+
+Return ONLY valid JSON in this format:
+{
+  "title": "A concise title for this note",
+  "body": "The full note in Markdown"
+}`;
+
+  const userPrompt = `Topic: ${options.topic}${options.instructions ? `\n\nAdditional instructions: ${options.instructions}` : ""}`;
+
+  const response = await generateText(systemPrompt, userPrompt);
+  const parsed = parseJsonRobust(response);
+  if (!parsed?.title || !parsed?.body) {
+    throw new Error("AI response was missing a title or body.");
+  }
+  return { title: String(parsed.title), body: String(parsed.body) };
+}
+
 async function performOcrVertexAI(
   model: string,
   mimeType: string,

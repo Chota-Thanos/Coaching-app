@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { idParamSchema, parse, withValidation } from "../../../common/http.js";
 import { requireAuth } from "../../auth/guards.js";
+import { assertCanCreateStudentArticle } from "../../billing/free-tier.js";
 import {
   createStudentArticleSchema,
   listStudentArticlesQuerySchema,
@@ -26,6 +27,7 @@ export async function registerCurrentAffairsStudentArticleRoutes(server: Fastify
   server.post("/api/v1/current-affairs/me/articles", async (request, reply) => {
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
+      await assertCanCreateStudentArticle(user.id);
       const body = parse(createStudentArticleSchema, request.body);
       const record = await createStudentArticle(body, user.id);
       return reply.status(201).send(record);

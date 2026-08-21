@@ -19,6 +19,18 @@ export const FREE_MAX_NOTE_COLLECTIONS = 5;
 export const FREE_MAX_ITEMS_PER_COLLECTION = 10;
 
 /**
+ * Forking, personal articles, highlights, and notes previously had no cap at
+ * all — only the "attach to a named repository" step was enforced, so a free
+ * user could fork/write/annotate without limit and only hit a wall when
+ * filing things into a repo. These close that gap, sized to roughly match
+ * what filling all 5 free repos at 10 items each would actually take.
+ */
+export const FREE_MAX_FORKS = 50;
+export const FREE_MAX_STUDENT_ARTICLES = 10;
+export const FREE_MAX_HIGHLIGHTS_PER_FORK = 20;
+export const FREE_MAX_NOTES_PER_FORK = 10;
+
+/**
  * Questions-per-test caps deliberately live in assessment/question-caps.ts, not
  * here — that table (free 50 / premium 100 objective, 10 / 25 mains) is already
  * enforced on both test creation and attempts. Duplicating it would create a
@@ -101,4 +113,95 @@ export async function assertCanAddCollectionItem(
     err.statusCode = 402;
     throw err;
   }
+}
+
+function capExceededError(message: string, name = "cap_exceeded"): Error & { statusCode?: number } {
+  const err = new Error(message) as Error & { statusCode?: number };
+  err.name = name;
+  err.statusCode = 402;
+  return err;
+}
+
+/**
+ * Throws a 402-style error when a free user has forked the free-tier max
+ * number of articles. Re-saving an article the user already forked is exempt
+ * — forkArticle() upserts on (user_id, master_article_id), so that call
+ * updates an existing row rather than creating a new one.
+ */
+export async function assertCanForkArticle(userId: number, masterArticleId: number): Promise<void> {
+  if (await hasAnyEntitlement(userId, NOTES_PREMIUM_KEYS)) return;
+
+  const existing = await one<{ id: number }>(
+    `select id from current_affairs.student_article_forks where user_id = $1 and master_article_id = $2`,
+    [userId, masterArticleId]
+  );
+  if (existing) return;
+
+  const row = await one<{ count: string }>(
+    `select count(*)::text as count from current_affairs.student_article_forks where user_id = $1`,
+    [userId]
+  );
+  if (Number(row?.count ?? 0) >= FREE_MAX_FORKS) {
+    throw capExceededError(`Free accounts can save up to ${FREE_MAX_FORKS} articles. Upgrade for unlimited.`);
+  }
+}
+
+/** Throws a 402-style error when a free user has written the free-tier max number of personal articles. */
+export async function assertCanCreateStudentArticle(userId: number): Promise<void> {
+  if (await hasAnyEntitlement(userId, NOTES_PREMIUM_KEYS)) return;
+
+  const row = await one<{ count: string }>(
+    `select count(*)::text as count from current_affairs.student_articles where user_id = $1`,
+    [userId]
+  );
+  if (Number(row?.count ?? 0) >= FREE_MAX_STUDENT_ARTICLES) {
+    throw capExceededError(`Free accounts can write up to ${FREE_MAX_STUDENT_ARTICLES} personal articles. Upgrade for unlimited.`);
+  }
+}
+
+/** Throws a 402-style error when a free user's fork already has the max number of highlights. */
+export async function assertCanAddHighlight(userId: number, forkId: number): Promise<void> {
+  if (await hasAnyEntitlement(userId, NOTES_PREMIUM_KEYS)) return;
+
+  const row = await one<{ count: string }>(
+    `select count(*)::text as count
+     from current_affairs.student_article_highlights sah
+     join current_affairs.student_article_forks saf on saf.id = sah.fork_id
+     where sah.fork_id = $1 and saf.user_id = $2`,
+    [forkId, userId]
+  );
+  if (Number(row?.count ?? 0) >= FREE_MAX_HIGHLIGHTS_PER_FORK) {
+    throw capExceededError(`Free accounts can add up to ${FREE_MAX_HIGHLIGHTS_PER_FORK} highlights per article. Upgrade for unlimited.`);
+  }
+}
+
+/** Throws a 402-style error when a free user's fork already has the max number of notes. */
+export async function assertCanAddNote(userId: number, forkId: number): Promise<void> {
+  if (await hasAnyEntitlement(userId, NOTES_PREMIUM_KEYS)) return;
+
+  const row = await one<{ count: string }>(
+    `select count(*)::text as count
+     from current_affairs.student_article_notes san
+     join current_affairs.student_article_forks saf on saf.id = san.fork_id
+     where san.fork_id = $1 and saf.user_id = $2`,
+    [forkId, userId]
+  );
+  if (Number(row?.count ?? 0) >= FREE_MAX_NOTES_PER_FORK) {
+    throw capExceededError(`Free accounts can add up to ${FREE_MAX_NOTES_PER_FORK} notes per article. Upgrade for unlimited.`);
+  }
+}
+
+/**
+ * Throws a 402-style error when the user doesn't hold Current Affairs Pro
+ * (or the bundle). Unlike the rest of the notes workspace — capped for free
+ * users, not locked out — AI generation has real per-call cost, so it's
+ * gated behind the subscription entirely, the same way assessment.ai_evaluation
+ * gates Mains AI evaluation.
+ */
+export async function assertHasAiNotesAccess(userId: number): Promise<void> {
+  if (await hasAnyEntitlement(userId, NOTES_PREMIUM_KEYS)) return;
+  throw capExceededError(
+    "AI Notes Helper requires Current Affairs Pro. Upgrade to generate real AI study notes and quizzes.",
+    "premium_required"
+  );
 }

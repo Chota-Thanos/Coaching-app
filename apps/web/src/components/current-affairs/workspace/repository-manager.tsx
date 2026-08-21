@@ -45,28 +45,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
     setMessage(null);
     try {
       if (!token) {
-        const guestCollectionsStr = localStorage.getItem("waytoias_guest_collections");
-        const guestCollections = guestCollectionsStr ? JSON.parse(guestCollectionsStr) : [];
-        
-        const newCollection: StudentCollection = {
-          id: -(guestCollections.length + 1),
-          name,
-          slug: workspaceSlug(name),
-          description: description.trim() || null,
-          custom_tags: splitWorkspaceTags(customTags),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        guestCollections.push(newCollection);
-        localStorage.setItem("waytoias_guest_collections", JSON.stringify(guestCollections));
-        
-        setName("");
-        setDescription("");
-        setCustomTags("");
-        setShowCreateForm(false);
-        await onChanged();
-        setMessage("Guest repository created locally.");
+        setMessage("Sign in to create a repository — your notes are saved to your account, not just this browser.");
         return;
       }
 

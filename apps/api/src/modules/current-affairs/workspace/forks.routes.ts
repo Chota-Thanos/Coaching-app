@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { idParamSchema, listQuerySchema, parse, withValidation } from "../../../common/http.js";
 import { requireAuth } from "../../auth/guards.js";
+import { assertCanForkArticle } from "../../billing/free-tier.js";
 import { forkArticleSchema, updateForkSchema } from "../schemas.js";
 import { deleteFork, forkArticle, getFork, listForks, updateFork } from "./forks.service.js";
 
@@ -9,6 +10,7 @@ export async function registerCurrentAffairsForkRoutes(server: FastifyInstance):
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
+      await assertCanForkArticle(user.id, params.id);
       const body = parse(forkArticleSchema, request.body ?? {});
       const record = await forkArticle(params.id, body, user.id);
       if (!record) return reply.notFound("Published article not found.");
