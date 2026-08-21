@@ -229,6 +229,10 @@ export function ResultReview({ resultId }: { resultId: string }) {
         if (confirm(`${err.message}\n\nView upgrade plans now?`)) {
           router.push("/pricing");
         }
+      } else if (err instanceof ApiError && err.message) {
+        // Surfaces cases like "no extracted answer text — run OCR first" directly,
+        // instead of a generic failure message that hides why it failed.
+        alert(err.message);
       } else {
         alert("Failed to trigger AI evaluation. Please try again.");
       }
@@ -406,6 +410,27 @@ export function ResultReview({ resultId }: { resultId: string }) {
               </a>
             )}
 
+            {response.rubric_breakdown && response.rubric_breakdown.length > 0 && (
+              <div className="space-y-1.5">
+                <h5 className="text-[10px] font-black text-slate-450 uppercase tracking-wide">Marks breakdown</h5>
+                <div className="overflow-hidden rounded-xl border border-slate-200/60">
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {response.rubric_breakdown.map((row: any, idx: number) => (
+                        <tr key={idx} className="border-b border-slate-100 last:border-0">
+                          <td className="p-2.5 align-top w-1/3 font-bold text-slate-700">{row.criterion}</td>
+                          <td className="p-2.5 align-top w-16 text-right font-black text-indigo-650 whitespace-nowrap">
+                            {row.awarded_marks}/{row.max_marks}
+                          </td>
+                          <td className="p-2.5 align-top text-slate-600">{row.comment}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="p-3.5 bg-emerald-50/40 border border-emerald-100 rounded-xl space-y-1.5">
                 <h5 className="text-[10px] font-black text-emerald-800 uppercase tracking-wide">Key Strengths</h5>
@@ -429,6 +454,16 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 )}
               </div>
             </div>
+
+            {response.factual_concerns && response.factual_concerns.length > 0 && (
+              <div className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1.5">
+                <h5 className="text-[10px] font-black text-amber-800 uppercase tracking-wide">Facts worth double-checking</h5>
+                <ul className="list-disc list-inside text-xs text-amber-750 space-y-1 leading-relaxed">
+                  {response.factual_concerns.map((f: string, idx: number) => <li key={idx}>{f}</li>)}
+                </ul>
+                <p className="text-[10px] text-amber-650 italic">AI-flagged — verify against a standard reference before treating as authoritative.</p>
+              </div>
+            )}
 
             {response.feedback && (
               <div className="space-y-1.5">

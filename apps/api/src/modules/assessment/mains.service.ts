@@ -625,6 +625,20 @@ export async function deleteMainsQuestion(id: number): Promise<boolean> {
   return deleted.length > 0;
 }
 
+// Grading is a higher-stakes judgment task than routine content generation, so
+// it gets a lower (more consistent) temperature and, where possible, a
+// stronger model than the "gpt-4o-mini"/flash defaults used elsewhere for
+// cheap article/quiz generation.
+const MAINS_GRADING_MODEL_OPTIONS = {
+  temperature: 0.25,
+  openAiModel: "gpt-4o",
+  modelPriority: ["gemini-3.5-pro", "gemini-3.1-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
+};
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export async function evaluateMainsAnswerWithAI(attemptId: number, userId: number): Promise<unknown> {
   // 1. Fetch the attempt first
   const attempt = await one<{
@@ -677,9 +691,10 @@ export async function evaluateMainsAnswerWithAI(attemptId: number, userId: numbe
     model_answer: string | null;
     key_points: string[];
     evaluation_rubric: any;
+    answer_framework: any;
   }>(
     `
-      select word_limit, marks, directive, model_answer, key_points, evaluation_rubric
+      select word_limit, marks, directive, model_answer, key_points, evaluation_rubric, answer_framework
       from assessment.mains_question_details
       where question_id = $1
     `,
@@ -690,6 +705,55 @@ export async function evaluateMainsAnswerWithAI(attemptId: number, userId: numbe
     const error = new Error("Mains question details not found.") as Error & { statusCode?: number };
     error.statusCode = 404;
     throw error;
+  }
+
+  // Grading blind against an empty answer is worse than not grading at all —
+  // it used to silently score whatever placeholder text got substituted in.
+  // If the student only attached a file/photo link, they (or the OCR step)
+  // need to turn that into text before AI evaluation can run against it.
+  const trimmedAnswerText = (attempt.student_answer_text || "").trim();
+  if (!trimmedAnswerText) {
+    const error = new Error(
+      attempt.answer_file_url
+        ? "No extracted answer text found for this attempt. Run OCR on the uploaded answer copy (or paste the answer as text) before requesting AI evaluation."
+        : "This attempt has no submitted answer text to evaluate."
+    ) as Error & { statusCode?: number };
+    error.statusCode = 422;
+    throw error;
+  }
+  const wordCount = countWords(trimmedAnswerText);
+
+  // Exam-paper context (GS1-4, Essay, Ethics case studies, optional subjects
+  // etc. are graded on different conventions — a single generic prompt can't
+  // tell them apart without this).
+  const taxonomy = await one<{
+    paper_name: string | null;
+    subject_area_name: string | null;
+    theme_name: string | null;
+    question_nature_name: string | null;
+  }>(
+    `
+      select
+        paper.name as paper_name,
+        subject_area.name as subject_area_name,
+        theme.name as theme_name,
+        qn.name as question_nature_name
+      from assessment.mains_question_taxonomy_links mqtl
+      left join assessment.mains_taxonomy_nodes paper on paper.id = mqtl.paper_node_id
+      left join assessment.mains_taxonomy_nodes subject_area on subject_area.id = mqtl.subject_area_node_id
+      left join assessment.mains_taxonomy_nodes theme on theme.id = mqtl.theme_node_id
+      left join assessment.question_natures qn on qn.id = mqtl.question_nature_id
+      where mqtl.question_id = $1
+    `,
+    [questionVersion.question_id]
+  );
+  const paperName = taxonomy?.paper_name || null;
+  const paperLower = `${paperName || ""} ${taxonomy?.subject_area_name || ""} ${taxonomy?.question_nature_name || ""}`.toLowerCase();
+  let paperConventions = "This is a General Studies Mains answer: expect a crisp intro, thematically organized body (use of subheadings/keywords is valued), and a solution-oriented conclusion.";
+  if (paperLower.includes("ethic") || paperLower.includes("gs4") || paperLower.includes("gs-4") || paperLower.includes("case stud")) {
+    paperConventions = "This is a GS4 Ethics / case-study answer: judge it on identification of stakeholders and ethical dilemmas/conflicts of interest, application of ethical theories/principles (not just naming them), and a decisive, justified course of action — not on GS1-3 style factual recall.";
+  } else if (paperLower.includes("essay")) {
+    paperConventions = "This is an Essay-paper answer: judge it on a clear thesis/central idea, multidimensionality (covering social, economic, political, ethical, historical angles as relevant), coherence of flow between paragraphs, and quality of introduction/conclusion — structure matters more than checklist coverage of 'key points'.";
   }
 
   // 3. Mark status as 'ai_evaluating'
@@ -715,20 +779,21 @@ export async function evaluateMainsAnswerWithAI(attemptId: number, userId: numbe
   if (instructionRow?.prompt) {
     systemPromptBase = instructionRow.prompt;
   } else {
-    systemPromptBase = `You are an expert UPSC Mains Examiner. Evaluate the student's answer response based on standard UPSC evaluation guidelines.
+    systemPromptBase = `You are a strict, experienced UPSC Mains Examiner marking a real answer copy. Evaluate the student's answer exactly as a real UPSC examiner would — not as a generous teacher trying to encourage a student.
 Analyze:
-1. Intro-Body-Conclusion structure: Introduce the topic clearly, cover main points with arguments/subheadings in body, and end with a balanced way forward.
-2. Question directive: Address the exact directive (e.g. Discuss, Analyze, Evaluate, Critically Examine).
-3. Quality of points: Check if the response matches or captures key points and the model answer framework.
-4. Word Limit & Marks constraint: Evaluate if the length is appropriate for the word limit (${questionDetails.word_limit || 250} words) and score it out of ${questionDetails.marks || 10} marks.`;
+1. Intro-Body-Conclusion structure: Does it introduce the topic clearly, cover main points with arguments/subheadings in the body, and end with a balanced, solution-oriented way forward?
+2. Question directive: Does it actually address the exact directive (e.g. Discuss, Analyze, Evaluate, Critically Examine) rather than just describing the topic?
+3. Quality of points: Does the response capture the key evaluation points and the model-answer framework given below — and back them with specific, correct facts, examples, committees, case laws, articles, or data (not vague generalities)?
+4. ${paperConventions}
+5. Word Limit & Marks constraint: Judge whether the length/depth is appropriate for the word limit and marks given below.`;
   }
 
   // Fetch active evaluation style profiles if they exist
   const activeStyleProfile = await one<{ style_profile: any }>(
     `
-      select style_profile 
-      from assessment.ai_style_profiles 
-      where content_type = 'mains_evaluation' and is_active = true 
+      select style_profile
+      from assessment.ai_style_profiles
+      where content_type = 'mains_evaluation' and is_active = true
       order by updated_at desc limit 1
     `
   );
@@ -744,28 +809,45 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
 `;
   }
 
+  const hasRubric = questionDetails.evaluation_rubric && Object.keys(questionDetails.evaluation_rubric).length > 0;
+  const rubricInstruction = hasRubric
+    ? `A MARKING RUBRIC is provided below (set by the question author). You MUST allocate marks using exactly that rubric's criteria and weights — do not invent your own criteria.`
+    : `No custom marking rubric was set for this question. Use this default 3-part rubric, splitting the total marks (${questionDetails.marks || 10}) proportionally across it: (a) Structure & Presentation — ~20%, (b) Content Accuracy & Depth vs. key points/model answer — ~50%, (c) Relevance to the directive, examples/data used — ~30%.`;
+
   const systemPrompt = `${systemPromptBase}
+
+CALIBRATION — this is the most important instruction. Score strictly against real UPSC Mains marking conventions, not against "did the student try hard":
+- Under 30%: Off-topic, factually wrong, or far too thin for the marks allotted.
+- 30-45%: Attempts the question but is generic, unstructured, or missing most key points. This is where a mediocre/rushed answer belongs.
+- 45-60%: Adequate — covers the main points with reasonable structure but lacks depth, specific examples, or data. Most honest, competent student answers land here.
+- 60-70%: Good to very good — well-structured, most key points covered with specific examples/data, only minor gaps.
+- Above 70%: Reserve for a genuinely excellent, close-to-model answer. This should be rare, not the default outcome — real UPSC toppers rarely cross 65-70% on any individual question.
+Do not inflate the score to be encouraging. Give credit for every correct point made, but do not reward length, generic filler, or restating the question as if it were analysis.
+
+${rubricInstruction}
+
+GROUNDING — every strength and weakness you list must reference something concrete the student actually wrote (paraphrase or quote the relevant part). Do NOT write generic feedback that could apply to any answer on this topic ("add more examples", "improve structure") without saying which part of THIS answer that applies to.
+
+FACTUAL CHECK — separately from scoring, review the student's answer for specific factual claims (dates, numbers, names of committees/acts/articles, case law, statistics) that look incorrect or that you are not confident about. List these as factual_concerns. If you yourself are not fully certain what the correct fact is, say so explicitly in the comment rather than asserting a "correction" with false confidence. If nothing looks factually questionable, return an empty array — do not invent concerns to fill the field.
 
 You MUST return ONLY a valid JSON object matching the following TypeScript schema:
 {
-  "score": number, // out of ${questionDetails.marks || 10}. Assign marks based strictly on the quality of the answer using these criteria:
-    // 80-100% → Outstanding: Covers all key points, excellent structure, relevant examples, precise language
-    // 60-79%  → Good: Covers most key points, good structure, some examples, minor gaps
-    // 40-59%  → Average: Covers key points partially, adequate structure, lacks depth or examples
-    // Below 40% → Needs Work: Misses key points, poor structure, very brief or off-topic
-    // Give credit for every correct point made. Do NOT penalize for brevity if key points are covered. Use floating point (e.g. 4.5, 7.0).
+  "score": number, // out of ${questionDetails.marks || 10}, must exactly equal the sum of "awarded_marks" in rubric_breakdown. Use floating point (e.g. 4.5, 7.0).
   "max_score": number, // should be ${questionDetails.marks || 10}
+  "rubric_breakdown": [ // 2-4 rows covering the whole mark allocation; awarded_marks must sum to "score" and max_marks must sum to max_score
+    { "criterion": "string", "max_marks": number, "awarded_marks": number, "comment": "string — 1-2 sentences, specific to this answer" }
+  ],
   "feedback": "string", // comprehensive evaluation feedback formatted in HTML (using h3, p, strong, ul, li tags) containing:
-    // 1. Overall Verdict (brief summary of the answer quality)
+    // 1. Overall Verdict (brief, honest summary of the answer quality vs. real UPSC standards)
     // 2. Structure Analysis (intro-body-conclusion assessment)
-    // 3. Content Quality (key points covered vs missed)
+    // 3. Content Quality (key points covered vs missed, with specifics)
     // 4. Presentation Comments (language, examples, diagrams if any)
-    // 5. Way Forward (specific suggestions to improve the answer)
-  "strengths": string[], // list of 2-4 concrete strengths found in the answer
-  "weaknesses": string[] // list of 2-4 specific areas of improvement with actionable suggestions
+    // 5. Way Forward — specific, actionable suggestions AND an explicit comment on whether the word count (given below) was appropriate for the marks/word limit, plus one time-management tip if relevant
+  "strengths": string[], // 2-4 concrete strengths, each grounded in what the student actually wrote
+  "weaknesses": string[], // 2-4 specific, grounded areas of improvement with actionable suggestions
+  "factual_concerns": string[] // specific factual claims that look wrong/unverifiable, each as "claim — concern (confidence: low/medium/high)". Empty array if none.
 }
 Do NOT return any other text, markdown wrapper, or formatting except the raw JSON.`;
-
 
   const userPrompt = `
 QUESTION:
@@ -773,6 +855,7 @@ ${questionVersion.question_statement}
 ${questionVersion.supplementary_statement || ""}
 ${questionVersion.question_prompt || ""}
 
+EXAM PAPER: ${paperName || "General Studies (unspecified paper)"}${taxonomy?.subject_area_name ? ` — ${taxonomy.subject_area_name}` : ""}${taxonomy?.theme_name ? ` — ${taxonomy.theme_name}` : ""}
 DIRECTIVE: ${questionDetails.directive || "Discuss"}
 MAX MARKS: ${questionDetails.marks || 10}
 WORD LIMIT: ${questionDetails.word_limit || 250} words
@@ -780,19 +863,60 @@ WORD LIMIT: ${questionDetails.word_limit || 250} words
 MODEL ANSWER / APPROACH:
 ${questionDetails.model_answer || "N/A"}
 
+${questionDetails.answer_framework && Object.keys(questionDetails.answer_framework).length > 0 ? `SUGGESTED ANSWER FRAMEWORK / STRUCTURE:\n${JSON.stringify(questionDetails.answer_framework)}\n` : ""}
 KEY EVALUATION POINTS:
 ${JSON.stringify(questionDetails.key_points || [])}
 
+${hasRubric ? `MARKING RUBRIC:\n${JSON.stringify(questionDetails.evaluation_rubric)}\n` : ""}
+STUDENT'S ACTUAL WORD COUNT: ${wordCount} words (limit: ${questionDetails.word_limit || 250})
+
 STUDENT'S SUBMITTED ANSWER:
-${attempt.student_answer_text || "N/A (check attachments)"}
+${trimmedAnswerText}
 `;
 
   try {
-    // 5. Generate evaluation response
-    const rawResult = await generateText(systemPrompt, userPrompt);
-    const result = parseJsonRobust(rawResult);
+    // 5. Generate draft evaluation
+    const rawResult = await generateText(systemPrompt, userPrompt, true, MAINS_GRADING_MODEL_OPTIONS);
+    let result = parseJsonRobust(rawResult);
 
-    // 6. Save results to the database
+    // 6. Auditor pass — a second, independent read that checks the draft
+    // evaluation for arithmetic consistency, grounding, and score inflation
+    // before anything is shown to the student. Mirrors the router→draft→
+    // auditor pattern used for article/quiz generation elsewhere in this file.
+    try {
+      const auditorSystemPrompt = `You are a senior UPSC examiner auditing a junior examiner's evaluation of a Mains answer before it is released to the student. You are given the original grading context and the junior examiner's draft JSON evaluation.
+Check and correct the draft:
+1. Arithmetic: "score" must exactly equal the sum of "awarded_marks" in rubric_breakdown, and "max_marks" must sum to max_score. Fix silently if not.
+2. Calibration: this platform's examiners must grade strictly (a generic/thin answer should score under 45%; scores above 70% should be rare and reserved for near-flawless answers). If the draft score looks inflated relative to what was actually written, lower it and adjust rubric_breakdown/comments to match. Do not raise a score just to be encouraging.
+3. Grounding: every strength/weakness must reference something specific the student actually wrote. Rewrite any that are generic boilerplate so they cite the actual content, using the original student answer provided below.
+4. Factual concerns: keep only genuinely questionable claims, each appropriately hedged by confidence — do not assert corrections with false certainty.
+5. The feedback's "Way Forward" section must comment on the actual word count vs. the word limit.
+Return ONLY the corrected JSON, in the exact same schema as the draft. Do not add commentary outside the JSON.`;
+      const auditorUserPrompt = JSON.stringify({
+        original_question: questionVersion.question_statement,
+        directive: questionDetails.directive || "Discuss",
+        max_marks: questionDetails.marks || 10,
+        word_limit: questionDetails.word_limit || 250,
+        student_word_count: wordCount,
+        model_answer: questionDetails.model_answer || null,
+        key_points: questionDetails.key_points || [],
+        student_answer: trimmedAnswerText,
+        draft_evaluation: result
+      });
+      const auditorResponse = await generateText(auditorSystemPrompt, auditorUserPrompt, true, {
+        ...MAINS_GRADING_MODEL_OPTIONS,
+        temperature: 0.2
+      });
+      result = parseJsonRobust(auditorResponse);
+    } catch (auditErr) {
+      console.error("[Mains AI Auditor] Audit pass failed, using unaudited draft evaluation:", auditErr);
+    }
+
+    // 7. Save results to the database
+    const maxScore = result.max_score ?? questionDetails.marks ?? 10.0;
+    const rawScore = result.score ?? 5.0;
+    const clampedScore = Math.max(0, Math.min(Number(rawScore) || 0, Number(maxScore) || 10));
+
     const updated = await one(
       `
         update assessment.mains_answer_attempts
@@ -803,6 +927,9 @@ ${attempt.student_answer_text || "N/A (check attachments)"}
           feedback = $4,
           strengths = $5,
           weaknesses = $6,
+          rubric_breakdown = $7,
+          factual_concerns = $8,
+          word_count = $9,
           evaluated_at = now(),
           updated_at = now()
         where id = $1
@@ -810,11 +937,14 @@ ${attempt.student_answer_text || "N/A (check attachments)"}
       `,
       [
         attemptId,
-        result.score ?? 5.0,
-        result.max_score ?? questionDetails.marks ?? 10.0,
+        clampedScore,
+        maxScore,
         result.feedback ?? "<p>Evaluation complete.</p>",
         JSON.stringify(result.strengths ?? []),
-        JSON.stringify(result.weaknesses ?? [])
+        JSON.stringify(result.weaknesses ?? []),
+        JSON.stringify(result.rubric_breakdown ?? []),
+        JSON.stringify(result.factual_concerns ?? []),
+        wordCount
       ]
     );
 

@@ -123,7 +123,8 @@ async function generateTextWithVertexAI(
   model: string,
   systemPrompt: string,
   userPrompt: string,
-  jsonMode = true
+  jsonMode = true,
+  temperature = 0.7
 ): Promise<string> {
   const keyJson = process.env.GOOGLE_CLOUD_KEY_JSON;
   const auth = new GoogleAuth({
@@ -185,7 +186,7 @@ async function generateTextWithVertexAI(
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: `System prompt:\n${systemPrompt}\n\nUser prompt:\n${userPrompt}` }] }],
             generationConfig: {
-              temperature: 0.7,
+              temperature,
               ...(jsonMode ? { responseMimeType: "application/json" } : {})
             }
           })
@@ -243,7 +244,8 @@ async function generateTextWithGemini(
   systemPrompt: string,
   userPrompt: string,
   geminiKey: string,
-  jsonMode = true
+  jsonMode = true,
+  temperature = 0.7
 ): Promise<string> {
   let attempts = 0;
   const maxAttempts = 4;
@@ -262,7 +264,7 @@ async function generateTextWithGemini(
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: `System prompt:\n${systemPrompt}\n\nUser prompt:\n${userPrompt}` }] }],
             generationConfig: {
-              temperature: 0.7,
+              temperature,
               ...(jsonMode ? { responseMimeType: "application/json" } : {})
             }
           })
@@ -318,7 +320,21 @@ async function generateTextWithGemini(
 // regardless of what the prompt actually asked for, and invent a JSON wrapper
 // object (e.g. `{ "rewritten_content": "..." }`) around the prose, which then
 // leaks into the article body verbatim since nothing downstream parses it.
-export async function generateText(systemPrompt: string, userPrompt: string, jsonMode = true): Promise<string> {
+export interface GenerateTextOptions {
+  /** Sampling temperature. Defaults to 0.7 (good for creative content generation). Pass a lower value (e.g. 0.2-0.3) for tasks that need consistent, less "creative" judgment — like grading. */
+  temperature?: number;
+  /** Override the OpenAI model used, in place of the cheap "gpt-4o-mini" default. Ignored for Gemini/Vertex. */
+  openAiModel?: string;
+  /** Override the Gemini/Vertex model fallback order, in place of DEFAULT_MODEL_PRIORITY/AI_MODEL_PRIORITY. Ignored for OpenAI. */
+  modelPriority?: string[];
+}
+
+export async function generateText(
+  systemPrompt: string,
+  userPrompt: string,
+  jsonMode = true,
+  options: GenerateTextOptions = {}
+): Promise<string> {
   const openAiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
   const isVertexAi = !!(
@@ -326,6 +342,7 @@ export async function generateText(systemPrompt: string, userPrompt: string, jso
     process.env.GOOGLE_APPLICATION_CREDENTIALS ||
     process.env.VERTEX_AI_PROJECT_ID
   );
+  const temperature = options.temperature ?? 0.7;
 
   if (openAiKey) {
     // OpenAI Chat Completions API
@@ -336,12 +353,12 @@ export async function generateText(systemPrompt: string, userPrompt: string, jso
         Authorization: `Bearer ${openAiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini", // Cost-effective default
+        model: options.openAiModel || "gpt-4o-mini", // Cost-effective default; callers doing higher-stakes judgment (e.g. grading) should pass a stronger model.
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.7
+        temperature
       })
     });
 
@@ -353,11 +370,11 @@ export async function generateText(systemPrompt: string, userPrompt: string, jso
     const json = (await response.json()) as any;
     return json.choices?.[0]?.message?.content?.trim() || "";
   } else if (isVertexAi) {
-    const models = getModelPriority();
+    const models = options.modelPriority?.length ? options.modelPriority : getModelPriority();
     let lastError: any = null;
     for (const model of models) {
       try {
-        return await generateTextWithVertexAI(model, systemPrompt, userPrompt, jsonMode);
+        return await generateTextWithVertexAI(model, systemPrompt, userPrompt, jsonMode, temperature);
       } catch (err: any) {
         lastError = err;
         console.warn(`[Vertex AI Router] Model ${model} failed: ${err.message || err}. Trying next fallback model...`);
@@ -365,11 +382,11 @@ export async function generateText(systemPrompt: string, userPrompt: string, jso
     }
     throw new Error(`All Vertex AI models failed. Last error: ${lastError?.message || lastError}`);
   } else if (geminiKey) {
-    const models = getModelPriority();
+    const models = options.modelPriority?.length ? options.modelPriority : getModelPriority();
     let lastError: any = null;
     for (const model of models) {
       try {
-        return await generateTextWithGemini(model, systemPrompt, userPrompt, geminiKey, jsonMode);
+        return await generateTextWithGemini(model, systemPrompt, userPrompt, geminiKey, jsonMode, temperature);
       } catch (err: any) {
         lastError = err;
         console.warn(`[Gemini Router] Model ${model} failed: ${err.message || err}. Trying next fallback model...`);
@@ -387,11 +404,16 @@ function runMockGeneration(systemPrompt: string, userPrompt: string): string {
   const p = userPrompt.toLowerCase();
   const sys = systemPrompt.toLowerCase();
 
-  if (sys.includes("evaluate") || sys.includes("rubric") || p.includes("student's answer") || p.includes("student_answer")) {
+  if (sys.includes("evaluate") || sys.includes("examiner") || sys.includes("rubric") || p.includes("student's answer") || p.includes("student_answer") || p.includes("submitted answer")) {
     return JSON.stringify({
       score: 6.5,
       max_score: 10,
-      feedback: "<h3>Evaluation Verdict</h3><p>The student has shown a good understanding of the core concept. The introduction is clear but needs more legislative references. The body addresses the main arguments, but the conclusion lacks a forward-looking perspective.</p>",
+      rubric_breakdown: [
+        { criterion: "Structure & Presentation", max_marks: 2, awarded_marks: 1.5, comment: "Clear intro/body/conclusion, but conclusion is abrupt." },
+        { criterion: "Content Accuracy & Depth", max_marks: 5, awarded_marks: 3.5, comment: "Covers most key points but lacks specific case laws or committee references." },
+        { criterion: "Relevance to Directive & Examples", max_marks: 3, awarded_marks: 1.5, comment: "Addresses the directive but examples are generic rather than specific." }
+      ],
+      feedback: "<h3>Evaluation Verdict</h3><p>The student has shown a good understanding of the core concept. The introduction is clear but needs more legislative references. The body addresses the main arguments, but the conclusion lacks a forward-looking perspective.</p><h3>Way Forward</h3><p>Answer used roughly the expected word count for the marks allotted; focus revision on citing specific committees/case law.</p>",
       strengths: [
         "Clear structure with introduction, body, and conclusion",
         "Addressed the primary directive of the question"
@@ -399,7 +421,8 @@ function runMockGeneration(systemPrompt: string, userPrompt: string): string {
       weaknesses: [
         "Lack of specific case laws or committee references",
         "Conclusion was slightly abrupt and lacked a path forward"
-      ]
+      ],
+      factual_concerns: []
     });
   }
 

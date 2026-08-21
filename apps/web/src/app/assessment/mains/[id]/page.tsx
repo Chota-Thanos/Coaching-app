@@ -38,6 +38,8 @@ type Attempt = {
   feedback?: string;
   strengths?: string[];
   weaknesses?: string[];
+  rubric_breakdown?: { criterion: string; max_marks: number; awarded_marks: number; comment: string }[];
+  factual_concerns?: string[];
 };
 
 export default function StudentMainsPracticePage() {
@@ -323,6 +325,27 @@ export default function StudentMainsPracticePage() {
                 </a>
               )}
 
+              {attempt.rubric_breakdown && attempt.rubric_breakdown.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-ink uppercase tracking-wide border-b border-line pb-1.5">Marks breakdown</h4>
+                  <div className="overflow-hidden rounded-xl border border-line">
+                    <table className="w-full text-xs">
+                      <tbody>
+                        {attempt.rubric_breakdown.map((row, i) => (
+                          <tr key={i} className="border-b border-line last:border-0">
+                            <td className="p-2.5 align-top w-1/3 font-bold text-ink">{row.criterion}</td>
+                            <td className="p-2.5 align-top w-16 text-right font-black text-civic whitespace-nowrap">
+                              {row.awarded_marks}/{row.max_marks}
+                            </td>
+                            <td className="p-2.5 align-top text-ink/70">{row.comment}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* Strengths & Weaknesses checklists */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100 space-y-2">
@@ -351,6 +374,16 @@ export default function StudentMainsPracticePage() {
                   )}
                 </div>
               </div>
+
+              {attempt.factual_concerns && attempt.factual_concerns.length > 0 && (
+                <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200 space-y-2">
+                  <h4 className="text-xs font-black text-amber-800 uppercase tracking-wide">Facts worth double-checking</h4>
+                  <ul className="list-disc list-inside text-[11px] text-amber-750 space-y-1 leading-relaxed">
+                    {attempt.factual_concerns.map((f, i) => <li key={i}>{f}</li>)}
+                  </ul>
+                  <p className="text-[10px] text-amber-650 italic">AI-flagged — verify against a standard reference before treating as authoritative.</p>
+                </div>
+              )}
 
               {/* Detailed html feedback block */}
               {attempt.feedback && (

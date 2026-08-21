@@ -691,6 +691,27 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                               </a>
                             )}
 
+                            {savedMainsAns.rubric_breakdown && savedMainsAns.rubric_breakdown.length > 0 && (
+                              <div className="space-y-1.5">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Marks breakdown</h4>
+                                <div className="overflow-hidden rounded-xl border border-slate-200/60">
+                                  <table className="w-full text-[10px]">
+                                    <tbody>
+                                      {savedMainsAns.rubric_breakdown.map((row: any, idx: number) => (
+                                        <tr key={idx} className="border-b border-slate-100 last:border-0">
+                                          <td className="p-2 align-top w-1/3 font-bold text-slate-700">{row.criterion}</td>
+                                          <td className="p-2 align-top w-14 text-right font-black text-indigo-600 whitespace-nowrap">
+                                            {row.awarded_marks}/{row.max_marks}
+                                          </td>
+                                          <td className="p-2 align-top text-slate-600">{row.comment}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl space-y-1.5">
                                 <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-wide">Key Strengths</h4>
@@ -714,6 +735,15 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                                 )}
                               </div>
                             </div>
+
+                            {savedMainsAns.factual_concerns && savedMainsAns.factual_concerns.length > 0 && (
+                              <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1.5">
+                                <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-wide">Facts worth double-checking</h4>
+                                <ul className="list-disc list-inside text-[10px] text-amber-750 space-y-0.5 leading-relaxed">
+                                  {savedMainsAns.factual_concerns.map((f: string, idx: number) => <li key={idx}>{f}</li>)}
+                                </ul>
+                              </div>
+                            )}
 
                             {savedMainsAns.feedback && (
                               <div className="space-y-1.5">
