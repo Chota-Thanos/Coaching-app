@@ -12,7 +12,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
+  Bot,
   BookOpen,
+  Check,
   CheckCircle2,
   ClipboardList,
   Loader2,
@@ -456,7 +458,7 @@ export function CreateTestWizard() {
         )}
 
         {mode === "ai" && (
-          <AiFlow
+          <AiChatFlow
             step={aiStep}
             setStep={setAiStep}
             contentType={contentType}
@@ -770,7 +772,40 @@ function ManualFlow(props: {
   );
 }
 
-function AiFlow(props: {
+// ── AI-Assisted, presented as a scrolling conversation ──
+// Same underlying steps/state/handlers as before (content type -> new-or-
+// existing -> title/pick -> categories -> submit) and the same selection
+// mechanism as Manual — it only ever picks from the existing published
+// question bank, never generates questions. What changes here is purely
+// presentation: instead of one static form per screen, each question is
+// its own chat turn that appears as the previous one is answered, with
+// answered turns collapsing into a compact summary — so it actually reads
+// as a guided conversation instead of "the same manual form again".
+
+function AiBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm">
+        <Bot className="h-4.5 w-4.5" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-indigo-100 bg-indigo-50/60 px-4 py-3.5">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function UserBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AiChatFlow(props: {
   step: AiStep;
   setStep: (s: AiStep) => void;
   contentType: ContentType;
@@ -821,110 +856,177 @@ function AiFlow(props: {
     onCreate
   } = props;
 
-  if (step === "content_type") {
-    return (
-      <div>
-        <StepHeader title="What kind of test?" />
-        <ContentTypePicker
-          contentType={contentType}
-          onSelect={(c) => {
-            setContentType(c);
-            setStep("target");
-          }}
-        />
-      </div>
-    );
-  }
+  // Presentation-only: which sub-question within "target" has been
+  // answered, so new-vs-existing and title/pick appear as two separate
+  // turns instead of one combined screen. Doesn't affect aiStep at all.
+  const [targetChoiceMade, setTargetChoiceMade] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  if (step === "target") {
-    const canContinue = aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0;
-    return (
-      <div>
-        <StepHeader title="Create new, or add to an existing test?" subtitle="Tell us what you want — we'll pick matching questions from the bank on the next step." />
-        <div className={tabStripClass("mb-5")}>
-          <button type="button" className={tabButtonClass(!aiTargetsExisting)} onClick={() => setAiTargetsExisting(false)}>
-            New Test
-          </button>
-          <button type="button" className={tabButtonClass(aiTargetsExisting)} onClick={() => setAiTargetsExisting(true)}>
-            Add to Existing Test
-          </button>
-        </div>
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [step, targetChoiceMade]);
 
-        {aiTargetsExisting ? (
-          <ExistingTestPicker
-            contentType={contentType}
-            examId={examId}
-            selectedTestId={selectedExistingTest?.id ?? null}
-            onSelect={(t) => setSelectedExistingTest(t)}
-          />
-        ) : (
-          <div className="mx-auto max-w-md space-y-3">
-            <input
-              autoFocus
-              type="text"
-              placeholder="e.g. Modern History Deep Dive"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 text-[15px] font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
-            />
-            <textarea
-              placeholder="Description (optional) — what's this test for?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
-            />
-          </div>
-        )}
+  const contentTypeLabel: Record<ContentType, string> = { gk: "General Studies", aptitude: "CSAT / Aptitude", mains: "Mains" };
+  const targetAnswered = step === "categories" || targetChoiceMade;
+  const detailAnswered = step === "categories" && (aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0);
 
-        <button
-          type="button"
-          disabled={!canContinue}
-          onClick={() => setStep("categories")}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Continue <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
-    );
-  }
-
-  // step === 'categories'
   const aiBasketTotal = aiBasket.reduce((sum, item) => sum + item.count, 0);
   const canCreate = aiBasket.length > 0 && (aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0);
   const remainingCapacity = aiTargetsExisting ? Math.max(0, tierCap - (selectedExistingTest?.question_count ?? 0)) : tierCap;
 
   return (
-    <div className="space-y-5">
-      <StepHeader
-        title={aiTargetsExisting ? `Add questions to "${selectedExistingTest?.title ?? "test"}"` : `Pick categories for "${title}"`}
-        subtitle="Tell us what you want — we'll pull matching questions from the bank."
-      />
-      <TierLimitBanner isMains={isMains} isGuest={isGuest} hasPremium={isPremium} freeTestUsage={freeTestUsage} />
+    <div className="mx-auto max-w-2xl space-y-4">
+      <AiBubble>
+        <p className="text-sm font-bold text-slate-900">
+          Hi! I&apos;ll help you put a test together — I&apos;ll ask a few quick questions and pull matching questions
+          from the existing question bank for you.
+        </p>
+      </AiBubble>
 
-      {examId && (
-        <CategoryPicker
-          contentType={contentType}
-          examId={examId}
-          questionFamily={questionFamily}
-          remainingCapacity={remainingCapacity}
-          basket={aiBasket}
-          onBasketChange={setAiBasket}
-        />
+      {/* Turn 1: content type */}
+      <AiBubble>
+        <p className="text-sm font-bold text-slate-900">What would you like this test to cover?</p>
+        {step === "content_type" ? (
+          <div className="mt-3">
+            <ContentTypePicker
+              contentType={contentType}
+              onSelect={(c) => {
+                setContentType(c);
+                setStep("target");
+              }}
+            />
+          </div>
+        ) : (
+          <p className="mt-1 text-xs font-semibold text-indigo-600">Answered</p>
+        )}
+      </AiBubble>
+      {step !== "content_type" && <UserBubble>{contentTypeLabel[contentType]}</UserBubble>}
+
+      {/* Turn 2: new vs existing */}
+      {step !== "content_type" && (
+        <AiBubble>
+          <p className="text-sm font-bold text-slate-900">
+            Got it — {contentTypeLabel[contentType]}. Want to start a brand-new test, or add to one you already have?
+          </p>
+          {!targetAnswered ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAiTargetsExisting(false);
+                  setTargetChoiceMade(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-surface px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-500 hover:bg-indigo-50/40"
+              >
+                Start a new test
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAiTargetsExisting(true);
+                  setTargetChoiceMade(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-surface px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-500 hover:bg-indigo-50/40"
+              >
+                Add to an existing test
+              </button>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs font-semibold text-indigo-600">Answered</p>
+          )}
+        </AiBubble>
+      )}
+      {targetAnswered && <UserBubble>{aiTargetsExisting ? "Add to an existing test" : "Start a new test"}</UserBubble>}
+
+      {/* Turn 3: title/description, or pick an existing test */}
+      {targetAnswered && (
+        <AiBubble>
+          <p className="text-sm font-bold text-slate-900">
+            {aiTargetsExisting ? "Which test should I add questions to?" : "What should I call it? A short description helps too, if you'd like."}
+          </p>
+          {!detailAnswered ? (
+            aiTargetsExisting ? (
+              <div className="mt-3">
+                <ExistingTestPicker
+                  contentType={contentType}
+                  examId={examId}
+                  selectedTestId={selectedExistingTest?.id ?? null}
+                  onSelect={(t) => {
+                    setSelectedExistingTest(t);
+                    setStep("categories");
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="mt-3 space-y-2.5">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="e.g. Modern History Deep Dive"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="h-12 w-full rounded-xl border-2 border-slate-200 bg-surface px-3.5 text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition"
+                />
+                <textarea
+                  placeholder="Description (optional)"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  className="w-full resize-none rounded-xl border-2 border-slate-200 bg-surface px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition"
+                />
+                <button
+                  type="button"
+                  disabled={!title.trim()}
+                  onClick={() => setStep("categories")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Continue <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            )
+          ) : (
+            <p className="mt-1 text-xs font-semibold text-indigo-600">Answered</p>
+          )}
+        </AiBubble>
+      )}
+      {detailAnswered && <UserBubble>{aiTargetsExisting ? selectedExistingTest?.title : title}</UserBubble>}
+
+      {/* Turn 4: categories */}
+      {detailAnswered && (
+        <AiBubble>
+          <p className="text-sm font-bold text-slate-900">
+            Last step — choose the subjects, sources or topics to pull from, and how many questions from each. Tap
+            &quot;I&apos;m done&quot; when you&apos;re ready and I&apos;ll build it.
+          </p>
+          <div className="mt-3 space-y-3">
+            <TierLimitBanner isMains={isMains} isGuest={isGuest} hasPremium={isPremium} freeTestUsage={freeTestUsage} />
+            {examId && (
+              <CategoryPicker
+                contentType={contentType}
+                examId={examId}
+                questionFamily={questionFamily}
+                remainingCapacity={remainingCapacity}
+                basket={aiBasket}
+                onBasketChange={setAiBasket}
+              />
+            )}
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-slate-500">{aiBasketTotal} questions selected</p>
+              <button
+                type="button"
+                disabled={submitting || !canCreate}
+                onClick={onCreate}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-650 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                {submitting ? <Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" /> : <Check className="h-4.5 w-4.5" aria-hidden="true" />}
+                I&apos;m done — build my test
+              </button>
+            </div>
+          </div>
+        </AiBubble>
       )}
 
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-slate-500">{aiBasketTotal} questions selected</p>
-        <button
-          type="button"
-          disabled={submitting || !canCreate}
-          onClick={onCreate}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-slate-850 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-        >
-          {submitting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Wand2 className="h-5 w-5" aria-hidden="true" />}
-          {aiTargetsExisting ? "Add Questions" : "Create & Start Test"}
-        </button>
-      </div>
+      <div ref={bottomRef} />
     </div>
   );
 }
