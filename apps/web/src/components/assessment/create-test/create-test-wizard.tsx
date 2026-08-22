@@ -856,15 +856,63 @@ function AiChatFlow(props: {
     onCreate
   } = props;
 
+  const { token } = useAuth();
+
   // Presentation-only: which sub-question within "target" has been
   // answered, so new-vs-existing and title/pick appear as two separate
   // turns instead of one combined screen. Doesn't affect aiStep at all.
   const [targetChoiceMade, setTargetChoiceMade] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // "Do you have a specific book/source in mind?" — a lightweight search
+  // over the already-published taxonomy (no LLM call, still only ever
+  // selecting from the existing bank) that jumps the category picker
+  // straight to a match instead of making the student hunt for it.
+  const [sourceChoice, setSourceChoice] = useState<"search" | "browse" | null>(null);
+  const [sourceQuery, setSourceQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [matchedNode, setMatchedNode] = useState<{ id: number; name: string } | null>(null);
+  const [noMatch, setNoMatch] = useState(false);
+  const [taxonomyNodes, setTaxonomyNodes] = useState<Array<{ id: number; name: string }>>([]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [step, targetChoiceMade]);
+  }, [step, targetChoiceMade, sourceChoice]);
+
+  useEffect(() => {
+    if (!examId) return;
+    const path = contentType === "mains"
+      ? `/api/v1/assessment/mains/taxonomy-nodes?exam_id=${examId}&limit=1000`
+      : `/api/v1/assessment/taxonomy-nodes?exam_id=${examId}&limit=1000`;
+    authenticatedGet<any[]>(path, token || "")
+      .then((data) => {
+        const scoped = contentType === "mains" ? data || [] : (data || []).filter((n) => n.content_type === contentType);
+        setTaxonomyNodes(scoped.map((n) => ({ id: Number(n.id), name: n.name })));
+      })
+      .catch(() => setTaxonomyNodes([]));
+  }, [examId, contentType, token]);
+
+  function handleSourceSearch() {
+    const q = sourceQuery.trim().toLowerCase();
+    setSubmittedQuery(sourceQuery.trim());
+    if (!q) {
+      setSourceChoice("browse");
+      return;
+    }
+    const match =
+      taxonomyNodes.find((n) => n.name.toLowerCase() === q) ??
+      taxonomyNodes.find((n) => n.name.toLowerCase().startsWith(q)) ??
+      taxonomyNodes.find((n) => n.name.toLowerCase().includes(q)) ??
+      null;
+    if (match) {
+      setMatchedNode(match);
+      setNoMatch(false);
+    } else {
+      setMatchedNode(null);
+      setNoMatch(true);
+    }
+    setSourceChoice("search");
+  }
 
   const contentTypeLabel: Record<ContentType, string> = { gk: "General Studies", aptitude: "CSAT / Aptitude", mains: "Mains" };
   const targetAnswered = step === "categories" || targetChoiceMade;
@@ -991,12 +1039,61 @@ function AiChatFlow(props: {
       )}
       {detailAnswered && <UserBubble>{aiTargetsExisting ? selectedExistingTest?.title : title}</UserBubble>}
 
-      {/* Turn 4: categories */}
+      {/* Turn 4: do you have a specific book/source in mind? */}
       {detailAnswered && (
         <AiBubble>
           <p className="text-sm font-bold text-slate-900">
-            Last step — choose the subjects, sources or topics to pull from, and how many questions from each. Tap
-            &quot;I&apos;m done&quot; when you&apos;re ready and I&apos;ll build it.
+            Do you have a specific book or source in mind for the questions, or would you like me to show you the
+            full list?
+          </p>
+          {sourceChoice === null ? (
+            <div className="mt-3 space-y-2.5">
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Laxmikanth, NCERT, Vision IAS..."
+                  value={sourceQuery}
+                  onChange={(e) => setSourceQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && sourceQuery.trim()) handleSourceSearch();
+                  }}
+                  className="h-11 min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-surface px-3.5 text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition"
+                />
+                <button
+                  type="button"
+                  disabled={!sourceQuery.trim()}
+                  onClick={handleSourceSearch}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Find it
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSourceChoice("browse")}
+                className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-surface px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-500 hover:bg-indigo-50/40"
+              >
+                Just show me everything
+              </button>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs font-semibold text-indigo-600">Answered</p>
+          )}
+        </AiBubble>
+      )}
+      {sourceChoice !== null && (
+        <UserBubble>{sourceChoice === "search" ? submittedQuery : "Show me everything"}</UserBubble>
+      )}
+
+      {/* Turn 5: categories */}
+      {sourceChoice !== null && (
+        <AiBubble>
+          <p className="text-sm font-bold text-slate-900">
+            {sourceChoice === "search" && matchedNode
+              ? `Found "${matchedNode.name}" — here's what's inside. Pick how many questions from each.`
+              : sourceChoice === "search" && noMatch
+                ? `I couldn't find a source called "${submittedQuery}" in the bank — here's the full list instead.`
+                : "Choose the subjects, sources or topics to pull from, and how many questions from each. Tap \"I'm done\" when you're ready and I'll build it."}
           </p>
           <div className="mt-3 space-y-3">
             <TierLimitBanner isMains={isMains} isGuest={isGuest} hasPremium={isPremium} freeTestUsage={freeTestUsage} />
@@ -1008,6 +1105,7 @@ function AiChatFlow(props: {
                 remainingCapacity={remainingCapacity}
                 basket={aiBasket}
                 onBasketChange={setAiBasket}
+                autoFocusNodeId={matchedNode?.id ?? null}
               />
             )}
             <div className="flex items-center justify-between">
