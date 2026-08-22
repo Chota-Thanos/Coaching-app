@@ -13,8 +13,8 @@
 // level (including the previously-skipped "Source" level) using the node's
 // real node_type, and always keeps the raw node id around.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bookmark, BookOpen, ChevronRight, Hash, Layers, Loader2, Minus, Plus, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bookmark, BookOpen, ChevronRight, Hash, Layers, Loader2, Minus, Play, Plus, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
 import { authenticatedGet, useAuth } from "../../auth/auth-context";
 import { resolveMediaUrl } from "../../../lib/api";
 import { SyllabusExclusionsModal } from "./syllabus-exclusions-modal";
@@ -200,7 +200,10 @@ export function CategoryPicker({
   remainingCapacity,
   basket,
   onBasketChange,
-  tourIds
+  tourIds,
+  onQuickStart,
+  quickStarting,
+  autoFocusNodeId
 }: {
   contentType: ContentType;
   examId: number | null;
@@ -214,6 +217,16 @@ export function CategoryPicker({
   /** Tags the first row's "Browse sub-categories"/"Add" buttons with
    * #tour-subject-expand/#tour-add-topic-btn for the guided product tour. */
   tourIds?: boolean;
+  /** When provided, every leaf row shows a single "Start Test" button
+   * instead of the stepper+Add basket controls — an instant single-category
+   * practice attempt, same as the old assessment-home.tsx quick-start,
+   * bypassing the basket entirely. */
+  onQuickStart?: (node: PickerTreeNode, available: number) => void;
+  quickStarting?: number | null;
+  /** Node id to auto-drill the strip/list into on load (e.g. from an
+   * AI-chat text search match) — ignored once the student manually drills
+   * elsewhere. */
+  autoFocusNodeId?: number | null;
 }) {
   const { token } = useAuth();
   const [rawNodes, setRawNodes] = useState<any[]>([]);
@@ -299,6 +312,27 @@ export function CategoryPicker({
   const tree = useMemo(() => buildTree(nodes), [nodes]);
   const nodeById = useMemo(() => flattenIndex(tree), [tree]);
 
+  // Once the tree loads, drill straight to a text-search match (AI-chat's
+  // "do you have a specific book in mind" turn) — walks the node up to the
+  // root via parent_id, then drills down that ancestor chain so the strip
+  // and list land exactly where the match lives.
+  const appliedAutoFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!autoFocusNodeId || appliedAutoFocus.current === autoFocusNodeId) return;
+    const target = nodeById.get(autoFocusNodeId);
+    if (!target) return;
+    const chain: PickerTreeNode[] = [];
+    let current: PickerTreeNode | undefined = target;
+    while (current) {
+      chain.unshift(current);
+      current = current.parent_id != null ? nodeById.get(current.parent_id) : undefined;
+    }
+    appliedAutoFocus.current = autoFocusNodeId;
+    // Drilling into the match's own children when it has any, otherwise
+    // stopping one level up so the match itself shows in the list.
+    setDrillPath(target.children.length > 0 ? chain : chain.slice(0, -1));
+  }, [autoFocusNodeId, nodeById]);
+
   // Unlike assessment-home.tsx's drill browser (which always keeps a subject
   // pre-selected because a separate row of subject tabs sits above it), this
   // picker has no such row — an empty drillPath means "show the top-level
@@ -329,7 +363,10 @@ export function CategoryPicker({
 
   const stripNodes = childrenAtPath(effectiveDrillPath.slice(0, -1));
   const belowNodes = effectiveDrillPath.length === 0
-    ? tree.flatMap((subject) => subject.children) // "All" = every source across every subject
+    // "All" = every source across every subject — a subject with no
+    // sources of its own (questions tagged directly on it) shows up as
+    // itself instead of vanishing from the list entirely.
+    ? tree.flatMap((subject) => (subject.children.length > 0 ? subject.children : [subject]))
     : childrenAtPath(effectiveDrillPath);
 
   const basketTotal = basket.reduce((sum, item) => sum + item.count, 0);
@@ -406,7 +443,7 @@ export function CategoryPicker({
   const activeStripId = effectiveDrillPath[effectiveDrillPath.length - 1]?.id ?? null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className={`grid gap-4 ${onQuickStart ? "" : "lg:grid-cols-[minmax(0,1fr)_20rem]"}`}>
       <div className="space-y-3">
         {/* Horizontal strip for whichever level is currently active — starts
             as subjects; picking something in the list below promotes it
@@ -534,7 +571,23 @@ export function CategoryPicker({
                     </div>
                   </div>
 
-                  {!hasChildren && (
+                  {!hasChildren && onQuickStart ? (
+                    <button
+                      type="button"
+                      disabled={available <= 0 || quickStarting != null}
+                      onClick={() => onQuickStart(node, available)}
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-[9px] bg-slate-900 px-3.5 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      {quickStarting === node.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <>
+                          <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                          Start Test
+                        </>
+                      )}
+                    </button>
+                  ) : !hasChildren ? (
                     <div className="flex shrink-0 items-center gap-2">
                       <div className="inline-flex h-9 items-center justify-between rounded-[9px] border border-slate-200 bg-surface p-1">
                         <button
@@ -568,7 +621,7 @@ export function CategoryPicker({
                         Add
                       </button>
                     </div>
-                  )}
+                  ) : null}
                 </li>
               );
             })}
@@ -576,41 +629,44 @@ export function CategoryPicker({
         )}
       </div>
 
-      {/* Basket */}
-      <div className="h-fit rounded-2xl border border-slate-200 bg-surface p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-slate-900">Selected</h3>
-          <span className="text-xs font-bold text-slate-500">
-            {basketTotal} / {remainingCapacity === Infinity ? "∞" : remainingCapacity}
-          </span>
+      {/* Basket — not shown in quick-start mode, since there's no basket:
+          each leaf row starts its own instant attempt directly. */}
+      {!onQuickStart && (
+        <div className="h-fit rounded-2xl border border-slate-200 bg-surface p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-slate-900">Selected</h3>
+            <span className="text-xs font-bold text-slate-500">
+              {basketTotal} / {remainingCapacity === Infinity ? "∞" : remainingCapacity}
+            </span>
+          </div>
+          {basket.length === 0 ? (
+            <p className="mt-3 text-xs font-semibold text-slate-400">
+              Pick categories on the left and tap Add — they'll show up here.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {basket.map((item) => (
+                <li key={item.node.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-slate-800">{item.node.name}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      {levelLabel(item.node.node_type)} · {item.count} question{item.count === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item.node.name}`}
+                    onClick={() => removeFromBasket(item.node.id)}
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        {basket.length === 0 ? (
-          <p className="mt-3 text-xs font-semibold text-slate-400">
-            Pick categories on the left and tap Add — they'll show up here.
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {basket.map((item) => (
-              <li key={item.node.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-bold text-slate-800">{item.node.name}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                    {levelLabel(item.node.node_type)} · {item.count} question{item.count === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label={`Remove ${item.node.name}`}
-                  onClick={() => removeFromBasket(item.node.id)}
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      )}
 
       {showCustomize && examId && (
         <SyllabusExclusionsModal

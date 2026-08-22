@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Sparkles, ClipboardList, PlayCircle, Loader2 } from 'lucide-react';
 import { AssessmentHomePage } from './assessment-home';
 import { AssessmentDashboard } from './assessment-dashboard';
+import { CategoryBrowseView } from './category-browse-view';
 import { authenticatedGet, useAuth } from '../auth/auth-context';
 import { tabStripClass, tabButtonClass } from '../ui/tabs';
 
@@ -27,11 +28,12 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
   const router = useRouter();
   const searchParams = useSearchParams();
   // Bare visits (nav dropdown links, direct URLs with no ?view=) land on
-  // Performance by default — an overview page, not straight into test
-  // creation. Only an explicit ?view=create (old bookmarks/links) or the
+  // Browse by default — the syllabus with instant single-category practice,
+  // the restyled replacement for assessment-home.tsx's old quick-start
+  // browser. Only an explicit ?view=create (old bookmarks/links) or the
   // "Create Test" tab/CTAs (which link straight at the wizard route) reach
   // the redirect below.
-  const view = (searchParams.get('view') as 'create' | 'performance' | 'revision') ?? 'performance';
+  const view = (searchParams.get('view') as 'browse' | 'create' | 'performance' | 'revision') ?? 'browse';
   const perfTab = (searchParams.get('perf') as 'summary' | 'tests') ?? 'summary';
   const testTemplateIdParam = searchParams.get('test_template_id');
   const wizardContentType = contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk';
@@ -107,6 +109,9 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
       <div className="sticky top-[53px] z-20 border-b border-line/60 bg-surface py-2">
         <div className="mx-auto max-w-7xl px-4">
           <div className={tabStripClass()}>
+            <Link href={`?view=browse`} className={tabButtonClass(view === 'browse')}>
+              Categories
+            </Link>
             <Link href={`/assessment/custom-test/create?content_type=${wizardContentType}`} className={tabButtonClass(view === 'create')}>
               Create Test
             </Link>
@@ -122,6 +127,11 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
 
       {/* Tab content */}
       <div className="tab-content">
+        {view === 'browse' && (
+          <div className="mx-auto max-w-7xl p-4">
+            <CategoryBrowseView contentType={wizardContentType} />
+          </div>
+        )}
         {view === 'create' && (
           <div className="flex min-h-[50vh] items-center justify-center">
             <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
