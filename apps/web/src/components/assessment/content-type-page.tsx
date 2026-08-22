@@ -26,7 +26,12 @@ export function ContentTypePage({ contentType, label, shortLabel }: ContentTypeP
 function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const view = (searchParams.get('view') as 'create' | 'performance' | 'revision') ?? 'create';
+  // Bare visits (nav dropdown links, direct URLs with no ?view=) land on
+  // Performance by default — an overview page, not straight into test
+  // creation. Only an explicit ?view=create (old bookmarks/links) or the
+  // "Create Test" tab/CTAs (which link straight at the wizard route) reach
+  // the redirect below.
+  const view = (searchParams.get('view') as 'create' | 'performance' | 'revision') ?? 'performance';
   const perfTab = (searchParams.get('perf') as 'summary' | 'tests') ?? 'summary';
   const testTemplateIdParam = searchParams.get('test_template_id');
   const wizardContentType = contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk';
