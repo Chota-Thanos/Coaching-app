@@ -388,6 +388,13 @@ export function WorkspaceDashboard() {
         </div>
         <div className="flex gap-3">
           <Link
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic text-white px-4 text-sm font-bold shadow hover:bg-civic/90 transition-all"
+            href="/current-affairs/workspace/create"
+          >
+            <FolderPlus aria-hidden="true" className="h-4 w-4" />
+            Create Notes
+          </Link>
+          <Link
             id="tour-ai-helper-btn"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic text-white px-4 text-sm font-bold shadow hover:bg-civic/90 transition-all"
             href="/current-affairs/workspace/ai-helper"
