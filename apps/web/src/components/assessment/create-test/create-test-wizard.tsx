@@ -33,10 +33,13 @@ import { GuidedTourController } from "../../app/guided-tour-engine";
 import { FullTourSegment } from "../../app/full-tour-segment";
 import { advanceFullTour, isFullTourActiveForPage, PAGE_TOUR_RANGES } from "../../../lib/full-tour";
 import {
+  buildTree,
   CategoryPicker,
+  countDescendants,
   toCategorySelectionSpecs,
   type CategoryBasketItem,
-  type ContentType
+  type ContentType,
+  type PickerTreeNode
 } from "./category-picker";
 import { ExistingTestPicker, type ExistingTest } from "./existing-test-picker";
 import { TierLimitBanner } from "./tier-limit-banner";
@@ -867,13 +870,25 @@ function AiChatFlow(props: {
   // "Do you have a specific book/source in mind?" — a lightweight search
   // over the already-published taxonomy (no LLM call, still only ever
   // selecting from the existing bank) that jumps the category picker
-  // straight to a match instead of making the student hunt for it.
+  // straight to a match instead of making the student hunt for it. A name
+  // match alone isn't enough to just proceed on, though — the same name
+  // ("NCERT", "PYQs"...) often exists under several subjects, and picking
+  // the first hit blind can land on one with zero published questions. So
+  // every match is ranked by how many questions are actually underneath it
+  // and, when more than one is a real contender, the student disambiguates
+  // from a short ranked list instead of getting silently guessed for.
+  type SourceCandidate = { id: number; name: string; parentName: string | null; available: number };
   const [sourceChoice, setSourceChoice] = useState<"search" | "browse" | null>(null);
   const [sourceQuery, setSourceQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
-  const [matchedNode, setMatchedNode] = useState<{ id: number; name: string } | null>(null);
+  const [candidates, setCandidates] = useState<SourceCandidate[]>([]);
+  const [matchedNode, setMatchedNode] = useState<SourceCandidate | null>(null);
   const [noMatch, setNoMatch] = useState(false);
-  const [taxonomyNodes, setTaxonomyNodes] = useState<Array<{ id: number; name: string }>>([]);
+  const [taxonomyLoaded, setTaxonomyLoaded] = useState(false);
+  const taxonomyTreeRef = useRef<PickerTreeNode[]>([]);
+  const taxonomyByIdRef = useRef<Map<number, PickerTreeNode>>(new Map());
+  const taxonomyParentNameRef = useRef<Map<number, string | null>>(new Map());
+  const taxonomyCountsRef = useRef<Record<number, number>>({});
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -881,16 +896,37 @@ function AiChatFlow(props: {
 
   useEffect(() => {
     if (!examId) return;
-    const path = contentType === "mains"
+    const nodesPath = contentType === "mains"
       ? `/api/v1/assessment/mains/taxonomy-nodes?exam_id=${examId}&limit=1000`
       : `/api/v1/assessment/taxonomy-nodes?exam_id=${examId}&limit=1000`;
-    authenticatedGet<any[]>(path, token || "")
-      .then((data) => {
-        const scoped = contentType === "mains" ? data || [] : (data || []).filter((n) => n.content_type === contentType);
-        setTaxonomyNodes(scoped.map((n) => ({ id: Number(n.id), name: n.name })));
+    const countsPath = `/api/v1/assessment/question-counts?exam_id=${examId}&question_family=${questionFamily}`;
+    setTaxonomyLoaded(false);
+    Promise.all([
+      authenticatedGet<any[]>(nodesPath, token || ""),
+      authenticatedGet<any[]>(countsPath, token || "")
+    ])
+      .then(([nodesData, countsData]) => {
+        const scoped = contentType === "mains" ? nodesData || [] : (nodesData || []).filter((n) => n.content_type === contentType);
+        const tree = buildTree(scoped);
+        const byId = new Map<number, PickerTreeNode>();
+        const parentName = new Map<number, string | null>();
+        const counts = Object.fromEntries((countsData || []).map((r: any) => [Number(r.node_id), Number(r.question_count)]));
+        const walk = (nodes: PickerTreeNode[], parent: PickerTreeNode | null) => {
+          nodes.forEach((n) => {
+            byId.set(n.id, n);
+            parentName.set(n.id, parent?.name ?? null);
+            walk(n.children, n);
+          });
+        };
+        walk(tree, null);
+        taxonomyTreeRef.current = tree;
+        taxonomyByIdRef.current = byId;
+        taxonomyParentNameRef.current = parentName;
+        taxonomyCountsRef.current = counts;
+        setTaxonomyLoaded(true);
       })
-      .catch(() => setTaxonomyNodes([]));
-  }, [examId, contentType, token]);
+      .catch(() => setTaxonomyLoaded(false));
+  }, [examId, contentType, questionFamily, token]);
 
   function handleSourceSearch() {
     const q = sourceQuery.trim().toLowerCase();
@@ -899,24 +935,52 @@ function AiChatFlow(props: {
       setSourceChoice("browse");
       return;
     }
-    const match =
-      taxonomyNodes.find((n) => n.name.toLowerCase() === q) ??
-      taxonomyNodes.find((n) => n.name.toLowerCase().startsWith(q)) ??
-      taxonomyNodes.find((n) => n.name.toLowerCase().includes(q)) ??
-      null;
-    if (match) {
-      setMatchedNode(match);
-      setNoMatch(false);
-    } else {
+    const counts = taxonomyCountsRef.current;
+    const allNodes = Array.from(taxonomyByIdRef.current.values());
+    const rank = (n: PickerTreeNode): 0 | 1 | 2 | null => {
+      const name = n.name.toLowerCase();
+      if (name === q) return 0;
+      if (name.startsWith(q)) return 1;
+      if (name.includes(q)) return 2;
+      return null;
+    };
+    const ranked = allNodes
+      .map((n) => ({ node: n, tier: rank(n), available: countDescendants(n, counts) }))
+      .filter((entry): entry is { node: PickerTreeNode; tier: 0 | 1 | 2; available: number } => entry.tier !== null)
+      .sort((a, b) => (a.tier !== b.tier ? a.tier - b.tier : b.available - a.available))
+      .slice(0, 5)
+      .map((entry) => ({
+        id: entry.node.id,
+        name: entry.node.name,
+        parentName: taxonomyParentNameRef.current.get(entry.node.id) ?? null,
+        available: entry.available
+      }));
+
+    setCandidates(ranked);
+    if (ranked.length === 0) {
       setMatchedNode(null);
       setNoMatch(true);
+      setSourceChoice("search");
+    } else if (ranked.length === 1) {
+      setMatchedNode(ranked[0]!);
+      setNoMatch(false);
+      setSourceChoice("search");
+    } else {
+      // Multiple plausible matches — let the student pick rather than
+      // silently guessing (and possibly landing on an empty one).
+      setMatchedNode(null);
+      setNoMatch(false);
+      setSourceChoice("search");
     }
-    setSourceChoice("search");
   }
 
   const contentTypeLabel: Record<ContentType, string> = { gk: "General Studies", aptitude: "CSAT / Aptitude", mains: "Mains" };
   const targetAnswered = step === "categories" || targetChoiceMade;
   const detailAnswered = step === "categories" && (aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0);
+  // "search" isn't resolved until a specific candidate is chosen (or the
+  // search comes up empty) — with 2+ plausible matches the turn stays open
+  // on the disambiguation list rather than silently guessing one.
+  const sourceResolved = sourceChoice === "browse" || (sourceChoice === "search" && (matchedNode !== null || noMatch));
 
   const aiBasketTotal = aiBasket.reduce((sum, item) => sum + item.count, 0);
   const canCreate = aiBasket.length > 0 && (aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0);
@@ -1046,7 +1110,7 @@ function AiChatFlow(props: {
             Do you have a specific book or source in mind for the questions, or would you like me to show you the
             full list?
           </p>
-          {sourceChoice === null ? (
+          {!sourceResolved ? (
             <div className="mt-3 space-y-2.5">
               <div className="flex flex-wrap gap-2">
                 <input
@@ -1061,13 +1125,45 @@ function AiChatFlow(props: {
                 />
                 <button
                   type="button"
-                  disabled={!sourceQuery.trim()}
+                  disabled={!sourceQuery.trim() || !taxonomyLoaded}
                   onClick={handleSourceSearch}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Find it
                 </button>
               </div>
+
+              {sourceChoice === "search" && candidates.length > 1 && !matchedNode && !noMatch && (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                  <p className="text-xs font-bold text-slate-700">
+                    A few sources match &quot;{submittedQuery}&quot; — which one did you mean?
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {candidates.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setMatchedNode(c)}
+                        disabled={c.available <= 0}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-surface px-3 py-2 text-left transition hover:border-indigo-500 hover:bg-indigo-50/40 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <span className="min-w-0 truncate text-xs font-bold text-slate-900">
+                          {c.name}
+                          {c.parentName && <span className="font-medium text-slate-400"> · {c.parentName}</span>}
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-[800] ${
+                            c.available > 0 ? "border-indigo-100 bg-indigo-50 text-indigo-700" : "border-rose-100 bg-rose-50 text-rose-700"
+                          }`}
+                        >
+                          {c.available} available
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => setSourceChoice("browse")}
@@ -1081,16 +1177,18 @@ function AiChatFlow(props: {
           )}
         </AiBubble>
       )}
-      {sourceChoice !== null && (
-        <UserBubble>{sourceChoice === "search" ? submittedQuery : "Show me everything"}</UserBubble>
+      {sourceResolved && (
+        <UserBubble>{sourceChoice === "search" ? (matchedNode?.name ?? submittedQuery) : "Show me everything"}</UserBubble>
       )}
 
       {/* Turn 5: categories */}
-      {sourceChoice !== null && (
+      {sourceResolved && (
         <AiBubble>
           <p className="text-sm font-bold text-slate-900">
             {sourceChoice === "search" && matchedNode
-              ? `Found "${matchedNode.name}" — here's what's inside. Pick how many questions from each.`
+              ? matchedNode.available > 0
+                ? `Found "${matchedNode.name}"${matchedNode.parentName ? ` under ${matchedNode.parentName}` : ""} — it has ${matchedNode.available} question${matchedNode.available === 1 ? "" : "s"} available. Pick how many from each below.`
+                : `I found "${matchedNode.name}", but there aren't any published questions there yet — here's the full list instead.`
               : sourceChoice === "search" && noMatch
                 ? `I couldn't find a source called "${submittedQuery}" in the bank — here's the full list instead.`
                 : "Choose the subjects, sources or topics to pull from, and how many questions from each. Tap \"I'm done\" when you're ready and I'll build it."}
@@ -1105,7 +1203,7 @@ function AiChatFlow(props: {
                 remainingCapacity={remainingCapacity}
                 basket={aiBasket}
                 onBasketChange={setAiBasket}
-                autoFocusNodeId={matchedNode?.id ?? null}
+                autoFocusNodeId={matchedNode && matchedNode.available > 0 ? matchedNode.id : null}
               />
             )}
             <div className="flex items-center justify-between">

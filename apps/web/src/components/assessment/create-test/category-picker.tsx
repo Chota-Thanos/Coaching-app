@@ -62,7 +62,7 @@ function levelLabel(nodeType: string): string {
   return NODE_TYPE_LABELS[nodeType] ?? nodeType.replace(/_/g, " ");
 }
 
-function buildTree(nodes: any[]): PickerTreeNode[] {
+export function buildTree(nodes: any[]): PickerTreeNode[] {
   const nodeMap = new Map<number, PickerTreeNode>();
   const roots: PickerTreeNode[] = [];
 
@@ -93,7 +93,7 @@ function buildTree(nodes: any[]): PickerTreeNode[] {
   return roots;
 }
 
-function countDescendants(node: PickerTreeNode, counts: Record<number, number>): number {
+export function countDescendants(node: PickerTreeNode, counts: Record<number, number>): number {
   if (node.children.length === 0) return counts[node.id] ?? 0;
   return node.children.reduce((sum, child) => sum + countDescendants(child, counts), counts[node.id] ?? 0);
 }
@@ -354,6 +354,7 @@ export function CategoryPicker({
   // root via parent_id, then drills down that ancestor chain so the strip
   // and list land exactly where the match lives.
   const appliedAutoFocus = useRef<number | null>(null);
+  const stripScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!autoFocusNodeId || appliedAutoFocus.current === autoFocusNodeId) return;
     const target = nodeById.get(autoFocusNodeId);
@@ -367,7 +368,16 @@ export function CategoryPicker({
     appliedAutoFocus.current = autoFocusNodeId;
     // Drilling into the match's own children when it has any, otherwise
     // stopping one level up so the match itself shows in the list.
-    setDrillPath(target.children.length > 0 ? chain : chain.slice(0, -1));
+    const nextDrillPath = target.children.length > 0 ? chain : chain.slice(0, -1);
+    setDrillPath(nextDrillPath);
+    // The strip can hold many tiles and scrolls horizontally — without this
+    // the newly-active tile stays off-screen with no visual confirmation of
+    // what matched.
+    const activeStripNodeId = nextDrillPath.length > 0 ? nextDrillPath[nextDrillPath.length - 1]!.id : "root";
+    requestAnimationFrame(() => {
+      const active = stripScrollRef.current?.querySelector(`[data-strip-node="${activeStripNodeId}"]`);
+      active?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    });
   }, [autoFocusNodeId, nodeById]);
 
   // Unlike assessment-home.tsx's drill browser (which always keeps a subject
@@ -490,9 +500,10 @@ export function CategoryPicker({
           {/* Wraps into as many rows as needed below `sm` so every tile on a
               phone screen is visible without a scroll a touch user might
               never discover; wide screens keep the single scrollable row. */}
-          <div className="flex flex-1 flex-wrap gap-2 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
+          <div ref={stripScrollRef} className="flex flex-1 flex-wrap gap-2 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
             <button
               type="button"
+              data-strip-node="root"
               onClick={() => setDrillPath([])}
               className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
                 effectiveDrillPath.length === 0
@@ -507,6 +518,7 @@ export function CategoryPicker({
               <button
                 key={node.id}
                 type="button"
+                data-strip-node={node.id}
                 onClick={() => setDrillPath([...effectiveDrillPath.slice(0, -1), node])}
                 className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
                   activeStripId === node.id
