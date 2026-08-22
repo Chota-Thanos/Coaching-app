@@ -1646,7 +1646,7 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { href: "/assessment/gk", icon: Target, title: "Take a test", desc: "Build a custom GK, CSAT, or Mains test from any topic.", cta: "Start a GK test" },
+                { href: "/assessment/custom-test/create?content_type=gk", icon: Target, title: "Take a test", desc: "Build a custom GK, CSAT, or Mains test from any topic.", cta: "Start a GK test" },
                 { href: "/study-plans", icon: Layers, title: "Follow a study plan", desc: "Structured week-by-week prep with tests included.", cta: "Browse plans" },
                 { href: "/assessment/mains-hub", icon: FileText, title: "Get an answer evaluated", desc: "Expert feedback on your Mains answers.", cta: "Submit an answer" },
                 { href: "/current-affairs/daily-news", icon: Newspaper, title: "Read current affairs", desc: "Daily news, editorials, and PYQs, organized into notes.", cta: "Read today's news" },
@@ -1871,7 +1871,7 @@ export default function HomePage() {
                       <BrainCircuit className="h-8 w-8 text-slate-200" />
                       <p className="text-sm font-bold text-slate-600">No weak areas identified</p>
                       <p className="text-xs text-slate-400">Take 1+ tests to detect problem topics</p>
-                      <Link href="/assessment/gk" className="text-sm font-bold text-civic bg-civic/10 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors">
+                      <Link href="/assessment/custom-test/create?content_type=gk" className="text-sm font-bold text-civic bg-civic/10 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-colors">
                         Take a test
                       </Link>
                     </div>

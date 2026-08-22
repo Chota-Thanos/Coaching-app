@@ -293,7 +293,7 @@ function CustomTestsListInner() {
                     ) : (
                       <>
                         <Link
-                          href={`/assessment/${contentParam === "aptitude" ? "csat" : contentParam}?test_template_id=${test.id}`}
+                          href={`/assessment/custom-test/create?mode=manual&tab=existing&content_type=${contentParam}&test_template_id=${test.id}`}
                           className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
                         >
                           <PlusCircle className="h-3.5 w-3.5 text-slate-500" />

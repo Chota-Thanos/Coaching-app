@@ -2,8 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Plus, Sparkles, ClipboardList, PlayCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus, Sparkles, ClipboardList, PlayCircle, Loader2 } from 'lucide-react';
 import { AssessmentHomePage } from './assessment-home';
 import { AssessmentDashboard } from './assessment-dashboard';
 import { authenticatedGet, useAuth } from '../auth/auth-context';
@@ -24,9 +24,24 @@ export function ContentTypePage({ contentType, label, shortLabel }: ContentTypeP
 }
 
 function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePageProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const view = (searchParams.get('view') as 'create' | 'performance' | 'revision') ?? 'create';
   const perfTab = (searchParams.get('perf') as 'summary' | 'tests') ?? 'summary';
+  const testTemplateIdParam = searchParams.get('test_template_id');
+  const wizardContentType = contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk';
+
+  // The "Create Test" tab used to render an older, separate cart-builder here
+  // (AssessmentHomePage) with its own guided tour. That builder is superseded
+  // by the step-by-step wizard everywhere else in the app, so this view now
+  // just forwards into it instead of showing a second, inconsistent flow.
+  useEffect(() => {
+    if (view !== 'create') return;
+    const wizardUrl = testTemplateIdParam
+      ? `/assessment/custom-test/create?mode=manual&tab=existing&content_type=${wizardContentType}&test_template_id=${testTemplateIdParam}`
+      : `/assessment/custom-test/create?content_type=${wizardContentType}`;
+    router.replace(wizardUrl);
+  }, [view, wizardContentType, testTemplateIdParam, router]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -87,7 +102,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
       <div className="sticky top-[53px] z-20 border-b border-line/60 bg-surface py-2">
         <div className="mx-auto max-w-7xl px-4">
           <div className={tabStripClass()}>
-            <Link href={`?view=create`} className={tabButtonClass(view === 'create')}>
+            <Link href={`/assessment/custom-test/create?content_type=${wizardContentType}`} className={tabButtonClass(view === 'create')}>
               Create Test
             </Link>
             <Link href={`?view=performance&perf=${perfTab}`} className={tabButtonClass(view === 'performance')}>
@@ -103,7 +118,12 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
       {/* Tab content */}
       <div className="tab-content">
         {view === 'create' && (
-          <AssessmentHomePage contentTypeFilter={contentType} />
+          <div className="flex min-h-[50vh] items-center justify-center">
+            <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
+              <Loader2 className="h-5 w-5 animate-spin text-indigo-600" aria-hidden="true" />
+              Taking you to Create Test…
+            </div>
+          </div>
         )}
         {view === 'revision' && (
           <AssessmentHomePage contentTypeFilter="revision" revisionContentTypeFilter={contentType} />
