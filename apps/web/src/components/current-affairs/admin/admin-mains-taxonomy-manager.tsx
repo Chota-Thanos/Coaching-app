@@ -113,37 +113,7 @@ export function AdminMainsTaxonomyManager() {
     void loadNodes();
   }, [loadNodes]);
 
-  // Calculate depths to control image availability (levels 1-3 allowed: paper, subject_area, theme)
-  const nodeDepthMap = useMemo(() => {
-    const byId = new Map<number, MainsTaxonomyNode>();
-    nodes.forEach((node) => byId.set(node.id, node));
-    const cache = new Map<number, number>();
-
-    const getDepth = (node: MainsTaxonomyNode): number => {
-      const cached = cache.get(node.id);
-      if (cached !== undefined) return cached;
-      if (!node.parent_id) {
-        cache.set(node.id, 0);
-        return 0;
-      }
-      const parent = byId.get(Number(node.parent_id));
-      const depth = parent ? getDepth(parent) + 1 : 0;
-      cache.set(node.id, depth);
-      return depth;
-    };
-
-    nodes.forEach((node) => getDepth(node));
-    return cache;
-  }, [nodes]);
-
-  const formDepth = useMemo(() => {
-    if (form.parentId) {
-      return (nodeDepthMap.get(Number(form.parentId)) ?? 0) + 1;
-    }
-    return 0;
-  }, [form.parentId, nodeDepthMap]);
-
-  const canUseImage = formDepth <= 2;
+  const canUseImage = true;
 
   const parentOptions = useMemo(() => {
     return nodes.filter(
@@ -221,7 +191,7 @@ export function AdminMainsTaxonomyManager() {
       name: form.name,
       slug: form.slug || makeSlug(form.name),
       description: form.description || undefined,
-      image_url: canUseImage && form.imageUrl.trim() ? form.imageUrl.trim() : null,
+      image_url: form.imageUrl.trim() ? form.imageUrl.trim() : null,
       display_order: Number(form.displayOrder || 0),
       is_active: form.isActive
     };
@@ -322,12 +292,11 @@ export function AdminMainsTaxonomyManager() {
           ) : (
             nodes.map((node) => {
               const parent = nodes.find((item) => item.id === node.parent_id);
-              const nodeDepth = nodeDepthMap.get(node.id) ?? 0;
               return (
                 <article className="rounded-lg border border-line bg-surface p-4 shadow-sm" key={node.id}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-3 min-w-0">
-                      {nodeDepth <= 2 && node.image_url && (
+                      {node.image_url && (
                         <img
                           alt=""
                           className="h-12 w-12 flex-shrink-0 rounded-full border border-line object-cover"
@@ -458,56 +427,50 @@ export function AdminMainsTaxonomyManager() {
             />
           </label>
 
-          {canUseImage ? (
-            <div className="grid gap-2 text-sm font-bold text-ink">
-              Category Image
-              <div className="grid gap-3 sm:grid-cols-[112px,1fr]">
-                <div className="h-28 w-28 overflow-hidden rounded-full border border-line bg-surface">
-                  {form.imageUrl ? (
-                    <img
-                      alt={form.name || "Category image preview"}
-                      className="h-full w-full object-cover"
-                      src={resolveMediaUrl(form.imageUrl) ?? undefined}
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center px-3 text-center text-[11px] font-semibold text-ink/45">
-                      No image
-                    </div>
-                  )}
-                </div>
-                <div className="grid gap-2">
-                  <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-civic bg-civic/5 px-3 text-sm font-bold text-civic transition hover:bg-civic/10">
-                    <UploadCloud className="h-4 w-4" />
-                    {uploadingImage ? "Uploading..." : "Upload Image"}
-                    <input
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="hidden"
-                      disabled={uploadingImage}
-                      onChange={(e) => {
-                        void handleCategoryImageUpload(e.currentTarget.files?.[0] ?? null);
-                        e.currentTarget.value = "";
-                      }}
-                      type="file"
-                    />
-                  </label>
-                  <input
-                    className="h-11 rounded-md border border-line px-3 text-base font-normal outline-none focus:border-civic"
-                    onChange={(e) => update("imageUrl", e.target.value)}
-                    type="text"
-                    value={form.imageUrl}
-                    placeholder="Uploaded URL or external image URL"
+          <div className="grid gap-2 text-sm font-bold text-ink">
+            Category Image
+            <div className="grid gap-3 sm:grid-cols-[112px,1fr]">
+              <div className="h-28 w-28 overflow-hidden rounded-full border border-line bg-surface">
+                {form.imageUrl ? (
+                  <img
+                    alt={form.name || "Category image preview"}
+                    className="h-full w-full object-cover"
+                    src={resolveMediaUrl(form.imageUrl) ?? undefined}
                   />
-                </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center px-3 text-center text-[11px] font-semibold text-ink/45">
+                    No image
+                  </div>
+                )}
               </div>
-              <span className="text-[11px] font-normal text-ink/50">
-                Image is available for levels 1-3. This category is level {formDepth + 1}.
-              </span>
+              <div className="grid gap-2">
+                <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-civic bg-civic/5 px-3 text-sm font-bold text-civic transition hover:bg-civic/10">
+                  <UploadCloud className="h-4 w-4" />
+                  {uploadingImage ? "Uploading..." : "Upload Image"}
+                  <input
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onChange={(e) => {
+                      void handleCategoryImageUpload(e.currentTarget.files?.[0] ?? null);
+                      e.currentTarget.value = "";
+                    }}
+                    type="file"
+                  />
+                </label>
+                <input
+                  className="h-11 rounded-md border border-line px-3 text-base font-normal outline-none focus:border-civic"
+                  onChange={(e) => update("imageUrl", e.target.value)}
+                  type="text"
+                  value={form.imageUrl}
+                  placeholder="Uploaded URL or external image URL"
+                />
+              </div>
             </div>
-          ) : (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-              Image option is limited to the first 3 category levels. This category is level {formDepth + 1}.
-            </div>
-          )}
+            <span className="text-[11px] font-normal text-ink/50">
+              Available for every category level, including subtopics.
+            </span>
+          </div>
 
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
             <label className="grid gap-1 text-sm font-bold text-ink">

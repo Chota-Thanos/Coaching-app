@@ -353,36 +353,6 @@ export function AdminAssessmentTaxonomyManager() {
     return map;
   }, [currentNodes]);
 
-  const nodeDepthMap = useMemo(() => {
-    const byId = new Map<number, TaxonomyNode>();
-    currentNodes.forEach((node) => byId.set(node.id, node));
-    const cache = new Map<number, number>();
-
-    const getDepth = (node: TaxonomyNode): number => {
-      const cached = cache.get(node.id);
-      if (cached !== undefined) return cached;
-      if (!node.parent_id) {
-        cache.set(node.id, 0);
-        return 0;
-      }
-      const parent = byId.get(Number(node.parent_id));
-      const depth = parent ? getDepth(parent) + 1 : 0;
-      cache.set(node.id, depth);
-      return depth;
-    };
-
-    currentNodes.forEach((node) => getDepth(node));
-    return cache;
-  }, [currentNodes]);
-
-  const formDepth = useMemo(() => {
-    if (form.parentId) {
-      return (nodeDepthMap.get(Number(form.parentId)) ?? 0) + 1;
-    }
-    return 0;
-  }, [form.parentId, nodeDepthMap]);
-
-  const canUseImage = formDepth <= 2;
 
   // Flat list but ordered hierarchically
   const orderedNodes = useMemo(() => {
@@ -511,7 +481,7 @@ export function AdminAssessmentTaxonomyManager() {
   };
 
   const handleCategoryImageUpload = async (file: File | null): Promise<void> => {
-    if (!file || !token || !canUseImage) return;
+    if (!file || !token) return;
 
     setUploadingImage(true);
     setMessage(null);
@@ -614,7 +584,7 @@ export function AdminAssessmentTaxonomyManager() {
       exam_id: Number(selectedExamId),
       parent_id: form.parentId ? Number(form.parentId) : null,
       node_type: form.nodeType,
-      image_url: canUseImage && form.imageUrl.trim() ? form.imageUrl.trim() : null,
+      image_url: form.imageUrl.trim() ? form.imageUrl.trim() : null,
       display_order: Number(form.displayOrder || 0),
       is_active: form.isActive
     };
@@ -1238,7 +1208,7 @@ export function AdminAssessmentTaxonomyManager() {
                       ))}
                       <div className="flex items-center gap-2 min-w-0">
                         <ChevronRight className={`h-4 w-4 text-ink/40 flex-shrink-0 ${depth > 0 ? "scale-90" : ""}`} />
-                        {depth <= 2 && node.image_url && (
+                        {node.image_url && (
                           <img
                             alt=""
                             className="h-10 w-10 flex-shrink-0 rounded-full border border-line object-cover"
@@ -1435,7 +1405,7 @@ export function AdminAssessmentTaxonomyManager() {
                 />
               </label>
 
-              {canUseImage && !bulkNamesMode ? (
+              {!bulkNamesMode && (
                 <div className="grid gap-2 text-sm font-bold text-ink">
                   Category Image
                   <div className="grid gap-3 sm:grid-cols-[112px,1fr]">
@@ -1477,14 +1447,10 @@ export function AdminAssessmentTaxonomyManager() {
                     </div>
                   </div>
                   <span className="text-[11px] font-normal text-ink/50">
-                    Image is available for levels 1-3. This category is level {formDepth + 1}.
+                    Available for every category level, including subtopics.
                   </span>
                 </div>
-              ) : !bulkNamesMode ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                  Image option is limited to the first 3 category levels. This category is level {formDepth + 1}.
-                </div>
-              ) : null}
+              )}
 
               <div className="grid gap-3 grid-cols-2">
                 <label className="grid gap-1 text-sm font-bold text-ink">
