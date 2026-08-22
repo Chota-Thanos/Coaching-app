@@ -412,8 +412,11 @@ export function CategoryPicker({
             as subjects; picking something in the list below promotes it
             (and its siblings) up into this strip. "All" always resets to
             the top. */}
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+        <div className="flex items-start gap-2">
+          {/* Wraps into as many rows as needed below `sm` so every tile on a
+              phone screen is visible without a scroll a touch user might
+              never discover; wide screens keep the single scrollable row. */}
+          <div className="flex flex-1 flex-wrap gap-2 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
             <button
               type="button"
               onClick={() => setDrillPath([])}
