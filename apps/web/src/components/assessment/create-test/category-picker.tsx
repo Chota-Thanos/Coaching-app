@@ -315,9 +315,22 @@ export function CategoryPicker({
     return validPath;
   }, [drillPath, tree]);
 
-  const currentLevelNodes = effectiveDrillPath.length > 0
-    ? effectiveDrillPath[effectiveDrillPath.length - 1]!.children
-    : tree;
+  // Two-tier view: the horizontal strip always shows the level the LAST
+  // drilled node was picked FROM (subjects → once a subject is picked,
+  // its sources → once a source is picked, its topics...), and the list
+  // below always shows that node's own children, one level deeper. So
+  // picking something in the list below promotes it into the strip,
+  // replacing whatever was there — never duplicating the same level in
+  // both places.
+  function childrenAtPath(path: PickerTreeNode[]): PickerTreeNode[] {
+    if (path.length === 0) return tree;
+    return path[path.length - 1]!.children;
+  }
+
+  const stripNodes = childrenAtPath(effectiveDrillPath.slice(0, -1));
+  const belowNodes = effectiveDrillPath.length === 0
+    ? tree.flatMap((subject) => subject.children) // "All" = every source across every subject
+    : childrenAtPath(effectiveDrillPath);
 
   const basketTotal = basket.reduce((sum, item) => sum + item.count, 0);
   const remaining = Math.max(0, remainingCapacity - basketTotal);
@@ -390,21 +403,22 @@ export function CategoryPicker({
     );
   }
 
-  const activeTopLevelId = effectiveDrillPath[0]?.id ?? null;
+  const activeStripId = effectiveDrillPath[effectiveDrillPath.length - 1]?.id ?? null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="space-y-3">
-        {/* Horizontal top-level subject strip — quick-jump to any subject
-            without drilling in one level at a time; "All" resets to the
-            flat top-level list. */}
+        {/* Horizontal strip for whichever level is currently active — starts
+            as subjects; picking something in the list below promotes it
+            (and its siblings) up into this strip. "All" always resets to
+            the top. */}
         <div className="flex items-center gap-2">
           <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={() => setDrillPath([])}
               className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
-                activeTopLevelId === null
+                effectiveDrillPath.length === 0
                   ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                   : "border-slate-200 bg-surface text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
               }`}
@@ -412,13 +426,13 @@ export function CategoryPicker({
               <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-slate-400 to-slate-600 text-base">🗂️</span>
               <span className="text-[11px] font-black">All</span>
             </button>
-            {tree.map((node) => (
+            {stripNodes.map((node) => (
               <button
                 key={node.id}
                 type="button"
-                onClick={() => setDrillPath([node])}
+                onClick={() => setDrillPath([...effectiveDrillPath.slice(0, -1), node])}
                 className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
-                  activeTopLevelId === node.id
+                  activeStripId === node.id
                     ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                     : "border-slate-200 bg-surface text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
                 }`}
@@ -465,97 +479,97 @@ export function CategoryPicker({
           ))}
         </div>
 
-        {currentLevelNodes.length === 0 ? (
+        {belowNodes.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-surface p-6 text-center text-sm font-semibold text-slate-500">
             No sub-categories here.
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {currentLevelNodes.map((node, nodeIdx) => {
+          <ul className="space-y-2">
+            {belowNodes.map((node, nodeIdx) => {
               const hasChildren = node.children.length > 0;
               const available = availableFor(node.id);
               const maxAddable = maxAddableFor(node.id);
               const pending = getPendingCount(node.id);
               const inBasket = basketByNodeId.get(node.id) ?? 0;
-              const isFirstExpandable = tourIds && hasChildren && currentLevelNodes.slice(0, nodeIdx).every((n) => n.children.length === 0);
+              const isFirstExpandable = tourIds && hasChildren && belowNodes.slice(0, nodeIdx).every((n) => n.children.length === 0);
 
               return (
-                <div
+                <li
                   key={node.id}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-3 sm:p-3.5"
                 >
-                  <NodeArt node={node} className="aspect-square w-full" iconClassName="h-10 w-10 text-white/90" />
+                  <NodeArt node={node} className="h-14 w-14 shrink-0 rounded-xl" iconClassName="h-6 w-6 text-white/90" />
 
-                  <div className="flex flex-1 flex-col gap-2 p-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-[9px] font-[800] uppercase tracking-wider text-indigo-700">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-black text-slate-900">{node.name}</p>
+                      <span className="shrink-0 rounded-full border border-indigo-100 bg-indigo-50/50 px-2 py-0.5 text-[10px] font-[800] uppercase tracking-wider text-indigo-700">
                         {levelLabel(node.node_type)}
                       </span>
                       {inBasket > 0 && (
-                        <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[9px] font-[800] text-emerald-700">
+                        <span className="shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-[800] text-emerald-700">
                           {inBasket} added
                         </span>
                       )}
                     </div>
-                    <p className="line-clamp-2 text-sm font-black leading-snug text-slate-900">{node.name}</p>
-                    <span
-                      className={`w-fit rounded-full border px-2 py-0.5 text-[10px] font-[800] ${
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-slate-500">
+                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-[800] ${
                         available > 0 ? "border-indigo-100 bg-indigo-50 text-indigo-700" : "border-rose-100 bg-rose-50 text-rose-700"
-                      }`}
-                    >
-                      {loadingCounts ? "Checking…" : `${available} available`}
-                    </span>
-
-                    {hasChildren ? (
-                      <button
-                        id={isFirstExpandable ? "tour-subject-expand" : undefined}
-                        type="button"
-                        onClick={() => setDrillPath([...effectiveDrillPath, node])}
-                        className="mt-auto inline-flex items-center justify-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-[800] text-indigo-700 transition hover:bg-indigo-100"
-                      >
-                        Browse
-                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    ) : (
-                      <div className="mt-auto flex items-center gap-1.5">
-                        <div className="inline-flex h-9 flex-1 items-center justify-between rounded-[9px] border border-slate-200 bg-surface p-1">
-                          <button
-                            type="button"
-                            aria-label={`Decrease questions for ${node.name}`}
-                            disabled={maxAddable <= 0 || pending <= 1}
-                            onClick={() => setPendingCount(node.id, pending - 1)}
-                            className="grid h-6 w-6 place-items-center rounded-md bg-slate-100 text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <Minus className="h-3 w-3" aria-hidden="true" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-black text-slate-900">{maxAddable <= 0 ? "-" : pending}</span>
-                          <button
-                            type="button"
-                            aria-label={`Increase questions for ${node.name}`}
-                            disabled={maxAddable <= 0 || pending >= maxAddable}
-                            onClick={() => setPendingCount(node.id, pending + 1)}
-                            className="grid h-6 w-6 place-items-center rounded-md bg-slate-100 text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <Plus className="h-3 w-3" aria-hidden="true" />
-                          </button>
-                        </div>
+                      }`}>
+                        {loadingCounts ? "Checking…" : `${available} available`}
+                      </span>
+                      {hasChildren && (
                         <button
-                          id={tourIds && nodeIdx === 0 ? "tour-add-topic-btn" : undefined}
+                          id={isFirstExpandable ? "tour-subject-expand" : undefined}
                           type="button"
-                          disabled={maxAddable <= 0}
-                          onClick={() => addToBasket(node)}
-                          className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-[9px] bg-slate-900 px-2.5 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                          onClick={() => setDrillPath([...effectiveDrillPath, node])}
+                          className="inline-flex items-center gap-1 font-[800] text-indigo-650 hover:text-indigo-850 transition"
+                        >
+                          Browse sub-categories →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {!hasChildren && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="inline-flex h-9 items-center justify-between rounded-[9px] border border-slate-200 bg-surface p-1">
+                        <button
+                          type="button"
+                          aria-label={`Decrease questions for ${node.name}`}
+                          disabled={maxAddable <= 0 || pending <= 1}
+                          onClick={() => setPendingCount(node.id, pending - 1)}
+                          className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-black text-slate-900">{maxAddable <= 0 ? "-" : pending}</span>
+                        <button
+                          type="button"
+                          aria-label={`Increase questions for ${node.name}`}
+                          disabled={maxAddable <= 0 || pending >= maxAddable}
+                          onClick={() => setPendingCount(node.id, pending + 1)}
+                          className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                          Add
                         </button>
                       </div>
-                    )}
-                  </div>
-                </div>
+                      <button
+                        id={tourIds && nodeIdx === 0 ? "tour-add-topic-btn" : undefined}
+                        type="button"
+                        disabled={maxAddable <= 0}
+                        onClick={() => addToBasket(node)}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[9px] bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add
+                      </button>
+                    </div>
+                  )}
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
 
