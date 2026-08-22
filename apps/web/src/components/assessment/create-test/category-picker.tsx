@@ -14,10 +14,12 @@
 // real node_type, and always keeps the raw node id around.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, BookOpen, ChevronRight, Hash, Layers, Loader2, Minus, Play, Plus, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bookmark, BookOpen, ChevronRight, Hash, Layers, Loader2, Minus, Pencil, Play, Plus, Sparkles, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
 import { authenticatedGet, useAuth } from "../../auth/auth-context";
 import { resolveMediaUrl } from "../../../lib/api";
 import { SyllabusExclusionsModal } from "./syllabus-exclusions-modal";
+import { UserQuestionForm } from "../user-question-form";
 
 export type ContentType = "gk" | "aptitude" | "mains";
 
@@ -125,6 +127,34 @@ function flattenIndex(tree: PickerTreeNode[]): Map<number, PickerTreeNode> {
   return map;
 }
 
+/** A few endpoints (starting a dynamic single-category attempt, submitting
+ * a new user-authored question) don't do the recursive-descendant
+ * resolution resolveCategoriesToQuestions does — they exact-match on
+ * subject_node_id/topic_node_id/subtopic_node_id, so the caller has to
+ * classify the clicked node into the right field. Unlike the old
+ * assessment-home.tsx resolveCategory() (which guessed the level by
+ * counting parent hops and broke once a level was skipped), this walks the
+ * real ancestor chain and reads each node's actual node_type — there's no
+ * field for the Source level in these endpoints, so a source-level node
+ * only resolves to its ancestor subject. */
+export function classifyNode(
+  node: PickerTreeNode,
+  nodeById: Map<number, PickerTreeNode>
+): { subject_node_id: number; topic_node_id: number | null; subtopic_node_id: number | null } {
+  const chain: PickerTreeNode[] = [];
+  let current: PickerTreeNode | undefined = node;
+  while (current) {
+    chain.unshift(current);
+    current = current.parent_id != null ? nodeById.get(current.parent_id) : undefined;
+  }
+  const byType = new Map(chain.map((n) => [n.node_type, n.id]));
+  return {
+    subject_node_id: byType.get("subject") ?? byType.get("paper") ?? chain[0]?.id ?? node.id,
+    topic_node_id: byType.get("topic") ?? byType.get("theme") ?? null,
+    subtopic_node_id: byType.get("subtopic") ?? null
+  };
+}
+
 /** node.id (or any excluded ancestor's id) hides the whole subtree. */
 function filterExcluded(nodes: any[], excludedIds: Set<number>): any[] {
   if (excludedIds.size === 0) return nodes;
@@ -229,6 +259,7 @@ export function CategoryPicker({
   autoFocusNodeId?: number | null;
 }) {
   const { token } = useAuth();
+  const router = useRouter();
   const [rawNodes, setRawNodes] = useState<any[]>([]);
   const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
   const [counts, setCounts] = useState<Record<number, number>>({});
@@ -238,6 +269,12 @@ export function CategoryPicker({
   const [drillPath, setDrillPath] = useState<PickerTreeNode[]>([]);
   const [pendingCounts, setPendingCounts] = useState<Record<number, number>>({});
   const [showCustomize, setShowCustomize] = useState(false);
+  // "Add your questions" — write your own or parse with AI, tagged to
+  // whichever node the sheet was opened from. Only offered to signed-in
+  // users, same as before.
+  const [questionsSheetNode, setQuestionsSheetNode] = useState<PickerTreeNode | null>(null);
+  const [questionFormNode, setQuestionFormNode] = useState<PickerTreeNode | null>(null);
+  const [countsRefreshKey, setCountsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!examId) return;
@@ -306,7 +343,7 @@ export function CategoryPicker({
     return () => {
       cancelled = true;
     };
-  }, [examId, questionFamily, token]);
+  }, [examId, questionFamily, token, countsRefreshKey]);
 
   const nodes = useMemo(() => filterExcluded(rawNodes, excludedIds), [rawNodes, excludedIds]);
   const tree = useMemo(() => buildTree(nodes), [nodes]);
@@ -558,20 +595,30 @@ export function CategoryPicker({
                       }`}>
                         {loadingCounts ? "Checking…" : `${available} available`}
                       </span>
-                      {hasChildren && (
+                      {token && (
                         <button
-                          id={isFirstExpandable ? "tour-subject-expand" : undefined}
                           type="button"
-                          onClick={() => setDrillPath([...effectiveDrillPath, node])}
-                          className="inline-flex items-center gap-1 font-[800] text-indigo-650 hover:text-indigo-850 transition"
+                          onClick={() => setQuestionsSheetNode(node)}
+                          className="inline-flex items-center gap-1 font-[800] text-slate-500 hover:text-indigo-700 transition"
                         >
-                          Browse sub-categories →
+                          <Plus className="h-3 w-3" aria-hidden="true" />
+                          Add your questions
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {!hasChildren && onQuickStart ? (
+                  {hasChildren ? (
+                    <button
+                      id={isFirstExpandable ? "tour-subject-expand" : undefined}
+                      type="button"
+                      aria-label={`Browse ${node.name}`}
+                      onClick={() => setDrillPath([...effectiveDrillPath, node])}
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-indigo-200 bg-indigo-50 text-indigo-700 transition hover:border-indigo-500 hover:bg-indigo-100"
+                    >
+                      <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  ) : onQuickStart ? (
                     <button
                       type="button"
                       disabled={available <= 0 || quickStarting != null}
@@ -587,7 +634,7 @@ export function CategoryPicker({
                         </>
                       )}
                     </button>
-                  ) : !hasChildren ? (
+                  ) : (
                     <div className="flex shrink-0 items-center gap-2">
                       <div className="inline-flex h-9 items-center justify-between rounded-[9px] border border-slate-200 bg-surface p-1">
                         <button
@@ -621,7 +668,7 @@ export function CategoryPicker({
                         Add
                       </button>
                     </div>
-                  ) : null}
+                  )}
                 </li>
               );
             })}
@@ -676,6 +723,74 @@ export function CategoryPicker({
           onSaved={(ids) => setExcludedIds(new Set(ids))}
         />
       )}
+
+      {questionsSheetNode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-surface p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+              <h3 className="text-base font-black text-slate-900">Add your questions</h3>
+              <button type="button" onClick={() => setQuestionsSheetNode(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-600">
+              Add a question to <strong>{questionsSheetNode.name}</strong>.
+            </p>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuestionFormNode(questionsSheetNode);
+                  setQuestionsSheetNode(null);
+                }}
+                className="flex w-full items-start gap-3 rounded-[11px] border border-slate-200 bg-slate-50 px-3.5 py-3 text-left hover:border-indigo-500 hover:bg-indigo-50/20 transition"
+              >
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-surface text-indigo-600">
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span>
+                  <p className="text-sm font-bold text-slate-900">Write manually</p>
+                  <p className="text-xs text-slate-500">Type out the question yourself</p>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const node = questionsSheetNode;
+                  setQuestionsSheetNode(null);
+                  router.push(`/assessment/ai-parser?category_node_id=${node.id}&content_type=${contentType}`);
+                }}
+                className="flex w-full items-start gap-3 rounded-[11px] border border-slate-200 bg-slate-50 px-3.5 py-3 text-left hover:border-indigo-500 hover:bg-indigo-50/20 transition"
+              >
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-surface text-indigo-600">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span>
+                  <p className="text-sm font-bold text-slate-900">Parse with AI</p>
+                  <p className="text-xs text-slate-500">Upload a file, image, or text and post with AI</p>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {questionFormNode && token && examId && (() => {
+        const resolved = classifyNode(questionFormNode, nodeById);
+        return (
+          <UserQuestionForm
+            isOpen={!!questionFormNode}
+            onClose={() => setQuestionFormNode(null)}
+            token={token}
+            examId={examId}
+            subjectNodeId={resolved.subject_node_id}
+            topicNodeId={resolved.topic_node_id}
+            subtopicNodeId={resolved.subtopic_node_id}
+            questionFamily={questionFamily}
+            onSuccess={() => setCountsRefreshKey((k) => k + 1)}
+          />
+        );
+      })()}
     </div>
   );
 }
