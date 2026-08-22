@@ -127,7 +127,7 @@ const FULL_TOUR_CREATE_STEPS = [
 type Exam = { id: number; name: string; slug: string };
 type Mode = "choose" | "manual" | "ai";
 type ManualStep = "content_type" | "tab" | "name" | "pick_test" | "categories";
-type AiStep = "content_type" | "config";
+type AiStep = "content_type" | "target" | "categories";
 
 export function CreateTestWizard() {
   const router = useRouter();
@@ -202,9 +202,10 @@ export function CreateTestWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized]);
 
-  const [aiStep, setAiStep] = useState<AiStep>(normalizedContentTypeParam ? "config" : "content_type");
+  const [aiStep, setAiStep] = useState<AiStep>(normalizedContentTypeParam ? "target" : "content_type");
 
   const [title, setTitle] = useState(titleParam);
+  const [description, setDescription] = useState("");
   const [selectedExistingTest, setSelectedExistingTest] = useState<ExistingTest | null>(null);
   const [basket, setBasket] = useState<CategoryBasketItem[]>([]);
   const [aiBasket, setAiBasket] = useState<CategoryBasketItem[]>([]);
@@ -278,6 +279,7 @@ export function CreateTestWizard() {
         guestToken,
         {
           title: title.trim(),
+          description: description.trim() || undefined,
           exam_id: examId,
           content_type: contentType,
           categories: specs,
@@ -354,6 +356,7 @@ export function CreateTestWizard() {
         guestToken,
         {
           title: title.trim(),
+          description: description.trim() || undefined,
           exam_id: examId,
           content_type: contentType,
           categories: specs,
@@ -431,6 +434,8 @@ export function CreateTestWizard() {
             setTab={setManualTab}
             title={title}
             setTitle={setTitle}
+            description={description}
+            setDescription={setDescription}
             examId={examId}
             questionFamily={questionFamily}
             isMains={isMains}
@@ -460,6 +465,8 @@ export function CreateTestWizard() {
             isPremium={isPremium}
             title={title}
             setTitle={setTitle}
+            description={description}
+            setDescription={setDescription}
             examId={examId}
             questionFamily={questionFamily}
             isMains={isMains}
@@ -578,6 +585,8 @@ function ManualFlow(props: {
   setTab: (t: "new" | "existing") => void;
   title: string;
   setTitle: (t: string) => void;
+  description: string;
+  setDescription: (d: string) => void;
   examId: number | null;
   questionFamily: "objective" | "mains_subjective";
   isMains: boolean;
@@ -605,6 +614,8 @@ function ManualFlow(props: {
     setTab,
     title,
     setTitle,
+    description,
+    setDescription,
     examId,
     questionFamily,
     isMains,
@@ -692,6 +703,13 @@ function ManualFlow(props: {
           }}
           className="h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 text-[15px] font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
         />
+        <textarea
+          placeholder="Description (optional) — what's this test for?"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          className="mt-3 w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
+        />
         <button
           type="button"
           disabled={!title.trim()}
@@ -761,6 +779,8 @@ function AiFlow(props: {
   isPremium: boolean;
   title: string;
   setTitle: (t: string) => void;
+  description: string;
+  setDescription: (d: string) => void;
   examId: number | null;
   questionFamily: "objective" | "mains_subjective";
   isMains: boolean;
@@ -784,6 +804,8 @@ function AiFlow(props: {
     isPremium,
     title,
     setTitle,
+    description,
+    setDescription,
     examId,
     questionFamily,
     isMains,
@@ -807,57 +829,78 @@ function AiFlow(props: {
           contentType={contentType}
           onSelect={(c) => {
             setContentType(c);
-            setStep("config");
+            setStep("target");
           }}
         />
       </div>
     );
   }
 
+  if (step === "target") {
+    const canContinue = aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0;
+    return (
+      <div>
+        <StepHeader title="Create new, or add to an existing test?" subtitle="Tell us what you want — we'll pick matching questions from the bank on the next step." />
+        <div className={tabStripClass("mb-5")}>
+          <button type="button" className={tabButtonClass(!aiTargetsExisting)} onClick={() => setAiTargetsExisting(false)}>
+            New Test
+          </button>
+          <button type="button" className={tabButtonClass(aiTargetsExisting)} onClick={() => setAiTargetsExisting(true)}>
+            Add to Existing Test
+          </button>
+        </div>
+
+        {aiTargetsExisting ? (
+          <ExistingTestPicker
+            contentType={contentType}
+            examId={examId}
+            selectedTestId={selectedExistingTest?.id ?? null}
+            onSelect={(t) => setSelectedExistingTest(t)}
+          />
+        ) : (
+          <div className="mx-auto max-w-md space-y-3">
+            <input
+              autoFocus
+              type="text"
+              placeholder="e.g. Modern History Deep Dive"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 text-[15px] font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
+            />
+            <textarea
+              placeholder="Description (optional) — what's this test for?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
+            />
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={!canContinue}
+          onClick={() => setStep("categories")}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Continue <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
+  // step === 'categories'
   const aiBasketTotal = aiBasket.reduce((sum, item) => sum + item.count, 0);
   const canCreate = aiBasket.length > 0 && (aiTargetsExisting ? !!selectedExistingTest : title.trim().length > 0);
   const remainingCapacity = aiTargetsExisting ? Math.max(0, tierCap - (selectedExistingTest?.question_count ?? 0)) : tierCap;
 
   return (
     <div className="space-y-5">
-      <StepHeader title="AI-Assisted test" subtitle="Tell us what you want, in one go — we'll pull matching questions from the bank." />
+      <StepHeader
+        title={aiTargetsExisting ? `Add questions to "${selectedExistingTest?.title ?? "test"}"` : `Pick categories for "${title}"`}
+        subtitle="Tell us what you want — we'll pull matching questions from the bank."
+      />
       <TierLimitBanner isMains={isMains} isGuest={isGuest} hasPremium={isPremium} freeTestUsage={freeTestUsage} />
-
-      <div className="grid gap-2">
-        <span className={tabStripClass()}>
-          <button
-            type="button"
-            className={tabButtonClass(!aiTargetsExisting)}
-            onClick={() => setAiTargetsExisting(false)}
-          >
-            New Test
-          </button>
-          <button
-            type="button"
-            className={tabButtonClass(aiTargetsExisting)}
-            onClick={() => setAiTargetsExisting(true)}
-          >
-            Add to Existing Test
-          </button>
-        </span>
-      </div>
-
-      {aiTargetsExisting ? (
-        <ExistingTestPicker
-          contentType={contentType}
-          examId={examId}
-          selectedTestId={selectedExistingTest?.id ?? null}
-          onSelect={(t) => setSelectedExistingTest(t)}
-        />
-      ) : (
-        <input
-          type="text"
-          placeholder="e.g. Modern History Deep Dive"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="h-12 w-full max-w-md rounded-xl border-2 border-slate-200 bg-slate-50/70 px-4 text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-surface focus:ring-4 focus:ring-indigo-500/10 transition"
-        />
-      )}
 
       {examId && (
         <CategoryPicker

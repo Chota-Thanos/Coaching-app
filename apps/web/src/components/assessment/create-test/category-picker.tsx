@@ -14,8 +14,10 @@
 // real node_type, and always keeps the raw node id around.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, Loader2, Minus, Plus, X } from "lucide-react";
+import { ChevronRight, Loader2, Minus, Plus, SlidersHorizontal, X } from "lucide-react";
 import { authenticatedGet, useAuth } from "../../auth/auth-context";
+import { resolveMediaUrl } from "../../../lib/api";
+import { SyllabusExclusionsModal } from "./syllabus-exclusions-modal";
 
 export type ContentType = "gk" | "aptitude" | "mains";
 
@@ -24,6 +26,7 @@ export type PickerTreeNode = {
   name: string;
   node_type: string;
   parent_id: number | null;
+  image_url?: string | null;
   children: PickerTreeNode[];
 };
 
@@ -67,6 +70,7 @@ function buildTree(nodes: any[]): PickerTreeNode[] {
       name: n.name,
       node_type: n.node_type,
       parent_id: n.parent_id ? Number(n.parent_id) : null,
+      image_url: n.image_url ?? null,
       children: []
     });
   });
@@ -121,6 +125,40 @@ function flattenIndex(tree: PickerTreeNode[]): Map<number, PickerTreeNode> {
   return map;
 }
 
+/** node.id (or any excluded ancestor's id) hides the whole subtree. */
+function filterExcluded(nodes: any[], excludedIds: Set<number>): any[] {
+  if (excludedIds.size === 0) return nodes;
+  const excluded = new Set(excludedIds);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const n of nodes) {
+      const parentId = n.parent_id ? Number(n.parent_id) : null;
+      if (parentId != null && excluded.has(parentId) && !excluded.has(Number(n.id))) {
+        excluded.add(Number(n.id));
+        changed = true;
+      }
+    }
+  }
+  return nodes.filter((n) => !excluded.has(Number(n.id)));
+}
+
+function nodeIcon(nodeType: string) {
+  // Small deterministic emoji fallback per level, used only when a node has
+  // no image_url of its own — keeps the horizontal strip visually scannable
+  // without depending on every taxonomy node having admin-uploaded art.
+  const map: Record<string, string> = {
+    subject: "📚",
+    paper: "📄",
+    source_bucket: "📖",
+    subject_area: "📘",
+    topic: "🧩",
+    theme: "🧩",
+    subtopic: "🔖"
+  };
+  return map[nodeType] ?? "📚";
+}
+
 export function CategoryPicker({
   contentType,
   examId,
@@ -144,13 +182,15 @@ export function CategoryPicker({
   tourIds?: boolean;
 }) {
   const { token } = useAuth();
-  const [nodes, setNodes] = useState<any[]>([]);
+  const [rawNodes, setRawNodes] = useState<any[]>([]);
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
   const [counts, setCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drillPath, setDrillPath] = useState<PickerTreeNode[]>([]);
   const [pendingCounts, setPendingCounts] = useState<Record<number, number>>({});
+  const [showCustomize, setShowCustomize] = useState(false);
 
   useEffect(() => {
     if (!examId) return;
@@ -164,7 +204,7 @@ export function CategoryPicker({
           : `/api/v1/assessment/taxonomy-nodes?exam_id=${examId}&limit=1000`;
         const data = await authenticatedGet<any[]>(path, token || "");
         if (cancelled) return;
-        setNodes(contentType === "mains" ? data || [] : (data || []).filter((n) => n.content_type === contentType));
+        setRawNodes(contentType === "mains" ? data || [] : (data || []).filter((n) => n.content_type === contentType));
         setDrillPath([]);
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Could not load the syllabus for this section.");
@@ -176,6 +216,27 @@ export function CategoryPicker({
       cancelled = true;
     };
   }, [contentType, examId, token]);
+
+  // Which categories the student has hidden via "Customize Syllabus View" —
+  // signed-in only, since there's nothing to persist for a guest.
+  useEffect(() => {
+    if (!token) {
+      setExcludedIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    authenticatedGet<{ objective: number[]; mains: number[] }>("/api/v1/assessment/taxonomy/excluded", token)
+      .then((data) => {
+        if (cancelled) return;
+        setExcludedIds(new Set(contentType === "mains" ? data.mains : data.objective));
+      })
+      .catch(() => {
+        if (!cancelled) setExcludedIds(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, contentType]);
 
   useEffect(() => {
     if (!examId) return;
@@ -200,6 +261,7 @@ export function CategoryPicker({
     };
   }, [examId, questionFamily, token]);
 
+  const nodes = useMemo(() => filterExcluded(rawNodes, excludedIds), [rawNodes, excludedIds]);
   const tree = useMemo(() => buildTree(nodes), [nodes]);
   const nodeById = useMemo(() => flattenIndex(tree), [tree]);
 
@@ -294,9 +356,67 @@ export function CategoryPicker({
     );
   }
 
+  const activeTopLevelId = effectiveDrillPath[0]?.id ?? null;
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="space-y-3">
+        {/* Horizontal top-level subject strip — quick-jump to any subject
+            without drilling in one level at a time; "All" resets to the
+            flat top-level list. */}
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setDrillPath([])}
+              className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
+                activeTopLevelId === null
+                  ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                  : "border-slate-200 bg-surface text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
+              }`}
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-base">🗂️</span>
+              <span className="text-[11px] font-black">All</span>
+            </button>
+            {tree.map((node) => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => setDrillPath([node])}
+                className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
+                  activeTopLevelId === node.id
+                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                    : "border-slate-200 bg-surface text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
+                }`}
+              >
+                {node.image_url ? (
+                  <img
+                    src={resolveMediaUrl(node.image_url) ?? undefined}
+                    alt=""
+                    className="h-9 w-9 rounded-lg object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-base">{nodeIcon(node.node_type)}</span>
+                )}
+                <span className="max-w-[5.5rem] truncate text-[11px] font-black">{node.name}</span>
+              </button>
+            ))}
+          </div>
+          {token && (
+            <button
+              type="button"
+              onClick={() => setShowCustomize(true)}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-650 transition hover:bg-indigo-100"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+              Customize
+            </button>
+          )}
+        </div>
+
         {/* Breadcrumb */}
         <div className="flex flex-wrap items-center gap-1 text-xs font-bold text-slate-500">
           <button
@@ -447,6 +567,15 @@ export function CategoryPicker({
           </ul>
         )}
       </div>
+
+      {showCustomize && examId && (
+        <SyllabusExclusionsModal
+          contentType={contentType}
+          examId={examId}
+          onClose={() => setShowCustomize(false)}
+          onSaved={(ids) => setExcludedIds(new Set(ids))}
+        />
+      )}
     </div>
   );
 }
