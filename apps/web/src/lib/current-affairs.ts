@@ -97,6 +97,33 @@ export function hubHref(hub: CurrentAffairsHub, params: Record<string, string | 
   return `/current-affairs/${hub.path}${query ? `?${query}` : ""}`;
 }
 
+export type CategoryChainNode = { id: number; name: string; slug: string };
+
+export function buildCategoryIndex<T extends CategoryChainNode & { parent_id: number | null }>(
+  categories: T[]
+): Map<number, T> {
+  return new Map(categories.map((category) => [category.id, category]));
+}
+
+/** Walks a category up through its parent chain to the root, returning the
+ * full ancestor list top-down (e.g. [Subject, Topic, Subtopic]) — the
+ * article's assigned category is always the last entry. */
+export function categoryAncestorChain<T extends CategoryChainNode & { parent_id: number | null }>(
+  categoryId: number | null | undefined,
+  categoriesById: Map<number, T>
+): CategoryChainNode[] {
+  if (!categoryId) return [];
+  const chain: CategoryChainNode[] = [];
+  const seen = new Set<number>();
+  let current = categoriesById.get(categoryId);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    chain.unshift({ id: current.id, name: current.name, slug: current.slug });
+    current = current.parent_id ? categoriesById.get(current.parent_id) : undefined;
+  }
+  return chain;
+}
+
 export function monthLabel(value: string): string {
   const [year, month] = value.split("-");
   const date = new Date(Number(year), Number(month) - 1, 1);

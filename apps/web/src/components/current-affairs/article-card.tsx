@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ArticleSummary } from "../../lib/api";
-import { articleHref } from "../../lib/current-affairs";
+import type { ArticleSummary, CategoryNode } from "../../lib/api";
+import { articleHref, categoryAncestorChain } from "../../lib/current-affairs";
 import { StudentStatusBadge } from "./student-status-badge";
 import { useAuth, authenticatedDelete } from "../auth/auth-context";
 
@@ -14,7 +15,7 @@ function formatDate(dateStr: string | null, createdAt?: string | null): string {
   const d = new Date(target);
   if (isNaN(d.getTime())) return "Undated";
   return new Intl.DateTimeFormat("en-US", {
-    month: "long",
+    month: "short",
     day: "numeric",
     year: "numeric"
   }).format(d);
@@ -69,13 +70,20 @@ function getCategoryStyles(categoryName: string | null | undefined): string {
   return "bg-slate-50 text-slate-700 border border-slate-200/50";
 }
 
-export function ArticleCard({ article }: { article: ArticleSummary }) {
+export function ArticleCard({
+  article,
+  categoriesById
+}: {
+  article: ArticleSummary;
+  categoriesById: Map<number, CategoryNode>;
+}) {
   const { token, user } = useAuth();
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
   const isMains = article.content_family === "mains";
   const isAdmin = user && ["admin", "moderator", "content_editor"].includes(user.role);
+  const categoryChain = categoryAncestorChain(article.category?.id, categoriesById);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -107,16 +115,31 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
         {formatDate(article.last_activity_date ?? article.publication_date, article.created_at)}
       </td>
 
-      {/* 2. Source cell with custom pill */}
+      {/* 2. Source cell — links out to the original external article when a
+          source URL is on file, so a reader can verify/read it upstream. */}
       <td className="px-4 py-3 text-sm border border-line/60 bg-surface align-middle transition-colors group-hover:bg-paper/10">
         {article.source_name ? (
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide capitalize border ${getSourceStyles(
-              article.source_name
-            )}`}
-          >
-            {article.source_name}
-          </span>
+          article.source_url ? (
+            <a
+              href={article.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold tracking-wide capitalize border transition hover:underline ${getSourceStyles(
+                article.source_name
+              )}`}
+            >
+              {article.source_name}
+              <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+            </a>
+          ) : (
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide capitalize border ${getSourceStyles(
+                article.source_name
+              )}`}
+            >
+              {article.source_name}
+            </span>
+          )
         ) : (
           <span className="text-xs text-muted/65 italic font-medium">Unknown</span>
         )}
@@ -155,15 +178,8 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 select-none">
-            <Link
-              href={articleHref(article.slug)}
-              className="inline-flex items-center rounded border border-line bg-paper/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-muted hover:border-civic hover:bg-civic hover:text-white transition-all duration-150 shadow-sm"
-            >
-              OPEN
-            </Link>
-            {isAdmin && (
-              <>
+          {isAdmin && (
+            <div className="flex items-center gap-1.5 shrink-0 select-none">
                 <Link
                   href={`${(() => {
                     switch (article.content_kind) {
@@ -192,23 +208,29 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
                 >
                   {deleting ? "..." : "DELETE"}
                 </button>
-              </>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </td>
 
-      {/* 4. GS Paper / Category cell (Full Category Hierarchy Levels) */}
+      {/* 4. Category cell — every ancestor level as its own clickable row,
+          topmost first (Subject/GS Paper down to Subtopic). */}
       <td className="px-4 py-3 text-sm border border-line/60 bg-surface align-middle transition-colors group-hover:bg-paper/10">
-        {(article.category_path || article.category?.name) ? (
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border ${getCategoryStyles(
-              article.category?.name
-            )}`}
-            title={article.category_path || article.category?.name}
-          >
-            {article.category_path || article.category?.name}
-          </span>
+        {categoryChain.length > 0 ? (
+          <div className="flex flex-col gap-1">
+            {categoryChain.map((node) => (
+              <Link
+                key={node.id}
+                href={`?category=${encodeURIComponent(node.slug || String(node.id))}`}
+                className={`inline-flex w-fit items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border transition hover:underline ${getCategoryStyles(
+                  node.name
+                )}`}
+                title={node.name}
+              >
+                {node.name}
+              </Link>
+            ))}
+          </div>
         ) : (
           <span className="text-xs text-muted/65 italic font-medium">Undefined category</span>
         )}

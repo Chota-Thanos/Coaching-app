@@ -1,8 +1,10 @@
 import { Calendar, Globe, Tag } from "lucide-react";
-import type { ArticleSummary } from "../../lib/api";
+import type { ArticleSummary, CategoryNode } from "../../lib/api";
+import { buildCategoryIndex } from "../../lib/current-affairs";
 import { ArticleCard, ArticleMobileCard } from "./article-card";
 
-export function ArticleList({ articles }: { articles: ArticleSummary[] }) {
+export function ArticleList({ articles, categories }: { articles: ArticleSummary[]; categories: CategoryNode[] }) {
+  const categoriesById = buildCategoryIndex(categories);
   if (articles.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-line dark:border-slate-800 bg-surface dark:bg-slate-900 p-10 text-center">
@@ -42,23 +44,23 @@ export function ArticleList({ articles }: { articles: ArticleSummary[] }) {
                     Source
                   </div>
                 </th>
-                <th className="px-4 py-2.5 text-xs font-semibold text-muted dark:text-slate-400 border border-line/60 dark:border-slate-800 select-none">
+                <th className="w-[38%] px-4 py-2.5 text-xs font-semibold text-muted dark:text-slate-400 border border-line/60 dark:border-slate-800 select-none">
                   <div className="flex items-center gap-1.5 uppercase tracking-wider">
                     <span className="font-sans text-[11px] font-bold shrink-0">Aa</span>
                     Article Title
                   </div>
                 </th>
-                <th className="w-[165px] px-4 py-2.5 text-xs font-semibold text-muted dark:text-slate-400 border border-line/60 dark:border-slate-800 select-none">
+                <th className="w-[220px] px-4 py-2.5 text-xs font-semibold text-muted dark:text-slate-400 border border-line/60 dark:border-slate-800 select-none">
                   <div className="flex items-center gap-1.5 uppercase tracking-wider">
                     <Tag className="h-3.5 w-3.5 shrink-0" />
-                    GS Paper
+                    Categories
                   </div>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line/45 dark:divide-slate-800">
               {articles.map((article) => (
-                <ArticleCard article={article} key={article.id} />
+                <ArticleCard article={article} categoriesById={categoriesById} key={article.id} />
               ))}
             </tbody>
           </table>

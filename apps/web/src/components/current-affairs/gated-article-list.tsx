@@ -1,10 +1,11 @@
 "use client";
 
 import { ArticleList } from "./article-list";
-import type { ArticleSummary } from "../../lib/api";
+import type { ArticleSummary, CategoryNode } from "../../lib/api";
 
 type Props = {
   articles: ArticleSummary[];
+  categories: CategoryNode[];
 };
 
 /**
@@ -23,6 +24,6 @@ type Props = {
  * paid gate here later means re-adding the `useSubscription` check this
  * file used to have (see git history), not rebuilding it.
  */
-export function GatedArticleList({ articles }: Props) {
-  return <ArticleList articles={articles} />;
+export function GatedArticleList({ articles, categories }: Props) {
+  return <ArticleList articles={articles} categories={categories} />;
 }
