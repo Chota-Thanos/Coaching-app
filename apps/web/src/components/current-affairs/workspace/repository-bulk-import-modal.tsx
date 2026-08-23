@@ -91,10 +91,16 @@ export function RepositoryBulkImportModal({
     setYear("");
   }
 
+  // Load articles immediately on open with the default filters (all
+  // subjects, all months) instead of leaving the list empty until the
+  // student notices and clicks "Show articles" themselves.
   useEffect(() => {
     if (!open) return;
     setMessage(null);
-    void loadFilters(activeHub);
+    void (async () => {
+      await loadFilters(activeHub);
+      await searchArticles();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

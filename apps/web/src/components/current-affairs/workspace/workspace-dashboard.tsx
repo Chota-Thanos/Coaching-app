@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle2, FileDown, FolderPlus, LayoutDashboard, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, FileDown, FolderPlus, LayoutDashboard, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type {
@@ -48,10 +48,10 @@ const WORKSPACE_TOUR_STEPS = [
     actionText: "Click the 'Add' button next to a suggested article above."
   },
   {
-    selector: "#tour-ai-helper-btn",
-    badge: "Step 4 of 5: AI Notes Helper",
-    title: "Generate AI Bullet Summaries",
-    body: "Use the AI Notes Helper to synthesize custom notes, extract key themes, and summarize core takeaways from your saved current affairs database.",
+    selector: "#tour-create-notes-btn",
+    badge: "Step 4 of 5: AI-Assisted Notes",
+    title: "Let AI Help You Build a Repository",
+    body: "Click 'Create Notes' and choose AI-Assisted mode — pick a topic and a range of your own selected articles, and AI will summarize just those into your first note.",
   },
   {
     selector: "#tour-bulk-import",
@@ -388,19 +388,12 @@ export function WorkspaceDashboard() {
         </div>
         <div className="flex gap-3">
           <Link
+            id="tour-create-notes-btn"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic text-white px-4 text-sm font-bold shadow hover:bg-civic/90 transition-all"
             href="/current-affairs/workspace/create"
           >
             <FolderPlus aria-hidden="true" className="h-4 w-4" />
             Create Notes
-          </Link>
-          <Link
-            id="tour-ai-helper-btn"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic text-white px-4 text-sm font-bold shadow hover:bg-civic/90 transition-all"
-            href="/current-affairs/workspace/ai-helper"
-          >
-            <Sparkles aria-hidden="true" className="h-4 w-4" />
-            AI Notes Helper
           </Link>
           {token && (
             <button

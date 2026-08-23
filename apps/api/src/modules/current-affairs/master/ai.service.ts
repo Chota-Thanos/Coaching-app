@@ -1674,17 +1674,25 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
 // generation failed and presented it in the UI, which is exactly the "not
 // really AI" gap this function exists to close. Callers should surface a
 // real error instead of synthesizing fake content.
+/**
+ * Summarizes the student's own selected articles — grounded only in the
+ * content supplied, never free-generated from a bare topic. See
+ * ai-notes.routes.ts for where the source articles are fetched and scoped
+ * to the requesting user before being passed in here.
+ */
 export async function generateStudentNotesAI(
-  options: { topic: string; instructions?: string }
+  options: { sources: Array<{ title: string; body: string }> }
 ): Promise<{ title: string; body: string }> {
   if (!hasAiCredentials()) {
     throw new Error("AI notes generation is not configured on this server.");
   }
+  if (options.sources.length === 0) {
+    throw new Error("No source articles were supplied to summarize.");
+  }
 
-  const systemPrompt = `You are a UPSC current affairs study-notes writer, helping a student build their personal notes.
-Given a topic, write a concise, well-structured study note in Markdown (use ## headings and bullet points).
-Cover: context/background, key facts, significance for UPSC Prelims/Mains, and a short conclusion.
-Do not fabricate specific statistics, dates, or names you are not confident about — prefer clearly-flagged qualitative points over invented precision.
+  const systemPrompt = `You are a UPSC current affairs study-notes writer, helping a student condense their own saved articles into a single revision note.
+You will be given one or more full articles the student has already selected. Summarize ONLY what is in these articles — do not add facts, statistics, dates, or names that are not present in the supplied text, and do not draw on outside knowledge of the topic.
+Write a concise, well-structured note in Markdown (## headings and bullet points) that pulls together the key points across all the supplied articles, organized by theme rather than repeating each article separately.
 
 Return ONLY valid JSON in this format:
 {
@@ -1692,7 +1700,9 @@ Return ONLY valid JSON in this format:
   "body": "The full note in Markdown"
 }`;
 
-  const userPrompt = `Topic: ${options.topic}${options.instructions ? `\n\nAdditional instructions: ${options.instructions}` : ""}`;
+  const userPrompt = options.sources
+    .map((source, index) => `Article ${index + 1}: ${source.title}\n\n${source.body}`)
+    .join("\n\n---\n\n");
 
   const response = await generateText(systemPrompt, userPrompt);
   const parsed = parseJsonRobust(response);

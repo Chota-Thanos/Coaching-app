@@ -7,10 +7,13 @@
 // an actual working repository instead of just having read about one.
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
+  Bot,
+  BookOpen,
   Check,
   Download,
   Edit3,
@@ -19,23 +22,39 @@ import {
   Loader2,
   Plus,
   Save,
-  Tags
+  Tags,
+  Wand2
 } from "lucide-react";
-import type { StudentCollection, StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
+import type { StudentArticle, StudentCollection, StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
 import { splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
 import { authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
 import { downloadScannedPdf, type PdfSection } from "../../../lib/export-pdf";
+import { useSubscription } from "../../../lib/use-subscription";
+import { PremiumLockOverlay } from "../../billing/premium-lock-overlay";
 import { RepositoryBulkImportModal } from "./repository-bulk-import-modal";
 import { ForkTagQuickEdit } from "./fork-tag-quick-edit";
 import { WorkspaceSignIn } from "./workspace-sign-in";
 
-type Step = "repo" | "articles" | "tags" | "edit" | "download" | "done";
+type Mode = "choose" | "manual" | "ai";
+type Step = "repo" | "articles" | "summary" | "customize" | "download" | "done";
 
-const STEPS: Array<{ id: Step; label: string }> = [
+type StepDef = { id: Step; label: string };
+
+const MANUAL_STEPS: StepDef[] = [
   { id: "repo", label: "Repository" },
   { id: "articles", label: "Add articles" },
-  { id: "tags", label: "Tag them" },
-  { id: "edit", label: "Edit your copy" },
+  { id: "customize", label: "Customize" },
+  { id: "download", label: "Download" }
+];
+
+// AI mode gets its own "Summarize" step between adding articles and
+// customizing — a dedicated screen with its own article selection and
+// result, not a question bundled into the articles step.
+const AI_STEPS: StepDef[] = [
+  { id: "repo", label: "Repository" },
+  { id: "articles", label: "Add articles" },
+  { id: "summary", label: "Summarize" },
+  { id: "customize", label: "Customize" },
   { id: "download", label: "Download" }
 ];
 
@@ -57,11 +76,11 @@ function StepHeader({ eyebrow, title, description }: { eyebrow: string; title: s
   );
 }
 
-function StepProgress({ current }: { current: Step }) {
-  const currentIndex = STEPS.findIndex((step) => step.id === current);
+function StepProgress({ current, steps }: { current: Step; steps: StepDef[] }) {
+  const currentIndex = steps.findIndex((step) => step.id === current);
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const done = currentIndex > index;
         const active = currentIndex === index;
         return (
@@ -78,7 +97,7 @@ function StepProgress({ current }: { current: Step }) {
               {done ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : null}
               {step.label}
             </span>
-            {index < STEPS.length - 1 && <span className="h-px w-4 bg-line" aria-hidden="true" />}
+            {index < steps.length - 1 && <span className="h-px w-4 bg-line" aria-hidden="true" />}
           </div>
         );
       })}
@@ -86,8 +105,69 @@ function StepProgress({ current }: { current: Step }) {
   );
 }
 
+function ModeSelectStep({ onSelect }: { onSelect: (mode: "manual" | "ai") => void }) {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <button
+        type="button"
+        onClick={() => onSelect("manual")}
+        className="group flex flex-col items-start gap-3 rounded-2xl border-2 border-line bg-surface p-6 text-left transition hover:border-civic hover:bg-civic/5"
+      >
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-civic/10 text-civic transition group-hover:bg-civic group-hover:text-white">
+          <BookOpen className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <div>
+          <h2 className="text-base font-black text-ink">Manual</h2>
+          <p className="mt-1 text-sm font-medium text-ink/60">Create a repository and add articles yourself, step by step.</p>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onSelect("ai")}
+        className="group flex flex-col items-start gap-3 rounded-2xl border-2 border-line bg-surface p-6 text-left transition hover:border-civic hover:bg-civic/5"
+      >
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-civic/10 text-civic transition group-hover:bg-civic group-hover:text-white">
+          <Wand2 className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <div>
+          <h2 className="text-base font-black text-ink">AI-Assisted</h2>
+          <p className="mt-1 text-sm font-medium text-ink/60">
+            Pick a topic and a range of your own articles — AI will summarize just those into your first note. Nothing invented.
+          </p>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function AiBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-civic text-white shadow-sm">
+        <Bot className="h-4.5 w-4.5" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-civic/15 bg-civic/5 px-4 py-3.5">{children}</div>
+    </div>
+  );
+}
+
+function UserBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-ink px-4 py-2.5 text-sm font-bold text-white">{children}</div>
+    </div>
+  );
+}
+
 export function CreateNotesWizard() {
   const { token, user, isInitialized } = useAuth();
+  const searchParams = useSearchParams();
+  const { hasEntitlement } = useSubscription(token);
+  const hasAiAccess = hasEntitlement("current_affairs.notes_workspace") || hasEntitlement("current_affairs.editorial_access");
+
+  const modeParam = searchParams.get("mode");
+  const [mode, setMode] = useState<Mode>(modeParam === "manual" || modeParam === "ai" ? modeParam : "choose");
 
   const [step, setStep] = useState<Step>("repo");
 
@@ -108,21 +188,49 @@ export function CreateNotesWizard() {
   // Step 2 — articles
   const [importOpen, setImportOpen] = useState(false);
 
-  // Step 3 — tags
+  // Step 3 — customize: tag vocabulary, per-article edit (opt-in), notes, tags
   const [tagDraft, setTagDraft] = useState("");
   const [savingTagVocabulary, setSavingTagVocabulary] = useState(false);
 
-  // Step 4 — edit a personal copy
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editSaved, setEditSaved] = useState(false);
 
-  // Step 5 — download
+  const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
+  const [savingNotesId, setSavingNotesId] = useState<number | null>(null);
+
+  // Step 4 — download
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+
+  // AI-Assisted mode only — presentation state for the chat turns, plus the
+  // grounded-summary step (its own selection + result, not bundled into
+  // adding articles). Everything else (repo creation, article import, tags,
+  // edit, download) reuses the exact same state/handlers as Manual.
+  const [aiRepoChoiceMade, setAiRepoChoiceMade] = useState(false);
+  const [selectedForSummary, setSelectedForSummary] = useState<Set<number>>(new Set());
+  const [generatedSummary, setGeneratedSummary] = useState<{ title: string; body: string } | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  // Within-step chat pacing (repo step's progressive reveal) scrolls to the
+  // latest turn. Switching steps entirely, on the other hand, always
+  // scrolls back to the top of the new step — so a long article or tag list
+  // never leaves the student stranded below the fold with no visible way
+  // back to the step's own controls.
+  useEffect(() => {
+    if (mode !== "ai" || step !== "repo") return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [mode, step, aiRepoChoiceMade, repoTab]);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
 
   useEffect(() => {
     if (!token || repoTab !== "existing" || collections.length > 0) return;
@@ -222,6 +330,22 @@ export function CreateNotesWizard() {
     }
   }
 
+  function noteValue(item: StudentCollectionItem): string {
+    if (item.fork && notesDraft[item.fork.id] !== undefined) return notesDraft[item.fork.id]!;
+    return item.fork?.personal_summary ?? "";
+  }
+
+  async function saveNote(forkId: number, value: string): Promise<void> {
+    if (!token || !repository) return;
+    setSavingNotesId(forkId);
+    try {
+      await authenticatedPatch(`/api/v1/current-affairs/me/forks/${forkId}`, token, { personal_summary: value });
+      await loadRepository(repository.id);
+    } finally {
+      setSavingNotesId(null);
+    }
+  }
+
   async function downloadRepository(): Promise<void> {
     if (!repository) return;
     setDownloading(true);
@@ -243,15 +367,60 @@ export function CreateNotesWizard() {
   }
 
   const forkItems = repository?.items.filter((item) => Boolean(item.fork)) ?? [];
-  const editingItem = repository?.items.find((item) => item.id === editingItemId) ?? null;
 
+  // AI-Assisted only — summarizes exactly the fork IDs the student picked
+  // on the dedicated Summarize step (real content, scoped server-side to
+  // their own forks). Never generates from a bare topic. Saved as a
+  // personal article and attached to the repository the same way the
+  // manual "own article" flow does; the result is shown right there on
+  // that step rather than jumping ahead automatically.
+  async function generateSummary(forkIds: number[]): Promise<void> {
+    if (!token || !repository || forkIds.length === 0) return;
+    setSummarizing(true);
+    setSummaryError(null);
+    setGeneratedSummary(null);
+    try {
+      const note = await authenticatedPost<{ title: string; body: string }>(
+        "/api/v1/current-affairs/me/ai/generate-notes",
+        token,
+        { collection_id: repository.id, fork_ids: forkIds }
+      );
+      const slug = `${workspaceSlug(note.title)}-${Date.now().toString().slice(-4)}`;
+      const articleRecord = await authenticatedPost<StudentArticle>("/api/v1/current-affairs/me/articles", token, {
+        title: note.title,
+        slug,
+        body: note.body,
+        status: "published"
+      });
+      await authenticatedPost(`/api/v1/current-affairs/me/collections/${repository.id}/items`, token, {
+        student_article_id: articleRecord.id
+      });
+      await loadRepository(repository.id);
+      setGeneratedSummary(note);
+    } catch {
+      setSummaryError("Could not generate a summary right now. You can still continue without one.");
+    } finally {
+      setSummarizing(false);
+    }
+  }
+
+  function toggleSummarySelection(forkId: number): void {
+    setSelectedForSummary((prev) => {
+      const next = new Set(prev);
+      if (next.has(forkId)) next.delete(forkId);
+      else next.add(forkId);
+      return next;
+    });
+  }
+
+  // Default to every added article selected when the Summarize step first
+  // appears — the student can deselect any they don't want included.
   useEffect(() => {
-    const firstItem = forkItems[0];
-    if (step === "edit" && !editingItemId && firstItem) {
-      startEditing(firstItem);
+    if (step === "summary" && selectedForSummary.size === 0 && forkItems.length > 0) {
+      setSelectedForSummary(new Set(forkItems.map((item) => item.fork!.id)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, forkItems.length, editingItemId]);
+  }, [step, forkItems.length]);
 
   if (!isInitialized) {
     return (
@@ -269,19 +438,148 @@ export function CreateNotesWizard() {
     );
   }
 
+  // AI mode keeps this turn focused on naming the repository — tag choices
+  // get their own dedicated turn later, at the actual "Tag them" step, so
+  // the conversation asks one thing at a time instead of bundling tags into
+  // "what should I call it?". Manual mode keeps the field here since that's
+  // an established, separate flow this change isn't touching.
+  function renderNewRepoForm(showTagField: boolean) {
+    return (
+      <div className="grid gap-3">
+        <label className="grid gap-1 text-sm font-bold text-ink">
+          Repository name
+          <input
+            className="h-11 rounded-md border border-line px-3 text-base font-normal"
+            onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. Prelims GS Revision"
+            value={name}
+          />
+        </label>
+        <label className="grid gap-1 text-sm font-bold text-ink">
+          Description (optional)
+          <textarea
+            className="min-h-20 rounded-md border border-line px-3 py-2 text-base font-normal leading-6"
+            onChange={(event) => setDescription(event.target.value)}
+            value={description}
+          />
+        </label>
+        {showTagField && (
+          <label className="grid gap-1 text-sm font-bold text-ink">
+            Tag choices (optional)
+            <input
+              className="h-11 rounded-md border border-line px-3 text-base font-normal"
+              onChange={(event) => setCustomTags(event.target.value)}
+              placeholder="Weak topic, Revise before mock, Done"
+              value={customTags}
+            />
+            <span className="text-xs font-medium text-ink/55">
+              You'll use these as one-tap tags in Step 3 — you can always add more later.
+            </span>
+          </label>
+        )}
+        {repoError && <p className="text-sm font-semibold text-berry">{repoError}</p>}
+        <button
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
+          disabled={submittingRepo || !name.trim()}
+          onClick={createRepository}
+          type="button"
+        >
+          {submittingRepo ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Plus aria-hidden="true" className="h-4 w-4" />}
+          Create & continue
+        </button>
+      </div>
+    );
+  }
+
+  const existingRepoPicker = (
+    <div className="space-y-3">
+      {loadingCollections ? (
+        <p className="text-sm font-semibold text-ink/60">Loading your repositories...</p>
+      ) : collections.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-line bg-paper/40 px-3 py-4 text-sm text-ink/60">
+          You don't have any repositories yet — create a new one instead.
+        </p>
+      ) : (
+        <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+          {collections.map((collection) => (
+            <label
+              className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 ${
+                selectedExistingId === collection.id ? "border-civic bg-civic/5" : "border-line bg-surface hover:border-civic/50"
+              }`}
+              key={collection.id}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-black text-ink">{collection.name}</span>
+                <span className="text-xs font-semibold text-ink/55">{collection.item_count ?? 0} items</span>
+              </span>
+              <input
+                checked={selectedExistingId === collection.id}
+                className="h-4 w-4 accent-civic"
+                name="existing-repository"
+                onChange={() => setSelectedExistingId(collection.id)}
+                type="radio"
+              />
+            </label>
+          ))}
+        </div>
+      )}
+      {repoError && <p className="text-sm font-semibold text-berry">{repoError}</p>}
+      <button
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
+        disabled={!selectedExistingId || loadingRepository}
+        onClick={continueWithExisting}
+        type="button"
+      >
+        {loadingRepository ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <ArrowRight aria-hidden="true" className="h-4 w-4" />}
+        Continue
+      </button>
+    </div>
+  );
+
+  const steps = mode === "ai" ? AI_STEPS : MANUAL_STEPS;
+  function stepEyebrow(id: Step): string {
+    const index = steps.findIndex((entry) => entry.id === id);
+    return `Step ${index + 1} of ${steps.length}`;
+  }
+
+  if (mode === "choose") {
+    return (
+      <main className="mx-auto max-w-3xl space-y-6 px-4 pb-16 pt-5">
+        <Link className="inline-flex items-center gap-2 text-sm font-bold text-civic" href="/current-affairs/workspace">
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          Notes Space
+        </Link>
+        <StepHeader eyebrow="Create Notes" title="How would you like to build this repository?" description="" />
+        <ModeSelectStep onSelect={setMode} />
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-5">
-      <Link className="inline-flex items-center gap-2 text-sm font-bold text-civic" href="/current-affairs/workspace">
-        <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-        Notes Space
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link className="inline-flex items-center gap-2 text-sm font-bold text-civic" href="/current-affairs/workspace">
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          Notes Space
+        </Link>
+        {step === "repo" && (
+          <button
+            className="text-xs font-bold text-ink/50 hover:text-ink"
+            onClick={() => setMode("choose")}
+            type="button"
+          >
+            Choose a different way
+          </button>
+        )}
+      </div>
 
-      <StepProgress current={step} />
+      <StepProgress current={step} steps={steps} />
+      <div ref={topRef} />
 
-      {step === "repo" && (
+      {mode === "manual" && step === "repo" && (
         <section className="space-y-5 rounded-lg border border-line bg-surface p-5 shadow-sm">
           <StepHeader
-            eyebrow="Step 1 of 5"
+            eyebrow={stepEyebrow("repo")}
             title="Start a repository"
             description="A repository groups related current-affairs articles and notes together — one per subject, exam, or revision cycle, whatever suits how you study."
           />
@@ -303,93 +601,61 @@ export function CreateNotesWizard() {
             </button>
           </div>
 
-          {repoTab === "new" ? (
-            <div className="grid gap-3">
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Repository name
-                <input
-                  className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="e.g. Prelims GS Revision"
-                  value={name}
-                />
-              </label>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Description (optional)
-                <textarea
-                  className="min-h-20 rounded-md border border-line px-3 py-2 text-base font-normal leading-6"
-                  onChange={(event) => setDescription(event.target.value)}
-                  value={description}
-                />
-              </label>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Tag choices (optional)
-                <input
-                  className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                  onChange={(event) => setCustomTags(event.target.value)}
-                  placeholder="Weak topic, Revise before mock, Done"
-                  value={customTags}
-                />
-                <span className="text-xs font-medium text-ink/55">
-                  You'll use these as one-tap tags in Step 3 — you can always add more later.
-                </span>
-              </label>
-              {repoError && <p className="text-sm font-semibold text-berry">{repoError}</p>}
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
-                disabled={submittingRepo || !name.trim()}
-                onClick={createRepository}
-                type="button"
-              >
-                {submittingRepo ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Plus aria-hidden="true" className="h-4 w-4" />}
-                Create & continue
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {loadingCollections ? (
-                <p className="text-sm font-semibold text-ink/60">Loading your repositories...</p>
-              ) : collections.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-line bg-paper/40 px-3 py-4 text-sm text-ink/60">
-                  You don't have any repositories yet — create a new one instead.
-                </p>
-              ) : (
-                <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
-                  {collections.map((collection) => (
-                    <label
-                      className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 ${
-                        selectedExistingId === collection.id ? "border-civic bg-civic/5" : "border-line bg-surface hover:border-civic/50"
-                      }`}
-                      key={collection.id}
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-black text-ink">{collection.name}</span>
-                        <span className="text-xs font-semibold text-ink/55">{collection.item_count ?? 0} items</span>
-                      </span>
-                      <input
-                        checked={selectedExistingId === collection.id}
-                        className="h-4 w-4 accent-civic"
-                        name="existing-repository"
-                        onChange={() => setSelectedExistingId(collection.id)}
-                        type="radio"
-                      />
-                    </label>
-                  ))}
-                </div>
-              )}
-              {repoError && <p className="text-sm font-semibold text-berry">{repoError}</p>}
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
-                disabled={!selectedExistingId || loadingRepository}
-                onClick={continueWithExisting}
-                type="button"
-              >
-                {loadingRepository ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <ArrowRight aria-hidden="true" className="h-4 w-4" />}
-                Continue
-              </button>
-            </div>
-          )}
+          {repoTab === "new" ? renderNewRepoForm(true) : existingRepoPicker}
         </section>
+      )}
+
+      {mode === "ai" && step === "repo" && (
+        <div className="space-y-4">
+          <AiBubble>
+            <p className="text-sm font-bold text-ink">
+              Hi! I'll help you build a notes repository — a few quick questions, then I'll summarize the real
+              articles you pick. I never invent notes on my own.
+            </p>
+          </AiBubble>
+
+          <AiBubble>
+            <p className="text-sm font-bold text-ink">New repository, or add into one you already have?</p>
+            {!aiRepoChoiceMade ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRepoTab("new");
+                    setAiRepoChoiceMade(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border-2 border-line bg-surface px-4 py-2.5 text-sm font-bold text-ink/75 transition hover:border-civic hover:bg-civic/5"
+                >
+                  New repository
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRepoTab("existing");
+                    setAiRepoChoiceMade(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border-2 border-line bg-surface px-4 py-2.5 text-sm font-bold text-ink/75 transition hover:border-civic hover:bg-civic/5"
+                >
+                  Use an existing one
+                </button>
+              </div>
+            ) : (
+              <p className="mt-1 text-xs font-semibold text-civic">Answered</p>
+            )}
+          </AiBubble>
+          {aiRepoChoiceMade && <UserBubble>{repoTab === "new" ? "New repository" : "Use an existing one"}</UserBubble>}
+
+          {aiRepoChoiceMade && (
+            <AiBubble>
+              <p className="text-sm font-bold text-ink">
+                {repoTab === "new" ? "What should I call it?" : "Which repository should I add to?"}
+              </p>
+              <div className="mt-3">{repoTab === "new" ? renderNewRepoForm(false) : existingRepoPicker}</div>
+            </AiBubble>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
       )}
 
       {step !== "repo" && repository && (
@@ -402,10 +668,10 @@ export function CreateNotesWizard() {
             </p>
           </div>
 
-          {step === "articles" && (
+          {mode === "manual" && step === "articles" && (
             <section className="space-y-5 rounded-lg border border-line bg-surface p-5 shadow-sm">
               <StepHeader
-                eyebrow="Step 2 of 5"
+                eyebrow={stepEyebrow("articles")}
                 title="Add current affairs articles"
                 description="Browse institute articles, filter by subject and date, and add the ones you want into this repository. Each one becomes your own editable copy."
               />
@@ -432,7 +698,7 @@ export function CreateNotesWizard() {
               <button
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-40"
                 disabled={forkItems.length === 0}
-                onClick={() => setStep("tags")}
+                onClick={() => setStep("customize")}
                 type="button"
               >
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
@@ -444,12 +710,137 @@ export function CreateNotesWizard() {
             </section>
           )}
 
-          {step === "tags" && (
+          {mode === "ai" && step === "articles" && (
+            <div className="space-y-4">
+              <AiBubble>
+                <p className="text-sm font-bold text-ink">
+                  What topic or articles would you like in this repository? Browse and pick the real ones you want —
+                  I'll only ever work from what you actually select.
+                </p>
+                <button
+                  className="mt-3 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow"
+                  onClick={() => setImportOpen(true)}
+                  type="button"
+                >
+                  <Download aria-hidden="true" className="h-4 w-4" />
+                  Browse & add articles
+                </button>
+                {forkItems.length > 0 && (
+                  <div className="mt-3 grid max-h-48 gap-1.5 overflow-y-auto pr-1">
+                    {forkItems.map((item) => (
+                      <p className="truncate rounded-md bg-surface px-3 py-2 text-sm font-semibold text-ink/80" key={item.id}>
+                        {itemTitle(item)}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </AiBubble>
+              {forkItems.length > 0 && <UserBubble>Added {forkItems.length} article{forkItems.length === 1 ? "" : "s"}</UserBubble>}
+
+              <button
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-40"
+                disabled={forkItems.length === 0}
+                onClick={() => setStep("summary")}
+                type="button"
+              >
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                Continue
+              </button>
+              {forkItems.length === 0 && (
+                <p className="text-xs font-semibold text-ink/50">Add at least one article to continue.</p>
+              )}
+            </div>
+          )}
+
+          {mode === "ai" && step === "summary" && (
             <section className="space-y-5 rounded-lg border border-line bg-surface p-5 shadow-sm">
+              <AiBubble>
+                <p className="text-sm font-bold text-ink">
+                  Want an AI summary of your articles as your first note? Pick which ones to include below — I'll
+                  only ever summarize what you select, nothing invented.
+                </p>
+              </AiBubble>
+
               <StepHeader
-                eyebrow="Step 3 of 5"
-                title="Tag them for quick revision"
-                description="Tags let you filter this repository later — mark what's weak, what needs another pass, or what's done. Tap a tag to toggle it on an article."
+                eyebrow={stepEyebrow("summary")}
+                title="Summarize your articles"
+                description="Select which of your added articles to include, then generate a note built only from their real content."
+              />
+
+              {!hasAiAccess ? (
+                <PremiumLockOverlay
+                  title="AI summaries are a Current Affairs Pro feature"
+                  description="Summarize your selected articles into a note automatically. Upgrade to Current Affairs Pro, or continue without one."
+                  planName="Current Affairs Pro"
+                />
+              ) : generatedSummary ? (
+                <div className="space-y-3 rounded-lg border border-civic/20 bg-civic/5 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-civic">Saved to your repository</p>
+                  <h3 className="text-lg font-black text-ink">{generatedSummary.title}</h3>
+                  <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-sm leading-relaxed text-ink/80">
+                    {generatedSummary.body}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid max-h-64 gap-1.5 overflow-y-auto rounded-lg border border-line bg-paper/30 p-2 pr-1.5">
+                    {forkItems.map((item) => (
+                      <label
+                        className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-surface"
+                        key={item.id}
+                      >
+                        <input
+                          checked={!!item.fork && selectedForSummary.has(item.fork.id)}
+                          className="h-4 w-4 accent-civic"
+                          onChange={() => item.fork && toggleSummarySelection(item.fork.id)}
+                          type="checkbox"
+                        />
+                        <span className="truncate text-sm font-semibold text-ink/80">{itemTitle(item)}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
+                    disabled={summarizing || selectedForSummary.size === 0}
+                    onClick={() => void generateSummary(Array.from(selectedForSummary))}
+                    type="button"
+                  >
+                    {summarizing ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+                    {summarizing
+                      ? "Summarizing..."
+                      : `Summarize ${selectedForSummary.size || ""} article${selectedForSummary.size === 1 ? "" : "s"}`}
+                  </button>
+                  {summaryError && <p className="text-sm font-semibold text-berry">{summaryError}</p>}
+                </div>
+              )}
+
+              <button
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
+                disabled={summarizing}
+                onClick={() => setStep("customize")}
+                type="button"
+              >
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                Continue
+              </button>
+            </section>
+          )}
+
+          {step === "customize" && (
+            <section className="space-y-5 rounded-lg border border-line bg-surface p-5 shadow-sm">
+              {mode === "ai" && (
+                <AiBubble>
+                  <p className="text-sm font-bold text-ink">
+                    Now let's customise your notes — edit any article if you like, add quick-revision notes, and tag
+                    them for filtering.
+                  </p>
+                </AiBubble>
+              )}
+
+              <StepHeader
+                eyebrow={stepEyebrow("customize")}
+                title="Customise your notes content"
+                description="You can edit them as per your need, add notes to them for quick revision, and assign tags for quick filtering."
               />
 
               {(repository.custom_tags?.length ?? 0) === 0 && (
@@ -472,95 +863,99 @@ export function CreateNotesWizard() {
                 </div>
               )}
 
-              <div className="grid gap-3">
-                {forkItems.map((item) => (
-                  <div className="rounded-lg border border-line bg-paper/30 p-3" key={item.id}>
-                    <p className="truncate text-sm font-black text-ink">{itemTitle(item)}</p>
-                    {item.fork && (
-                      <ForkTagQuickEdit
-                        availableTags={repository.custom_tags ?? []}
-                        fork={item.fork}
-                        onChanged={() => loadRepository(repository.id)}
-                      />
-                    )}
-                  </div>
-                ))}
+              <div className="grid max-h-[32rem] gap-3 overflow-y-auto pr-1">
+                {forkItems.map((item) => {
+                  const isEditing = editingItemId === item.id;
+                  return (
+                    <div className="space-y-3 rounded-lg border border-line bg-paper/30 p-4" key={item.id}>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate text-sm font-black text-ink">{itemTitle(item)}</p>
+                        <button
+                          className="shrink-0 text-xs font-bold text-civic hover:text-civic/80"
+                          onClick={() => (isEditing ? setEditingItemId(null) : startEditing(item))}
+                          type="button"
+                        >
+                          {isEditing ? "Close editor" : "Edit"}
+                        </button>
+                      </div>
+
+                      {isEditing && (
+                        <div className="grid gap-2 rounded-md border border-line bg-surface p-3">
+                          <label className="grid gap-1 text-xs font-bold text-ink/70">
+                            Title
+                            <input
+                              className="h-10 rounded-md border border-line px-3 text-sm font-normal"
+                              onChange={(event) => setEditTitle(event.target.value)}
+                              value={editTitle}
+                            />
+                          </label>
+                          <label className="grid gap-1 text-xs font-bold text-ink/70">
+                            Body
+                            <textarea
+                              className="min-h-32 rounded-md border border-line px-3 py-2 text-sm font-normal leading-6"
+                              onChange={(event) => setEditBody(event.target.value)}
+                              value={editBody}
+                            />
+                          </label>
+                          <button
+                            className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md bg-civic px-4 text-xs font-bold text-white shadow disabled:opacity-60"
+                            disabled={savingEdit}
+                            onClick={saveEdit}
+                            type="button"
+                          >
+                            {savingEdit ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Save aria-hidden="true" className="h-4 w-4" />}
+                            Save my edit
+                          </button>
+                          {editSaved && editingItemId === item.id && (
+                            <p className="inline-flex items-center gap-1.5 text-xs font-bold text-civic">
+                              <Check aria-hidden="true" className="h-4 w-4" />
+                              Saved — this is your personal copy now.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <label className="grid gap-1 text-xs font-bold text-ink/70">
+                        Notes (for quick revision)
+                        <textarea
+                          className="min-h-16 rounded-md border border-line bg-surface px-3 py-2 text-sm font-normal leading-6"
+                          onChange={(event) => {
+                            if (!item.fork) return;
+                            const forkId = item.fork.id;
+                            setNotesDraft((prev) => ({ ...prev, [forkId]: event.target.value }));
+                          }}
+                          onBlur={() => item.fork && void saveNote(item.fork.id, noteValue(item))}
+                          placeholder="A quick line or two to jog your memory later..."
+                          value={noteValue(item)}
+                        />
+                      </label>
+                      {item.fork && (
+                        <button
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-civic/30 bg-civic/5 px-3 text-xs font-bold text-civic disabled:opacity-60"
+                          disabled={savingNotesId === item.fork.id}
+                          onClick={() => item.fork && void saveNote(item.fork.id, noteValue(item))}
+                          type="button"
+                        >
+                          {savingNotesId === item.fork.id ? (
+                            <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Save aria-hidden="true" className="h-3.5 w-3.5" />
+                          )}
+                          {savingNotesId === item.fork.id ? "Saving..." : "Save note"}
+                        </button>
+                      )}
+
+                      {item.fork && (
+                        <ForkTagQuickEdit
+                          availableTags={repository.custom_tags ?? []}
+                          fork={item.fork}
+                          onChanged={() => loadRepository(repository.id)}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow"
-                onClick={() => setStep("edit")}
-                type="button"
-              >
-                <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                Continue
-              </button>
-            </section>
-          )}
-
-          {step === "edit" && (
-            <section className="space-y-5 rounded-lg border border-line bg-surface p-5 shadow-sm">
-              <StepHeader
-                eyebrow="Step 4 of 5"
-                title="This is your copy — try editing it"
-                description="Every article you add becomes a personal copy. Edit the title or body freely; the original institute article never changes."
-              />
-
-              {forkItems.length > 1 && (
-                <label className="grid gap-1 text-sm font-bold text-ink">
-                  Pick an article to try editing
-                  <select
-                    className="h-11 rounded-md border border-line bg-surface px-3 text-sm text-ink"
-                    onChange={(event) => {
-                      const item = repository.items.find((entry) => entry.id === Number(event.target.value));
-                      if (item) startEditing(item);
-                    }}
-                    value={editingItem?.id ?? ""}
-                  >
-                    {forkItems.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {itemTitle(item)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              {editingItem && (
-                <div className="grid gap-3">
-                  <label className="grid gap-1 text-sm font-bold text-ink">
-                    Title
-                    <input
-                      className="h-11 rounded-md border border-line px-3 text-base font-normal"
-                      onChange={(event) => setEditTitle(event.target.value)}
-                      value={editTitle}
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm font-bold text-ink">
-                    Body
-                    <textarea
-                      className="min-h-40 rounded-md border border-line px-3 py-2 text-sm font-normal leading-6"
-                      onChange={(event) => setEditBody(event.target.value)}
-                      value={editBody}
-                    />
-                  </label>
-                  <button
-                    className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
-                    disabled={savingEdit}
-                    onClick={saveEdit}
-                    type="button"
-                  >
-                    {savingEdit ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Save aria-hidden="true" className="h-4 w-4" />}
-                    Save my edit
-                  </button>
-                  {editSaved && (
-                    <p className="inline-flex items-center gap-1.5 text-sm font-bold text-civic">
-                      <Check aria-hidden="true" className="h-4 w-4" />
-                      Saved — this is your personal copy now.
-                    </p>
-                  )}
-                </div>
-              )}
 
               <button
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow"
@@ -576,7 +971,7 @@ export function CreateNotesWizard() {
           {step === "download" && (
             <section className="space-y-5 rounded-lg border border-line bg-surface p-5 shadow-sm">
               <StepHeader
-                eyebrow="Step 5 of 5"
+                eyebrow={stepEyebrow("download")}
                 title="Download your repository"
                 description="Take this repository with you as a personal PDF — every article, your edits, tags, and notes included. You can re-download anytime from the repository page."
               />

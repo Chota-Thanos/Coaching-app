@@ -18,7 +18,6 @@ import {
   ChevronRight,
   Home,
   UserCheck,
-  Sparkles,
   CreditCard,
   BookOpen,
   Award,
@@ -263,23 +262,6 @@ export function MobileNav() {
                   <div>
                     <p className="text-xs font-bold text-ink dark:text-slate-100">My Repositories</p>
                     <p className="text-[10px] text-ink/50 dark:text-slate-400">Custom note collections &amp; tags</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-ink/30 dark:text-slate-600 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              <Link
-                href="/current-affairs/workspace/ai-helper"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-surface dark:hover:bg-slate-800 transition group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-ink dark:text-slate-100">AI Note Assistant</p>
-                    <p className="text-[10px] text-ink/50 dark:text-slate-400">Smart summary generator</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-ink/30 dark:text-slate-600 group-hover:translate-x-0.5 transition-transform" />

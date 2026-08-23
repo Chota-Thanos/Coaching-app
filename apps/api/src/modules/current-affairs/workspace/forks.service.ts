@@ -224,6 +224,30 @@ export async function updateFork(id: number, input: UpdateForkInput, userId: num
   );
 }
 
+/** Fetches title/body for a set of the user's own forks, for AI summarization —
+ * scoped strictly to forks owned by userId so a student can only ever have
+ * their own selected articles summarized. */
+export async function getForksForSummary(
+  ids: number[],
+  userId: number
+): Promise<Array<{ id: number; title: string; body: string }>> {
+  if (ids.length === 0) return [];
+  const rows = await query<{ id: number; title: string; body: string }>(
+    `
+      select
+        saf.id,
+        coalesce(saf.forked_title, ma.title) as title,
+        coalesce(saf.forked_body, ma.body) as body
+      from current_affairs.student_article_forks saf
+      join current_affairs.master_articles ma on ma.id = saf.master_article_id
+      where saf.user_id = $1
+        and saf.id = any($2::int[])
+    `,
+    [userId, ids]
+  );
+  return rows;
+}
+
 export async function deleteFork(id: number, userId: number): Promise<unknown | null> {
   return one(
     `
