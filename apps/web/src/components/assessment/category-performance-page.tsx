@@ -6,6 +6,28 @@ import { ArrowLeft, BarChart3, CheckCircle2, Clock3, FileQuestion, Target, XCirc
 import { useEffect, useMemo, useState } from "react";
 import { authenticatedGet, useAuth } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
+import { StartTestPill } from "./start-test-pill";
+import { useSubscription } from "../../lib/use-subscription";
+import { tierAwareQuestionCount } from "../../lib/subscription-plans";
+import type { StartTestCategory } from "../../lib/use-start-test";
+
+/**
+ * This page never sees the full taxonomy tree (unlike the dashboard's
+ * performance-tree), only the clicked node plus its immediate children — so
+ * there's no ancestor chain to walk. That's fine: startCompiledAttempt's
+ * fallback (subtopic || topic || source || subject) only cares about the
+ * DEEPEST field that's set, so setting a node's own id on its own node_type
+ * field (and subject_node_id as a same-id placeholder to satisfy the
+ * required-field shape) scopes correctly without ever needing the ancestors.
+ */
+function scopeForNode(id: number, nodeType: string | null | undefined): Pick<StartTestCategory, "subject_node_id" | "source_node_id" | "topic_node_id" | "subtopic_node_id"> {
+  return {
+    subject_node_id: id,
+    source_node_id: nodeType === "source_bucket" ? id : null,
+    topic_node_id: nodeType === "topic" ? id : null,
+    subtopic_node_id: nodeType === "subtopic" ? id : null
+  };
+}
 
 type CategoryPerformancePageProps = {
   nodeId: string;
@@ -49,7 +71,17 @@ function outcomeConfig(outcome: string) {
   return { label: "Skipped", icon: FileQuestion, className: "border-slate-200 bg-slate-50 text-slate-500" };
 }
 
-function ChildCategoryCard({ child, backTab }: { child: any; backTab: string }) {
+function ChildCategoryCard({
+  child,
+  backTab,
+  examId,
+  hasAnyActive
+}: {
+  child: any;
+  backTab: string;
+  examId: number | null;
+  hasAnyActive: boolean;
+}) {
   const childSummary = child.summary || {};
   const accuracy = numberValue(childSummary.accuracy);
   const totalQs = numberValue(childSummary.total_questions);
@@ -57,44 +89,63 @@ function ChildCategoryCard({ child, backTab }: { child: any; backTab: string }) 
   const pct = Math.round(accuracy <= 1 ? accuracy * 100 : accuracy);
 
   return (
-    <Link
-      href={`/assessment/dashboard/categories/${child.id}?tab=${backTab}`}
-      className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-600 hover:shadow-md"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-black text-slate-900 group-hover:text-indigo-600">{child.name}</p>
-          <p className="mt-0.5 text-[10px] font-semibold text-slate-400">
-            {totalQs} question{totalQs !== 1 ? "s" : ""} attempted
-          </p>
+    <div className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-600 hover:shadow-md">
+      <Link href={`/assessment/dashboard/categories/${child.id}?tab=${backTab}`} className="block">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-slate-900 group-hover:text-indigo-600">{child.name}</p>
+            <p className="mt-0.5 text-[10px] font-semibold text-slate-400">
+              {totalQs} question{totalQs !== 1 ? "s" : ""} attempted
+            </p>
+          </div>
+          {totalQs > 0 ? (
+            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black ${tone.bg} ${tone.text} ${tone.border}`}>
+              {pct}%
+            </span>
+          ) : (
+            <span className="shrink-0 rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-500">
+              Unattempted
+            </span>
+          )}
         </div>
-        {totalQs > 0 ? (
-          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black ${tone.bg} ${tone.text} ${tone.border}`}>
-            {pct}%
-          </span>
-        ) : (
-          <span className="shrink-0 rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-500">
-            Unattempted
-          </span>
+        {totalQs > 0 && (
+          <div className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.max(4, Math.min(100, pct))}%` }} />
+          </div>
         )}
-      </div>
-      {totalQs > 0 && (
-        <div className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.max(4, Math.min(100, pct))}%` }} />
+      </Link>
+      {examId && backTab !== "mains" && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <StartTestPill
+            examId={examId}
+            categories={[
+              {
+                ...scopeForNode(child.id, child.node_type),
+                question_count: tierAwareQuestionCount(15, hasAnyActive, false),
+                question_family: "objective"
+              }
+            ]}
+            tone="neutral"
+            label="Practice this"
+            title={`${child.name} practice`}
+            className="w-full !justify-center"
+          />
         </div>
       )}
-    </Link>
+    </div>
   );
 }
 
 export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps) {
   const { token, isInitialized } = useAuth();
+  const { hasAnyActive } = useSubscription(token);
   const searchParams = useSearchParams();
   const backTab = searchParams.get("tab") ?? "gk";
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "correct" | "incorrect" | "unattempted">("all");
+  const [examId, setExamId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -108,6 +159,16 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
       })
       .finally(() => setLoading(false));
   }, [nodeId, token]);
+
+  // Neither this endpoint's response nor the taxonomy node itself carries
+  // exam_id, so a single cheap root-node lookup (same trick as the dashboard
+  // page) is the only way to get it for the Start-test requests below.
+  useEffect(() => {
+    if (!token || backTab === "mains") return;
+    authenticatedGet<any[]>(`/api/v1/assessment/taxonomy-nodes?content_type=${backTab}&root_only=true&limit=1`, token)
+      .then((nodes) => setExamId(nodes?.[0]?.exam_id ?? null))
+      .catch(() => setExamId(null));
+  }, [token, backTab]);
 
   const summary = data?.summary ?? {};
   const category = data?.category ?? {};
@@ -177,6 +238,24 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                 <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-300">
                   A complete record of questions attempted inside this category, including subtopics and lower-level nodes.
                 </p>
+                {examId && backTab !== "mains" && category.id && (
+                  <div className="mt-5">
+                    <StartTestPill
+                      examId={examId}
+                      categories={[
+                        {
+                          ...scopeForNode(Number(category.id), category.node_type),
+                          question_count: tierAwareQuestionCount(20, hasAnyActive, false),
+                          question_family: "objective"
+                        }
+                      ]}
+                      tone="primary"
+                      label={`Start a test on all of ${category.name ?? "this category"}`}
+                      title={`${category.name ?? "Category"} test`}
+                      className="!px-4 !py-2.5"
+                    />
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-3 md:min-w-96">
                 <HeroMetric label="Accuracy" value={formatPercent(summary.accuracy)} />
@@ -259,7 +338,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                           {strongTopics.map((child: any) => (
-                            <ChildCategoryCard key={child.id} child={child} backTab={backTab} />
+                            <ChildCategoryCard key={child.id} child={child} backTab={backTab} examId={examId} hasAnyActive={hasAnyActive} />
                           ))}
                         </div>
                       </div>
@@ -274,7 +353,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                           {weakTopics.map((child: any) => (
-                            <ChildCategoryCard key={child.id} child={child} backTab={backTab} />
+                            <ChildCategoryCard key={child.id} child={child} backTab={backTab} examId={examId} hasAnyActive={hasAnyActive} />
                           ))}
                         </div>
                       </div>
@@ -289,7 +368,7 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                           {unattemptedTopics.map((child: any) => (
-                            <ChildCategoryCard key={child.id} child={child} backTab={backTab} />
+                            <ChildCategoryCard key={child.id} child={child} backTab={backTab} examId={examId} hasAnyActive={hasAnyActive} />
                           ))}
                         </div>
                       </div>

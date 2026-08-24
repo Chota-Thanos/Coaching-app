@@ -257,6 +257,13 @@ export const startDynamicAttemptSchema = z.object({
 
 export const compiledCategorySchema = z.object({
   subject_node_id: idSchema,
+  // question_taxonomy_links has always carried source_node_id (the reference
+  // book/source a question is drawn from, one level below subject and above
+  // topic), but nothing ever accepted it as a scoping filter here — a "start
+  // a test on just this book" request had no way to say so. Optional and
+  // slotted into the same most-specific-wins fallback as topic/subtopic in
+  // startCompiledAttempt below.
+  source_node_id: idSchema.optional().nullable(),
   topic_node_id: idSchema.optional().nullable(),
   subtopic_node_id: idSchema.optional().nullable(),
   question_nature_id: idSchema.optional().nullable(),

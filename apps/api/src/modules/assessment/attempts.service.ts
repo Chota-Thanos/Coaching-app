@@ -621,7 +621,10 @@ export async function startCompiledAttempt(
     // 1. Fetch questions matching each category specs
     for (const cat of input.categories) {
       const isMains = cat.question_family === "mains_subjective";
-      const targetNodeId = cat.subtopic_node_id || cat.topic_node_id || cat.subject_node_id;
+      // source_node_id only ever applies to objective categories (mains has no
+      // "source" level) — cat.source_node_id is simply absent for a mains entry,
+      // so this fallback stays correct for both branches below.
+      const targetNodeId = cat.subtopic_node_id || cat.topic_node_id || cat.source_node_id || cat.subject_node_id;
       const params: unknown[] = [input.exam_id, targetNodeId];
       let fromAndWhere = "";
       let selectColumns = "";

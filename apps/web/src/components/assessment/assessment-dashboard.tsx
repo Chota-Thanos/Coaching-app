@@ -20,13 +20,51 @@ import {
   Layers3,
   Activity
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { authenticatedGet, useAuth } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { TrendGraph } from "./trend-graph";
 import { PerformanceTree, flattenPerformanceTree, type PerformanceTreeNode } from "./performance-tree";
+import { StartTestPill, useFreeTestsRemainingLabel } from "./start-test-pill";
+import { useSubscription } from "../../lib/use-subscription";
+import { tierAwareQuestionCount } from "../../lib/subscription-plans";
+import type { StartTestCategory } from "../../lib/use-start-test";
 import { FullTourSegment } from "../app/full-tour-segment";
 import { isFullTourActiveForPage } from "../../lib/full-tour";
+
+/**
+ * Walks a flattened performance-tree list (subject -> source_bucket -> topic
+ * -> subtopic, all sharing one id space with student_topic_metrics) up from
+ * any node to classify each ancestor by node_type. Used to turn "the user
+ * clicked/is looking at node 4821" into the {subject_node_id, source_node_id,
+ * topic_node_id, subtopic_node_id} shape /attempts/compiled expects — the
+ * same resolution assessment-home.tsx's resolveCategory() does by counting
+ * tree depth, done here off the explicit node_type instead since the
+ * performance tree already carries it.
+ */
+function resolveNodeScope(
+  nodeId: number,
+  byId: Map<number, PerformanceTreeNode>
+): Pick<StartTestCategory, "subject_node_id" | "source_node_id" | "topic_node_id" | "subtopic_node_id"> {
+  let subject: number | null = null;
+  let source: number | null = null;
+  let topic: number | null = null;
+  let subtopic: number | null = null;
+  let current: PerformanceTreeNode | undefined = byId.get(nodeId);
+  let guard = 0;
+  while (current && guard++ < 8) {
+    if (current.node_type === "subtopic") subtopic = current.id;
+    else if (current.node_type === "topic") topic = current.id;
+    else if (current.node_type === "source_bucket") source = current.id;
+    else if (current.node_type === "subject") subject = current.id;
+    current = current.parent_id ? byId.get(current.parent_id) : undefined;
+  }
+  // A node this cannot classify (not found in the tree, or missing a
+  // node_type) still needs SOME subject_node_id to satisfy the request shape
+  // — falling back to the node's own id keeps the request well-formed rather
+  // than silently dropping the scope down to "everything".
+  return { subject_node_id: subject ?? nodeId, source_node_id: source, topic_node_id: topic, subtopic_node_id: subtopic };
+}
 
 const DASHBOARD_TOUR_STEPS = [
   {
@@ -350,6 +388,7 @@ interface AssessmentDashboardProps {
 
 export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardProps = {}) {
   const { token, isInitialized } = useAuth();
+  const { hasAnyActive } = useSubscription(token);
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as "gk" | "aptitude" | "mains";
   const [activeTab, setActiveTab] = useState<"gk" | "aptitude" | "mains">(
@@ -375,7 +414,11 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
   const [mainsAnswers, setMainsAnswers] = useState<any[]>([]);
   const [topicMetrics, setTopicMetrics] = useState<any[]>([]);
   const [performanceTree, setPerformanceTree] = useState<PerformanceTreeNode[]>([]);
-  
+  // Only fetched to read its exam_id — student_topic_metrics and the
+  // performance-tree response both omit it, but /attempts/compiled requires
+  // one. A single root node is enough; a full taxonomy fetch is not needed.
+  const [examId, setExamId] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -422,6 +465,28 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!token || activeTab === "mains") return;
+    let cancelled = false;
+    authenticatedGet<any[]>(`/api/v1/assessment/taxonomy-nodes?content_type=${activeTab}&root_only=true&limit=1`, token)
+      .then((nodes) => {
+        if (!cancelled) setExamId(nodes?.[0]?.exam_id ? Number(nodes[0].exam_id) : null);
+      })
+      .catch((err) => console.error("Failed to resolve exam id for start-test requests", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, activeTab]);
+
+  // Every node the performance tree knows about, by id, so a weak/strong
+  // topic row or a source row can resolve its own subject/source/topic
+  // ancestry for a Start-test request without a second fetch.
+  const performanceNodesById = useMemo(() => {
+    const map = new Map<number, PerformanceTreeNode>();
+    for (const node of flattenPerformanceTree(performanceTree)) map.set(node.id, node);
+    return map;
+  }, [performanceTree]);
 
   if (!isInitialized) {
     return (
@@ -472,7 +537,42 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
     .filter((node) => node.correct_count + node.incorrect_count > 0 && node.accuracy < 0.6)
     .sort((a, b) => a.accuracy - b.accuracy);
 
+  // The symmetric strong half — the tree already carries every node's rolled-up
+  // accuracy, so this costs nothing new to compute; the page previously only
+  // ever read the weak side of the same list.
+  const strongPerformanceNodes = flattenPerformanceTree(performanceTree)
+    .filter((node) => node.correct_count + node.incorrect_count >= 3 && node.accuracy >= 0.7)
+    .sort((a, b) => b.accuracy - a.accuracy);
+
+  // Every source_bucket-level node the tree knows about — the same rolled-up
+  // data the "Full Syllabus Performance" tree already shows nested one level
+  // inside each subject, surfaced here as its own flat, sortable list across
+  // every subject at once.
+  const sourcePerformanceNodes = flattenPerformanceTree(performanceTree)
+    .filter((node) => node.node_type === "source_bucket" && node.correct_count + node.incorrect_count > 0)
+    .sort((a, b) => a.accuracy - b.accuracy);
+
   const categoryHref = (nodeId: number) => `/assessment/dashboard/categories/${nodeId}?tab=${activeTab}`;
+
+  const freeTestsRemainingLabel = useFreeTestsRemainingLabel();
+
+  // Weakest 3 nodes, combined into one compiled request — the "Recommended
+  // test" card. Split fairly across however many nodes are actually weak
+  // (fewer than 3 for a newer account) rather than assuming there are always
+  // three, and always capped to the account's real tier limit.
+  const recommendedNodes = weakPerformanceNodes.slice(0, 3);
+  const recommendedCategories: StartTestCategory[] =
+    activeTab !== "mains" && recommendedNodes.length > 0
+      ? recommendedNodes.map((node) => ({
+          ...resolveNodeScope(node.id, performanceNodesById),
+          question_count: tierAwareQuestionCount(
+            Math.max(4, Math.round(20 / recommendedNodes.length)),
+            hasAnyActive,
+            false
+          ),
+          question_family: "objective" as const
+        }))
+      : [];
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16 pt-0.5">
@@ -615,6 +715,120 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
             )}
           </div>
 
+          {/* Recommended test — real, not a promise: one tap POSTs the three
+              weakest topics below to /attempts/compiled and redirects
+              straight into the attempt, no wizard screen. */}
+          {activeTab !== "mains" && recommendedCategories.length > 0 && examId && (
+            <section className="flex flex-col gap-4 rounded-3xl border border-slate-900 bg-slate-950 p-5 text-white shadow-sm sm:flex-row sm:items-center sm:gap-6">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10">
+                <Zap className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                  Recommended test — ready in one tap
+                </p>
+                <p className="mt-1 text-sm font-bold leading-snug">
+                  {recommendedCategories.reduce((sum, c) => sum + c.question_count, 0)} questions across your{" "}
+                  {recommendedNodes.length === 1 ? "weakest topic" : `${recommendedNodes.length} weakest topics`}
+                </p>
+                <p className="mt-1 truncate text-xs text-slate-300">
+                  {recommendedNodes.map((n) => `${n.name} (${Math.round(n.accuracy * 100)}%)`).join(" · ")}
+                </p>
+              </div>
+              <StartTestPill
+                examId={examId}
+                categories={recommendedCategories}
+                label="Start now"
+                tone="primary"
+                title={`Weak-area test — ${new Date().toLocaleDateString("en-IN")}`}
+                className="!px-5 !py-3 !text-sm shrink-0"
+              />
+            </section>
+          )}
+
+          {/* Best & worst topics — the api already returns both halves of this
+              on every /me/dashboard call; the strong half was simply never
+              rendered anywhere on this page before now. */}
+          {activeTab !== "mains" && (strongPerformanceNodes.length > 0 || weakPerformanceNodes.length > 0) && (
+            <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                How you are doing, topic by topic
+              </p>
+              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2 text-sm font-black text-emerald-700">
+                    <TrendingUp className="h-4 w-4" aria-hidden="true" />
+                    Your best topics
+                  </div>
+                  {strongPerformanceNodes.length === 0 ? (
+                    <p className="text-xs font-semibold text-slate-400">
+                      Answer a few more questions and your strongest topics will show up here.
+                    </p>
+                  ) : (
+                    strongPerformanceNodes.slice(0, 4).map((node) => (
+                      <div key={node.id} className="flex items-center gap-3 border-b border-slate-100 py-2.5 last:border-0">
+                        <Link href={categoryHref(node.id)} className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900 hover:text-indigo-600">
+                          {node.name}
+                        </Link>
+                        <span className="shrink-0 text-xs font-black text-emerald-600">{Math.round(node.accuracy * 100)}%</span>
+                        {examId && (
+                          <StartTestPill
+                            examId={examId}
+                            categories={[
+                              {
+                                ...resolveNodeScope(node.id, performanceNodesById),
+                                question_count: tierAwareQuestionCount(15, hasAnyActive, false),
+                                question_family: "objective"
+                              }
+                            ]}
+                            tone="neutral"
+                            title={`${node.name} practice`}
+                          />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2.5 sm:border-l sm:border-slate-100 sm:pl-6">
+                  <div className="flex items-center gap-2 text-sm font-black text-rose-700">
+                    <TrendingDown className="h-4 w-4" aria-hidden="true" />
+                    Your weakest topics
+                  </div>
+                  {weakPerformanceNodes.length === 0 ? (
+                    <p className="text-xs font-semibold text-slate-400">Nothing weak enough to flag yet — keep going.</p>
+                  ) : (
+                    weakPerformanceNodes.slice(0, 4).map((node) => (
+                      <div key={node.id} className="flex items-center gap-3 border-b border-slate-100 py-2.5 last:border-0">
+                        <Link href={categoryHref(node.id)} className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900 hover:text-indigo-600">
+                          {node.name}
+                        </Link>
+                        <span className="shrink-0 text-xs font-black text-rose-600">{Math.round(node.accuracy * 100)}%</span>
+                        {examId && (
+                          <StartTestPill
+                            examId={examId}
+                            categories={[
+                              {
+                                ...resolveNodeScope(node.id, performanceNodesById),
+                                question_count: tierAwareQuestionCount(15, hasAnyActive, false),
+                                question_family: "objective"
+                              }
+                            ]}
+                            tone="weak"
+                            title={`${node.name} practice`}
+                          />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              {freeTestsRemainingLabel && (
+                <p className="mt-4 text-[11px] font-bold text-slate-400">{freeTestsRemainingLabel} on the free plan</p>
+              )}
+            </section>
+          )}
+
           {activeTab !== "mains" && (
             <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -659,32 +873,51 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                         : "bg-rose-50 text-rose-700 border-rose-200";
 
                     return (
-                      <Link
+                      <div
                         key={`${topic.taxonomy_node_id}-${topic.question_nature_id ?? "all"}-${idx}`}
-                        href={`/assessment/dashboard/categories/${topic.taxonomy_node_id}?tab=${activeTab}`}
                         className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-slate-950">{topic.taxonomy_name ?? "Unmapped Category"}</p>
-                            <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                              {(topic.node_type ?? "category").replaceAll("_", " ")}
-                            </p>
+                        <Link href={`/assessment/dashboard/categories/${topic.taxonomy_node_id}?tab=${activeTab}`} className="block">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-slate-950">{topic.taxonomy_name ?? "Unmapped Category"}</p>
+                              <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                {(topic.node_type ?? "category").replaceAll("_", " ")}
+                              </p>
+                            </div>
+                            <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-black ${badge}`}>{pct}%</span>
                           </div>
-                          <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-black ${badge}`}>{pct}%</span>
-                        </div>
-                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div className={`h-full rounded-full bg-gradient-to-r ${color}`} style={{ width: `${Math.max(4, Math.min(100, pct))}%` }} />
-                        </div>
-                        <div className="mt-4 flex items-center justify-between text-xs">
-                          <span className="font-bold text-slate-500">
-                            {topic.correct_count ?? 0}/{topic.question_count ?? 0} correct-ready
-                          </span>
-                          <span className="inline-flex items-center gap-1 font-black text-indigo-600">
-                            Open page <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                          </span>
-                        </div>
-                      </Link>
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div className={`h-full rounded-full bg-gradient-to-r ${color}`} style={{ width: `${Math.max(4, Math.min(100, pct))}%` }} />
+                          </div>
+                          <div className="mt-4 flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-500">
+                              {topic.correct_count ?? 0}/{topic.question_count ?? 0} correct-ready
+                            </span>
+                            <span className="inline-flex items-center gap-1 font-black text-indigo-600">
+                              Open page <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            </span>
+                          </div>
+                        </Link>
+                        {examId && (
+                          <div className="mt-3 border-t border-slate-100 pt-3">
+                            <StartTestPill
+                              examId={examId}
+                              categories={[
+                                {
+                                  ...resolveNodeScope(topic.taxonomy_node_id, performanceNodesById),
+                                  question_count: tierAwareQuestionCount(15, hasAnyActive, false),
+                                  question_family: "objective"
+                                }
+                              ]}
+                              tone="neutral"
+                              label="Practice this"
+                              title={`${topic.taxonomy_name ?? "Category"} practice`}
+                              className="w-full !justify-center"
+                            />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -712,6 +945,61 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                   categoryHref={categoryHref}
                   emptyMessage="Complete a test and this will become your rolled-up syllabus performance map."
                 />
+              </div>
+            </section>
+          )}
+
+          {/* Performance by source — the tree already carries every book/source
+              rolled up one level inside its subject; this pulls all of them
+              into one flat, weakest-first list across every subject at once. */}
+          {activeTab !== "mains" && sourcePerformanceNodes.length > 0 && (
+            <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-600">
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+                Performance by source
+              </p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">Every book you've attempted, weakest first</h2>
+              <div className="mt-5 flex flex-col divide-y divide-slate-100">
+                {sourcePerformanceNodes.map((node) => {
+                  const pct = Math.round(node.accuracy * 100);
+                  const subjectName = node.parent_id ? performanceNodesById.get(node.parent_id)?.name : null;
+                  const badge =
+                    pct >= 70
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : pct >= 40
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-rose-50 text-rose-700 border-rose-200";
+                  return (
+                    <div key={node.id} className="flex flex-wrap items-center gap-3 py-3">
+                      <div className="min-w-0 flex-1">
+                        {subjectName && (
+                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{subjectName}</p>
+                        )}
+                        <Link href={categoryHref(node.id)} className="truncate text-sm font-bold text-slate-900 hover:text-indigo-600">
+                          {node.name}
+                        </Link>
+                        <p className="text-[11px] font-semibold text-slate-400">
+                          {node.correct_count}/{node.correct_count + node.incorrect_count} correct
+                        </p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-black ${badge}`}>{pct}%</span>
+                      {examId && (
+                        <StartTestPill
+                          examId={examId}
+                          categories={[
+                            {
+                              ...resolveNodeScope(node.id, performanceNodesById),
+                              question_count: tierAwareQuestionCount(15, hasAnyActive, false),
+                              question_family: "objective"
+                            }
+                          ]}
+                          tone="neutral"
+                          title={`${node.name} practice`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -809,9 +1097,8 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                     const severity = pct < 40 ? "rose" : pct < 55 ? "amber" : "slate";
 
                     return (
-                      <Link
+                      <div
                         key={node.id}
-                        href={categoryHref(node.id)}
                         className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-surface p-3.5 shadow-sm hover:border-slate-300 transition-colors"
                       >
                         <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-black ${
@@ -823,7 +1110,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                         }`}>
                           {i + 1}
                         </span>
-                        <div className="min-w-0 flex-1">
+                        <Link href={categoryHref(node.id)} className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <p className="truncate text-xs font-bold text-slate-900">{node.name}</p>
                             <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-slate-400">
@@ -841,8 +1128,21 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
                             </div>
                             <span className="text-[10px] font-bold text-slate-400 shrink-0">{pct}%</span>
                           </div>
-                        </div>
-                      </Link>
+                        </Link>
+                        {examId && (
+                          <StartTestPill
+                            examId={examId}
+                            categories={[
+                              {
+                                ...resolveNodeScope(node.id, performanceNodesById),
+                                question_count: tierAwareQuestionCount(15, hasAnyActive, false),
+                                question_family: "objective"
+                              }
+                            ]}
+                            tone="weak"
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>

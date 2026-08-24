@@ -184,3 +184,21 @@ export const BILLING_INTERVAL_SHORT: Record<string, string> = {
   year: "/yr",
   one_time: ""
 };
+
+/**
+ * Caps a "quick start" question count to what the server will actually accept
+ * for this tier — mirrors assessment.ts's getQuestionCap() (free: 50
+ * objective / 10 mains, premium: 100 / 25), enforced again server-side by
+ * assertWithinQuestionCap on every attempt-creation call. This only prevents
+ * requesting a doomed count; it is not itself the enforcement.
+ */
+export function tierAwareQuestionCount(desired: number, hasAnyActive: boolean, isMains: boolean): number {
+  const cap = isMains
+    ? hasAnyActive
+      ? PREMIUM_LIMITS.mainsQuestionsPerTest
+      : FREE_LIMITS.mainsQuestionsPerTest
+    : hasAnyActive
+      ? PREMIUM_LIMITS.objectiveQuestionsPerTest
+      : FREE_LIMITS.objectiveQuestionsPerTest;
+  return Math.max(1, Math.min(desired, cap));
+}

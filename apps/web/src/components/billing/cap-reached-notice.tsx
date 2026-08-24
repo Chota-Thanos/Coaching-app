@@ -8,19 +8,30 @@ import { SUBSCRIPTION_MODULES, type ModuleId } from "../../lib/subscription-plan
 /**
  * Turns a free-tier wall into an upgrade prompt.
  *
- * The API answers every exhausted allowance with 402 and either
- * `cap_exceeded` (you have used up a countable limit) or `premium_required`
- * (this capability is not on the free plan at all). Both used to surface as a
- * bare red error string, which told the reader they had hit a wall but not that
- * there was a way past it.
+ * Most of the app answers an exhausted allowance with 402 and either
+ * `cap_exceeded` (a countable limit is used up) or `premium_required` (the
+ * capability isn't on the free plan at all). The assessment module's own
+ * test-creation caps predate that convention and use 403 instead, with their
+ * own codes — `free_test_limit_reached` (the 3-test lifetime allowance) and
+ * `question_cap_exceeded` (too many questions requested for the tier). Same
+ * meaning to the reader, different wire shape, so both are matched here too
+ * rather than only recognising the newer 402 convention.
  *
  * Call `isCapError(err)` to decide whether to render this instead of your
  * normal error line.
  */
 
+const CAP_ERROR_CODES = new Set([
+  "cap_exceeded",
+  "premium_required",
+  "free_test_limit_reached",
+  "question_cap_exceeded",
+  "guest_question_cap_exceeded"
+]);
+
 export function isCapError(error: unknown): error is ApiError {
   if (!(error instanceof ApiError)) return false;
-  return error.status === 402 || error.code === "cap_exceeded" || error.code === "premium_required";
+  return error.status === 402 || (error.code != null && CAP_ERROR_CODES.has(error.code));
 }
 
 export function CapReachedNotice({
