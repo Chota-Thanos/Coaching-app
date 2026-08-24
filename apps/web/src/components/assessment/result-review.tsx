@@ -104,7 +104,7 @@ function TabButton({
       className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold transition-all border ${
         active
           ? "bg-slate-900 text-white shadow-sm border-slate-900"
-          : "bg-surface text-slate-650 hover:bg-slate-50 border-slate-200"
+          : "bg-surface text-slate-600 hover:bg-slate-50 border-slate-200"
       }`}
     >
       {children}
@@ -145,12 +145,21 @@ export function ResultReview({ resultId }: { resultId: string }) {
     );
   }, [review]);
 
+  const hasMainsQuestions = useMemo(() => {
+    if (!review) return false;
+    return review.questions.some((q) => q.question_format?.question_family === "mains_subjective");
+  }, [review]);
+
+  // Manual grading is a mentor/evaluator privilege, not self-service — a
+  // student can never grade their own answer. Role alone gets the button
+  // shown here; the backend independently requires a real, active
+  // mentorship engagement with this specific student before a mentor or
+  // evaluator's submission is actually accepted (see the PATCH .../evaluation
+  // route), so an unconnected mentor clicking through still gets a clear
+  // "not this student's mentor" error rather than silently succeeding.
   const canEvaluate = useMemo(() => {
     if (!review || !user) return false;
-    return (
-      ["admin", "moderator", "evaluator", "mentor"].includes(user.role) ||
-      Number(user.id) === Number(review.attempt.user_id)
-    );
+    return ["admin", "moderator", "evaluator", "mentor"].includes(user.role);
   }, [review, user]);
 
   const startManualEvaluation = (question: any) => {
@@ -249,7 +258,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
     const response = question.response;
     if (!response) {
       return (
-        <div className="mt-4 rounded-xl border border-slate-205 bg-slate-50/50 p-4 text-sm text-slate-500 italic">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-sm text-slate-500 italic">
           No answer response was submitted for this question.
         </div>
       );
@@ -261,7 +270,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
       return (
         <div className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50/20 p-5 space-y-4">
           <h4 className="font-extrabold text-sm text-indigo-800 flex items-center gap-1.5 border-b border-indigo-100 pb-2">
-            <FileCheck2 className="h-4 w-4 text-indigo-650" />
+            <FileCheck2 className="h-4 w-4 text-indigo-600" />
             Manual Evaluation & Marks
           </h4>
           
@@ -275,7 +284,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 max={manualMaxScore}
                 value={manualScore}
                 onChange={(e) => setManualScore(e.target.value)}
-                className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
                 placeholder="e.g. 6.5"
               />
             </div>
@@ -285,7 +294,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 type="number"
                 value={manualMaxScore}
                 onChange={(e) => setManualMaxScore(e.target.value)}
-                className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
                 placeholder="e.g. 10"
               />
             </div>
@@ -297,7 +306,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
               type="url"
               value={manualCheckedCopyUrl}
               onChange={(e) => setManualCheckedCopyUrl(e.target.value)}
-              className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm text-slate-850 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"
               placeholder="https://example.com/checked-copy.pdf"
             />
           </div>
@@ -331,7 +340,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
               value={manualFeedback}
               onChange={(e) => setManualFeedback(e.target.value)}
               rows={4}
-              className="w-full rounded-xl border border-slate-205 bg-surface px-3 py-2 text-sm text-slate-855 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"
               placeholder="Write detailed review, structure analysis, verdict..."
             />
           </div>
@@ -348,7 +357,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
               type="button"
               onClick={handleSaveManualEvaluation}
               disabled={isSavingManual}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-650 px-4 text-xs font-bold text-white hover:bg-indigo-750 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
               {isSavingManual && <Loader2 className="h-3 w-3 animate-spin" />}
               Save Evaluation
@@ -386,14 +395,14 @@ export function ResultReview({ resultId }: { resultId: string }) {
 
         {/* Evaluation status and details */}
         {response.evaluation_status === "evaluated" ? (
-          <div className="bg-slate-50/50 border border-slate-205 rounded-2xl p-5 space-y-4">
+          <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-indigo-650" />
+                <Sparkles className="h-4 w-4 text-indigo-600" />
                 AI Evaluation Report
               </h4>
               <div className="text-right">
-                <span className="text-2xl font-black text-indigo-650">{response.score}</span>
+                <span className="text-2xl font-black text-indigo-600">{response.score}</span>
                 <span className="text-xs text-slate-400 font-bold">/{response.max_score || question.marks || 10}</span>
               </div>
             </div>
@@ -412,14 +421,14 @@ export function ResultReview({ resultId }: { resultId: string }) {
 
             {response.rubric_breakdown && response.rubric_breakdown.length > 0 && (
               <div className="space-y-1.5">
-                <h5 className="text-[10px] font-black text-slate-450 uppercase tracking-wide">Marks breakdown</h5>
+                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Marks breakdown</h5>
                 <div className="overflow-hidden rounded-xl border border-slate-200/60">
                   <table className="w-full text-xs">
                     <tbody>
                       {response.rubric_breakdown.map((row: any, idx: number) => (
                         <tr key={idx} className="border-b border-slate-100 last:border-0">
                           <td className="p-2.5 align-top w-1/3 font-bold text-slate-700">{row.criterion}</td>
-                          <td className="p-2.5 align-top w-16 text-right font-black text-indigo-650 whitespace-nowrap">
+                          <td className="p-2.5 align-top w-16 text-right font-black text-indigo-600 whitespace-nowrap">
                             {row.awarded_marks}/{row.max_marks}
                           </td>
                           <td className="p-2.5 align-top text-slate-600">{row.comment}</td>
@@ -446,7 +455,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
               <div className="p-3.5 bg-rose-50/40 border border-rose-100 rounded-xl space-y-1.5">
                 <h5 className="text-[10px] font-black text-rose-800 uppercase tracking-wide">Areas of Improvement</h5>
                 {response.weaknesses && response.weaknesses.length > 0 ? (
-                  <ul className="list-disc list-inside text-xs text-rose-750 space-y-1 leading-relaxed">
+                  <ul className="list-disc list-inside text-xs text-rose-700 space-y-1 leading-relaxed">
                     {response.weaknesses.map((w: string, idx: number) => <li key={idx}>{w}</li>)}
                   </ul>
                 ) : (
@@ -458,16 +467,16 @@ export function ResultReview({ resultId }: { resultId: string }) {
             {response.factual_concerns && response.factual_concerns.length > 0 && (
               <div className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1.5">
                 <h5 className="text-[10px] font-black text-amber-800 uppercase tracking-wide">Facts worth double-checking</h5>
-                <ul className="list-disc list-inside text-xs text-amber-750 space-y-1 leading-relaxed">
+                <ul className="list-disc list-inside text-xs text-amber-700 space-y-1 leading-relaxed">
                   {response.factual_concerns.map((f: string, idx: number) => <li key={idx}>{f}</li>)}
                 </ul>
-                <p className="text-[10px] text-amber-650 italic">AI-flagged — verify against a standard reference before treating as authoritative.</p>
+                <p className="text-[10px] text-amber-600 italic">AI-flagged — verify against a standard reference before treating as authoritative.</p>
               </div>
             )}
 
             {response.feedback && (
               <div className="space-y-1.5">
-                <h5 className="text-[10px] font-black text-slate-450 uppercase tracking-wide">Detailed feedback report</h5>
+                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Detailed feedback report</h5>
                 <div
                   dangerouslySetInnerHTML={{ __html: response.feedback }}
                   className="prose prose-sm max-h-[300px] overflow-y-auto pr-1 text-sm leading-relaxed text-slate-700 space-y-2 border border-slate-200/60 p-4 bg-surface rounded-xl"
@@ -481,7 +490,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 <button
                   type="button"
                   onClick={() => startManualEvaluation(question)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Edit Manual Marks
                 </button>
@@ -490,7 +499,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                 type="button"
                 onClick={() => triggerAiEvaluation(response.id, question.id)}
                 disabled={isEvaluating}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 {isEvaluating ? (
                   <>
@@ -528,7 +537,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                   <button
                     type="button"
                     onClick={() => startManualEvaluation(question)}
-                    className="h-10 rounded-xl border border-amber-300 bg-surface hover:bg-amber-50 text-amber-850 font-bold text-xs px-4 shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+                    className="h-10 rounded-xl border border-amber-300 bg-surface hover:bg-amber-50 text-amber-800 font-bold text-xs px-4 shadow-sm flex items-center justify-center gap-1.5 transition-colors"
                   >
                     Enter Manual Marks
                   </button>
@@ -816,7 +825,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
           <div className="flex gap-2">
             <Link
               href={assessmentHref("/dashboard")}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-sm font-semibold text-slate-650 hover:border-indigo-650 hover:text-indigo-650 transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-sm font-semibold text-slate-600 hover:border-indigo-600 hover:text-indigo-600 transition-colors"
             >
               Dashboard
             </Link>
@@ -830,7 +839,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-205 bg-surface p-1.5 shadow-card">
+        <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-surface p-1.5 shadow-card">
           <TabButton active={tab === "summary"} onClick={() => setTab("summary")}>
             <Trophy className="h-4 w-4" aria-hidden="true" />
             Summary
@@ -852,9 +861,12 @@ export function ResultReview({ resultId }: { resultId: string }) {
       {/* ── Tab: Summary ──────────────────────────────── */}
       {tab === "summary" && (
         <div className="tab-content space-y-5">
-          {mainsPendingEvaluation ?
-            <div className="space-y-6">
-              {/* Premium Gradient Hero Card */}
+          <>
+            {/* Mains: a quick pending-status heads-up when grading isn't finished yet.
+                The full per-question detail (question, AI Evaluation Report, manual
+                marks form) now always renders further below on this same tab instead
+                of requiring a separate Questions-tab click. */}
+            {mainsPendingEvaluation && (
               <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/60 via-slate-50 to-indigo-50/30 p-6 shadow-sm">
                 <div className="flex items-start gap-4">
                   <div className="grid h-12 w-12 place-items-center rounded-xl bg-indigo-600 text-white text-xl shadow-sm shrink-0">
@@ -867,101 +879,18 @@ export function ResultReview({ resultId }: { resultId: string }) {
                     </p>
                     {/* Visual Progress */}
                     <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <span className="rounded-full bg-indigo-100/70 border border-indigo-200 px-3 py-1 text-xs font-black text-indigo-750">
+                      <span className="rounded-full bg-indigo-100/70 border border-indigo-200 px-3 py-1 text-xs font-black text-indigo-700">
                         {review.questions.filter(q => q.response && (q.response as any).evaluation_status === 'evaluated').length} / {review.questions.filter(q => q.response).length} Evaluated
                       </span>
-                      <span className="rounded-full bg-amber-100/70 border border-amber-200 px-3 py-1 text-xs font-black text-amber-750">
+                      <span className="rounded-full bg-amber-100/70 border border-amber-200 px-3 py-1 text-xs font-black text-amber-700">
                         {review.questions.filter(q => q.response && (q.response as any).evaluation_status !== 'evaluated').length} Awaiting Evaluation
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-              {/* Mains Questions Evaluation Checklist */}
-              <div className="rounded-2xl border border-slate-205 bg-surface p-5 shadow-card space-y-4">
-                <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Mains Answer Copies & Grading Checklist</h3>
-                <div className="divide-y divide-slate-100">
-                  {review.questions.map((q, idx) => {
-                    const response = q.response as any;
-                    const status = response?.evaluation_status;
-                    const isEvaluating = evaluatingIds.has(q.id) || status === "ai_evaluating";
+            )}
 
-                    return (
-                      <div key={q.id} className="py-4 first:pt-0 last:pb-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1 max-w-xl">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-extrabold text-slate-400">Q{idx + 1}</span>
-                            {/* Status Badge */}
-                            {!response ? (
-                              <span className="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10px] font-black text-slate-500">
-                                Unattempted
-                              </span>
-                            ) : status === "evaluated" ? (
-                              <span className="rounded-full bg-emerald-50 border border-emerald-250 px-2.5 py-0.5 text-[10px] font-black text-emerald-800">
-                                Score: {response.score} / {response.max_score || q.marks || 10}
-                              </span>
-                            ) : isEvaluating ? (
-                              <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-[10px] font-black text-indigo-700 animate-pulse">
-                                AI Evaluating...
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-black text-amber-800">
-                                Pending Evaluation
-                              </span>
-                            )}
-                          </div>
-                          <p
-                            className="text-sm font-semibold text-slate-800 line-clamp-2"
-                            dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_statement)}
-                          />
-                        </div>
-
-                        {/* Quick actions in checklist */}
-                        {response && (
-                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                            {canEvaluate && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setTab("questions");
-                                  setTimeout(() => {
-                                    document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                                    startManualEvaluation(q);
-                                  }, 150);
-                                }}
-                                className="h-9 px-3.5 rounded-lg border border-slate-200 bg-surface hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
-                              >
-                                {status === "evaluated" ? "Edit Marks" : "Manual Marks"}
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => triggerAiEvaluation(response.id, q.id)}
-                              disabled={isEvaluating}
-                              className="h-9 px-3.5 rounded-lg bg-indigo-650 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
-                            >
-                              {isEvaluating ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                  Evaluating...
-                                </>
-                              ) : (
-                                <>
-                                  <Sparkles className="h-3 w-3" />
-                                  {status === "evaluated" ? "Re-evaluate" : "AI Evaluate"}
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          : (
-            <>
               <div id="tour-result-score" className="grid gap-5 lg:grid-cols-[auto_1fr]">
                 {/* Score gauge */}
                 <div className="flex items-center justify-center rounded-2xl border border-line bg-surface p-8 shadow-card">
@@ -999,6 +928,74 @@ export function ResultReview({ resultId }: { resultId: string }) {
                       {review.cutoff_status}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Mains: full per-question detail (question text + AI Evaluation
+                  Report / manual marks form via renderSubjectiveAnswer), shown
+                  right here on Summary rather than only inside the Questions tab. */}
+              {hasMainsQuestions && (
+                <div className="grid gap-4">
+                  {review.questions.map((question, idx) => {
+                    if (question.question_format?.question_family !== "mains_subjective") return null;
+                    const response = question.response as any;
+                    return (
+                      <article
+                        id={`q-${question.id}`}
+                        key={question.id}
+                        className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+                      >
+                        <div className="flex items-center justify-between gap-3 border-b border-line/50 bg-paper px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {!response ? (
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-black text-slate-600">
+                                — Not Submitted
+                              </span>
+                            ) : (
+                              <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-black ${
+                                response.evaluation_status === "evaluated"
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : response.evaluation_status === "ai_evaluating"
+                                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                                  : "border-amber-200 bg-amber-50 text-amber-700"
+                              }`}>
+                                {response.evaluation_status === "evaluated"
+                                  ? "✓ Evaluated"
+                                  : response.evaluation_status === "ai_evaluating"
+                                  ? "⚙ AI Evaluating..."
+                                  : "🕒 Under Review"}
+                              </span>
+                            )}
+                            <span className="text-xs font-semibold text-muted">Q{idx + 1}</span>
+                          </div>
+                          {response && (
+                            <span className="text-xs font-black text-ink">
+                              {formatMarks(response.score)} / {formatMarks(response.max_score)} pts
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3
+                            className="text-sm font-bold leading-snug text-ink md:text-base"
+                            dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.question_statement)}
+                          />
+                          {question.question_version.supplementary_statement && (
+                            <div
+                              className="mt-2 text-sm leading-6 text-muted"
+                              dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.supplementary_statement)}
+                            />
+                          )}
+                          {question.question_version.question_prompt && (
+                            <p
+                              className="mt-2 text-sm font-bold text-ink"
+                              dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.question_prompt)}
+                            />
+                          )}
+                          {renderSubjectiveAnswer(question)}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1121,7 +1118,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                   {review.questions.map((q, idx) => {
                     const outcome = q.score_item?.outcome;
                     const isBookmarked = bookmarkedIds.has(q.question_version.question_id);
-                    let bgClass = "bg-slate-50 border-slate-205 text-slate-650 hover:bg-slate-100/80";
+                    let bgClass = "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100/80";
                     if (outcome === "correct") {
                       bgClass = "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100/70";
                     } else if (outcome === "incorrect") {
@@ -1157,8 +1154,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                   })}
                 </div>
               </div>
-            </>
-          )}
+          </>
         </div>
       )}
 
@@ -1217,7 +1213,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                       <div className="flex items-center gap-2">
                         {question.question_format?.question_family === "mains_subjective" ? (
                           !question.response ? (
-                            <span className="rounded-full border border-slate-205 bg-slate-50 px-2.5 py-0.5 text-[11px] font-black text-slate-650">
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-black text-slate-600">
                               — Not Submitted
                             </span>
                           ) : (
@@ -1226,7 +1222,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                 : (question.response as any).evaluation_status === 'ai_evaluating'
                                 ? "border-blue-200 bg-blue-50 text-blue-700"
-                                : "border-amber-250 bg-amber-50 text-amber-700"
+                                : "border-amber-200 bg-amber-50 text-amber-700"
                             }`}>
                               {(question.response as any).evaluation_status === 'evaluated'
                                 ? "✓ Evaluated"
@@ -1261,7 +1257,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                           className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
                             bookmarkedIds.has(question.question_version.question_id)
                               ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100/50"
-                              : "border-slate-200 bg-surface text-slate-650 hover:bg-slate-50 hover:text-slate-800"
+                              : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                           }`}
                           title={bookmarkedIds.has(question.question_version.question_id) ? "Remove Bookmark" : "Bookmark Question"}
                         >
@@ -1308,7 +1304,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                   key={`${question.id}-${key}`}
                                   className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm leading-6 transition-colors ${
                                     isCorrect
-                                      ? "border-emerald-250 bg-emerald-50 text-emerald-800"
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                                       : isSelected
                                         ? "border-rose-200 bg-rose-50 text-rose-800"
                                         : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
@@ -1343,11 +1339,11 @@ export function ResultReview({ resultId }: { resultId: string }) {
                       {question.question_version.explanation && (
                         <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
                           <p className="flex items-center gap-2 text-xs font-black text-indigo-700">
-                            <CircleAlert className="h-3.5 w-3.5 text-indigo-650" aria-hidden="true" />
+                            <CircleAlert className="h-3.5 w-3.5 text-indigo-600" aria-hidden="true" />
                             Explanation
                           </p>
                           <div
-                            className="article-body mt-2 text-sm leading-6 text-slate-650"
+                            className="article-body mt-2 text-sm leading-6 text-slate-600"
                             dangerouslySetInnerHTML={renderMathAndMarkdown(question.question_version.explanation)}
                           />
                         </div>
@@ -1396,7 +1392,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                 <div className="flex items-center gap-2">
                                   {q.question_format?.question_family === "mains_subjective" ? (
                                     !q.response ? (
-                                      <span className="rounded-full border border-slate-205 bg-slate-50 px-2 py-0.5 text-[10px] font-black text-slate-655">
+                                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-black text-slate-600">
                                         — Not Submitted
                                       </span>
                                     ) : (
@@ -1405,7 +1401,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                           : (q.response as any).evaluation_status === 'ai_evaluating'
                                           ? "border-blue-200 bg-blue-50 text-blue-700"
-                                          : "border-amber-250 bg-amber-50 text-amber-700"
+                                          : "border-amber-200 bg-amber-50 text-amber-700"
                                       }`}>
                                         {(q.response as any).evaluation_status === 'evaluated'
                                           ? "✓ Evaluated"
@@ -1440,7 +1436,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                     className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
                                       bookmarkedIds.has(q.question_version.question_id)
                                         ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100/50"
-                                        : "border-slate-200 bg-surface text-slate-650 hover:bg-slate-50 hover:text-slate-800"
+                                        : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                                     }`}
                                     title={bookmarkedIds.has(q.question_version.question_id) ? "Remove Bookmark" : "Bookmark Question"}
                                   >
@@ -1484,7 +1480,7 @@ export function ResultReview({ resultId }: { resultId: string }) {
                                           key={`${q.id}-${key}`}
                                           className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm leading-6 transition-colors ${
                                             isCorrect
-                                              ? "border-emerald-250 bg-emerald-50 text-emerald-800"
+                                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                                               : isSelected
                                                 ? "border-rose-200 bg-rose-50 text-rose-800"
                                                 : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
@@ -1518,11 +1514,11 @@ export function ResultReview({ resultId }: { resultId: string }) {
                               {q.question_version.explanation && (
                                 <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
                                   <p className="flex items-center gap-2 text-xs font-black text-indigo-700">
-                                    <CircleAlert className="h-3.5 w-3.5 text-indigo-650" aria-hidden="true" />
+                                    <CircleAlert className="h-3.5 w-3.5 text-indigo-600" aria-hidden="true" />
                                     Explanation
                                   </p>
                                   <div
-                                    className="article-body mt-2 text-sm leading-6 text-slate-650"
+                                    className="article-body mt-2 text-sm leading-6 text-slate-600"
                                     dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.explanation)}
                                   />
                                 </div>

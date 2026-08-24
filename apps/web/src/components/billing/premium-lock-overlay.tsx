@@ -48,7 +48,7 @@ export function PremiumLockOverlay({
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href={ctaHref}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 px-6 text-sm font-black text-white shadow-md shadow-indigo-150 hover:bg-indigo-700 transition"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 px-6 text-sm font-black text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition"
           >
             {ctaText}
           </Link>

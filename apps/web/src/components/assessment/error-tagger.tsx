@@ -65,7 +65,7 @@ export function ErrorTagger({ questionId }: { questionId: number }) {
           className={`rounded-full px-2.5 py-1 text-[11px] font-bold border transition-all ${
             state.tag === tag
               ? "bg-amber-600 border-amber-600 text-white"
-              : "bg-slate-50 border-slate-200/60 text-slate-650 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-250"
+              : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
           }`}
         >
           {tag}
@@ -81,7 +81,7 @@ export function ErrorTagger({ questionId }: { questionId: number }) {
         className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border transition-all ${
           state.bookmarked
             ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-            : "bg-slate-50 border-slate-200/60 text-slate-650 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-250"
+            : "bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200"
         }`}
         title={state.bookmarked ? "Remove bookmark" : "Bookmark for revision"}
       >

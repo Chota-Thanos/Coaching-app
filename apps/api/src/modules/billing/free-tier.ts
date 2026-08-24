@@ -81,11 +81,12 @@ export async function assertCanCreateCollection(userId: number): Promise<void> {
   const limits = await getNotesWorkspaceLimits(userId);
   if (limits.maxCollections === null) return;
   if (limits.collectionsUsed >= limits.maxCollections) {
-    const err = new Error(
+    // capExceededError, not a bare Error: the server error handler reports
+    // `error.name` as the response's `error` field, and the clients branch on
+    // `cap_exceeded` to show the upgrade prompt instead of a raw failure toast.
+    throw capExceededError(
       `Free accounts can create up to ${limits.maxCollections} repositories. Upgrade for unlimited.`
-    ) as Error & { statusCode?: number };
-    err.statusCode = 402;
-    throw err;
+    );
   }
 }
 
@@ -107,11 +108,9 @@ export async function assertCanAddCollectionItem(
   const used = Number(row?.count ?? 0);
 
   if (used >= limits.maxItemsPerCollection) {
-    const err = new Error(
+    throw capExceededError(
       `Free accounts can add up to ${limits.maxItemsPerCollection} articles per repository. Upgrade for unlimited.`
-    ) as Error & { statusCode?: number };
-    err.statusCode = 402;
-    throw err;
+    );
   }
 }
 

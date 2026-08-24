@@ -9,6 +9,7 @@ import {
   PRIMARY_ITEMS,
   NAV_GROUPS,
   SECONDARY_ITEMS,
+  SUBSCRIPTION_ITEMS,
   getAdminGroup,
   isNavItemActive,
   type NavItem
@@ -96,6 +97,12 @@ export function SidebarNav({ className = "" }: { className?: string }) {
 
         <div className="space-y-0.5 border-t border-line/60 pt-3">
           {SECONDARY_ITEMS.map((item) => (
+            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} />
+          ))}
+        </div>
+
+        <div className="space-y-0.5 border-t border-line/60 pt-3">
+          {SUBSCRIPTION_ITEMS.map((item) => (
             <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} />
           ))}
         </div>

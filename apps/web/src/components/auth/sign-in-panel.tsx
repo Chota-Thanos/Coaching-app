@@ -77,7 +77,7 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           type="button"
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-350 hover:bg-slate-100 hover:text-indigo-600 transition-all focus:outline-none"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-100 hover:text-indigo-600 transition-all focus:outline-none"
         >
           <User className="h-4 w-4 text-slate-500" />
           <span>{user.username}</span>
@@ -224,7 +224,7 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
                   logout();
                 }}
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-bold text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-rose-600 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-rose-600 transition-all"
               >
                 <LogOut className="h-4 w-4" />
                 Sign out
@@ -269,7 +269,7 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
         Sign in
       </Link>
       <Link
-        className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-slate-50 px-4 text-sm font-bold text-slate-800 transition hover:border-slate-550 hover:bg-slate-100"
+        className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-slate-50 px-4 text-sm font-bold text-slate-800 transition hover:border-slate-500 hover:bg-slate-100"
         href={registerHref}
       >
         Create account

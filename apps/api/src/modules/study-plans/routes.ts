@@ -209,8 +209,15 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
       const simulatedAllowed = !config.RAZORPAY_KEY_ID || !config.RAZORPAY_KEY_SECRET;
       const isSimulated = simulatedAllowed && razorpay_order_id.startsWith("sim_order_");
 
-      // Verify signature for real payments
-      if (!isSimulated && keySecret) {
+      // Verify signature for real payments. A missing secret fails the request
+      // rather than skipping the check — otherwise a half-configured Razorpay
+      // (key id set, secret unset) unlocked a paid plan on any payload.
+      if (!isSimulated) {
+        if (!keySecret) {
+          return reply
+            .status(503)
+            .send({ error: "Payment verification is unavailable: RAZORPAY_KEY_SECRET is not configured." });
+        }
         const crypto = await import("node:crypto");
         const expected = crypto.default.createHmac("sha256", keySecret)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)

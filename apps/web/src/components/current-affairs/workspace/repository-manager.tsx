@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ArrowRight, FolderKanban, Plus, X, Filter } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ApiError } from "../../auth/auth-context";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import type { FormEvent } from "react";
 import type { StudentCollection } from "../../../lib/api";
 import { splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
@@ -20,6 +22,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
   const [customTags, setCustomTags] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeFilterTags, setActiveFilterTags] = useState<string[]>([]);
 
@@ -43,6 +46,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
 
     setPending(true);
     setMessage(null);
+    setCapError(null);
     try {
       if (!token) {
         setMessage("Sign in to create a repository — your notes are saved to your account, not just this browser.");
@@ -61,8 +65,15 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
       setShowCreateForm(false);
       await onChanged();
       setMessage("Repository created.");
-    } catch {
-      setMessage("Could not create repository. Use a unique name.");
+    } catch (err) {
+      // A free account at its repository cap gets a 402 whose message names the
+      // limit. Reporting that as "use a unique name" sent people off renaming
+      // instead of telling them they had run out of repositories.
+      if (isCapError(err)) {
+        setCapError(err);
+      } else {
+        setMessage("Could not create repository. Use a unique name.");
+      }
     } finally {
       setPending(false);
     }
@@ -126,6 +137,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
         </form>
       )}
       {message && <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">{message}</p>}
+      {capError && <CapReachedNotice error={capError} module="current_affairs" />}
 
       {allRepositoryTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-paper/30 p-2.5">

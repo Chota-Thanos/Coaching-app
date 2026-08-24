@@ -535,7 +535,7 @@ export function CategoryPicker({
             <button
               type="button"
               onClick={() => setShowCustomize(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-650 transition hover:bg-indigo-100"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
               Customize

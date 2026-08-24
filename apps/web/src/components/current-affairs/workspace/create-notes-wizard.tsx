@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import type { StudentArticle, StudentCollection, StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
 import { splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
-import { authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { downloadScannedPdf, type PdfSection } from "../../../lib/export-pdf";
 import { useSubscription } from "../../../lib/use-subscription";
 import { PremiumLockOverlay } from "../../billing/premium-lock-overlay";
@@ -181,6 +182,7 @@ export function CreateNotesWizard() {
   const [selectedExistingId, setSelectedExistingId] = useState<number | null>(null);
   const [submittingRepo, setSubmittingRepo] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   const [repository, setRepository] = useState<StudentCollectionDetail | null>(null);
   const [loadingRepository, setLoadingRepository] = useState(false);
@@ -270,6 +272,7 @@ export function CreateNotesWizard() {
     if (!token || !name.trim()) return;
     setSubmittingRepo(true);
     setRepoError(null);
+    setCapError(null);
     try {
       const created = await authenticatedPost<StudentCollection>("/api/v1/current-affairs/me/collections", token, {
         name: name.trim(),
@@ -279,8 +282,11 @@ export function CreateNotesWizard() {
       });
       await loadRepository(created.id);
       setStep("articles");
-    } catch {
-      setRepoError("Could not create the repository. Try a different name.");
+    } catch (err) {
+      // A free account out of repositories gets a 402 naming the limit; telling
+      // them to "try a different name" sent them renaming instead of upgrading.
+      if (isCapError(err)) setCapError(err);
+      else setRepoError("Could not create the repository. Try a different name.");
     } finally {
       setSubmittingRepo(false);
     }
@@ -378,6 +384,7 @@ export function CreateNotesWizard() {
     if (!token || !repository || forkIds.length === 0) return;
     setSummarizing(true);
     setSummaryError(null);
+    setCapError(null);
     setGeneratedSummary(null);
     try {
       const note = await authenticatedPost<{ title: string; body: string }>(
@@ -397,8 +404,13 @@ export function CreateNotesWizard() {
       });
       await loadRepository(repository.id);
       setGeneratedSummary(note);
-    } catch {
-      setSummaryError("Could not generate a summary right now. You can still continue without one.");
+    } catch (err) {
+      // Two different walls land here: the AI Notes Helper needs Current
+      // Affairs Pro outright (premium_required), and the personal-article
+      // allowance can also be spent (cap_exceeded). Both are an upgrade
+      // prompt, not "try again later".
+      if (isCapError(err)) setCapError(err);
+      else setSummaryError("Could not generate a summary right now. You can still continue without one.");
     } finally {
       setSummarizing(false);
     }
@@ -478,6 +490,8 @@ export function CreateNotesWizard() {
           </label>
         )}
         {repoError && <p className="text-sm font-semibold text-berry">{repoError}</p>}
+      {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
+        {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
         <button
           className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white shadow disabled:opacity-60"
           disabled={submittingRepo || !name.trim()}
@@ -811,6 +825,7 @@ export function CreateNotesWizard() {
                       : `Summarize ${selectedForSummary.size || ""} article${selectedForSummary.size === 1 ? "" : "s"}`}
                   </button>
                   {summaryError && <p className="text-sm font-semibold text-berry">{summaryError}</p>}
+                  {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
                 </div>
               )}
 

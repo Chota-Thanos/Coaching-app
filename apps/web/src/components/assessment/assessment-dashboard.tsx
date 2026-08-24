@@ -481,7 +481,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
         {!contentTypeFilter && (
           <div id="tour-dashboard-header" className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-surface px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-650">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600">
                 <BarChart3 className="h-4 w-4" aria-hidden="true" />
                 Performance Radar
               </p>
@@ -619,7 +619,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
             <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-650">
+                  <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-600">
                     <Layers3 className="h-4 w-4" aria-hidden="true" />
                     Category Performance Studio
                   </p>
@@ -695,7 +695,7 @@ export function AssessmentDashboard({ contentTypeFilter }: AssessmentDashboardPr
           {activeTab !== "mains" && (
             <section className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm">
               <div>
-                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-650">
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-600">
                   <Layers3 className="h-4 w-4" aria-hidden="true" />
                   Full Syllabus Performance
                 </p>

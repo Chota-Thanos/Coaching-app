@@ -1315,7 +1315,7 @@ export function AssessmentHomePage({
             </div>
             <Link
               href={`/assessment/custom-test/${testTemplateId}?content_type=${activeTab}`}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition shrink-0"
             >
               <span>Back to Test Details</span>
               <ArrowLeft className="h-4 w-4 rotate-180 animate-pulse" />
@@ -1413,7 +1413,7 @@ export function AssessmentHomePage({
       {!isAssessmentPremium && token && (
         <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4.5">
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-650 text-white shadow-sm">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm">
               <Sparkles className="h-5 w-5 text-indigo-200 fill-indigo-200" />
             </span>
             <div>
@@ -1498,7 +1498,7 @@ export function AssessmentHomePage({
                     key={action.label}
                     type="button"
                     onClick={action.onClick}
-                    className="h-9 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 shadow-sm transition hover:border-indigo-650 hover:text-indigo-650"
+                    className="h-9 rounded-lg border border-slate-200 bg-surface px-3 text-xs font-bold text-slate-700 shadow-sm transition hover:border-indigo-600 hover:text-indigo-600"
                   >
                     {action.label}
                   </button>
@@ -1518,7 +1518,7 @@ export function AssessmentHomePage({
             ) : bookmarkedQuestions.length === 0 ? (
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-14 text-center">
                 <Bookmark className="mx-auto h-9 w-9 text-slate-400" aria-hidden="true" />
-                <p className="mt-2 text-sm font-black text-slate-750">No bookmarked questions yet</p>
+                <p className="mt-2 text-sm font-black text-slate-700">No bookmarked questions yet</p>
                 <p className="mt-1 text-xs text-slate-500">Bookmark questions you got wrong during test reviews to revise them here.</p>
               </div>
             ) : (
@@ -1561,11 +1561,11 @@ export function AssessmentHomePage({
 
                 {/* Filtered bookmarked questions column */}
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl bg-slate-55 p-3.5 text-xs font-bold text-slate-750">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl bg-slate-55 p-3.5 text-xs font-bold text-slate-700">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        className="rounded border-slate-300 text-indigo-650 focus:ring-indigo-600"
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
                         checked={
                           filteredBookmarkedQuestions.length > 0 &&
                           filteredBookmarkedQuestions.every(b => selectedBookmarkIds.has(Number(b.question_id)))
@@ -1636,7 +1636,7 @@ export function AssessmentHomePage({
                               }}
                             />
                             <div className="flex-1 min-w-0">
-                              <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-650">
+                              <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-600">
                                 {bookmark.taxonomy?.content_type === "mains" ? "Mains" : "Objective"}
                               </span>
                               <p className="mt-1.5 line-clamp-3 text-sm font-bold leading-relaxed text-slate-900">
@@ -1688,7 +1688,7 @@ export function AssessmentHomePage({
             <div className="mt-4 space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/20 p-3.5 shadow-sm gap-3">
                 <div className="flex items-center gap-2 min-w-0">
-                  <SlidersHorizontal className="h-4 w-4 text-indigo-650 shrink-0" />
+                  <SlidersHorizontal className="h-4 w-4 text-indigo-600 shrink-0" />
                   <span className="text-xs font-bold text-slate-700 truncate">
                     {excludedNodeIds.length > 0
                       ? `${excludedNodeIds.length} categories hidden from syllabus view`
@@ -1698,7 +1698,7 @@ export function AssessmentHomePage({
                 <button
                   type="button"
                   onClick={() => setIsFilterModalOpen(true)}
-                  className="flex h-9 items-center gap-1.5 px-3.5 text-xs font-bold text-indigo-705 hover:text-indigo-800 bg-surface hover:bg-slate-50 rounded-[9px] transition shadow-sm border border-indigo-150 shrink-0"
+                  className="flex h-9 items-center gap-1.5 px-3.5 text-xs font-bold text-indigo-705 hover:text-indigo-800 bg-surface hover:bg-slate-50 rounded-[9px] transition shadow-sm border border-indigo-100 shrink-0"
                 >
                   Customize View
                 </button>
@@ -1734,7 +1734,7 @@ export function AssessmentHomePage({
                         type="button"
                         onClick={() => setDrillPath(effectiveDrillPath.slice(0, i + 1))}
                         disabled={i === effectiveDrillPath.length - 1}
-                        className={i === effectiveDrillPath.length - 1 ? "text-slate-900 font-black" : "text-indigo-650 hover:text-indigo-850 transition"}
+                        className={i === effectiveDrillPath.length - 1 ? "text-slate-900 font-black" : "text-indigo-600 hover:text-indigo-800 transition"}
                       >
                         {crumb.name}
                       </button>
@@ -1923,7 +1923,7 @@ export function AssessmentHomePage({
             <button
               type="button"
               onClick={() => setIsFilterModalOpen(false)}
-              className="text-slate-400 hover:text-slate-650"
+              className="text-slate-400 hover:text-slate-600"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1952,7 +1952,7 @@ export function AssessmentHomePage({
                             type="checkbox"
                             checked={isChecked}
                             onChange={(e) => handleToggleNode(node.id, e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-350 text-indigo-650 focus:ring-indigo-500 transition cursor-pointer"
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition cursor-pointer"
                           />
                           <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wide ${
                             node.node_type === "subject" || node.node_type === "paper"
@@ -2109,11 +2109,11 @@ export function AssessmentHomePage({
                 <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
               </div>
             ) : userTests.length === 0 ? (
-              <div className="text-center py-3 bg-slate-50 border border-slate-150 rounded-xl text-[10px] text-slate-400 italic">
+              <div className="text-center py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] text-slate-400 italic">
                 No unattempted custom tests found. Save this cart as a new test first.
               </div>
             ) : (
-              <div className="max-h-64 overflow-y-auto space-y-2 border border-slate-150 rounded-xl p-2 bg-slate-50/50">
+              <div className="max-h-64 overflow-y-auto space-y-2 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
                 {userTests.map((t) => (
                   <button
                     key={t.id}
@@ -2178,7 +2178,7 @@ export function AssessmentHomePage({
               <button
                 type="submit"
                 disabled={compiling || !newTestTitle.trim()}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100"
               >
                 {compiling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 <span>Save & Add</span>
@@ -2237,7 +2237,7 @@ function TreeRow({
       {node.isUserNode ? (
         <div className="grid gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/20 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amber-250 bg-surface text-amber-600">
+            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amber-200 bg-surface text-amber-600">
               <User className="h-4 w-4" aria-hidden="true" />
             </div>
             <div className="min-w-0">
@@ -2360,7 +2360,7 @@ function TreeRow({
                   <button
                     type="button"
                     onClick={() => onDrillInto(node)}
-                    className="inline-flex items-center gap-1 text-[11.5px] font-[800] text-indigo-650 hover:text-indigo-850 transition"
+                    className="inline-flex items-center gap-1 text-[11.5px] font-[800] text-indigo-600 hover:text-indigo-800 transition"
                   >
                     Browse sub-categories →
                   </button>
@@ -2369,7 +2369,7 @@ function TreeRow({
                   <button
                     type="button"
                     onClick={() => onAddQuestion(node)}
-                    className="inline-flex items-center gap-1 text-[11.5px] font-[800] text-indigo-650 hover:text-indigo-850 transition"
+                    className="inline-flex items-center gap-1 text-[11.5px] font-[800] text-indigo-600 hover:text-indigo-800 transition"
                   >
                     <Plus className="h-3 w-3" aria-hidden="true" />
                     Add your questions

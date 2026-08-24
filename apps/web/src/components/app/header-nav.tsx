@@ -68,12 +68,12 @@ export function HeaderNav() {
   const navBtnClass = (isOpen: boolean) =>
     `inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs xl:text-[13px] font-bold whitespace-nowrap transition-all select-none ${
       isOpen
-        ? "bg-indigo-50 text-indigo-650 dark:bg-indigo-950/60 dark:text-indigo-300"
-        : "text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-650 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-indigo-300"
+        ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300"
+        : "text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-600 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-indigo-300"
     }`;
 
   const navLinkClass =
-    "inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs xl:text-[13px] font-bold text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-650 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-indigo-300 whitespace-nowrap transition-all select-none";
+    "inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs xl:text-[13px] font-bold text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-600 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-indigo-300 whitespace-nowrap transition-all select-none";
 
   return (
     <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 xl:gap-1.5 whitespace-nowrap">
@@ -109,7 +109,7 @@ export function HeaderNav() {
                   <Target className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">General Studies</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">General Studies</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">GS Prelims self tests & summary</p>
                 </div>
               </Link>
@@ -123,7 +123,7 @@ export function HeaderNav() {
                   <BookOpenCheck className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">CSAT / Aptitude</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">CSAT / Aptitude</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Aptitude practice & stats</p>
                 </div>
               </Link>
@@ -137,7 +137,7 @@ export function HeaderNav() {
                   <FileText className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Mains Practice</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Mains Practice</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Answer writing & reviews</p>
                 </div>
               </Link>
@@ -151,7 +151,7 @@ export function HeaderNav() {
                   <BarChart3 className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Scorecard Radar</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Scorecard Radar</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Unified performance overview</p>
                 </div>
               </Link>
@@ -165,7 +165,7 @@ export function HeaderNav() {
                   <Bookmark className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Bookmarks & Revision</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Bookmarks & Revision</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Category-filtered revision tests</p>
                 </div>
               </Link>
@@ -206,7 +206,7 @@ export function HeaderNav() {
                   <Newspaper className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Daily News</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Daily News</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Prelims current affairs updates</p>
                 </div>
               </Link>
@@ -220,7 +220,7 @@ export function HeaderNav() {
                   <HelpCircle className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Prelims PYQs</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Prelims PYQs</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Prelims questions by category</p>
                 </div>
               </Link>
@@ -266,7 +266,7 @@ export function HeaderNav() {
                   <FileText className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Editorial Summary</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Editorial Summary</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Exam-focused editorials</p>
                 </div>
               </Link>
@@ -280,7 +280,7 @@ export function HeaderNav() {
                   <BookOpen className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Mains Topic Notes</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Mains Topic Notes</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Structured theme notes & data</p>
                 </div>
               </Link>
@@ -294,7 +294,7 @@ export function HeaderNav() {
                   <FileText className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Mains PYQs</p>
+                  <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Mains PYQs</p>
                   <p className="text-[10px] text-ink/50 leading-none mt-0.5">Mains questions by theme</p>
                 </div>
               </Link>
@@ -315,7 +315,7 @@ export function HeaderNav() {
 
       {/* 7. Pricing */}
       <Link
-        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs xl:text-[13px] font-bold text-indigo-650 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/60 whitespace-nowrap transition-all select-none"
+        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs xl:text-[13px] font-bold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/60 whitespace-nowrap transition-all select-none"
         href="/pricing"
       >
         <Zap className="h-3.5 w-3.5 fill-indigo-600/20 text-indigo-600 dark:text-indigo-400" />
@@ -356,7 +356,7 @@ export function HeaderNav() {
                     <Newspaper className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Current Affairs</p>
+                    <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Current Affairs</p>
                     <p className="text-[10px] text-ink/50 leading-none mt-0.5">Articles, PYQs, ingestion</p>
                   </div>
                 </Link>
@@ -370,7 +370,7 @@ export function HeaderNav() {
                     <Target className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Assessment</p>
+                    <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Assessment</p>
                     <p className="text-[10px] text-ink/50 leading-none mt-0.5">Questions, tests, categories</p>
                   </div>
                 </Link>
@@ -384,7 +384,7 @@ export function HeaderNav() {
                     <BookOpenCheck className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Study Plans</p>
+                    <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Study Plans</p>
                     <p className="text-[10px] text-ink/50 leading-none mt-0.5">Plans, timeline, test content</p>
                   </div>
                 </Link>
@@ -399,7 +399,7 @@ export function HeaderNav() {
                       <ShieldCheck className="h-4 w-4" />
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Mentor Approvals</p>
+                      <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Mentor Approvals</p>
                       <p className="text-[10px] text-ink/50 leading-none mt-0.5">Onboarding requests review</p>
                     </div>
                   </Link>
@@ -415,7 +415,7 @@ export function HeaderNav() {
                       <CreditCard className="h-4 w-4" />
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Purchase Records</p>
+                      <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Purchase Records</p>
                       <p className="text-[10px] text-ink/50 leading-none mt-0.5">All subscriptions & billing</p>
                     </div>
                   </Link>
@@ -431,7 +431,7 @@ export function HeaderNav() {
                       <CreditCard className="h-4 w-4" />
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-650 transition-colors">Payments Ledger</p>
+                      <p className="text-xs font-bold text-ink dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Payments Ledger</p>
                       <p className="text-[10px] text-ink/50 leading-none mt-0.5">Every payment, refunds & disputes</p>
                     </div>
                   </Link>
@@ -442,7 +442,7 @@ export function HeaderNav() {
                 <Link
                   href="/admin"
                   onClick={() => setAdminOpen(false)}
-                  className="text-[10px] font-bold text-ink/50 hover:text-indigo-650 transition-colors block text-center"
+                  className="text-[10px] font-bold text-ink/50 hover:text-indigo-600 transition-colors block text-center"
                 >
                   View all admin modules →
                 </Link>

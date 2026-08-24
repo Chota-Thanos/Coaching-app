@@ -291,7 +291,7 @@ export function UserQuestionForm({
           <button
             type="submit"
             disabled={saving}
-            className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-indigo-650 text-white font-bold text-sm shadow-md transition disabled:opacity-50"
+            className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-sm shadow-md transition disabled:opacity-50"
           >
             {saving ? (
               <>

@@ -506,7 +506,7 @@ export function AdminArticleManager({ defaultContentKind = "" }: { defaultConten
                       <div className="flex flex-wrap gap-2 items-center">
                         <span className={`rounded-md px-2 py-0.5 text-[10.5px] font-black uppercase tracking-wide border ${
                           article.status === 'published' 
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-150' 
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-100' 
                             : 'bg-slate-50 text-slate-600 border-slate-200'
                         }`}>
                           {statusLabel(article.status)}

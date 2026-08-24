@@ -38,7 +38,13 @@ const envSchema = z.object({
   SMTP_PASSWORD: z.string().optional(),
   MAIL_FROM: z.string().default("WayToIAS <no-reply@waytoias.com>"),
   // Base URL used to build links in emails (verification / password reset).
-  PUBLIC_WEB_URL: z.string().default("https://waytoias.com")
+  PUBLIC_WEB_URL: z.string().default("https://waytoias.com"),
+
+  // Accounts that hold a standing full-bundle subscription without a billing
+  // row — founders, staff, review accounts. Comma-separated emails. Kept in the
+  // environment rather than in source: the previous hard-coded check also
+  // matched on `username === "admin"`, which anyone could register.
+  PERMANENT_SUBSCRIBER_EMAILS: z.string().optional()
 });
 
 const parsed = envSchema.parse(process.env);
@@ -51,5 +57,8 @@ export const config = {
   ...parsed,
   corsOrigins: parsed.CORS_ORIGIN
     ? parsed.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean)
+    : [],
+  permanentSubscriberEmails: parsed.PERMANENT_SUBSCRIBER_EMAILS
+    ? parsed.PERMANENT_SUBSCRIBER_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
     : []
 };

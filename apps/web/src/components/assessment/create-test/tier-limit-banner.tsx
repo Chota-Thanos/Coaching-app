@@ -53,7 +53,7 @@ export function TierLimitBanner({
       atLimit ? "border-rose-100 bg-rose-50/60 text-rose-800" : "border-indigo-100 bg-indigo-50/50 text-indigo-800"
     }`}>
       <p className="flex items-center gap-2">
-        <Sparkles className={`h-4 w-4 shrink-0 ${atLimit ? "text-rose-600" : "text-indigo-650"}`} aria-hidden="true" />
+        <Sparkles className={`h-4 w-4 shrink-0 ${atLimit ? "text-rose-600" : "text-indigo-600"}`} aria-hidden="true" />
         <span>
           Free tier: up to {cap} {isMains ? "Mains" : "GK/CSAT"} questions per test
           {usageText ? ` · ${usageText}` : ""}

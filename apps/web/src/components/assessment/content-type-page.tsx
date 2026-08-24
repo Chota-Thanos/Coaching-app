@@ -18,7 +18,7 @@ interface ContentTypePageProps {
 
 export function ContentTypePage({ contentType, label, shortLabel }: ContentTypePageProps) {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-650 border-t-transparent" /></div>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>}>
       <ContentTypePageInner contentType={contentType} label={label} shortLabel={shortLabel} />
     </Suspense>
   );
@@ -65,7 +65,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
               href={`/assessment/custom-test/create?content_type=${contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk'}`}
               className="inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
             >
-              <Plus className="h-4 w-4 text-indigo-650" />
+              <Plus className="h-4 w-4 text-indigo-600" />
               <span>Create Custom Test</span>
             </Link>
             
@@ -73,7 +73,7 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
               href={`/assessment/custom-test?content_type=${contentType === 'aptitude' ? 'aptitude' : contentType === 'mains' ? 'mains' : 'gk'}`}
               className="inline-flex items-center gap-1.5 rounded-xl bg-surface border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
             >
-              <ClipboardList className="h-4 w-4 text-indigo-650" />
+              <ClipboardList className="h-4 w-4 text-indigo-600" />
               <span>My Custom Tests</span>
             </Link>
             
@@ -229,7 +229,7 @@ function MyTestsList({ contentType }: { contentType: string }) {
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <Link href={`/assessment/custom-test/${test.id}?content_type=${contentType}`} className="font-semibold text-ink hover:text-indigo-650 transition truncate block text-sm">
+                        <Link href={`/assessment/custom-test/${test.id}?content_type=${contentType}`} className="font-semibold text-ink hover:text-indigo-600 transition truncate block text-sm">
                           {test.title}
                         </Link>
                         <p className="mt-1 text-xs text-muted">
@@ -237,8 +237,8 @@ function MyTestsList({ contentType }: { contentType: string }) {
                         </p>
                       </div>
                       <span className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border ${
-                        isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-250" :
-                        hasAttempt ? "bg-amber-50 text-amber-700 border-amber-250" :
+                        isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                        hasAttempt ? "bg-amber-50 text-amber-700 border-amber-200" :
                         "bg-slate-50 text-slate-500 border-slate-200"
                       }`}>
                         {isCompleted ? "Completed" : hasAttempt ? "In Progress" : "Not Started"}

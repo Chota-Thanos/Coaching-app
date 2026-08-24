@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ArticleFiltersResponse, ArticleListResponse, ArticleSummary, CategoryNode, StudentCollection, StudentFork } from "../../../lib/api";
 import { CURRENT_AFFAIRS_HUBS, contentKindLabel, monthLabel, type CurrentAffairsHub } from "../../../lib/current-affairs";
 import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { tabButtonClass, tabStripClass } from "../../ui/tabs";
 
 type RepositoryBulkImportModalProps = {
   existingArticleIds: Set<number>;
@@ -14,7 +15,12 @@ type RepositoryBulkImportModalProps = {
   onImported: () => Promise<void>;
 };
 
-const DEFAULT_HUB = CURRENT_AFFAIRS_HUBS[0] as CurrentAffairsHub;
+// Concepts (evergreen explainers) lead over Daily News (dated event
+// write-ups) — students revising for prelims want the concept list first,
+// with a quick tab to switch over to news when they specifically want that.
+const CONCEPTS_HUB = CURRENT_AFFAIRS_HUBS.find((hub) => hub.path === "concepts") as CurrentAffairsHub;
+const DAILY_NEWS_HUB = CURRENT_AFFAIRS_HUBS.find((hub) => hub.path === "daily-news") as CurrentAffairsHub;
+const DEFAULT_HUB = CONCEPTS_HUB;
 
 function dateLabel(value: string | null): string {
   if (!value) return "Undated";
@@ -99,7 +105,7 @@ export function RepositoryBulkImportModal({
     setMessage(null);
     void (async () => {
       await loadFilters(activeHub);
-      await searchArticles();
+      await searchArticles({ hub: activeHub, category: "", month: "", year: "" });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -112,6 +118,7 @@ export function RepositoryBulkImportModal({
     setSelectedIds(new Set());
     setMessage(null);
     await loadFilters(nextHub);
+    await searchArticles({ hub: nextHub, category: "", month: "", year: "" });
   }
 
   function changeGsPaper(id: string): void {
@@ -148,22 +155,31 @@ export function RepositoryBulkImportModal({
     setMessage(null);
   }
 
-  async function searchArticles(): Promise<void> {
+  // Accepts explicit overrides so callers that just reset hub/category/month/
+  // year (loadFilters clears them via setState) can search with the fresh
+  // values immediately — reading them back off component state here would
+  // still see the pre-reset values, since state setters don't update the
+  // current closure synchronously.
+  async function searchArticles(overrides?: { hub?: CurrentAffairsHub; category?: string; month?: string; year?: string }): Promise<void> {
     if (!token) return;
+    const hub = overrides?.hub ?? activeHub;
+    const category = overrides?.category ?? selectedCategoryId;
+    const searchMonth = overrides?.month ?? month;
+    const searchYear = overrides?.year ?? year;
     setLoading(true);
     setMessage(null);
     try {
       if (!filters) {
-        await loadFilters(activeHub);
+        await loadFilters(hub);
       }
       const search = new URLSearchParams({
-        content_kind: activeHub.contentKind,
+        content_kind: hub.contentKind,
         page: "1",
         limit: "30"
       });
-      if (selectedCategoryId) search.set("category", selectedCategoryId);
-      if (month) search.set("month", month);
-      if (year) search.set("year", year);
+      if (category) search.set("category", category);
+      if (searchMonth) search.set("month", searchMonth);
+      if (searchYear) search.set("year", searchYear);
       const response = await authenticatedGet<ArticleListResponse>(`/api/v1/current-affairs/frontend/articles?${search}`, token);
       setArticles(response.items);
       setSelectedIds(new Set());
@@ -249,6 +265,23 @@ export function RepositoryBulkImportModal({
         </div>
 
         <div className="grid gap-5 p-5">
+          <div className={tabStripClass()}>
+            <button
+              className={tabButtonClass(hubPath === CONCEPTS_HUB.path)}
+              onClick={() => void changeHub(CONCEPTS_HUB.path)}
+              type="button"
+            >
+              Concepts
+            </button>
+            <button
+              className={tabButtonClass(hubPath === DAILY_NEWS_HUB.path)}
+              onClick={() => void changeHub(DAILY_NEWS_HUB.path)}
+              type="button"
+            >
+              Daily News
+            </button>
+          </div>
+
           <div className={`grid gap-3 rounded-lg border border-line bg-paper/30 p-4 md:grid-cols-2 ${hasGsPapers ? "xl:grid-cols-7" : "xl:grid-cols-6"}`}>
             <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-ink/60">
               1. Section
@@ -372,7 +405,7 @@ export function RepositoryBulkImportModal({
               <button
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic px-4 text-sm font-bold text-white disabled:opacity-60"
                 disabled={loading}
-                onClick={searchArticles}
+                onClick={() => void searchArticles()}
                 type="button"
               >
                 <Search aria-hidden="true" className="h-4 w-4" />

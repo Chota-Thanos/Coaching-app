@@ -98,7 +98,7 @@ export function PremiumSidePanel({
                 href={link}
                 target="_blank"
                 rel="noreferrer"
-                className="block rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5 hover:bg-indigo-50 hover:text-indigo-600 text-[11px] font-bold text-slate-650 truncate transition-all"
+                className="block rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5 hover:bg-indigo-50 hover:text-indigo-600 text-[11px] font-bold text-slate-600 truncate transition-all"
                 title={link}
               >
                 {displayLink}

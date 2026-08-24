@@ -355,7 +355,7 @@ export function OnboardingTour({ type, onClose }: OnboardingTourProps) {
         </div>
 
         {!isMobile && (
-          <div className="bg-slate-50 text-center py-1 border-t border-slate-150">
+          <div className="bg-slate-50 text-center py-1 border-t border-slate-100">
             <span className="text-[8px] text-slate-400 font-medium">
               Keyboard shortcut: Use ← → keys to navigate · Esc to exit
             </span>

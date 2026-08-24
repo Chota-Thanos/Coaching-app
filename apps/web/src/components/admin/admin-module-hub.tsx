@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Newspaper, Target, ShieldCheck, ArrowRight, Brain, BookOpen, BookOpenCheck, ClipboardCheck, FileText, Plus, Sparkles, X } from "lucide-react";
+import { Newspaper, Target, ShieldCheck, ArrowRight, Brain, BookOpen, BookOpenCheck, ClipboardCheck, CreditCard, FileText, Plus, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../auth/auth-context";
 import { SignInPanel } from "../auth/sign-in-panel";
@@ -206,6 +206,54 @@ export function AdminModuleHub() {
             </Link>
           </div>
         </div>
+
+        {/* Subscriptions Module */}
+        {user?.role === "admin" && (
+          <div className="bg-surface border border-line rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group">
+            <div className="h-2 bg-gradient-to-r from-amber-500 to-civic" />
+            <div className="p-8">
+              <div className="flex items-start justify-between mb-6">
+                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+                  <CreditCard className="h-7 w-7" />
+                </span>
+                <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Billing Module
+                </span>
+              </div>
+
+              <h2 className="text-2xl font-black text-ink mb-2">Subscriptions</h2>
+              <p className="text-sm text-ink/60 leading-relaxed mb-6">
+                Edit plan names, prices, and entitlements — what each paid module actually unlocks — plus every
+                subscriber&apos;s billing record.
+              </p>
+
+              <div className="grid gap-2 mb-6">
+                {[
+                  { href: "/admin/subscriptions", label: "Plans, Prices & Entitlements", icon: <Sparkles className="h-3.5 w-3.5" /> },
+                  { href: "/admin/purchases", label: "Subscriber Records", icon: <ClipboardCheck className="h-3.5 w-3.5" /> },
+                  { href: "/admin/payments", label: "Payments Ledger", icon: <FileText className="h-3.5 w-3.5" /> }
+                ].map(({ href, label, icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-ink/70 hover:bg-amber-50 hover:text-amber-700 transition-all"
+                  >
+                    {icon}
+                    {label}
+                  </Link>
+                ))}
+              </div>
+
+              <Link
+                href="/admin/subscriptions"
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm transition-all shadow-md"
+              >
+                Manage Subscriptions
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Onboarding Tours Module */}
         <div className={`bg-surface border rounded-3xl shadow-sm overflow-hidden hover:shadow-lg transition-all group md:col-span-3 ${showToursManager ? "border-indigo-300" : "border-line"}`}>

@@ -14,9 +14,9 @@ type TopicRow = {
 };
 
 function accuracyColor(accuracy: number): string {
-  if (accuracy >= 0.7) return "text-emerald-750 bg-emerald-50 border border-emerald-200/50";
-  if (accuracy >= 0.4) return "text-amber-750 bg-amber-50 border border-amber-200/50";
-  return "text-rose-750 bg-rose-50 border border-rose-200/50";
+  if (accuracy >= 0.7) return "text-emerald-700 bg-emerald-50 border border-emerald-200/50";
+  if (accuracy >= 0.4) return "text-amber-700 bg-amber-50 border border-amber-200/50";
+  return "text-rose-700 bg-rose-50 border border-rose-200/50";
 }
 
 function accuracyBarColor(accuracy: number): string {
@@ -49,7 +49,7 @@ export function TopicHeatmap({ topics }: { topics: TopicRow[] }) {
   const sorted = [...topics].sort((a, b) => Number(a.accuracy) - Number(b.accuracy));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-205 bg-surface shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-card">
       {/* Table header */}
       <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_6rem_4rem] gap-2 bg-slate-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
         <span>Topic</span>
@@ -112,7 +112,7 @@ export function TopicHeatmap({ topics }: { topics: TopicRow[] }) {
       </ul>
 
       {/* Summary legend */}
-      <div className="flex flex-wrap items-center gap-3 border-t border-slate-150 bg-slate-50 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-slate-50 px-4 py-2.5">
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
           <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> ≥ 70% — Strong
         </span>

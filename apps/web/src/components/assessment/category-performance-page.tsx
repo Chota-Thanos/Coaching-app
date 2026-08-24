@@ -59,7 +59,7 @@ function ChildCategoryCard({ child, backTab }: { child: any; backTab: string }) 
   return (
     <Link
       href={`/assessment/dashboard/categories/${child.id}?tab=${backTab}`}
-      className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-650 hover:shadow-md"
+      className="group rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-600 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

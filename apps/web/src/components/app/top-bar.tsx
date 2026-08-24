@@ -3,6 +3,8 @@ import { WayToIASLogo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { SidebarDrawer } from "./sidebar-drawer";
+import { SubscriptionStatusLink } from "../billing/subscription-status-link";
+import { UserCircle } from "lucide-react";
 
 export function TopBar() {
   return (
@@ -18,7 +20,15 @@ export function TopBar() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <SubscriptionStatusLink compact />
+          <Link
+            href="/profile"
+            title="Your profile"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-slate-500 transition hover:border-civic/40 hover:text-ink"
+          >
+            <UserCircle className="h-[18px] w-[18px]" strokeWidth={2} />
+          </Link>
           <ThemeToggle />
           <SignInPanel compact />
         </div>

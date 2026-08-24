@@ -379,7 +379,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
           <div className="grid grid-cols-4 sm:flex items-center gap-2 text-center text-[10px] font-black tracking-wide uppercase shrink-0">
             <span className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-emerald-600">{summary.answered} Done</span>
             <span className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-amber-600">{summary.review} Review</span>
-            <span className="rounded-lg bg-slate-150/70 border border-slate-200 px-3 py-2 text-slate-500">{summary.skipped} Skip</span>
+            <span className="rounded-lg bg-slate-100/70 border border-slate-200 px-3 py-2 text-slate-500">{summary.skipped} Skip</span>
             <span className="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-white normal-case">
               <Clock3 className="h-3.5 w-3.5 text-indigo-400" />
               {timeLabel(remaining)}
@@ -437,7 +437,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                     >
                       <div className="flex justify-between items-center text-xs">
                         <span className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase ${
-                          isCurrentlyActive ? "bg-indigo-600 text-white" : "bg-slate-150 text-slate-600"
+                          isCurrentlyActive ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
                         }`}>
                           Question {qPaperIndex + 1}
                         </span>
@@ -457,7 +457,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                         )}
                         {q.question_version.question_prompt && (
                           <p
-                            className="text-xs sm:text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-150"
+                            className="text-xs sm:text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-100"
                             dangerouslySetInnerHTML={renderMathAndMarkdown(q.question_version.question_prompt)}
                           />
                         )}
@@ -483,7 +483,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                               type="button"
                             >
                               <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md text-[10px] font-black transition-colors ${
-                                selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-550"
+                                selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
                               }`}>
                                 {key}
                               </span>
@@ -512,7 +512,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                 )}
                 {activeQuestion.question_version.question_prompt && (
                   <p
-                    className="text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-150"
+                    className="text-sm font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100"
                     dangerouslySetInnerHTML={renderMathAndMarkdown(activeQuestion.question_version.question_prompt)}
                   />
                 )}
@@ -727,7 +727,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                               <div className="p-3 bg-rose-50/40 border border-rose-100 rounded-xl space-y-1.5">
                                 <h4 className="text-[10px] font-black text-rose-800 uppercase tracking-wide">Areas of Improvement</h4>
                                 {savedMainsAns.weaknesses && savedMainsAns.weaknesses.length > 0 ? (
-                                  <ul className="list-disc list-inside text-[10px] text-rose-750 space-y-0.5 leading-relaxed">
+                                  <ul className="list-disc list-inside text-[10px] text-rose-700 space-y-0.5 leading-relaxed">
                                     {savedMainsAns.weaknesses.map((w: string, idx: number) => <li key={idx}>{w}</li>)}
                                   </ul>
                                 ) : (
@@ -739,7 +739,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                             {savedMainsAns.factual_concerns && savedMainsAns.factual_concerns.length > 0 && (
                               <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1.5">
                                 <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-wide">Facts worth double-checking</h4>
-                                <ul className="list-disc list-inside text-[10px] text-amber-750 space-y-0.5 leading-relaxed">
+                                <ul className="list-disc list-inside text-[10px] text-amber-700 space-y-0.5 leading-relaxed">
                                   {savedMainsAns.factual_concerns.map((f: string, idx: number) => <li key={idx}>{f}</li>)}
                                 </ul>
                               </div>
@@ -804,7 +804,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                 Prev
               </button>
               <button
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-750"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-700"
                 onClick={() => {
                   if (isSubjective) {
                     alert("Click Lock & Submit Answer Response to save mains essay answers.");
@@ -817,7 +817,7 @@ export function AttemptEngine({ attemptId }: AttemptEngineProps) {
                 Skip
               </button>
               <button
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-750"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 text-xs font-bold text-slate-700"
                 onClick={() => void saveResponse(activeQuestion, activeResponse?.selectedAnswer ?? null, activeResponse?.status ?? "not_visited", true)}
                 type="button"
               >

@@ -378,7 +378,7 @@ export function CreateTestWizard() {
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" aria-hidden="true" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" aria-hidden="true" />
       </div>
     );
   }
@@ -402,7 +402,7 @@ export function CreateTestWizard() {
               }}
               className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface transition hover:bg-slate-50"
             >
-              <ArrowLeft className="h-5 w-5 text-slate-655" aria-hidden="true" />
+              <ArrowLeft className="h-5 w-5 text-slate-600" aria-hidden="true" />
             </button>
             <div>
               <h1 className="text-xl font-black tracking-tight text-slate-900">Create Test</h1>
@@ -765,7 +765,7 @@ function ManualFlow(props: {
           type="button"
           disabled={submitting || !canSubmit || (!isAddToExisting && freeTestsExhausted)}
           onClick={isAddToExisting ? onSubmitAddExisting : onSubmitCreateNew}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-slate-850 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           {submitting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-5 w-5" aria-hidden="true" />}
           {isAddToExisting ? "Add Questions" : "Create & Start Test"}
@@ -1212,7 +1212,7 @@ function AiChatFlow(props: {
                 type="button"
                 disabled={submitting || !canCreate}
                 onClick={onCreate}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-650 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 {submitting ? <Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" /> : <Check className="h-4.5 w-4.5" aria-hidden="true" />}
                 I&apos;m done — build my test

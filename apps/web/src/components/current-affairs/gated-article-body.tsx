@@ -83,7 +83,7 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   if (!isInitialized || checkingLimit) {
     return (
       <div className="flex justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }

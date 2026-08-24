@@ -10,6 +10,7 @@ import {
   PRIMARY_ITEMS,
   NAV_GROUPS,
   SECONDARY_ITEMS,
+  SUBSCRIPTION_ITEMS,
   getAdminGroup,
   isNavItemActive,
   type NavItem
@@ -122,6 +123,17 @@ export function SidebarDrawer() {
             </span>
             <div className="space-y-1 bg-paper/40 dark:bg-slate-800/40 p-1.5 rounded-2xl border border-line/40 dark:border-slate-800">
               {SECONDARY_ITEMS.map((item) => (
+                <DrawerRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} onClick={close} />
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block px-2">
+              Subscription
+            </span>
+            <div className="space-y-1 bg-paper/40 dark:bg-slate-800/40 p-1.5 rounded-2xl border border-line/40 dark:border-slate-800">
+              {SUBSCRIPTION_ITEMS.map((item) => (
                 <DrawerRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} onClick={close} />
               ))}
             </div>

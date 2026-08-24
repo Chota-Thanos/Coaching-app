@@ -39,7 +39,7 @@ export default function CustomTestsListPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     }>
       <CustomTestsListInner />
@@ -130,7 +130,7 @@ function CustomTestsListInner() {
   if (!isInitialized || (loading && tests.length === 0)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
@@ -147,7 +147,7 @@ function CustomTestsListInner() {
               href={backUrl}
               className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 transition"
             >
-              <ArrowLeft className="h-5 w-5 text-slate-655" />
+              <ArrowLeft className="h-5 w-5 text-slate-600" />
             </Link>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tight">My Custom Tests</h1>
@@ -235,7 +235,7 @@ function CustomTestsListInner() {
                     </div>
 
                     {/* Test Title */}
-                    <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-650 transition leading-snug text-sm sm:text-base">
+                    <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition leading-snug text-sm sm:text-base">
                       {test.title}
                     </h3>
                     
@@ -276,7 +276,7 @@ function CustomTestsListInner() {
                       <>
                         <Link
                           href={`/assessment/results/${test.latest_result_id}`}
-                          className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-150 transition"
+                          className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-100 transition"
                         >
                           <BookOpenCheck className="h-3.5 w-3.5" />
                           <span>View Result</span>
@@ -303,7 +303,7 @@ function CustomTestsListInner() {
                           <button
                             onClick={() => handleStartAttempt(test.id)}
                             disabled={startingId === test.id}
-                            className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-850 px-4 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            className="flex-1 h-9.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 px-4 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                           >
                             {startingId === test.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -3,7 +3,8 @@
 import { BookmarkPlus, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import type { ArticleDetail, StudentFork } from "../../lib/api";
-import { authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
+import { ApiError, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
+import { CapReachedNotice, isCapError } from "../billing/cap-reached-notice";
 import { SignInPanel } from "../auth/sign-in-panel";
 
 export function StudentArticleActions({ article }: { article: ArticleDetail }) {
@@ -12,6 +13,7 @@ export function StudentArticleActions({ article }: { article: ArticleDetail }) {
   const [fork, setFork] = useState<StudentFork | null>(existingFork ?? null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   if (!token) {
     return (
@@ -29,11 +31,18 @@ export function StudentArticleActions({ article }: { article: ArticleDetail }) {
     if (!token) return;
     setPending(true);
     setMessage(null);
+    setCapError(null);
     try {
       const record = await authenticatedPost<StudentFork>(`/api/v1/current-affairs/articles/${article.id}/fork`, token, {});
       setFork(record);
       await refreshForks();
       setMessage("Saved to Notes Space.");
+    } catch (err) {
+      // There was no catch here at all: a free account at its saved-article
+      // limit got an unhandled rejection, so the button simply stopped
+      // spinning and nothing was said.
+      if (isCapError(err)) setCapError(err);
+      else setMessage("Could not save this article. Please try again.");
     } finally {
       setPending(false);
     }
@@ -85,6 +94,11 @@ export function StudentArticleActions({ article }: { article: ArticleDetail }) {
         </button>
       </div>
       {message && <p className="mt-3 text-sm font-semibold text-civic">{message}</p>}
+      {capError && (
+        <div className="mt-3">
+          <CapReachedNotice error={capError} module="current_affairs" compact />
+        </div>
+      )}
     </aside>
   );
 }

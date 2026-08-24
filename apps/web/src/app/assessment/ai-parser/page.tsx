@@ -59,7 +59,7 @@ export default function AiParserPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     }>
       <AiParserInner />
@@ -467,7 +467,7 @@ function AiParserInner() {
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
@@ -510,13 +510,13 @@ function AiParserInner() {
           <div className="lg:col-span-1 space-y-6">
             <div className="rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm space-y-4">
               <h2 className="text-sm font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
-                <BrainCircuit className="h-4 w-4 text-indigo-650" />
+                <BrainCircuit className="h-4 w-4 text-indigo-600" />
                 <span>Upload & Parse Setup</span>
               </h2>
 
               {/* Setup form */}
               <form onSubmit={handleParse} className="space-y-4">
-                <div className="block text-xs font-bold text-slate-655 space-y-1.5">
+                <div className="block text-xs font-bold text-slate-600 space-y-1.5">
                   <span>Syllabus Content Type</span>
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -524,7 +524,7 @@ function AiParserInner() {
                       onClick={() => setContentType("gk")}
                       className={`h-10 rounded-xl border text-[11px] font-bold transition ${
                         contentType === "gk"
-                          ? "border-indigo-650 bg-indigo-50 text-indigo-700"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -535,7 +535,7 @@ function AiParserInner() {
                       onClick={() => setContentType("aptitude")}
                       className={`h-10 rounded-xl border text-[11px] font-bold transition ${
                         contentType === "aptitude"
-                          ? "border-indigo-650 bg-indigo-50 text-indigo-700"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -546,7 +546,7 @@ function AiParserInner() {
                       onClick={() => setContentType("mains")}
                       className={`h-10 rounded-xl border text-[11px] font-bold transition ${
                         contentType === "mains"
-                          ? "border-indigo-650 bg-indigo-50 text-indigo-700"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -555,7 +555,7 @@ function AiParserInner() {
                   </div>
                 </div>
 
-                <div className="block text-xs font-bold text-slate-655 space-y-1.5">
+                <div className="block text-xs font-bold text-slate-600 space-y-1.5">
                   <span>Input Method</span>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -563,7 +563,7 @@ function AiParserInner() {
                       onClick={() => setParseMode("file")}
                       className={`h-10 rounded-xl border font-bold transition ${
                         parseMode === "file"
-                          ? "border-indigo-650 bg-indigo-50 text-indigo-700"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -574,7 +574,7 @@ function AiParserInner() {
                       onClick={() => setParseMode("text")}
                       className={`h-10 rounded-xl border font-bold transition ${
                         parseMode === "text"
-                          ? "border-indigo-650 bg-indigo-50 text-indigo-700"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-surface text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -585,7 +585,7 @@ function AiParserInner() {
 
                 {parseMode === "file" ? (
                   <div className="space-y-3">
-                    <span className="block text-xs font-bold text-slate-655">Select Document or Images</span>
+                    <span className="block text-xs font-bold text-slate-600">Select Document or Images</span>
                     <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 p-6 text-center cursor-pointer hover:bg-slate-50 transition">
                       <Upload className="h-8 w-8 text-slate-400 mb-2" />
                       <span className="text-xs font-bold text-slate-700">
@@ -608,7 +608,7 @@ function AiParserInner() {
 
                     {/* Files List with Reordering */}
                     {selectedFiles.length > 0 && (
-                      <div className="space-y-2 border border-slate-150 rounded-xl p-3 bg-slate-50/50 max-h-60 overflow-y-auto">
+                      <div className="space-y-2 border border-slate-100 rounded-xl p-3 bg-slate-50/50 max-h-60 overflow-y-auto">
                         <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
                           Reorder Pages (top to bottom)
                         </p>
@@ -651,7 +651,7 @@ function AiParserInner() {
                     )}
                   </div>
                 ) : (
-                  <label className="block text-xs font-bold text-slate-655 space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-600 space-y-1.5">
                     <span>Paste Text Here</span>
                     <textarea
                       placeholder="Paste questions, passages, or syllabus contents here to parse..."
@@ -663,7 +663,7 @@ function AiParserInner() {
                   </label>
                 )}
 
-                <label className="block text-xs font-bold text-slate-655 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-600 space-y-1.5">
                   <span>Custom AI Parsing Instructions (Optional)</span>
                   <input
                     type="text"
@@ -699,7 +699,7 @@ function AiParserInner() {
           <div className="lg:col-span-2 space-y-6">
             {parsedResult ? (
               <div className="rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm space-y-6">
-                <div className="flex items-start justify-between flex-wrap gap-4 border-b border-slate-150 pb-3">
+                <div className="flex items-start justify-between flex-wrap gap-4 border-b border-slate-100 pb-3">
                   <div>
                     <h2 className="text-base font-black text-slate-900">Parsed Questions Preview</h2>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -709,7 +709,7 @@ function AiParserInner() {
                 </div>
 
                 {/* Taxonomy Mappings */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-150 p-4 space-y-4">
+                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-4">
                   <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider">
                     Target Library Location
                   </h3>
@@ -739,7 +739,7 @@ function AiParserInner() {
                                 setSelectedTemplateId(e.target.value ? Number(e.target.value) : null);
                               }
                             }}
-                            className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                            className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
                           >
                             <option value="">— Select Target Test —</option>
                             {testTemplates.map((template) => (
@@ -759,7 +759,7 @@ function AiParserInner() {
                               placeholder="e.g. History Test revision"
                               value={newTestTitle}
                               onChange={(e) => setNewTestTitle(e.target.value)}
-                              className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                              className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
                             />
                           </label>
                         )}
@@ -771,7 +771,7 @@ function AiParserInner() {
                       <select
                         value={selectedExamId ?? ""}
                         onChange={(e) => setSelectedExamId(Number(e.target.value))}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
                       >
                         {exams.map((exam) => (
                           <option key={exam.id} value={exam.id}>
@@ -786,7 +786,7 @@ function AiParserInner() {
                       <select
                         value={selectedLevelId ?? ""}
                         onChange={(e) => setSelectedLevelId(Number(e.target.value))}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
                       >
                         {levels.map((lvl) => (
                           <option key={lvl.id} value={lvl.id}>
@@ -801,7 +801,7 @@ function AiParserInner() {
                       <select
                         value={selectedSubjectId ?? ""}
                         onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
                       >
                         <option value="">Select Subject</option>
                         {subjects.map((sub) => (
@@ -817,7 +817,7 @@ function AiParserInner() {
                       <select
                         value={selectedTopicId ?? ""}
                         onChange={(e) => setSelectedTopicId(e.target.value ? Number(e.target.value) : null)}
-                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-650"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-surface px-3 text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
                       >
                         <option value="">Select Topic</option>
                         {topics.map((top) => (
@@ -833,7 +833,7 @@ function AiParserInner() {
                 {/* Passage wrapper if present */}
                 {parsedResult.passage_text && (
                   <div className="rounded-xl border border-indigo-100 bg-indigo-50/20 p-4 space-y-2">
-                    <h4 className="text-xs font-black uppercase text-indigo-750">
+                    <h4 className="text-xs font-black uppercase text-indigo-700">
                       Reading Passage: {parsedResult.passage_title || "Extracted Passage"}
                     </h4>
                     <p className="text-xs leading-relaxed text-slate-700 italic">
@@ -850,15 +850,15 @@ function AiParserInner() {
 
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                     {parsedResult.questions.map((q, idx) => (
-                      <div key={idx} className="border border-slate-150 rounded-xl p-4 bg-slate-50/30 space-y-3">
+                      <div key={idx} className="border border-slate-100 rounded-xl p-4 bg-slate-50/30 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded">
+                          <span className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
                             Question {idx + 1}
                           </span>
                           {contentType === "mains" ? (
                             <>
                               {q.directive && (
-                                <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-50 border border-amber-150 px-2 py-0.5 rounded">
+                                <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded">
                                   Directive: {q.directive}
                                 </span>
                               )}
@@ -870,7 +870,7 @@ function AiParserInner() {
                               </span>
                             </>
                           ) : (
-                            <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 border border-emerald-150 px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded">
                               Correct: {q.correct_answer?.toUpperCase()}
                             </span>
                           )}
@@ -887,7 +887,7 @@ function AiParserInner() {
                         )}
 
                         {q.question_prompt && (
-                          <p className="text-xs font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-150">
+                          <p className="text-xs font-extrabold leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                             {q.question_prompt}
                           </p>
                         )}
@@ -900,7 +900,7 @@ function AiParserInner() {
                               const isSelected = selectedKey === opt.label;
                               const isCorrect = q.correct_answer?.toLowerCase() === opt.label.toLowerCase();
 
-                              let optionClass = "border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-350 hover:bg-slate-50/50 cursor-pointer";
+                              let optionClass = "border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer";
                               if (hasSelected) {
                                 if (isCorrect) {
                                   optionClass = "border-emerald-200 bg-emerald-50 text-emerald-800 font-bold";
@@ -936,7 +936,7 @@ function AiParserInner() {
                 </div>
 
                 {/* Save Questions Action - Sticky Footer */}
-                <div className="sticky bottom-0 bg-surface pb-1 pt-4 border-t border-slate-150 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] -mx-5 px-5 z-10">
+                <div className="sticky bottom-0 bg-surface pb-1 pt-4 border-t border-slate-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] -mx-5 px-5 z-10">
                   <button
                     type="button"
                     onClick={handleSaveQuestions}
@@ -954,9 +954,9 @@ function AiParserInner() {
               </div>
             ) : (
               <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-surface py-32 text-center shadow-sm">
-                <FileText className="mx-auto h-12 w-12 text-slate-350" />
+                <FileText className="mx-auto h-12 w-12 text-slate-300" />
                 <p className="mt-4 text-sm font-black text-slate-800">No questions parsed yet</p>
-                <p className="text-xs text-slate-450 mt-1 max-w-sm mx-auto">
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                   Upload a PDF document or paste some question text on the left, then click Parse.
                 </p>
               </div>

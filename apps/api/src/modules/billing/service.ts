@@ -25,14 +25,28 @@ import type {
 export async function listPlans(): Promise<unknown[]> {
   return query(
     `
+      -- Correlated subqueries, not two left joins: joining prices AND
+      -- entitlements in one pass multiplied them into a cartesian product, so a
+      -- plan with 3 prices and 4 entitlements came back with 12 of each.
       select
         p.*,
-        coalesce(jsonb_agg(to_jsonb(pp.*) order by pp.created_at) filter (where pp.id is not null), '[]'::jsonb) as prices,
-        coalesce(jsonb_agg(to_jsonb(e.*) order by e.created_at) filter (where e.id is not null), '[]'::jsonb) as entitlements
+        coalesce(
+          (
+            select jsonb_agg(to_jsonb(pp.*) order by pp.created_at)
+            from billing.plan_prices pp
+            where pp.plan_id = p.id
+          ),
+          '[]'::jsonb
+        ) as prices,
+        coalesce(
+          (
+            select jsonb_agg(to_jsonb(e.*) order by e.created_at)
+            from billing.entitlements e
+            where e.plan_id = p.id
+          ),
+          '[]'::jsonb
+        ) as entitlements
       from billing.plans p
-      left join billing.plan_prices pp on pp.plan_id = p.id
-      left join billing.entitlements e on e.plan_id = p.id
-      group by p.id
       order by p.created_at
     `
   );
@@ -233,9 +247,9 @@ export async function updateSubscription(id: number, input: UpdateSubscriptionIn
 
 export async function isUserPermanentlySubscribed(userId: number): Promise<boolean> {
   try {
-    const user = await one<{ email: string; username: string; role: string }>(
+    const user = await one<{ email: string; role: string }>(
       `
-        select email, username, role
+        select email, role
         from app.users
         where id = $1
       `,
@@ -244,15 +258,13 @@ export async function isUserPermanentlySubscribed(userId: number): Promise<boole
     if (!user) return false;
 
     const email = (user.email ?? "").toLowerCase();
-    const username = (user.username ?? "").toLowerCase();
     const role = (user.role ?? "").toLowerCase();
 
-    return (
-      email === "abrarsaifi00@gmail.com" ||
-      email === "admin" ||
-      username === "admin" ||
-      role === "admin"
-    );
+    // Staff, plus an explicit env-configured allowlist. The matches on
+    // `username === "admin"` and `email === "admin"` that used to live here were
+    // a live hole: usernames are user-chosen and `admin` was unclaimed, so
+    // registering it granted the full bundle for free.
+    return role === "admin" || config.permanentSubscriberEmails.includes(email);
   } catch (err) {
     console.error("Error in isUserPermanentlySubscribed check:", err);
     return false;
@@ -506,8 +518,19 @@ export async function verifyRazorpayPayment(
   const simulatedAllowed = !config.RAZORPAY_KEY_ID || !config.RAZORPAY_KEY_SECRET;
   const isSimulated = simulatedAllowed && input.razorpay_order_id.startsWith("sim_order_");
 
-  // Signature verification (skipped only for genuinely simulated orders)
-  if (!isSimulated && keySecret) {
+  // Signature verification, skipped only for genuinely simulated orders. Note
+  // the missing-secret case is a hard failure, not a skip: a half-configured
+  // Razorpay (key id present, secret absent) made `keySecret` falsy, which used
+  // to fall straight past this block and activate a subscription on any payload.
+  if (!isSimulated) {
+    if (!keySecret) {
+      const err = new Error(
+        "Payment verification is unavailable: RAZORPAY_KEY_SECRET is not configured."
+      ) as Error & { statusCode?: number };
+      err.statusCode = 503;
+      throw err;
+    }
+
     const expectedSignature = crypto
       .createHmac("sha256", keySecret)
       .update(`${input.razorpay_order_id}|${input.razorpay_payment_id}`)

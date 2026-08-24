@@ -263,7 +263,7 @@ export default function StudentMainsPracticePage() {
               </button>
             ) : (
               <div className="space-y-3">
-                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-250 text-emerald-700 text-xs font-bold flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 shrink-0" />
                   Your answer sheet has been submitted and locked for evaluator checking.
                 </div>
@@ -378,10 +378,10 @@ export default function StudentMainsPracticePage() {
               {attempt.factual_concerns && attempt.factual_concerns.length > 0 && (
                 <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200 space-y-2">
                   <h4 className="text-xs font-black text-amber-800 uppercase tracking-wide">Facts worth double-checking</h4>
-                  <ul className="list-disc list-inside text-[11px] text-amber-750 space-y-1 leading-relaxed">
+                  <ul className="list-disc list-inside text-[11px] text-amber-700 space-y-1 leading-relaxed">
                     {attempt.factual_concerns.map((f, i) => <li key={i}>{f}</li>)}
                   </ul>
-                  <p className="text-[10px] text-amber-650 italic">AI-flagged — verify against a standard reference before treating as authoritative.</p>
+                  <p className="text-[10px] text-amber-600 italic">AI-flagged — verify against a standard reference before treating as authoritative.</p>
                 </div>
               )}
 

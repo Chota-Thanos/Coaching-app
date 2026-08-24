@@ -14,7 +14,7 @@ function formatTime(seconds: number): string {
 function outcomeColor(outcome: string | undefined): string {
   if (outcome === "correct") return "bg-emerald-500";
   if (outcome === "incorrect") return "bg-rose-500";
-  return "bg-slate-350";
+  return "bg-slate-300";
 }
 
 export function TimeChart({ questions, durationMinutes }: TimeChartProps) {
@@ -67,7 +67,7 @@ export function TimeChart({ questions, durationMinutes }: TimeChartProps) {
       </div>
 
       {/* Bar chart */}
-      <div className="overflow-hidden rounded-2xl border border-slate-205 bg-surface shadow-card">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-card">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Time per Question</p>
         </div>
@@ -110,7 +110,7 @@ export function TimeChart({ questions, durationMinutes }: TimeChartProps) {
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-3 border-t border-slate-150 bg-slate-50 px-4 py-2.5">
+        <div className="flex flex-wrap gap-3 border-t border-slate-100 bg-slate-50 px-4 py-2.5">
           <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
             <span className="h-2 w-3 rounded-sm bg-emerald-500" /> Correct
           </span>

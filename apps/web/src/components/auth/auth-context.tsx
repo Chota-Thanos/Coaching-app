@@ -30,9 +30,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export class ApiError extends Error {
   code?: string;
-  constructor(message: string, code?: string) {
+  /** HTTP status, so callers can branch on 402 (a paid-tier wall) without
+   *  having to string-match the message. */
+  status?: number;
+  constructor(message: string, code?: string, status?: number) {
     super(message);
     this.code = code;
+    this.status = status;
   }
 }
 
@@ -77,7 +81,7 @@ async function jsonFetch<T>(path: string, token?: string, init?: RequestInit): P
         window.location.reload();
       }
     }
-    throw new ApiError(message, code);
+    throw new ApiError(message, code, response.status);
   }
 
   const text = await response.text();

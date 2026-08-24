@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Highlighter, MessageSquarePlus, Save, Trash2, X } from "lucide-react";
 import type { StudentHighlight, StudentNote, TextAnchor } from "../../../lib/api";
-import { authenticatedDelete, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedDelete, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { computeAnchorFromSelection, locateAnchor } from "../../../lib/text-anchor";
 import { isHtml } from "../rendered-content";
 
@@ -32,7 +33,12 @@ function toRenderableHtml(content: string): string {
     .join("");
 }
 
-type SelectionToolbar = { x: number; y: number; range: Range };
+// Stores the computed anchor (plain quote/prefix/suffix/offset data) rather
+// than the live Range itself — a Range's boundaries can end up collapsing
+// out from under it before the user acts on the toolbar (e.g. once the
+// document's selection changes again), so anything the toolbar needs to act
+// on later must be captured as inert data up front, not read lazily.
+type SelectionToolbar = { x: number; y: number; anchor: TextAnchor };
 type ActiveAnnotation = { type: "highlight" | "note"; id: number; x: number; y: number };
 
 type ArticleAnnotatorProps = {
@@ -54,6 +60,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
   const [editText, setEditText] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   const html = toRenderableHtml(body);
 
@@ -117,40 +124,60 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
     return () => document.removeEventListener("click", handleClick);
   }, [highlights, notes]);
 
+  // The toolbar must only appear once a selection gesture is finished
+  // (mouseup/touchend) — reacting to every "selectionchange" tick during
+  // the drag itself pops the floating toolbar up mid-drag, right under the
+  // pointer, which then intercepts the rest of the drag and breaks
+  // selecting text at all. A mousedown elsewhere clears any stale toolbar
+  // first, but is ignored when it starts inside the annotator's own
+  // floating UI so clicking a color/Note/Save button isn't cancelled by
+  // its own mousedown before the click can register.
   useEffect(() => {
-    function handleSelectionChange() {
+    function resolveSelectionToolbar(): SelectionToolbar | null {
       const container = containerRef.current;
       const selection = window.getSelection();
-      if (!container || !selection || selection.isCollapsed || selection.rangeCount === 0) {
-        setToolbar(null);
-        return;
-      }
+      if (!container || !selection || selection.isCollapsed || selection.rangeCount === 0) return null;
       const range = selection.getRangeAt(0);
-      if (!container.contains(range.commonAncestorContainer) || !range.toString().trim()) {
-        setToolbar(null);
-        return;
-      }
+      if (!container.contains(range.commonAncestorContainer) || !range.toString().trim()) return null;
+      const anchor = computeAnchorFromSelection(container, range);
+      if (!anchor) return null;
       const rect = range.getBoundingClientRect();
-      setToolbar({ x: rect.left, y: rect.top - 8, range: range.cloneRange() });
+      return { x: rect.left, y: rect.top - 8, anchor };
     }
-    document.addEventListener("selectionchange", handleSelectionChange);
-    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+
+    function handleSelectionFinished() {
+      setToolbar(resolveSelectionToolbar());
+    }
+
+    function handleMouseDown(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (target.closest("[data-annotator-ui]")) return;
+      setToolbar(null);
+    }
+
+    document.addEventListener("mouseup", handleSelectionFinished);
+    document.addEventListener("touchend", handleSelectionFinished);
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => {
+      document.removeEventListener("mouseup", handleSelectionFinished);
+      document.removeEventListener("touchend", handleSelectionFinished);
+      document.removeEventListener("mousedown", handleMouseDown);
+    };
   }, []);
 
   async function createHighlight(color: string): Promise<void> {
-    const container = containerRef.current;
-    if (!container || !toolbar || !token) return;
-    const anchor = computeAnchorFromSelection(container, toolbar.range);
-    if (!anchor) return;
+    if (!toolbar || !token) return;
     setPending(true);
     setError(null);
+    setCapError(null);
     try {
-      await authenticatedPost(`/api/v1/current-affairs/me/forks/${forkId}/highlights`, token, { anchor_json: anchor, color });
+      await authenticatedPost(`/api/v1/current-affairs/me/forks/${forkId}/highlights`, token, { anchor_json: toolbar.anchor, color });
       window.getSelection()?.removeAllRanges();
       setToolbar(null);
       await onChanged();
-    } catch {
-      setError("Could not save highlight.");
+    } catch (err) {
+      if (isCapError(err)) setCapError(err);
+      else setError("Could not save highlight.");
     } finally {
       setPending(false);
     }
@@ -164,20 +191,19 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
   }
 
   async function submitNoteDraft(): Promise<void> {
-    const container = containerRef.current;
-    if (!container || !noteDraft || !token || !noteDraftText.trim()) return;
-    const anchor = computeAnchorFromSelection(container, noteDraft.range);
-    if (!anchor) return;
+    if (!noteDraft || !token || !noteDraftText.trim()) return;
     setPending(true);
     setError(null);
+    setCapError(null);
     try {
-      await authenticatedPost(`/api/v1/current-affairs/me/forks/${forkId}/notes`, token, { anchor_json: anchor, note: noteDraftText.trim() });
+      await authenticatedPost(`/api/v1/current-affairs/me/forks/${forkId}/notes`, token, { anchor_json: noteDraft.anchor, note: noteDraftText.trim() });
       window.getSelection()?.removeAllRanges();
       setNoteDraft(null);
       setNoteDraftText("");
       await onChanged();
-    } catch {
-      setError("Could not save note.");
+    } catch (err) {
+      if (isCapError(err)) setCapError(err);
+      else setError("Could not save note.");
     } finally {
       setPending(false);
     }
@@ -188,6 +214,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
     if (activeAnnotation.type === "note" && !editText.trim()) return;
     setPending(true);
     setError(null);
+    setCapError(null);
     try {
       const path =
         activeAnnotation.type === "highlight"
@@ -207,6 +234,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
     if (!activeAnnotation || !token) return;
     setPending(true);
     setError(null);
+    setCapError(null);
     try {
       const path =
         activeAnnotation.type === "highlight"
@@ -242,6 +270,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
       {toolbar && (
         <div
           className="fixed z-40 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-md border border-line bg-midnight px-2 py-1.5 shadow-xl"
+          data-annotator-ui
           style={{ left: toolbar.x, top: toolbar.y }}
         >
           {HIGHLIGHT_COLORS.map((entry) => (
@@ -270,10 +299,11 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
       {noteDraft && (
         <div
           className="fixed z-40 w-72 -translate-x-1/2 -translate-y-full rounded-lg border border-line bg-surface p-3 shadow-xl"
+          data-annotator-ui
           style={{ left: noteDraft.x, top: noteDraft.y }}
         >
           <p className="text-xs font-black uppercase tracking-wide text-civic">Add a note</p>
-          <p className="mt-1 line-clamp-2 text-xs italic text-ink/50">"{noteDraft.range.toString().trim()}"</p>
+          <p className="mt-1 line-clamp-2 text-xs italic text-ink/50">"{noteDraft.anchor.quote}"</p>
           <textarea
             autoFocus
             className="mt-2 min-h-20 w-full rounded-md border border-line px-2 py-1.5 text-sm text-ink outline-none focus:border-civic"
@@ -308,6 +338,7 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
       {activeAnnotation && (
         <div
           className="fixed z-40 w-72 rounded-lg border border-line bg-surface p-3 shadow-xl"
+          data-annotator-ui
           style={{ left: activeAnnotation.x, top: activeAnnotation.y }}
         >
           <div className="flex items-center justify-between">
@@ -349,6 +380,11 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
       )}
 
       {error && <p className="mt-2 text-xs font-semibold text-berry">{error}</p>}
+      {capError && (
+        <div className="mt-3">
+          <CapReachedNotice error={capError} module="current_affairs" compact />
+        </div>
+      )}
 
       {(highlights.length > 0 || notes.length > 0) && (
         <section className="mt-4 rounded-lg border border-line bg-paper/30 p-3">

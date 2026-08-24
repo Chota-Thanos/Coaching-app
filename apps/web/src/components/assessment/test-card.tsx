@@ -13,9 +13,9 @@ type TestCardProps = {
 };
 
 const TEST_TYPE_COLORS: Record<string, string> = {
-  quick_test: "from-indigo-650/80 to-indigo-400/70",
+  quick_test: "from-indigo-600/80 to-indigo-400/70",
   sectional_test: "from-indigo-500/80 to-indigo-300/50",
-  full_length_test: "from-slate-650/80 to-slate-400/50",
+  full_length_test: "from-slate-600/80 to-slate-400/50",
   pyq_test: "from-muted/60 to-muted/40",
   mains_test: "from-rose-600/70 to-rose-400/50"
 };

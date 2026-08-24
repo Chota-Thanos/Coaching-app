@@ -52,7 +52,7 @@ export function ChatThread({
   return (
     <div
       className={`rounded-[32px] border shadow-sm overflow-hidden flex flex-col animate-in fade-in duration-200 ${
-        isAmber ? "border-amber-250/70 bg-surface" : "border-indigo-150 bg-surface"
+        isAmber ? "border-amber-200/70 bg-surface" : "border-indigo-100 bg-surface"
       }`}
       style={{ height }}
     >

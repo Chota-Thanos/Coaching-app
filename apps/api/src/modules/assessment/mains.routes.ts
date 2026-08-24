@@ -165,33 +165,36 @@ export async function registerMainsAssessmentRoutes(server: FastifyInstance): Pr
 
   server.patch("/api/v1/assessment/mains/answers/:id/evaluation", async (request, reply) => {
     const params = parse(idParamSchema, request.params);
-    let user;
-    try {
-      user = await requireEvaluator(request);
-    } catch (err) {
-      user = await requireAuth(request);
-      const attempts = await query<{ user_id: number }>(
-        "select user_id from assessment.mains_answer_attempts where id = $1",
-        [params.id]
-      );
-      const attempt = attempts[0];
-      if (!attempt || Number(attempt.user_id) !== Number(user.id)) {
-        throw err;
-      }
-    }
+    const user = await requireAuth(request);
 
-    // If this attempt is linked to a paid mentorship request, only the mentor assigned
-    // to that specific request (or an admin/moderator) may submit its evaluation --
-    // a generic evaluator role or a different mentor is not enough here.
-    if (user.role === "mentor" || user.role === "evaluator") {
-      const linkedRequests = await query<{ mentor_id: number }>(
-        "select mentor_id from app.mentorship_requests where mains_answer_attempt_id = $1 limit 1",
-        [params.id]
+    const attempts = await query<{ user_id: number }>(
+      "select user_id from assessment.mains_answer_attempts where id = $1",
+      [params.id]
+    );
+    const attempt = attempts[0];
+    if (!attempt) return reply.notFound("Mains answer attempt not found.");
+
+    // Manual grading is a mentor privilege, not a self-service tool -- it
+    // requires a real, active mentorship engagement with this specific
+    // student (the same relationship the mentorship module itself uses to
+    // gate access), not just holding a mentor/evaluator role, and never the
+    // student grading their own answer.
+    const isOversightRole = user.role === "admin" || user.role === "moderator";
+    let authorized = isOversightRole;
+    if (!authorized && (user.role === "mentor" || user.role === "evaluator")) {
+      const pairing = await query(
+        `select 1 from app.mentorship_requests
+         where user_id = $1 and mentor_id = $2
+           and (payment_status = 'paid' or status in ('accepted', 'completed'))
+         limit 1`,
+        [attempt.user_id, user.id]
       );
-      const linked = linkedRequests[0];
-      if (linked && Number(linked.mentor_id) !== Number(user.id)) {
-        return reply.forbidden("Only the mentor assigned to this mentorship request can submit its evaluation.");
-      }
+      authorized = pairing.length > 0;
+    }
+    if (!authorized) {
+      return reply.forbidden(
+        "Only a mentor with an active mentorship engagement with this student, or an admin/moderator, can submit a manual evaluation."
+      );
     }
 
     return withValidation(reply, async () => {

@@ -128,16 +128,16 @@ export default function StudentMainsPage() {
             // Determine paper badge label
             const textLower = q.current_version.question_statement.toLowerCase();
             let paperBadge = "GS Paper 1";
-            let paperColor = "text-indigo-600 bg-indigo-50 border-indigo-150";
+            let paperColor = "text-indigo-600 bg-indigo-50 border-indigo-100";
             if (textLower.includes("governance") || textLower.includes("polity") || textLower.includes("constitution") || textLower.includes("federal")) {
               paperBadge = "GS Paper 2";
-              paperColor = "text-emerald-600 bg-emerald-50 border-emerald-150";
+              paperColor = "text-emerald-600 bg-emerald-50 border-emerald-100";
             } else if (textLower.includes("economy") || textLower.includes("tech") || textLower.includes("environment") || textLower.includes("agriculture") || textLower.includes("hydrogen")) {
               paperBadge = "GS Paper 3";
-              paperColor = "text-amber-600 bg-amber-50 border-amber-150";
+              paperColor = "text-amber-600 bg-amber-50 border-amber-100";
             } else if (textLower.includes("ethics") || textLower.includes("integrity") || textLower.includes("attitude")) {
               paperBadge = "GS Paper 4";
-              paperColor = "text-rose-600 bg-rose-50 border-rose-150";
+              paperColor = "text-rose-600 bg-rose-50 border-rose-100";
             }
 
             return (

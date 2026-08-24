@@ -69,8 +69,15 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const SECONDARY_ITEMS: NavItem[] = [
   { label: "Study Plans", href: "/study-plans", icon: BookOpenCheck },
-  { label: "Mentorship", href: "/mentors", icon: Users },
-  { label: "Pricing", href: "/pricing", icon: Zap }
+  { label: "Mentorship", href: "/mentors", icon: Users }
+];
+
+/** Subscription lives in its own group so the two links always travel together:
+ *  one to buy, one to manage what was bought. Previously "Pricing" sat alone in
+ *  SECONDARY_ITEMS and there was no route to an existing subscription at all. */
+export const SUBSCRIPTION_ITEMS: NavItem[] = [
+  { label: "Plans & Pricing", description: "Compare modules and subscribe", href: "/pricing", icon: Zap },
+  { label: "My Subscription", description: "Manage your plan and payments", href: "/dashboard/purchases", icon: CreditCard }
 ];
 
 type AdminUser = { role: string } | null | undefined;
@@ -89,6 +96,9 @@ export function getAdminGroup(user: AdminUser): NavGroup | null {
   }
   if (user.role === "admin") {
     items.push({ label: "Purchase Records", description: "All subscriptions & billing", href: "/admin/purchases", icon: CreditCard });
+  }
+  if (user.role === "admin") {
+    items.push({ label: "Manage Subscriptions", description: "Plans, prices & entitlements", href: "/admin/subscriptions", icon: Zap });
   }
   if (["admin", "moderator"].includes(user.role)) {
     items.push({ label: "Payments Ledger", description: "Every payment, refunds & disputes", href: "/admin/payments", icon: CreditCard });

@@ -961,7 +961,7 @@ export default function MentorWorkspacePage() {
             <h1 className="text-2xl font-black text-slate-800 capitalize tracking-tight">
               {activeTab === "overview" ? "Dashboard Overview" : activeTab === "requests" ? "Student Requests Inbox" : activeTab === "calendar" ? "Availability Desk" : activeTab === "profile" ? "Edit Public Profile" : "Workspace Settings"}
             </h1>
-            <p className="text-sm text-slate-550 mt-1">
+            <p className="text-sm text-slate-500 mt-1">
               {activeTab === "overview" && "Check your stats, quick tasks, and operations status."}
               {activeTab === "requests" && "Manage applicant requests, grade mains answers, and chat."}
               {activeTab === "calendar" && "Configure single and bulk availability slot ranges."}
@@ -974,7 +974,7 @@ export default function MentorWorkspacePage() {
           <div className="relative">
             <button
               onClick={() => setShowNotificationsPopover(!showNotificationsPopover)}
-              className="relative p-2.5 rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 text-slate-650 hover:text-slate-850 transition shadow-sm"
+              className="relative p-2.5 rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 text-slate-600 hover:text-slate-800 transition shadow-sm"
               title="Notifications"
             >
               <Bell className="h-5 w-5" />
@@ -988,11 +988,11 @@ export default function MentorWorkspacePage() {
             {showNotificationsPopover && (
               <div className="absolute right-0 mt-3 w-96 rounded-3xl border border-slate-200 bg-surface p-5 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-                  <h3 className="text-sm font-black text-slate-850">Notifications</h3>
+                  <h3 className="text-sm font-black text-slate-800">Notifications</h3>
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-xs font-bold text-indigo-650 hover:underline"
+                      className="text-xs font-bold text-indigo-600 hover:underline"
                     >
                       Mark all read
                     </button>
@@ -1017,12 +1017,12 @@ export default function MentorWorkspacePage() {
                           {notif.type === "chat_message" && <MessageSquare className="h-4 w-4 text-indigo-600" />}
                           {notif.type === "new_request" && <ClipboardList className="h-4 w-4 text-amber-600" />}
                           {notif.type === "session_booked" && <Calendar className="h-4 w-4 text-emerald-600" />}
-                          {notif.type === "request_updated" && <CheckCircle2 className="h-4 w-4 text-indigo-650" />}
-                          {notif.type === "slots_offered" && <Calendar className="h-4 w-4 text-indigo-650" />}
+                          {notif.type === "request_updated" && <CheckCircle2 className="h-4 w-4 text-indigo-600" />}
+                          {notif.type === "slots_offered" && <Calendar className="h-4 w-4 text-indigo-600" />}
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-black text-slate-850 truncate">{notif.title}</h4>
+                          <h4 className="text-xs font-black text-slate-800 truncate">{notif.title}</h4>
                           <p className="text-xs text-slate-500 mt-0.5 leading-snug">{notif.message}</p>
                           <span className="text-[10px] text-slate-400 font-bold mt-1.5 inline-block">
                             {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1044,7 +1044,7 @@ export default function MentorWorkspacePage() {
               key={toast.id}
               className="w-96 pointer-events-auto rounded-2xl border border-indigo-100 bg-surface p-4 shadow-2xl flex gap-3 animate-in slide-in-from-bottom-5 duration-300"
             >
-              <div className="mt-1 shrink-0 p-1.5 rounded-lg bg-indigo-50 text-indigo-650">
+              <div className="mt-1 shrink-0 p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
                 <Sparkles className="h-5 w-5 animate-pulse" />
               </div>
               <div className="flex-1 min-w-0">
@@ -1057,7 +1057,7 @@ export default function MentorWorkspacePage() {
                     ✕
                   </button>
                 </div>
-                <p className="text-xs text-slate-550 mt-1 leading-snug">{toast.message}</p>
+                <p className="text-xs text-slate-500 mt-1 leading-snug">{toast.message}</p>
                 <button
                   onClick={() => {
                     handleNotificationClick(toast);
@@ -1111,7 +1111,7 @@ export default function MentorWorkspacePage() {
                   <ClipboardList className="h-5 w-5 text-indigo-600" />
                   Pending Student Reviews
                 </h3>
-                <p className="text-sm text-slate-550">
+                <p className="text-sm text-slate-500">
                   You have {requests.filter((r) => r.status === "requested").length} new student requests waiting for review and evaluation.
                 </p>
                 <button
@@ -1127,7 +1127,7 @@ export default function MentorWorkspacePage() {
                   <Calendar className="h-5 w-5 text-indigo-600" />
                   Calendar Desk
                 </h3>
-                <p className="text-sm text-slate-550">
+                <p className="text-sm text-slate-500">
                   Configure availability ranges, select weekdays, exclude public holidays/festivals, and generate bulk slots.
                 </p>
                 <button

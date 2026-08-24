@@ -168,7 +168,7 @@ export default function AssessmentPage() {
             </div>
             {/* Quick stats on banner */}
             <div className="shrink-0 flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
-              <div className="h-10 w-10 rounded-xl bg-indigo-550 flex items-center justify-center text-white shadow-inner">
+              <div className="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white shadow-inner">
                 <Award className="h-5.5 w-5.5" />
               </div>
               <div>
@@ -189,7 +189,7 @@ export default function AssessmentPage() {
           {/* Main Content-Type Assessment Modules */}
           <div>
             <h2 className="text-lg font-black text-slate-800 flex items-center gap-2 mb-4">
-              <Compass className="h-4.5 w-4.5 text-indigo-650" />
+              <Compass className="h-4.5 w-4.5 text-indigo-600" />
               <span>Assessment & Self Practice</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -208,7 +208,7 @@ export default function AssessmentPage() {
                     Syllabus-focused GS self test builder, PYQs, and performance metrics.
                   </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between text-xs font-bold text-blue-650">
+                <div className="mt-6 flex items-center justify-between text-xs font-bold text-blue-600">
                   <span>Start practice</span>
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -228,7 +228,7 @@ export default function AssessmentPage() {
                     Quantitative analysis, reasoning skills, and reading comprehension practice.
                   </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between text-xs font-bold text-amber-650">
+                <div className="mt-6 flex items-center justify-between text-xs font-bold text-amber-600">
                   <span>Start drill</span>
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -248,7 +248,7 @@ export default function AssessmentPage() {
                     Subjective answer writing upload, PYQs archive, and evaluation reviews.
                   </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between text-xs font-bold text-purple-650">
+                <div className="mt-6 flex items-center justify-between text-xs font-bold text-purple-600">
                   <span>Submit answer</span>
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -268,7 +268,7 @@ export default function AssessmentPage() {
                     Access category-filtered bookmarked questions and compile custom revision tests.
                   </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between text-xs font-bold text-rose-650">
+                <div className="mt-6 flex items-center justify-between text-xs font-bold text-rose-600">
                   <span>Revise questions</span>
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -280,7 +280,7 @@ export default function AssessmentPage() {
           {/* Sub-features / Integration Modules Grid */}
           <div>
             <h2 className="text-lg font-black text-slate-800 flex items-center gap-2 mb-4">
-              <BrainCircuit className="h-4.5 w-4.5 text-indigo-650" />
+              <BrainCircuit className="h-4.5 w-4.5 text-indigo-600" />
               <span>Prep Resources & Mentorship</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -290,7 +290,7 @@ export default function AssessmentPage() {
                 href="/study-plans"
                 className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
-                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <Calendar className="h-5.5 w-5.5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -306,7 +306,7 @@ export default function AssessmentPage() {
                 href="/mentors"
                 className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
-                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <Users className="h-5.5 w-5.5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -322,7 +322,7 @@ export default function AssessmentPage() {
                 href="/current-affairs/daily-news"
                 className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
-                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <Newspaper className="h-5.5 w-5.5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -338,7 +338,7 @@ export default function AssessmentPage() {
                 href="/current-affairs/editorial-summary"
                 className="group flex gap-4 rounded-2xl border border-slate-100 bg-surface p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
-                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-650 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                   <BookOpen className="h-5.5 w-5.5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -361,7 +361,7 @@ export default function AssessmentPage() {
           <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
               <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-indigo-650" />
+                <BarChart3 className="h-4 w-4 text-indigo-600" />
                 <span>Performance Radar</span>
               </h2>
               <Link href="/assessment/dashboard" className="text-xs font-bold text-indigo-600 hover:underline">
@@ -371,7 +371,7 @@ export default function AssessmentPage() {
 
             {loadingStats ? (
               <div className="flex justify-center py-10">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-650 border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
               </div>
             ) : (
               <div className="space-y-5">
@@ -421,14 +421,14 @@ export default function AssessmentPage() {
           <div className="rounded-2xl border border-slate-100 bg-surface p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-indigo-650" />
+                <TrendingUp className="h-4 w-4 text-indigo-600" />
                 <span>Recent Attempts</span>
               </h2>
             </div>
 
             {loadingAttempts ? (
               <div className="flex justify-center py-12">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-650 border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
               </div>
             ) : attempts.length === 0 ? (
               <div className="py-12 text-center">
@@ -460,10 +460,10 @@ export default function AssessmentPage() {
                       className="group flex items-start justify-between gap-3 border-b border-slate-100/70 pb-3 last:border-0 last:pb-0"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-700 truncate leading-tight group-hover:text-indigo-650 transition-colors">
+                        <p className="text-xs font-bold text-slate-700 truncate leading-tight group-hover:text-indigo-600 transition-colors">
                           {title}
                         </p>
-                        <p className="mt-1 text-[10px] text-slate-450 flex items-center gap-2 font-medium">
+                        <p className="mt-1 text-[10px] text-slate-400 flex items-center gap-2 font-medium">
                           <span>{date}</span>
                           <span>•</span>
                           <span className={status === "completed" ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
@@ -502,16 +502,16 @@ export default function AssessmentPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-black text-slate-800 flex items-center gap-2.5">
-              <Calendar className="h-5 w-5 text-indigo-650" />
+              <Calendar className="h-5 w-5 text-indigo-600" />
               <span>Latest Structured Study Plans</span>
             </h2>
-            <p className="text-xs text-slate-550 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Carefully scaffolded preparation paths aligned with UPSC timelines.
             </p>
           </div>
           <Link
             href="/study-plans"
-            className="inline-flex items-center gap-1 text-xs font-black text-indigo-650 hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-black text-indigo-600 hover:underline"
           >
             <span>Explore All Plans</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -587,16 +587,16 @@ export default function AssessmentPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-black text-slate-800 flex items-center gap-2.5">
-              <Users className="h-5 w-5 text-indigo-650" />
+              <Users className="h-5 w-5 text-indigo-600" />
               <span>Connect with Top Mentors</span>
             </h2>
-            <p className="text-xs text-slate-550 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Direct consultation and essay validation reviews with experienced educators.
             </p>
           </div>
           <Link
             href="/mentors"
-            className="inline-flex items-center gap-1 text-xs font-black text-indigo-650 hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-black text-indigo-600 hover:underline"
           >
             <span>View All Mentors</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -635,7 +635,7 @@ export default function AssessmentPage() {
                   <div className="min-w-0 flex-1 flex flex-col justify-between h-full space-y-3">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-sm font-bold text-slate-800 group-hover:text-indigo-750 transition-colors">
+                        <h3 className="text-sm font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">
                           {mentor.display_name ?? mentor.displayName}
                         </h3>
                         {mentor.is_verified && (
@@ -644,7 +644,7 @@ export default function AssessmentPage() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-slate-450 leading-relaxed line-clamp-2">
+                      <p className="mt-1 text-xs text-slate-400 leading-relaxed line-clamp-2">
                         {mentor.headline ?? "IAS Trainer & Content Educator."}
                       </p>
                     </div>
@@ -655,7 +655,7 @@ export default function AssessmentPage() {
                       </span>
                       <Link
                         href={`/mentors/${mentor.mentor_id ?? mentor.userId}`}
-                        className="inline-flex items-center gap-1 font-bold text-indigo-650 hover:text-indigo-805"
+                        className="inline-flex items-center gap-1 font-bold text-indigo-600 hover:text-indigo-805"
                       >
                         <span>Book 1:1</span>
                         <ArrowRight className="h-3.5 w-3.5" />

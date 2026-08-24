@@ -140,7 +140,7 @@ export default function CustomTestDetailPage() {
   if (!isInitialized || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-650" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function CustomTestDetailPage() {
         <p className="text-xs text-slate-500 mt-2">The custom test does not exist or you do not have permission to view it.</p>
         <Link
           href={`/assessment/custom-test?content_type=${contentParam}`}
-          className="mt-6 inline-flex items-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition"
+          className="mt-6 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition"
         >
           Back to list
         </Link>
@@ -179,7 +179,7 @@ export default function CustomTestDetailPage() {
               href={`/assessment/custom-test?content_type=${contentParam}`}
               className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface hover:bg-slate-50 transition"
             >
-              <ArrowLeft className="h-5 w-5 text-slate-655" />
+              <ArrowLeft className="h-5 w-5 text-slate-600" />
             </Link>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tight">Test Details</h1>
@@ -190,7 +190,7 @@ export default function CustomTestDetailPage() {
             <button
               onClick={handleDeleteTest}
               disabled={deleting}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/30 hover:bg-rose-50/30 hover:border-rose-350 px-4 py-2.5 text-xs font-bold text-rose-650 transition shrink-0 disabled:bg-slate-100 disabled:text-slate-400"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/30 hover:bg-rose-50/30 hover:border-rose-300 px-4 py-2.5 text-xs font-bold text-rose-600 transition shrink-0 disabled:bg-slate-100 disabled:text-slate-400"
             >
               {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               <span>Delete Template</span>
@@ -262,7 +262,7 @@ export default function CustomTestDetailPage() {
                   <div className="flex flex-col gap-2">
                     <Link
                       href={`/assessment/results/${test.latest_result_id}`}
-                      className="w-full h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-150 transition"
+                      className="w-full h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-100 transition"
                     >
                       <BookOpenCheck className="h-4 w-4" />
                       <span>View Results Page</span>
@@ -289,7 +289,7 @@ export default function CustomTestDetailPage() {
                       <button
                         onClick={handleStartAttempt}
                         disabled={starting}
-                        className="w-full h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-850 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100"
+                        className="w-full h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-xs font-bold text-white shadow-sm transition disabled:bg-slate-100"
                       >
                         {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                         <span>Attempt Test Now</span>
@@ -403,7 +403,7 @@ export default function CustomTestDetailPage() {
 
                       {/* Prompt */}
                       {q.question_prompt && (
-                        <div className="mt-2.5 text-xs font-bold text-slate-655">
+                        <div className="mt-2.5 text-xs font-bold text-slate-600">
                           {q.question_prompt}
                         </div>
                       )}
@@ -418,8 +418,8 @@ export default function CustomTestDetailPage() {
                                 key={opt.key}
                                 className={`flex items-start gap-3 p-3 rounded-xl border text-xs leading-relaxed transition ${
                                   isCorrect 
-                                    ? "border-emerald-200 bg-emerald-50/40 text-emerald-850 font-semibold" 
-                                    : "border-slate-150 bg-slate-50/30 text-slate-655"
+                                    ? "border-emerald-200 bg-emerald-50/40 text-emerald-800 font-semibold" 
+                                    : "border-slate-100 bg-slate-50/30 text-slate-600"
                                 }`}
                               >
                                 <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg font-black uppercase text-[10px] ${
@@ -438,7 +438,7 @@ export default function CustomTestDetailPage() {
                       {!isMains && q.explanation && (
                         <div className="mt-4 pt-3 border-t border-slate-100">
                           <div className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Explanation</div>
-                          <p className="mt-1 text-xs text-slate-655 leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
+                          <p className="mt-1 text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
                         </div>
                       )}
 
@@ -448,7 +448,7 @@ export default function CustomTestDetailPage() {
                           {q.explanation && (
                             <div>
                               <div className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Model Answer / Guidelines</div>
-                              <p className="mt-1 text-xs text-slate-655 leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
+                              <p className="mt-1 text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
                             </div>
                           )}
                         </div>

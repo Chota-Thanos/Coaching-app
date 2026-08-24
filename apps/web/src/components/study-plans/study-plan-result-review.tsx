@@ -688,7 +688,7 @@ export function StudyPlanResultReview({ resultId }: { resultId: string }) {
                                         isCorrect
                                           ? "border-emerald-200 bg-emerald-50/50"
                                           : isSelected
-                                            ? "border-rose-250 bg-rose-50/50"
+                                            ? "border-rose-200 bg-rose-50/50"
                                             : "border-slate-200 bg-slate-50/30"
                                       }`}
                                     >

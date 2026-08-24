@@ -2,6 +2,8 @@ import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
 import { one, query, transaction } from "../../db.js";
 import type { PoolClient } from "pg";
 import { generateText, parseJsonRobust } from "../current-affairs/master/ai.service.js";
+import { calculateObjectiveScore } from "./score-calculator.js";
+import type { ScoreItem } from "./scoring.types.js";
 import type {
   AddMainsQuestionVersionInput,
   CreateMainsQuestionInput,
@@ -499,12 +501,112 @@ export async function submitMainsAnswer(input: SubmitMainsAnswerInput, userId: n
   );
 }
 
+// A mains answer's score lives on assessment.mains_answer_attempts, but the
+// results page reads its stats off assessment.test_results, which is only
+// ever populated once at submission time (when every mains question is
+// necessarily unscored). Nothing previously re-synced test_results after a
+// mains evaluation, so a graded subjective answer never showed up in the
+// Score/Accuracy/Unattempted cards. Recomputes the row fresh each time
+// (rather than incrementing it) so repeated/re-evaluations never double-count.
+async function recomputeTestResultForAttempt(attemptId: number): Promise<void> {
+  const rows = await query<{
+    question_version_id: string;
+    marks: string;
+    negative_marks: string;
+    correct_answer: unknown;
+    selected_answer: unknown;
+    response_time_seconds: number | null;
+    question_family: string;
+  }>(
+    `
+      select
+        tqi.question_version_id,
+        tqi.marks,
+        tqi.negative_marks,
+        qv.correct_answer,
+        ar.selected_answer,
+        ar.time_spent_seconds as response_time_seconds,
+        q.question_family
+      from assessment.test_attempts ta
+      join assessment.test_question_items tqi on tqi.test_template_id = ta.test_template_id
+      join assessment.question_versions qv on qv.id = tqi.question_version_id
+      join assessment.questions q on q.id = qv.question_id
+      left join assessment.attempt_responses ar
+        on ar.attempt_id = ta.id and ar.question_version_id = tqi.question_version_id
+      where ta.id = $1
+      order by tqi.display_order asc, tqi.id asc
+    `,
+    [attemptId]
+  );
+  if (rows.length === 0) return;
+
+  const mainsRows = rows.filter((row) => row.question_family === "mains_subjective");
+  if (mainsRows.length === 0) return;
+
+  const objectiveItems: ScoreItem[] = rows
+    .filter((row) => row.question_family !== "mains_subjective")
+    .map((row) => ({
+      question_version_id: row.question_version_id,
+      marks: row.marks,
+      negative_marks: row.negative_marks,
+      correct_answer: row.correct_answer,
+      selected_answer: row.selected_answer,
+      response_status: null,
+      response_time_seconds: row.response_time_seconds,
+      subject_node_id: null,
+      topic_node_id: null,
+      subtopic_node_id: null,
+      question_nature_id: null
+    }));
+  const objectiveScore = calculateObjectiveScore(objectiveItems);
+
+  const mainsAnswers = await query<{ question_version_id: string; evaluation_status: string; score: string | null }>(
+    "select question_version_id, evaluation_status, score from assessment.mains_answer_attempts where attempt_id = $1",
+    [attemptId]
+  );
+  const mainsAnswerByQuestionVersion = new Map(mainsAnswers.map((answer) => [String(answer.question_version_id), answer]));
+
+  let mainsScore = 0;
+  let mainsMaxScore = 0;
+  let mainsUnattempted = 0;
+  for (const row of mainsRows) {
+    mainsMaxScore += Number(row.marks);
+    const answer = mainsAnswerByQuestionVersion.get(String(row.question_version_id));
+    if (!answer) {
+      mainsUnattempted += 1;
+      continue;
+    }
+    if (answer.evaluation_status === "evaluated") {
+      mainsScore += Number(answer.score ?? 0);
+    }
+  }
+
+  const combinedScore = objectiveScore.score + mainsScore;
+  const combinedMaxScore = objectiveScore.maxScore + mainsMaxScore;
+  const combinedUnattempted = objectiveScore.unattemptedCount + mainsUnattempted;
+  // Binary correct/incorrect has no meaning for a partially-scored subjective
+  // answer, so once a test has any mains content, "accuracy" is redefined as
+  // the score percentage rather than a correct-answer ratio (which would
+  // otherwise stay pinned to whatever the objective-only questions contribute,
+  // or 0 for a mains-only test even after full marks).
+  const accuracy = combinedMaxScore > 0 ? combinedScore / combinedMaxScore : 0;
+
+  await query(
+    `
+      update assessment.test_results
+      set score = $2, max_score = $3, accuracy = $4, unattempted_count = $5
+      where attempt_id = $1
+    `,
+    [attemptId, combinedScore, combinedMaxScore, accuracy, combinedUnattempted]
+  );
+}
+
 export async function evaluateMainsAnswer(
   answerAttemptId: number,
   input: EvaluateMainsAnswerInput,
   evaluatorUserId: number
 ): Promise<unknown> {
-  return one(
+  const record = await one<{ attempt_id: number }>(
     `
       update assessment.mains_answer_attempts
       set
@@ -532,6 +634,8 @@ export async function evaluateMainsAnswer(
       input.checked_copy_url ?? null
     ]
   );
+  if (record) await recomputeTestResultForAttempt(Number(record.attempt_id));
+  return record;
 }
 
 export async function listMainsEvaluationQueue(options: ListMainsEvaluationQueueQuery): Promise<unknown[]> {
@@ -917,7 +1021,7 @@ Return ONLY the corrected JSON, in the exact same schema as the draft. Do not ad
     const rawScore = result.score ?? 5.0;
     const clampedScore = Math.max(0, Math.min(Number(rawScore) || 0, Number(maxScore) || 10));
 
-    const updated = await one(
+    const updated = await one<{ attempt_id: number }>(
       `
         update assessment.mains_answer_attempts
         set
@@ -948,6 +1052,7 @@ Return ONLY the corrected JSON, in the exact same schema as the draft. Do not ad
       ]
     );
 
+    if (updated) await recomputeTestResultForAttempt(Number(updated.attempt_id));
     return updated;
   } catch (err: any) {
     console.error("AI Evaluation failed, updating attempt to needs_manual_review:", err);

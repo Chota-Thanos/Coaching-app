@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { ArticleFiltersResponse, ArticleListResponse, ArticleSummary, StudentCollection, StudentFork } from "../../../lib/api";
 import { CURRENT_AFFAIRS_HUBS, contentKindLabel, monthLabel, type CurrentAffairsHub } from "../../../lib/current-affairs";
 import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { tabButtonClass, tabStripClass } from "../../ui/tabs";
 
 type BulkImportPanelProps = {
   collections: StudentCollection[];
@@ -16,7 +17,12 @@ type CategoryOption = {
   value: string;
 };
 
-const DEFAULT_HUB = CURRENT_AFFAIRS_HUBS[0] as CurrentAffairsHub;
+// Concepts (evergreen explainers) lead over Daily News (dated event
+// write-ups) — students revising for prelims want the concept list first,
+// with a quick tab to switch over to news when they specifically want that.
+const CONCEPTS_HUB = CURRENT_AFFAIRS_HUBS.find((hub) => hub.path === "concepts") as CurrentAffairsHub;
+const DAILY_NEWS_HUB = CURRENT_AFFAIRS_HUBS.find((hub) => hub.path === "daily-news") as CurrentAffairsHub;
+const DEFAULT_HUB = CONCEPTS_HUB;
 
 function categoryOptions(filters: ArticleFiltersResponse | null): CategoryOption[] {
   if (!filters) return [];
@@ -63,22 +69,31 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
     setYear("");
   }
 
-  async function searchArticles(): Promise<void> {
+  // Accepts explicit overrides so callers that just reset hub/category/month/
+  // year (loadFilters clears them via setState) can search with the fresh
+  // values immediately — reading them back off component state here would
+  // still see the pre-reset values, since state setters don't update the
+  // current closure synchronously.
+  async function searchArticles(overrides?: { hub?: CurrentAffairsHub; category?: string; month?: string; year?: string }): Promise<void> {
     if (!token) return;
+    const hub = overrides?.hub ?? activeHub;
+    const searchCategory = overrides?.category ?? category;
+    const searchMonth = overrides?.month ?? month;
+    const searchYear = overrides?.year ?? year;
     setLoading(true);
     setMessage(null);
     try {
       if (!filters) {
-        await loadFilters(activeHub);
+        await loadFilters(hub);
       }
       const search = new URLSearchParams({
-        content_kind: activeHub.contentKind,
+        content_kind: hub.contentKind,
         page: "1",
         limit: "30"
       });
-      if (category) search.set("category", category);
-      if (month) search.set("month", month);
-      if (year) search.set("year", year);
+      if (searchCategory) search.set("category", searchCategory);
+      if (searchMonth) search.set("month", searchMonth);
+      if (searchYear) search.set("year", searchYear);
       const response = await authenticatedGet<ArticleListResponse>(`/api/v1/current-affairs/frontend/articles?${search}`, token);
       setArticles(response.items);
       setSelectedIds(new Set());
@@ -98,6 +113,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
     setSelectedIds(new Set());
     setMessage(null);
     await loadFilters(nextHub);
+    await searchArticles({ hub: nextHub, category: "", month: "", year: "" });
   }
 
   function toggleArticle(id: number): void {
@@ -146,11 +162,28 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-sm font-bold text-civic hover:bg-civic/15"
           disabled={loading}
-          onClick={searchArticles}
+          onClick={() => void searchArticles()}
           type="button"
         >
           <Search aria-hidden="true" className="h-4 w-4" />
           {loading ? "Searching..." : "Search"}
+        </button>
+      </div>
+
+      <div className={tabStripClass()}>
+        <button
+          className={tabButtonClass(hubPath === CONCEPTS_HUB.path)}
+          onClick={() => void changeHub(CONCEPTS_HUB.path)}
+          type="button"
+        >
+          Concepts
+        </button>
+        <button
+          className={tabButtonClass(hubPath === DAILY_NEWS_HUB.path)}
+          onClick={() => void changeHub(DAILY_NEWS_HUB.path)}
+          type="button"
+        >
+          Daily News
         </button>
       </div>
 
