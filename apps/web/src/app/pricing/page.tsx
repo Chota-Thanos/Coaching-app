@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../components/auth/auth-context";
@@ -156,7 +156,31 @@ const FREE_FEATURES = [
   `${FREE_LIMITS.noteRepositories} note repositories, ${FREE_LIMITS.articlesPerRepository} articles in each`
 ];
 
+// useSearchParams() opts the page out of static rendering unless it sits
+// below a Suspense boundary — without this wrapper, the build fails outright
+// ("useSearchParams() should be wrapped in a suspense boundary") instead of
+// just falling back to client-side rendering for the search-param read.
 export default function PricingPage() {
+  return (
+    <Suspense fallback={<PricingPageFallback />}>
+      <PricingPageContent />
+    </Suspense>
+  );
+}
+
+function PricingPageFallback() {
+  return (
+    <main className="min-h-screen">
+      <section className="page-hero">
+        <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 text-center sm:px-6 lg:px-8">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-civic border-t-transparent" />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function PricingPageContent() {
   const router = useRouter();
   const { token } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
