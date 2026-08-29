@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
@@ -22,13 +22,13 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition-colors ${
+      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] leading-tight transition-colors ${
         active
           ? "bg-civic/10 text-ink font-semibold dark:bg-civic/20"
           : "text-ink/70 font-medium hover:bg-paper hover:text-ink"
       }`}
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.9} />
       <span className="truncate">{item.label}</span>
     </Link>
   );
@@ -38,11 +38,13 @@ function CollapsibleGroup({
   label,
   items,
   pathname,
+  search,
   defaultOpen
 }: {
   label: string;
   items: NavItem[];
   pathname: string;
+  search: string;
   defaultOpen: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -52,15 +54,15 @@ function CollapsibleGroup({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[13px] font-semibold text-ink/50 hover:text-ink transition-colors"
+        className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-ink/45 hover:text-ink transition-colors"
       >
         <span>{label}</span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="space-y-0.5 mt-0.5">
           {items.map((item) => (
-            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} />
+            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact, search)} />
           ))}
         </div>
       )}
@@ -70,6 +72,9 @@ function CollapsibleGroup({
 
 export function SidebarNav({ className = "" }: { className?: string }) {
   const pathname = usePathname() || "/";
+  // Self-Preparation pairs each paper's test with its scorecard, and those
+  // differ only by query string — without it both rows light up at once.
+  const search = useSearchParams()?.toString() ?? "";
   const { user } = useAuth();
   const adminGroup = getAdminGroup(user);
 
@@ -81,7 +86,7 @@ export function SidebarNav({ className = "" }: { className?: string }) {
       <div className="flex flex-col gap-5 p-3.5">
         <div className="space-y-0.5">
           {PRIMARY_ITEMS.map((item) => (
-            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} />
+            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact, search)} />
           ))}
         </div>
 
@@ -91,19 +96,22 @@ export function SidebarNav({ className = "" }: { className?: string }) {
             label={group.label}
             items={group.items}
             pathname={pathname}
+            search={search}
             defaultOpen
           />
         ))}
 
-        <div className="space-y-0.5 border-t border-line/60 pt-3">
-          {SECONDARY_ITEMS.map((item) => (
-            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} />
-          ))}
-        </div>
+        {SECONDARY_ITEMS.length > 0 && (
+          <div className="space-y-0.5 border-t border-line/60 pt-3">
+            {SECONDARY_ITEMS.map((item) => (
+              <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact, search)} />
+            ))}
+          </div>
+        )}
 
         <div className="space-y-0.5 border-t border-line/60 pt-3">
           {SUBSCRIPTION_ITEMS.map((item) => (
-            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact)} />
+            <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact, search)} />
           ))}
         </div>
 
@@ -112,6 +120,7 @@ export function SidebarNav({ className = "" }: { className?: string }) {
             label={adminGroup.label}
             items={adminGroup.items}
             pathname={pathname}
+            search={search}
             defaultOpen
           />
         )}

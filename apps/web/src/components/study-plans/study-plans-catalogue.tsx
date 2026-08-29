@@ -76,6 +76,13 @@ const TYPE_CARDS: { type: StudyPlanType; heading: string; blurb: string; icon: s
   }
 ];
 
+/** Fallback mark when a plan has no cover image of its own. */
+const TYPE_GLYPH: Record<StudyPlanType, string> = {
+  full_course: "▶",
+  self_prep: "≡",
+  test_series: "✎"
+};
+
 /** Modifier suffix shared by the type cards and the plan cards. */
 const TYPE_MODIFIER: Record<StudyPlanType, string> = {
   full_course: "course",
@@ -118,8 +125,22 @@ function PlanCard({ plan }: { plan: StudyPlanSummary }) {
     .filter(Boolean)
     .join(" · ");
 
+  const cover = plan.cover_image_url?.trim();
+
   return (
     <Link className={`sp-c sp-pcard sp-pcard--${TYPE_MODIFIER[plan.plan_type]}`} href={studyPlanHref(`/${plan.id}`)}>
+      {/* A plan is chosen partly on how it looks, and cover_image_url has
+          always existed on the record without the catalogue ever showing it.
+          The fallback is a tinted band in the plan type's own colour rather
+          than a broken image frame. */}
+      <div
+        aria-hidden="true"
+        className="sp-pcover"
+        data-type={TYPE_MODIFIER[plan.plan_type]}
+        style={cover ? { backgroundImage: `url(${cover})` } : undefined}
+      >
+        {!cover && <span className="sp-pcover-glyph">{TYPE_GLYPH[plan.plan_type]}</span>}
+      </div>
       <div className="sp-pcard-body">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
           <span className={`sp-type ${PLAN_TYPE_CLASS[plan.plan_type]}`}>{PLAN_TYPE_LABEL[plan.plan_type]}</span>

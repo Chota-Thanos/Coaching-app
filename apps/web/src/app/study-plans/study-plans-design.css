@@ -285,3 +285,14 @@
   html.dark .sp-cat-type--self   { border-color:var(--sp-good-line); background:linear-gradient(180deg,#0e2a22 0%,var(--sp-panel) 64%); }
   html.dark .sp-cat-type--tests  { border-color:var(--sp-warn-line); background:linear-gradient(180deg,#2e230b 0%,var(--sp-panel) 64%); }
   html.dark .sp-pcard--course::before { background:#8f7dff; }
+
+  /* Plan cover art. A plan is chosen partly on how it looks, and the catalogue
+     had no image at all even though plans.cover_image_url has always existed.
+     The fallback is a tinted band in the plan type's colour, so a plan with no
+     artwork still reads as its type rather than as a broken frame. */
+  .sp-pcover { height:104px; border-radius:12px 12px 0 0; display:grid; place-items:center; background-color:var(--sp-panel-3); }
+  .sp-pcover[data-type="course"] { background-color:#efe9fd; }
+  .sp-pcover[data-type="self"]   { background-color:var(--sp-good-soft); }
+  .sp-pcover[data-type="tests"]  { background-color:var(--sp-warn-soft); }
+  .sp-pcover-glyph { font-size:26px; opacity:.5; }
+  html.dark .sp-pcover[data-type="course"] { background-color:#241a4d; }

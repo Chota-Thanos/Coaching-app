@@ -11,8 +11,11 @@ import {
   Home,
   BarChart3,
   Bookmark,
+  Highlighter,
+  Repeat2,
   Zap,
   ShieldCheck,
+  UserPlus,
   type LucideIcon
 } from "lucide-react";
 
@@ -29,52 +32,65 @@ export type NavGroup = {
   items: NavItem[];
 };
 
-export const PRIMARY_ITEMS: NavItem[] = [
-  { label: "Home", href: "/", icon: Home, exact: true },
-  { label: "Scorecard", href: "/assessment/dashboard", icon: BarChart3 }
-];
+export const PRIMARY_ITEMS: NavItem[] = [{ label: "Home", href: "/", icon: Home, exact: true }];
 
+/**
+ * Sidebar structure.
+ *
+ * Ordered the way a student moves through the product rather than the way the
+ * codebase is organised: the plan they are following, the mentor guiding them,
+ * the current affairs they read daily, then their own practice. Within
+ * Self-Preparation each paper is a pair — take the test, then read that paper's
+ * scorecard — because those two are always used together and used to sit in
+ * different places entirely.
+ */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Self-Preparation",
+    label: "Study Plans",
     items: [
-      { label: "General Studies", description: "GS Prelims self tests", href: "/assessment/gk", icon: Target },
-      { label: "CSAT / Aptitude", description: "Aptitude practice & stats", href: "/assessment/csat", icon: BookOpenCheck },
-      { label: "Mains Practice", description: "Answer writing & reviews", href: "/assessment/mains-hub", icon: FileText },
-      { label: "Bookmarks & Revision", description: "Category-filtered revision", href: "/assessment/gk?view=revision", icon: Bookmark }
+      { label: "Browse Plans", description: "Courses, self-paced plans, test series", href: "/study-plans", icon: BookOpenCheck },
+      { label: "My Plans", description: "Plans you are enrolled in", href: "/dashboard/purchases", icon: BookOpen }
+    ]
+  },
+  {
+    label: "Mentors Corner",
+    items: [
+      { label: "Find a Mentor", description: "Browse verified officers", href: "/mentors", icon: Users },
+      { label: "My Mentorship", description: "Sessions, agenda and chat", href: "/dashboard/mentorship", icon: Users },
+      { label: "Become a Mentor", description: "Apply to mentor aspirants", href: "/become-mentor", icon: UserPlus }
     ]
   },
   {
     label: "Current Affairs",
     items: [
       { label: "Daily News", description: "Prelims current affairs updates", href: "/current-affairs/daily-news", icon: Newspaper },
-      { label: "Prelims PYQs", description: "Prelims questions by category", href: "/current-affairs/prelims-pyq", icon: HelpCircle }
-    ]
-  },
-  {
-    label: "Notes",
-    items: [
-      { label: "My Repositories", description: "Custom note collections & tags", href: "/current-affairs/workspace", icon: FolderOpen }
-    ]
-  },
-  {
-    label: "Mains",
-    items: [
-      { label: "Editorial Summary", description: "Exam-focused editorials", href: "/current-affairs/editorial-summary", icon: FileText },
-      { label: "Mains Topic Notes", description: "Structured theme notes & data", href: "/current-affairs/mains-topic-notes", icon: BookOpen },
+      { label: "Daily Summaries", description: "Exam-focused editorial summaries", href: "/current-affairs/editorial-summary", icon: FileText },
+      { label: "Mains Notes", description: "Structured theme notes and data", href: "/current-affairs/mains-topic-notes", icon: BookOpen },
+      { label: "My Notes", description: "Your repositories, tags and saved articles", href: "/current-affairs/workspace", icon: FolderOpen },
+      { label: "My Highlights", description: "Every highlight and note in one place", href: "/current-affairs/workspace/highlights", icon: Highlighter },
+      { label: "Prelims PYQs", description: "Prelims questions by category", href: "/current-affairs/prelims-pyq", icon: HelpCircle },
       { label: "Mains PYQs", description: "Mains questions by theme", href: "/current-affairs/mains-pyq", icon: FileText }
+    ]
+  },
+  {
+    label: "Self Preparation",
+    items: [
+      { label: "Test GK", description: "Build and attempt a GS test", href: "/assessment/gk", icon: Target },
+      { label: "GK Score Card", description: "Your GS accuracy and weak topics", href: "/assessment/gk?view=performance&perf=summary", icon: BarChart3 },
+      { label: "Test CSAT", description: "Build and attempt a CSAT test", href: "/assessment/csat", icon: BookOpenCheck },
+      { label: "CSAT Score Card", description: "Your CSAT accuracy and weak topics", href: "/assessment/csat?view=performance&perf=summary", icon: BarChart3 },
+      { label: "Test Mains", description: "Answer writing practice", href: "/assessment/mains-hub", icon: FileText },
+      { label: "Mains Score Card", description: "Marks, categories and evaluator notes", href: "/assessment/mains-hub?view=performance&perf=summary", icon: BarChart3 },
+      { label: "Revision", description: "Re-attempt what you got wrong", href: "/assessment/gk?view=revision", icon: Repeat2 },
+      { label: "Overall Scorecard", description: "Every paper in one view", href: "/assessment/dashboard", icon: Bookmark }
     ]
   }
 ];
 
-export const SECONDARY_ITEMS: NavItem[] = [
-  { label: "Study Plans", href: "/study-plans", icon: BookOpenCheck },
-  { label: "Mentorship", href: "/mentors", icon: Users }
-];
+export const SECONDARY_ITEMS: NavItem[] = [];
 
 /** Subscription lives in its own group so the two links always travel together:
- *  one to buy, one to manage what was bought. Previously "Pricing" sat alone in
- *  SECONDARY_ITEMS and there was no route to an existing subscription at all. */
+ *  one to buy, one to manage what was bought. */
 export const SUBSCRIPTION_ITEMS: NavItem[] = [
   { label: "Plans & Pricing", description: "Compare modules and subscribe", href: "/pricing", icon: Zap },
   { label: "My Subscription", description: "Manage your plan and payments", href: "/dashboard/purchases", icon: CreditCard }
@@ -107,16 +123,39 @@ export function getAdminGroup(user: AdminUser): NavGroup | null {
   return { label: "Admin", items };
 }
 
-/** Matches the current pathname against a nav href, same convention used
- * across the old header/mobile nav so active-state highlighting is consistent. */
-export function isNavItemActive(pathname: string, href: string, exact?: boolean): boolean {
-  const hrefPath = href.split("?")[0] ?? href;
-  if (exact) return pathname === hrefPath;
-  if (hrefPath === "/current-affairs/daily-news") {
+/**
+ * Matches the current pathname against a nav href.
+ *
+ * The Self-Preparation group pairs each paper's test screen with its scorecard,
+ * and those differ only by query string — so matching on pathname alone would
+ * light up both. Items carrying a query are compared on it too.
+ */
+export function isNavItemActive(pathname: string, href: string, exact?: boolean, search?: string): boolean {
+  const [hrefPath, hrefQuery] = href.split("?");
+  const path = hrefPath ?? href;
+  if (exact) return pathname === path;
+
+  if (hrefQuery) {
+    if (pathname !== path) return false;
+    if (search === undefined) return false;
+    const current = new URLSearchParams(search);
+    const wanted = new URLSearchParams(hrefQuery);
+    for (const [key, value] of wanted) {
+      if (current.get(key) !== value) return false;
+    }
+    return true;
+  }
+
+  if (path === "/current-affairs/daily-news") {
     return pathname.startsWith("/current-affairs") && !pathname.startsWith("/current-affairs/workspace");
   }
-  if (hrefPath === "/current-affairs/workspace") {
-    return pathname.startsWith("/current-affairs/workspace");
+  if (path === "/current-affairs/workspace") {
+    return pathname === path;
   }
-  return pathname.startsWith(hrefPath);
+  // A bare test link must not stay lit while its own scorecard is open.
+  if (path.startsWith("/assessment/") && search) {
+    const view = new URLSearchParams(search).get("view");
+    if (view === "performance" || view === "revision") return false;
+  }
+  return pathname.startsWith(path);
 }

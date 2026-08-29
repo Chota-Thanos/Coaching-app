@@ -258,20 +258,23 @@ img {
   margin: 0 0 1.25rem;
   line-height: 1.75;
   color: rgb(var(--s-700));
-  font-size: 1.125rem;
+  /* Scales with the viewport rather than sitting at one desktop size: 1rem on
+     a phone, up to 1.0625rem on a wide screen. The previous flat 1.125rem was
+     noticeably oversized on a 360px-wide device. */
+  font-size: clamp(1rem, 0.965rem + 0.18vw, 1.0625rem);
   /* Old-style figures sit better in running serif text than lining ones. */
   font-variant-numeric: oldstyle-nums proportional-nums;
   letter-spacing: 0.001em;
 }
 
 .article-body li {
-  font-size: 1.125rem;
-  line-height: 1.75;
+  font-size: clamp(1rem, 0.965rem + 0.18vw, 1.0625rem);
+  line-height: 1.7;
 }
 
 .article-body h2 {
   margin: 2.5rem 0 1rem;
-  font-size: 1.625rem !important; /* Restoring specific sizing for rich article text */
+  font-size: clamp(1.3rem, 1.12rem + 0.8vw, 1.625rem) !important; /* Restoring specific sizing for rich article text */
   font-weight: 400 !important;
   line-height: 1.3;
   color: rgb(var(--c-ink));
@@ -279,7 +282,7 @@ img {
 
 .article-body h3 {
   margin: 1.85rem 0 0.85rem;
-  font-size: 1.25rem !important;
+  font-size: clamp(1.1rem, 1.02rem + 0.35vw, 1.25rem) !important;
   font-weight: 400 !important;
   color: rgb(var(--c-ink));
 }
@@ -405,6 +408,12 @@ img {
 .article-body strong, .article-body b {
   font-weight: 700;
   color: rgb(var(--c-ink));
+}
+
+@media (max-width: 640px) {
+  .article-body p { margin-bottom: 1rem; }
+  .article-body h2 { margin: 1.75rem 0 0.7rem; }
+  .article-body h3 { margin: 1.35rem 0 0.6rem; }
 }
 
 /* Pointer disclosure — a point's short label (<summary>) stays always
