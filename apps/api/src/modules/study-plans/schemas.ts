@@ -153,8 +153,32 @@ export const enrollStudyPlanSchema = z.object({
   razorpay_payment_id: z.string().trim().optional()
 });
 
+/** One attachment on a plan day — a chapter reference, a PDF, a link, a note. */
+export const createPlanItemResourceSchema = z.object({
+  title: z.string().trim().min(1),
+  resource_kind: z.enum(["link", "pdf", "note", "video", "book_pages"]).default("link"),
+  url: z.string().trim().nullable().optional(),
+  body: z.string().trim().nullable().optional(),
+  display_order: z.coerce.number().int().default(0)
+}).refine((value) => Boolean(value.url) || Boolean(value.body), {
+  message: "A resource needs either a URL or some body text."
+});
+
+export const updatePlanItemResourceSchema = z.object({
+  title: z.string().trim().min(1).optional(),
+  resource_kind: z.enum(["link", "pdf", "note", "video", "book_pages"]).optional(),
+  url: z.string().trim().nullable().optional(),
+  body: z.string().trim().nullable().optional(),
+  display_order: z.coerce.number().int().optional()
+});
+
 export const updateProgressSchema = z.object({
-  status: z.enum(["not_started", "in_progress", "completed"])
+  status: z.enum(["not_started", "in_progress", "completed"]),
+  /** Seconds the learner actually spent on the item. Accumulated, not
+   *  replaced, so re-opening a day adds to the total rather than resetting it.
+   *  This is what lets the tracker's depth signal tell a read from a
+   *  click-through. */
+  time_spent_seconds: z.coerce.number().int().nonnegative().max(86400).optional()
 });
 
 export const startStudyPlanAttemptSchema = z.object({
@@ -212,6 +236,8 @@ export type UpdateStudyPlanTestInput = z.output<typeof updateStudyPlanTestSchema
 export type CreateStudyPlanQuestionInput = z.output<typeof createStudyPlanQuestionSchema>;
 export type UpdateStudyPlanQuestionInput = z.output<typeof updateStudyPlanQuestionSchema>;
 export type EnrollStudyPlanInput = z.output<typeof enrollStudyPlanSchema>;
+export type CreatePlanItemResourceInput = z.output<typeof createPlanItemResourceSchema>;
+export type UpdatePlanItemResourceInput = z.output<typeof updatePlanItemResourceSchema>;
 export type UpdateProgressInput = z.output<typeof updateProgressSchema>;
 export type StartStudyPlanAttemptInput = z.output<typeof startStudyPlanAttemptSchema>;
 export type UpsertStudyPlanResponseInput = z.output<typeof upsertStudyPlanResponseSchema>;

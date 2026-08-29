@@ -11,6 +11,7 @@ import type { ScoreItem } from "../assessment/scoring.types.js";
 import type { UserRole } from "../auth/schemas.js";
 import type {
   CreatePlanItemInput,
+  CreatePlanItemResourceInput,
   CreateStudyPlanInput,
   CreateStudyPlanQuestionInput,
   CreateStudyPlanTestInput,
@@ -18,6 +19,7 @@ import type {
   ListStudyPlansQuery,
   ListStudyPlanTestsQuery,
   ScheduleLiveClassInput,
+  UpdatePlanItemResourceInput,
   StartStudyPlanAttemptInput,
   SubmitStudyPlanAttemptInput,
   UpdatePlanItemInput,
@@ -923,6 +925,61 @@ export async function enrollStudyPlan(
   });
 }
 
+export async function listPlanItemResources(planItemId: number): Promise<unknown[]> {
+  return query(
+    `
+      select *
+      from study_plan.plan_item_resources
+      where plan_item_id = $1
+      order by display_order asc, id asc
+    `,
+    [planItemId]
+  );
+}
+
+export async function addPlanItemResource(
+  planItemId: number,
+  input: CreatePlanItemResourceInput
+): Promise<unknown> {
+  return one(
+    `
+      insert into study_plan.plan_item_resources
+        (plan_item_id, title, resource_kind, url, body, display_order)
+      values ($1, $2, $3, $4, $5, $6)
+      returning *
+    `,
+    [planItemId, input.title, input.resource_kind, input.url ?? null, input.body ?? null, input.display_order]
+  );
+}
+
+export async function updatePlanItemResource(
+  id: number,
+  input: UpdatePlanItemResourceInput
+): Promise<unknown | null> {
+  const params: unknown[] = [];
+  const updates: string[] = [];
+  addUpdate(updates, params, "title", input.title);
+  addUpdate(updates, params, "resource_kind", input.resource_kind);
+  addUpdate(updates, params, "url", input.url);
+  addUpdate(updates, params, "body", input.body);
+  addUpdate(updates, params, "display_order", input.display_order);
+  requireUpdates(updates);
+  params.push(id);
+  return one(
+    `
+      update study_plan.plan_item_resources
+      set ${updates.join(", ")}, updated_at = now()
+      where id = $${params.length}
+      returning *
+    `,
+    params
+  );
+}
+
+export async function deletePlanItemResource(id: number): Promise<unknown | null> {
+  return one(`delete from study_plan.plan_item_resources where id = $1 returning id`, [id]);
+}
+
 export async function addPlanItem(
   planId: number,
   input: CreatePlanItemInput
@@ -1030,16 +1087,27 @@ export async function updatePlanItemProgress(
     const progress = await client.query(
       `
         insert into study_plan.item_progress
-          (enrollment_id, plan_item_id, status, completed_at)
-        values ($1, $2, $3, case when $3 = 'completed' then now() else null end)
+          (enrollment_id, plan_item_id, status, completed_at, time_spent_seconds, started_at)
+        values ($1, $2, $3, case when $3 = 'completed' then now() else null end, coalesce($4, 0), now())
         on conflict (enrollment_id, plan_item_id)
         do update set
           status = excluded.status,
           completed_at = case when excluded.status = 'completed' then coalesce(study_plan.item_progress.completed_at, now()) else null end,
+          -- Accumulated: a second visit adds to the first rather than
+          -- overwriting it, so the depth signal sees total time on task.
+          time_spent_seconds = study_plan.item_progress.time_spent_seconds + coalesce($4, 0),
+          started_at = coalesce(study_plan.item_progress.started_at, now()),
           updated_at = now()
         returning *
       `,
-      [enrollment.id, itemId, input.status]
+      [enrollment.id, itemId, input.status, input.time_spent_seconds ?? 0]
+    );
+
+    // Any progress at all counts as activity; without this the tracker would
+    // call an active learner "stalled" after seven days.
+    await client.query(
+      `update study_plan.enrollments set last_activity_at = now() where id = $1`,
+      [enrollment.id]
     );
 
     await refreshEnrollmentCompletion(client, Number(enrollment.id));

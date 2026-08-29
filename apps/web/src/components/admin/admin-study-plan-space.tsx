@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
+import { PlanItemResourcesEditor } from "./plan-item-resources-editor";
 import { RichTextMarkdownEditor } from "../current-affairs/rich-text-editor";
 import {
   formatPlanPrice,
@@ -1009,6 +1010,13 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                         </p>
                       )}
                     </div>
+                  )}
+
+                  {/* Tests carry their questions instead; every other kind of
+                      step is the thing the student opens, so it gets the
+                      resource list. */}
+                  {!isTestStep(selectedItem.item_type) && (
+                    <PlanItemResourcesEditor planItemId={selectedItem.id} />
                   )}
 
                   {selectedItem.item_type === "live_lecture" && (
