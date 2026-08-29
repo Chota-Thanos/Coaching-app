@@ -1,11 +1,12 @@
 "use client";
 
 import { FilePlus2, Save, Tags, X } from "lucide-react";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { StudentArticle, StudentCollection } from "../../../lib/api";
 import { createUniqueWorkspaceSlug, joinWorkspaceTags, splitWorkspaceTags } from "../../../lib/workspace";
-import { authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
 
 type RepositoryOwnArticleModalProps = {
   repository: StudentCollection;
@@ -29,6 +30,7 @@ export function RepositoryOwnArticleModal({
   const [tagDraft, setTagDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   const isEditing = Boolean(article);
   const selectedTags = useMemo(() => splitWorkspaceTags(tagDraft), [tagDraft]);
@@ -40,6 +42,7 @@ export function RepositoryOwnArticleModal({
     setSourceUrl(article?.source_url ?? "");
     setTagDraft(joinWorkspaceTags(article?.personal_tags));
     setMessage(null);
+    setCapError(null);
   }, [article, open]);
 
   if (!open) return null;
@@ -89,8 +92,9 @@ export function RepositoryOwnArticleModal({
 
       await onSaved();
       onClose();
-    } catch {
-      setMessage("Could not save this article. Check the source URL and try again.");
+    } catch (err) {
+      if (isCapError(err)) setCapError(err);
+      else setMessage("Could not save this article. Check the source URL and try again.");
     } finally {
       setPending(false);
     }
@@ -185,6 +189,8 @@ export function RepositoryOwnArticleModal({
                 </p>
               )}
             </div>
+
+            {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
 
             {message && (
               <p className="rounded-md border border-berry/30 bg-berry/10 px-3 py-2 text-sm font-semibold text-berry">

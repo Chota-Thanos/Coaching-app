@@ -17,6 +17,7 @@ import { downloadScannedPdf, type PdfSection } from "../../../lib/export-pdf";
 import { BulkImportPanel } from "./bulk-import-panel";
 import { PersonalArticlesPanel } from "./personal-articles-panel";
 import { RepositoryManager } from "./repository-manager";
+import { WorkspaceLimitBar, useWorkspaceLimits } from "./workspace-limit-bar";
 import { WorkspaceQueuePanel } from "./workspace-queue-panel";
 import { WorkspaceSignIn } from "./workspace-sign-in";
 import { WorkspaceStatGrid } from "./workspace-stat-grid";
@@ -286,6 +287,7 @@ export function WorkspaceDashboard() {
   const [showTour, setShowTour] = useState(false);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [downloadAllError, setDownloadAllError] = useState<string | null>(null);
+  const { limits: workspaceLimits, reload: reloadLimits } = useWorkspaceLimits();
 
   useEffect(() => {
     if (isInitialized && searchParams.get("start_tour") === "true") {
@@ -437,6 +439,8 @@ export function WorkspaceDashboard() {
         <>
           <WorkspaceStatGrid dashboard={state.dashboard} />
 
+          <WorkspaceLimitBar limits={workspaceLimits} />
+
           {(state.dashboard.continue_reading.length > 0 || state.dashboard.due_revisions.length > 0) && (
             <div className="grid gap-6 lg:grid-cols-2">
               {state.dashboard.continue_reading.length > 0 && (
@@ -457,7 +461,13 @@ export function WorkspaceDashboard() {
           )}
 
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_30rem]">
-            <RepositoryManager collections={state.collections} onChanged={loadWorkspace} />
+            <RepositoryManager
+              collections={state.collections}
+              onChanged={async () => {
+                await loadWorkspace();
+                reloadLimits();
+              }}
+            />
             <RepositorySuggestionPanel
               articles={state.dashboard.recommended_articles}
               collections={state.collections}

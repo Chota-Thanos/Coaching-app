@@ -1,10 +1,11 @@
 "use client";
 
 import { Download, Filter, Search, X } from "lucide-react";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { useEffect, useMemo, useState } from "react";
 import type { ArticleFiltersResponse, ArticleListResponse, ArticleSummary, CategoryNode, StudentCollection, StudentFork } from "../../../lib/api";
 import { CURRENT_AFFAIRS_HUBS, contentKindLabel, monthLabel, type CurrentAffairsHub } from "../../../lib/current-affairs";
-import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
 import { tabButtonClass, tabStripClass } from "../../ui/tabs";
 
 type RepositoryBulkImportModalProps = {
@@ -52,6 +53,7 @@ export function RepositoryBulkImportModal({
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   const activeHub = useMemo<CurrentAffairsHub>(() => {
     return CURRENT_AFFAIRS_HUBS.find((hub) => hub.path === hubPath) ?? DEFAULT_HUB;
@@ -103,6 +105,7 @@ export function RepositoryBulkImportModal({
   useEffect(() => {
     if (!open) return;
     setMessage(null);
+    setCapError(null);
     void (async () => {
       await loadFilters(activeHub);
       await searchArticles({ hub: activeHub, category: "", month: "", year: "" });
@@ -485,6 +488,8 @@ export function RepositoryBulkImportModal({
               <p className="p-5 text-sm text-ink/60">No article list loaded yet.</p>
             )}
           </section>
+
+          {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
 
           {message && (
             <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">

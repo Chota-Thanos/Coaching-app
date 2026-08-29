@@ -1,10 +1,11 @@
 "use client";
 
 import { Download, Filter, Plus, Search } from "lucide-react";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { useMemo, useState } from "react";
 import type { ArticleFiltersResponse, ArticleListResponse, ArticleSummary, StudentCollection, StudentFork } from "../../../lib/api";
 import { CURRENT_AFFAIRS_HUBS, contentKindLabel, monthLabel, type CurrentAffairsHub } from "../../../lib/current-affairs";
-import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
 import { tabButtonClass, tabStripClass } from "../../ui/tabs";
 
 type BulkImportPanelProps = {
@@ -50,6 +51,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   const activeHub = useMemo<CurrentAffairsHub>(() => {
     return CURRENT_AFFAIRS_HUBS.find((hub) => hub.path === hubPath) ?? DEFAULT_HUB;
@@ -82,6 +84,7 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
     const searchYear = overrides?.year ?? year;
     setLoading(true);
     setMessage(null);
+    setCapError(null);
     try {
       if (!filters) {
         await loadFilters(hub);
@@ -139,8 +142,9 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
       await onChanged();
       setSelectedIds(new Set());
       setMessage(`Imported ${selectedIds.size} article${selectedIds.size === 1 ? "" : "s"}.`);
-    } catch {
-      setMessage("Could not import the selected articles.");
+    } catch (err) {
+      if (isCapError(err)) setCapError(err);
+      else setMessage("Could not import the selected articles.");
     } finally {
       setImporting(false);
     }
@@ -315,6 +319,8 @@ export function BulkImportPanel({ collections, onChanged }: BulkImportPanelProps
           </div>
         </div>
       )}
+
+      {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
 
       {message && (
         <p className="rounded-lg border border-civic/20 bg-civic/8 px-3 py-2 text-sm font-semibold text-civic">

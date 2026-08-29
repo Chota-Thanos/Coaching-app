@@ -1,11 +1,12 @@
 "use client";
 
 import { FileText, Save } from "lucide-react";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { StudentArticle, StudentCollection } from "../../../lib/api";
 import { createUniqueWorkspaceSlug } from "../../../lib/workspace";
-import { authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedPost, useAuth } from "../../auth/auth-context";
 import { RepositoryAttachControl } from "./repository-attach-control";
 
 type PersonalArticlesPanelProps = {
@@ -33,6 +34,7 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
   const [tags, setTags] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   async function createDraft(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -40,6 +42,7 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
 
     setPending(true);
     setMessage(null);
+    setCapError(null);
     try {
       await authenticatedPost<StudentArticle>("/api/v1/current-affairs/me/articles", token, {
         title,
@@ -55,8 +58,9 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
       setTags("");
       await onChanged();
       setMessage("Draft saved.");
-    } catch {
-      setMessage("Could not save draft. Check the source URL is a valid link and try again.");
+    } catch (err) {
+      if (isCapError(err)) setCapError(err);
+      else setMessage("Could not save draft. Check the source URL is a valid link and try again.");
     } finally {
       setPending(false);
     }
@@ -116,6 +120,7 @@ export function PersonalArticlesPanel({ articles, collections, onChanged }: Pers
           <Save aria-hidden="true" className="h-4 w-4" />
           {pending ? "Saving..." : "Save draft"}
         </button>
+        {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
         {message && <p className="text-sm font-semibold text-civic">{message}</p>}
       </form>
 

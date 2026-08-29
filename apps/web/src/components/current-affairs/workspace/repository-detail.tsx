@@ -28,6 +28,8 @@ import { downloadScannedPdf } from "../../../lib/export-pdf";
 import { RepositoryBulkImportModal } from "./repository-bulk-import-modal";
 import { RepositoryOwnArticleModal } from "./repository-own-article-modal";
 import { WorkspaceArticleRow } from "./workspace-article-row";
+import { WorkspaceLimitBar, useWorkspaceLimits } from "./workspace-limit-bar";
+import { AiSummarisePanel } from "./ai-summarise-panel";
 import { WorkspaceSignIn } from "./workspace-sign-in";
 
 type RepositoryDetailProps = {
@@ -177,6 +179,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [revisionOnly, setRevisionOnly] = useState(false);
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  const { limits: workspaceLimits } = useWorkspaceLimits();
   const [flashcardsOpen, setFlashcardsOpen] = useState(false);
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const [savingTags, setSavingTags] = useState(false);
@@ -428,6 +431,18 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
               <h1 className="mt-2 text-3xl font-black leading-tight text-ink md:text-4xl">{repository.name}</h1>
               {repository.description && <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">{repository.description}</p>}
               <p className="mt-3 text-sm font-semibold text-ink/65">{repository.items.length} items</p>
+              <div className="mt-3 max-w-2xl space-y-3">
+                <WorkspaceLimitBar
+                  context="repository"
+                  itemsUsed={repository.items.length}
+                  limits={workspaceLimits}
+                />
+                <AiSummarisePanel
+                  collectionId={repository.id}
+                  forks={repository.items.map((item) => item.fork).filter((fork): fork is NonNullable<typeof fork> => Boolean(fork))}
+                  onCreated={loadRepository}
+                />
+              </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <button

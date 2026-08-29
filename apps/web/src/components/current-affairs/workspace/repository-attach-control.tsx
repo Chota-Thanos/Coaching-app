@@ -1,9 +1,10 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { useEffect, useMemo, useState } from "react";
 import type { StudentCollection } from "../../../lib/api";
-import { authenticatedPost, useAuth } from "../../auth/auth-context";
+import { ApiError, authenticatedPost, useAuth } from "../../auth/auth-context";
 
 type RepositoryAttachControlProps = {
   collections: StudentCollection[];
@@ -25,6 +26,7 @@ export function RepositoryAttachControl({
   const [collectionId, setCollectionId] = useState(firstCollectionId);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [capError, setCapError] = useState<ApiError | null>(null);
 
   useEffect(() => {
     setCollectionId((current) => current || firstCollectionId);
@@ -42,6 +44,7 @@ export function RepositoryAttachControl({
 
     setPending(true);
     setMessage(null);
+    setCapError(null);
     try {
       await authenticatedPost(`/api/v1/current-affairs/me/collections/${selectedCollectionId}/items`, token, {
         fork_id: forkId,
@@ -49,8 +52,12 @@ export function RepositoryAttachControl({
       });
       await onAdded?.();
       setMessage("Added to repository.");
-    } catch {
-      setMessage("Could not add item.");
+    } catch (err) {
+      // A free account whose repository is full gets a 402 naming the limit.
+      // Reporting that as a generic failure sent people retrying the same
+      // click instead of telling them the repository was full.
+      if (isCapError(err)) setCapError(err);
+      else setMessage("Could not add item.");
     } finally {
       setPending(false);
     }
@@ -79,6 +86,7 @@ export function RepositoryAttachControl({
         <Plus aria-hidden="true" className="h-4 w-4" />
         {alreadyAttached ? "Added" : "Add"}
       </button>
+      {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}
       {message && <p className="text-xs font-semibold text-civic sm:col-span-2">{message}</p>}
     </div>
   );
