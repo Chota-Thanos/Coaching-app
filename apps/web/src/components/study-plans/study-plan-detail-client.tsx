@@ -1,931 +1,189 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  BookOpen,
-  BookOpenCheck,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  ClipboardList,
-  Clock,
-  Globe2,
-  LockKeyhole,
-  PlayCircle,
-  RotateCcw,
-  Star,
-  Trophy,
-  Video,
-  WalletCards,
-  AlertCircle
-} from "lucide-react";
-import {
-  formatPlanPrice,
-  formatStudyPlanItemType,
-  studyPlanHref,
-  type StudyPlanDetail,
-  type StudyPlanItem
-} from "../../lib/study-plans";
+import { authenticatedGet, authenticatedPost, useAuth } from "../auth/auth-context";
 import { browserBaseUrl } from "../../lib/api";
-import { SignInPanel } from "../auth/sign-in-panel";
-import { authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../auth/auth-context";
+import type { StudyPlanDetail, StudyPlanItem } from "../../lib/study-plans";
+import { StudyPlanDecisionPage } from "./study-plan-decision-page";
+import { StudyPlanScheduleSetup } from "./study-plan-schedule-setup";
+import { StudyPlanWorkspace } from "./study-plan-workspace";
 
-type StudyPlanDetailClientProps = {
-  initialPlan: StudyPlanDetail;
-};
+/**
+ * One route, three states:
+ *
+ *   not enrolled            -> the decision page
+ *   enrolling               -> the schedule setup step
+ *   enrolled                -> the workspace
+ *
+ * The middle state is new. Enrolment used to be a single click that recorded
+ * no dates, which is why nothing downstream could ever say "today" or
+ * "behind" — see database/migrations/055 and api study-plans/tracking.ts.
+ */
 
-function itemIcon(item: StudyPlanItem) {
-  if (item.item_type === "reading") return <BookOpen className="h-4 w-4" />;
-  if (item.item_type === "revision") return <RotateCcw className="h-4 w-4" />;
-  if (item.item_type === "live_lecture") return <Video className="h-4 w-4" />;
-  return <PlayCircle className="h-4 w-4" />;
+type Stage = "decide" | "schedule" | "work";
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+  }
 }
 
-function WeekStatusCircle({ done, isCurrent, locked }: { done: boolean; isCurrent: boolean; locked: boolean }) {
-  if (done) {
-    return (
-      <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
-        <Check className="h-3.5 w-3.5" />
-      </div>
-    );
-  }
-  if (isCurrent) {
-    return (
-      <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-civic ring-4 ring-civic/25">
-        <div className="h-2 w-2 rounded-full bg-surface" />
-      </div>
-    );
-  }
-  return (
-    <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-line bg-paper">
-      {locked && <LockKeyhole className="h-3 w-3 text-slate-400" />}
-    </div>
-  );
-}
-
-function groupByWeek(items: StudyPlanItem[]) {
-  const weeks = new Map<number, StudyPlanItem[]>();
-  for (const item of items) {
-    const current = weeks.get(item.week_no) ?? [];
-    current.push(item);
-    weeks.set(item.week_no, current);
-  }
-  return Array.from(weeks.entries()).sort(([a], [b]) => a - b);
-}
-
-function CourseArtwork({ plan }: { plan: StudyPlanDetail }) {
-  if (plan.cover_image_url) {
-    return (
-      <div
-        className="h-48 bg-cover bg-center"
-        style={{ backgroundImage: `url(${plan.cover_image_url})` }}
-      />
-    );
-  }
-
-  return (
-    <div className="relative h-48 overflow-hidden bg-gradient-to-br from-slate-800 to-indigo-950 text-white">
-      <div className="absolute inset-y-0 right-0 w-1/3 bg-indigo-600/15" />
-      <div className="absolute bottom-0 left-0 h-2 w-full bg-indigo-500" />
-      <div className="relative flex h-full flex-col justify-between p-5">
-        <div className="flex items-center justify-between">
-          <span className="rounded-md bg-white/15 px-2 py-1 font-heading text-[11px] !font-black uppercase tracking-wide">Study Plan</span>
-          <BookOpenCheck className="h-6 w-6 text-indigo-200" />
-        </div>
-        <div>
-          <p className="font-heading text-2xl !font-black leading-tight">{plan.exam?.name ?? plan.exam_name ?? "Exam Prep"}</p>
-          <p className="mt-1 text-sm font-bold text-white/70">{plan.duration_weeks} week guided schedule</p>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <span className="h-1.5 rounded-sm bg-white/30" />
-            <span className="h-1.5 rounded-sm bg-indigo-400" />
-            <span className="h-1.5 rounded-sm bg-slate-500" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-async function browserJson<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
-  headers.set("accept", "application/json");
-  if (token) headers.set("authorization", `Bearer ${token}`);
-  if (init?.body !== undefined && !headers.has("content-type")) headers.set("content-type", "application/json");
-  const response = await fetch(`${browserBaseUrl}${path}`, { ...init, headers });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request failed with ${response.status}`);
-  }
-  const text = await response.text();
-  return text ? JSON.parse(text) as T : undefined as T;
-}
-
-export function StudyPlanDetailClient({ initialPlan }: StudyPlanDetailClientProps) {
-  const { token, user, isInitialized } = useAuth();
+export function StudyPlanDetailClient({ initialPlan }: { initialPlan: StudyPlanDetail }) {
+  const { token, isInitialized } = useAuth();
   const router = useRouter();
-  const [plan, setPlan] = useState(initialPlan);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [plan, setPlan] = useState<StudyPlanDetail>(initialPlan);
+  const [stage, setStage] = useState<Stage>(initialPlan.has_access ? "work" : "decide");
+  const [busy, setBusy] = useState(false);
+  const [busyItemId, setBusyItemId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
-  const [weeksInitialized, setWeeksInitialized] = useState(false);
 
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
-  const [reviewBusy, setReviewBusy] = useState(false);
-
-  const loadReviews = async () => {
-    try {
-      const data = await browserJson<any[]>(`/api/v1/study-plans/${plan.id}/reviews`, token || undefined);
-      setReviews(data);
-      const myReview = data.find((r) => r.user?.id === user?.id);
-      if (myReview) {
-        setReviewForm({ rating: myReview.rating, comment: myReview.comment || "" });
-      }
-    } catch {}
-  };
-
-  useEffect(() => {
-    void loadReviews();
-  }, [plan.id, user]);
-
-  const submitReview = async () => {
+  const reload = useCallback(async () => {
     if (!token) return;
-    setReviewBusy(true);
     try {
-      await authenticatedPost(`/api/v1/study-plans/${plan.id}/reviews`, token, {
-        rating: reviewForm.rating,
-        comment: reviewForm.comment || undefined
-      });
-      await loadReviews();
       const fresh = await authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token);
       setPlan(fresh);
+      setStage(fresh.has_access ? "work" : "decide");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Could not save review.");
-    } finally {
-      setReviewBusy(false);
+      console.error(error);
     }
-  };
+  }, [token, plan.id]);
 
-  const weeks = useMemo(() => groupByWeek(plan.items), [plan.items]);
-
-  // Auto-expand only the first week that isn't fully complete (the "current"
-  // week), matching a guided-path presentation -- past weeks collapse to a
-  // checkmark, future weeks stay collapsed and dim until access allows.
+  // The server render is anonymous, so enrolment, schedule and tracking only
+  // arrive once the learner's token is available client-side.
   useEffect(() => {
-    if (weeksInitialized || weeks.length === 0) return;
-    let currentWeek: number | null = null;
-    for (const [week, items] of weeks) {
-      const allDone = items.length > 0 && items.every((item) => item.progress?.status === "completed");
-      currentWeek = week;
-      if (!allDone) break;
-    }
-    if (currentWeek === null) return;
-    setExpandedWeeks(new Set([currentWeek]));
-    setWeeksInitialized(true);
-  }, [weeks, weeksInitialized]);
+    if (!isInitialized || !token) return;
+    void reload();
+  }, [isInitialized, token, reload]);
 
-  const toggleWeek = (week: number) => {
-    setExpandedWeeks((prev) => {
-      const next = new Set(prev);
-      if (next.has(week)) next.delete(week);
-      else next.add(week);
-      return next;
-    });
-  };
+  const isFree = plan.access_mode === "free" || Number(plan.price_amount_minor) === 0;
+  const covered = plan.covered_by_subscription === true;
 
-  const completed = plan.progress_summary?.completed_items ?? 0;
-  const total = plan.progress_summary?.total_items ?? plan.items.length;
-  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-  // The first non-completed, unlocked item in plan order is the one the
-  // learner should do next -- surfaced with a distinct "Up next" treatment
-  // in the curriculum list so it's the obvious next click, not just another
-  // row among many.
-  const nextUpItemId = useMemo(() => {
-    const ordered = [...plan.items].sort((a, b) => a.week_no - b.week_no || a.day_no - b.day_no || a.display_order - b.display_order);
-    const next = ordered.find((item) => {
-      const locked = !plan.has_access && !item.is_preview;
-      return !locked && item.progress?.status !== "completed";
-    });
-    return next?.id ?? null;
-  }, [plan.items, plan.has_access]);
-  const tests = plan.items.filter((item) => ["prelims_test", "csat_test", "mains_test"].includes(item.item_type)).length;
-  const lectures = plan.items.filter((item) => item.item_type === "live_lecture").length;
-  const previewItems = plan.items.filter((item) => item.is_preview).length;
-  const estimatedMinutes = plan.items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
-  const estimatedHours = Math.max(1, Math.round(estimatedMinutes / 60));
-
-  useEffect(() => {
-    if (!token) return;
-    void authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token)
-      .then(setPlan)
-      .catch(() => {});
-  }, [plan.id, token]);
-
-  const enroll = async () => {
-    if (!token) return;
-
-    // Free plan — enroll directly
-    if (!plan.price_amount_minor || Number(plan.price_amount_minor) === 0) {
-      setBusyAction("enroll");
-      setMessage(null);
-      try {
-        await authenticatedPost(`/api/v1/study-plans/${plan.id}/enroll`, token, { provider: "free" });
-        const fresh = await authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token);
-        setPlan(fresh);
-        setMessage("Study plan unlocked.");
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Could not unlock the plan.");
-      } finally {
-        setBusyAction(null);
-      }
+  /** Free and subscription-covered plans go straight to scheduling. */
+  const beginEnrolment = () => {
+    setMessage(null);
+    if (!token) {
+      router.push(`/login?next=/study-plans/${plan.id}`);
       return;
     }
+    if (isFree || covered) {
+      setStage("schedule");
+      return;
+    }
+    void startPurchase();
+  };
 
-    // Paid plan — create a Razorpay order for the study plan
-    setBusyAction("enroll");
+  const startPurchase = async () => {
+    if (!token) return;
+    setBusy(true);
     setMessage(null);
     try {
-      // Ask backend for a study plan order
-      const orderRes = await authenticatedPost<{
+      const order = await authenticatedPost<{
         order_id: string;
         amount: number;
         currency: string;
         key_id: string;
-        plan_title: string;
-        simulated: boolean;
       }>(`/api/v1/study-plans/${plan.id}/purchase-order`, token, {});
 
-      const handleSuccess = async (rzpPaymentId: string, rzpOrderId: string, rzpSignature: string) => {
-        try {
-          await authenticatedPost(`/api/v1/study-plans/${plan.id}/verify-purchase`, token, {
-            razorpay_order_id: rzpOrderId,
-            razorpay_payment_id: rzpPaymentId,
-            razorpay_signature: rzpSignature
-          });
-          const fresh = await authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token);
-          setPlan(fresh);
-          setMessage("Study plan unlocked! You now have full access.");
-        } catch (err) {
-          setMessage(err instanceof Error ? err.message : "Payment succeeded but unlock failed. Please contact support.");
-        } finally {
-          setBusyAction(null);
-        }
-      };
-
-      if (orderRes.simulated) {
-        // Simulated: skip Razorpay SDK
-        await handleSuccess(`sim_pay_${Date.now()}`, orderRes.order_id, "simulated_signature");
+      if (!window.Razorpay) {
+        setMessage("Payment could not start — the checkout script did not load. Refresh and try again.");
         return;
       }
 
-      // Real Razorpay
-      const rzp = new (window as any).Razorpay({
-        key: orderRes.key_id,
-        amount: orderRes.amount,
-        currency: orderRes.currency,
-        name: "CoachingHub",
-        description: plan.title,
-        order_id: orderRes.order_id,
-        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-          await handleSuccess(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
-        },
-        modal: {
-          ondismiss: () => {
-            setBusyAction(null);
-            setMessage(null);
+      const checkout = new window.Razorpay({
+        key: order.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.order_id,
+        name: plan.title,
+        handler: async (response: Record<string, string>) => {
+          try {
+            await authenticatedPost(`/api/v1/study-plans/${plan.id}/verify-purchase`, token, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+            // Payment only unlocks the plan; the learner still chooses when
+            // it starts, so purchase lands on scheduling rather than skipping it.
+            setStage("schedule");
+          } catch (error) {
+            console.error(error);
+            setMessage("Payment went through but unlocking failed. Refresh — it may already be active.");
           }
-        },
-        theme: { color: "#4f46e5" }
-      });
-      rzp.open();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not initiate payment. Try again.");
-      setBusyAction(null);
-    }
-  };
-
-  const updateProgress = async (item: StudyPlanItem, status: "in_progress" | "completed") => {
-    if (!token) return;
-    setBusyAction(`progress-${item.id}`);
-    setMessage(null);
-    try {
-      await authenticatedPatch(`/api/v1/study-plan-items/${item.id}/progress`, token, { status });
-      const fresh = await authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token);
-      setPlan(fresh);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update progress.");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const startTest = async (item: StudyPlanItem) => {
-    if (!token || !item.test_template_id) return;
-    setBusyAction(`test-${item.id}`);
-    setMessage(null);
-    try {
-      const attempt = await browserJson<{ id: number }>(
-        `/api/v1/study-plan-tests/${item.test_template_id}/attempts/start`,
-        token,
-        {
-          method: "POST",
-          body: JSON.stringify({ plan_item_id: item.id })
         }
-      );
-      router.push(`/study-plans/attempts/${attempt.id}`);
+      });
+      checkout.open();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not start test.");
-      setBusyAction(null);
+      console.error(error);
+      setMessage("Could not start the payment. Please try again.");
+    } finally {
+      setBusy(false);
     }
   };
 
-  // "Continue learning" jumps straight to the next unfinished lesson: expand
-  // its week (if collapsed) and scroll it into view, instead of making an
-  // enrolled learner hunt through the accordion for where they left off.
-  const continueToNextUp = () => {
-    if (nextUpItemId === null) return;
-    const item = plan.items.find((i) => i.id === nextUpItemId);
-    if (item) setExpandedWeeks((prev) => new Set(prev).add(item.week_no));
-    setTimeout(() => {
-      document.getElementById(`plan-item-${nextUpItemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 60);
+  const startPlan = async (startDate: string, studyDays: number[]) => {
+    if (!token) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      await authenticatedPost(`/api/v1/study-plans/${plan.id}/enroll`, token, {
+        provider: "free",
+        start_date: startDate,
+        study_days: studyDays
+      });
+      await reload();
+      setStage("work");
+    } catch (error) {
+      console.error(error);
+      setMessage("Could not start the plan. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // The curriculum accordion and the reviews section are shared between the
-  // pre-purchase marketing layout and the post-purchase learning layout --
-  // built once here and dropped into whichever shell renders below.
-  const courseContentSection = (
-    <section className="rounded-lg border border-line bg-surface shadow-card">
-      <div className="border-b border-line p-5">
-        <h2 className="text-2xl !font-black text-ink">Course content</h2>
-        <p className="mt-2 text-sm font-semibold text-ink/55">
-          {weeks.length} weeks - {plan.items.length} items - {tests} tests - about {estimatedHours} hours of planned effort
-        </p>
-      </div>
+  const toggleComplete = async (item: StudyPlanItem) => {
+    if (!token) return;
+    setBusyItemId(item.id);
+    try {
+      const nextStatus = item.progress?.status === "completed" ? "in_progress" : "completed";
+      const response = await fetch(`${browserBaseUrl}/api/v1/study-plan-items/${item.id}/progress`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (!response.ok) throw new Error(`Progress update failed with ${response.status}`);
+      await reload();
+    } catch (error) {
+      console.error(error);
+      setMessage("Could not update that item.");
+    } finally {
+      setBusyItemId(null);
+    }
+  };
 
-      <div className="p-5">
-        {weeks.map(([week, items], idx) => {
-          const isLast = idx === weeks.length - 1;
-          const weekMinutes = items.reduce((sum, item) => sum + Number(item.estimated_minutes ?? 0), 0);
-          const overview = plan.week_overviews?.find((wo) => wo.week_no === week);
-          const doneCount = items.filter((item) => item.progress?.status === "completed").length;
-          const allDone = items.length > 0 && doneCount === items.length;
-          const weekLocked = !plan.has_access && !items.some((item) => item.is_preview);
-          const isExpanded = expandedWeeks.has(week);
-          const containsNextUp = items.some((item) => item.id === nextUpItemId);
-          const isCurrent = !allDone && !weekLocked && (isExpanded || containsNextUp);
-          return (
-            <div className="flex items-stretch gap-3" key={week}>
-              <div className="flex flex-col items-center">
-                <WeekStatusCircle done={allDone} isCurrent={isCurrent} locked={weekLocked} />
-                {!isLast && <div className="my-1 w-0.5 flex-1 bg-line" />}
-              </div>
-              <div className={`min-w-0 flex-1 ${isLast ? "pb-1" : "pb-6"}`}>
-                <button
-                  className={`flex w-full items-start justify-between gap-3 rounded-lg text-left transition ${
-                    isCurrent ? "border border-civic/30 bg-civic/5 px-3 py-2.5 -ml-3" : weekLocked ? "opacity-50" : ""
-                  }`}
-                  onClick={() => toggleWeek(week)}
-                  type="button"
-                >
-                  <div className="min-w-0">
-                    <p className={`flex items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide ${allDone ? "text-emerald-600" : weekLocked ? "text-slate-400" : "text-civic"}`}>
-                      Week {week}
-                      {allDone && " · Complete"}
-                      {weekLocked && " · Locked"}
-                      {isCurrent && !allDone && (
-                        <span className="rounded-full bg-civic px-2 py-0.5 text-[10px] tracking-wide text-white">In progress</span>
-                      )}
-                    </p>
-                    <h3 className="mt-0.5 font-heading text-base !font-extrabold text-ink leading-tight">{overview?.title ?? `Week ${week}`}</h3>
-                    {overview?.description && (
-                      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 max-w-4xl">{overview.description}</p>
-                    )}
-                    <p className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-slate-400">
-                      <span>
-                        {items.length} items{weekMinutes ? ` · about ${Math.round(weekMinutes / 60)} hours effort` : ""}
-                      </span>
-                      {!weekLocked && (
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${allDone ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
-                          {doneCount}/{items.length} done
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <ChevronDown
-                    className={`mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {isExpanded && (
-                  <div className="relative mt-3 space-y-2 pl-4">
-                    <div className="absolute left-[7px] top-1 bottom-1 w-px bg-line" />
-                    {items.map((item) => (
-                      <CurriculumItem
-                        busyAction={busyAction}
-                        item={item}
-                        isNextUp={item.id === nextUpItemId}
-                        key={item.id}
-                        planHasAccess={plan.has_access}
-                        startTest={startTest}
-                        updateProgress={updateProgress}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-
-  const reviewsSection = (
-    <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
-      <h2 className="text-2xl !font-black text-ink">Student Reviews</h2>
-
-      {plan.has_access && token && (
-        <div className="mt-4 rounded-xl border border-indigo-50 bg-indigo-50/30 p-4">
-          <h3 className="font-heading text-sm !font-black text-ink">
-            {reviews.some((r) => r.user?.id === user?.id) ? "Update your review" : "Leave a review"}
-          </h3>
-          <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Share your experience with other aspirants.</p>
-          <div className="mt-3 flex items-center gap-1.5">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                className="transition transform hover:scale-110"
-              >
-                <Star
-                  className={`h-6 w-6 ${reviewForm.rating >= star ? "fill-amber-400 text-amber-400" : "text-slate-300"}`}
-                />
-              </button>
-            ))}
-          </div>
-          <textarea
-            className="mt-3 w-full min-h-20 rounded-lg border border-slate-200 bg-surface p-3 text-xs font-semibold leading-5 text-ink focus:border-indigo-500 focus:outline-none"
-            placeholder="Write your review about the study guide, tests quality, or mentor support..."
-            value={reviewForm.comment}
-            onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-          />
-          <button
-            type="button"
-            disabled={reviewBusy}
-            onClick={submitReview}
-            className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-civic px-4 !font-heading text-xs !font-black text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {reviewBusy ? "Submitting..." : "Submit Review"}
-          </button>
-        </div>
-      )}
-
-      <div className="mt-5 space-y-4 divide-y divide-line">
-        {reviews.length === 0 ? (
-          <p className="py-2 text-sm font-bold text-ink/50">No reviews yet. Be the first to share your thoughts!</p>
-        ) : (
-          reviews.map((rev) => (
-            <div key={rev.id} className="pt-4 first:pt-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-heading text-xs !font-black text-ink">{rev.user?.username || rev.user?.email || "Student"}</p>
-                  <div className="mt-1 flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`h-3 w-3 ${rev.rating >= s ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <span className="text-[10px] font-semibold text-ink/40">
-                  {new Date(rev.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                </span>
-              </div>
-              {rev.comment && <p className="mt-2 text-xs font-semibold leading-5 text-ink/75">{rev.comment}</p>}
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  );
-
-  if (plan.has_access) {
+  if (stage === "schedule") {
     return (
-      <div className="min-h-screen bg-slate-50 pb-16">
-        <section className="border-b border-line bg-surface">
-          <div className="mx-auto max-w-5xl px-4 py-6">
-            <Link className="inline-flex items-center gap-2 !font-heading text-sm !font-black text-civic hover:text-indigo-700" href={studyPlanHref()}>
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-              Study plans
-            </Link>
-            <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide text-civic">
-                  <span>{plan.exam?.name ?? plan.exam_name}</span>
-                  {plan.level_label && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span>{plan.level_label}</span>
-                    </>
-                  )}
-                </p>
-                <h1 className="mt-1 font-heading text-2xl !font-black leading-tight text-ink md:text-3xl">{plan.title}</h1>
-              </div>
-              <button
-                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-civic px-5 !font-heading text-sm !font-black text-white transition hover:bg-indigo-700 disabled:opacity-50"
-                disabled={nextUpItemId === null}
-                onClick={continueToNextUp}
-                type="button"
-              >
-                <PlayCircle className="h-4 w-4" />
-                {completed === 0 ? "Start learning" : progress >= 100 ? "Review course" : "Continue learning"}
-              </button>
-            </div>
-
-            <div className="mt-5 rounded-xl border border-line bg-paper p-4">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>Your progress</span>
-                <span>{progress}% · {completed} of {total} done</span>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-civic transition-all" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="mx-auto max-w-5xl space-y-6 px-4 pt-6">
-          {courseContentSection}
-          {reviewsSection}
-        </div>
-      </div>
+      <StudyPlanScheduleSetup
+        plan={plan}
+        busy={busy}
+        message={message}
+        onCancel={() => setStage(plan.has_access ? "work" : "decide")}
+        onStart={startPlan}
+      />
     );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-50 pb-16">
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 py-12 text-white">
-        <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px]" />
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div>
-            <Link className="inline-flex items-center gap-2 !font-heading text-sm !font-black text-indigo-400 hover:text-white" href={studyPlanHref()}>
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-              Study plans
-            </Link>
-            <p className="mt-5 flex flex-wrap items-center gap-2 font-heading text-[11px] !font-black uppercase tracking-wide text-indigo-300">
-              <span>Study plans</span>
-              <span className="text-indigo-500">·</span>
-              <span>{plan.level_label ?? `${plan.duration_weeks} week plan`}</span>
-              <span className="text-indigo-500">·</span>
-              <span>{plan.has_access ? "Unlocked" : "Locked"}</span>
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-indigo-500/20 px-2.5 py-1 font-heading text-[11px] !font-black uppercase tracking-wide text-indigo-300 border border-indigo-500/30">{plan.duration_weeks} weeks</span>
-              <span className="rounded-md bg-white/10 px-2.5 py-1 font-heading text-[11px] !font-black uppercase tracking-wide text-white/80">{plan.language}</span>
-              {plan.level_label && <span className="rounded-md bg-white/10 px-2.5 py-1 font-heading text-[11px] !font-black uppercase tracking-wide text-white/80">{plan.level_label}</span>}
-              {plan.reviews_summary && plan.reviews_summary.total_reviews > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 font-heading text-[11px] !font-black tracking-wide text-amber-300 border border-amber-500/30">
-                  <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
-                  {Number(plan.reviews_summary.average_rating).toFixed(1)} ({plan.reviews_summary.total_reviews} reviews)
-                </span>
-              )}
-            </div>
-            <h1 className="mt-4 max-w-4xl font-heading text-3xl !font-black leading-tight tracking-tight md:text-5xl">{plan.title}</h1>
-            {plan.subtitle && <p className="mt-4 max-w-3xl font-sans text-lg font-bold leading-7 text-white/80">{plan.subtitle}</p>}
-            {plan.description && (
-              <div
-                className="mt-4 max-w-3xl font-sans text-base leading-7 text-white/75 prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: plan.description }}
-              />
-            )}
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-white/75">
-              <span className="inline-flex items-center gap-1.5 text-indigo-400">
-                <Star className="h-4 w-4 fill-indigo-400 text-indigo-400" />
-                Guided curriculum
-              </span>
-              <span>{plan.exam?.name ?? plan.exam_name}</span>
-              {plan.subject?.name || plan.subject_name ? <span>{plan.subject?.name ?? plan.subject_name}</span> : <span>Full exam plan</span>}
-              <span className="inline-flex items-center gap-1.5">
-                <Globe2 className="h-4 w-4" />
-                {plan.language}
-              </span>
-            </div>
-          </div>
-
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 overflow-hidden rounded-lg border border-line bg-surface text-ink shadow-soft">
-              <CourseArtwork plan={plan} />
-              <PurchasePanel
-                busyAction={busyAction}
-                completed={completed}
-                enroll={enroll}
-                estimatedHours={estimatedHours}
-                isInitialized={isInitialized}
-                lectures={lectures}
-                message={message}
-                plan={plan}
-                progress={progress}
-                tests={tests}
-                total={total}
-              />
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 pt-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-6">
-          <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
-            <h2 className="text-2xl !font-black text-ink">What you will get</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {[
-                `${plan.duration_weeks} week guided schedule with no fixed calendar date`,
-                `${plan.items.length} learning, revision, lecture, and test items`,
-                `${tests} tests placed inside the plan`,
-                `${previewItems} preview items visible before purchase`
-              ].map((item) => (
-                <p className="flex gap-3 text-sm font-semibold leading-6 text-ink/75" key={item}>
-                  <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-indigo-600" />
-                  <span>{item}</span>
-                </p>
-              ))}
-            </div>
-          </section>
-
-          {courseContentSection}
-
-          <section className="rounded-lg border border-line bg-surface p-5 shadow-card">
-            <h2 className="text-2xl !font-black text-ink">Requirements</h2>
-            <div className="mt-3 space-y-2 text-sm font-semibold leading-6 text-ink/70">
-              <p>Follow the plan in week/day order and mark non-test tasks complete after studying.</p>
-              <p>Attempt linked tests from inside the plan to keep progress and results in sync.</p>
-            </div>
-          </section>
-
-          {reviewsSection}
-        </div>
-
-        <aside className="lg:hidden">
-          <div className="overflow-hidden rounded-lg border border-line bg-surface text-ink shadow-soft">
-            <CourseArtwork plan={plan} />
-            <PurchasePanel
-              busyAction={busyAction}
-              completed={completed}
-              enroll={enroll}
-              estimatedHours={estimatedHours}
-              isInitialized={isInitialized}
-              lectures={lectures}
-              message={message}
-              plan={plan}
-              progress={progress}
-              tests={tests}
-              total={total}
-            />
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-function PurchasePanel({
-  busyAction,
-  completed,
-  enroll,
-  estimatedHours,
-  isInitialized,
-  lectures,
-  message,
-  plan,
-  progress,
-  tests,
-  total
-}: {
-  busyAction: string | null;
-  completed: number;
-  enroll: () => Promise<void>;
-  estimatedHours: number;
-  isInitialized: boolean;
-  lectures: number;
-  message: string | null;
-  plan: StudyPlanDetail;
-  progress: number;
-  tests: number;
-  total: number;
-}) {
-  const { token } = useAuth();
-  const isFree = !plan.price_amount_minor || Number(plan.price_amount_minor) === 0;
-  return (
-    <div className="p-5">
-      <p className={`font-heading text-[11px] !font-black uppercase tracking-wide ${plan.has_access ? "text-emerald-600" : "text-civic"}`}>
-        {plan.has_access ? "You're enrolled" : isFree ? "Unlock free" : "Unlock everything"}
-      </p>
-      <p className="mt-1 font-heading text-3xl !font-black text-ink">{formatPlanPrice(plan.price_amount_minor, plan.currency)}</p>
-
-      {plan.has_access ? (
-        <div className="mt-4 space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-              <span>Your progress</span>
-              <span>{progress}%</span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface">
-              <div className="h-full rounded-full bg-civic" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="mt-2 text-xs font-semibold text-slate-500">
-              {completed} of {total} items done
-            </p>
-          </div>
-          <p className="flex items-center gap-2 !font-heading text-sm !font-black text-civic">
-            <CheckCircle2 className="h-4 w-4" />
-            Unlocked
-          </p>
-        </div>
-      ) : token ? (
-        <div className="mt-4 space-y-3">
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-civic px-4 !font-heading text-sm !font-black text-white transition hover:bg-indigo-700 disabled:opacity-60 shadow-md shadow-indigo-200"
-            disabled={busyAction === "enroll"}
-            onClick={enroll}
-            type="button"
-          >
-            <WalletCards className="h-4 w-4" />
-            {busyAction === "enroll" ? "Opening payment..." : isFree ? "Unlock Free" : "Unlock Plan"}
-          </button>
-          <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-2.5">
-            <AlertCircle className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-            <p className="text-[11px] font-semibold text-slate-500">Secure payment via Razorpay · One-time purchase</p>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="mb-3 !font-heading text-sm !font-black text-slate-800">Sign in to purchase this plan.</p>
-          {isInitialized && <SignInPanel />}
-        </div>
-      )}
-
-      {message && (
-        <p className={`mt-3 rounded-xl px-3.5 py-2 text-xs font-bold border ${
-          message.includes("unlocked") || message.includes("access")
-            ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-            : "bg-rose-50 border-rose-100 text-rose-600"
-        }`}>
-          {message}
-        </p>
-      )}
-
-      <div className="mt-5 border-t border-slate-100 pt-4">
-        <p className="font-heading text-sm !font-black text-slate-800">This plan includes</p>
-        <div className="mt-3 space-y-2 text-sm font-semibold text-slate-600">
-          <p className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-indigo-500" />
-            {plan.duration_weeks} week curriculum
-          </p>
-          <p className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-indigo-500" />
-            About {estimatedHours} hours of planned work
-          </p>
-          <p className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-indigo-500" />
-            {tests} linked tests
-          </p>
-          <p className="flex items-center gap-2">
-            <Video className="h-4 w-4 text-indigo-500" />
-            {lectures} lecture slots
-          </p>
-          <p className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-indigo-500" />
-            Progress tracking
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CurriculumItem({
-  busyAction,
-  item,
-  isNextUp,
-  planHasAccess,
-  startTest,
-  updateProgress
-}: {
-  busyAction: string | null;
-  item: StudyPlanItem;
-  isNextUp: boolean;
-  planHasAccess: boolean;
-  startTest: (item: StudyPlanItem) => Promise<void>;
-  updateProgress: (item: StudyPlanItem, status: "in_progress" | "completed") => Promise<void>;
-}) {
-  const locked = !planHasAccess && !item.is_preview;
-  const done = item.progress?.status === "completed";
-  const isTest = ["prelims_test", "csat_test", "mains_test"].includes(item.item_type);
-  const isFreeSample = item.is_preview && !planHasAccess;
-  const resourceUrl = item.lecture_url || item.resource_url;
+  if (stage === "work" && plan.has_access) {
+    return <StudyPlanWorkspace plan={plan} onToggleComplete={toggleComplete} busyItemId={busyItemId} />;
+  }
 
   return (
-    <article className="relative" id={`plan-item-${item.id}`}>
-      <span
-        className={`absolute -left-4 top-4 h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 ${
-          done ? "border-emerald-600 bg-emerald-600" : isNextUp ? "border-civic bg-civic" : locked ? "border-line bg-paper" : "border-slate-300 bg-surface"
-        }`}
-      />
-      <div
-        className={`flex flex-col gap-3 rounded-xl border bg-surface px-4 py-3.5 md:flex-row md:items-start md:justify-between ${
-          isNextUp ? "border-civic shadow-sm ring-1 ring-civic/15" : done ? "border-line/70" : isFreeSample ? "border-civic/50" : "border-line"
-        } ${locked ? "opacity-50" : ""} ${done ? "opacity-70" : ""}`}
-      >
-        <div className="flex min-w-0 gap-3">
-          <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${done ? "bg-emerald-600 text-white" : locked ? "bg-slate-100 text-slate-400" : "bg-indigo-50 border border-indigo-100/55 text-civic"}`}>
-            {done ? <CheckCircle2 className="h-4 w-4" /> : itemIcon(item)}
-          </span>
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 font-heading text-[10px] !font-black uppercase tracking-wide text-civic">
-              Day {item.day_no} - {formatStudyPlanItemType(item.item_type)}
-              {isNextUp && (
-                <span className="rounded-full bg-civic px-2 py-0.5 text-[9px] tracking-wide text-white">Up next</span>
-              )}
-            </p>
-            <h4 className={`mt-1 font-heading text-base !font-extrabold ${done ? "text-slate-400 line-through decoration-2 decoration-slate-300" : "text-slate-800"}`}>
-              {item.title}
-            </h4>
-            {item.description && !done && <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>}
-            <div className="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
-              {item.estimated_minutes && (
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {item.estimated_minutes} min
-                </span>
-              )}
-              {isFreeSample && (
-                <span className="inline-flex items-center gap-1 text-civic">
-                  <PlayCircle className="h-3.5 w-3.5" />
-                  Preview
-                </span>
-              )}
-              {locked && (
-                <span className="inline-flex items-center gap-1 text-slate-400">
-                  <LockKeyhole className="h-3.5 w-3.5" />
-                  Locked
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
-        {locked ? (
-          <button className="h-9 rounded-xl border border-slate-200 bg-slate-100 px-4 !font-heading text-xs !font-black text-slate-400" disabled type="button">
-            Locked
-          </button>
-        ) : isTest ? (
-          <button
-            className="h-9 rounded-xl bg-civic px-4 !font-heading text-xs !font-black text-white transition hover:bg-indigo-700 disabled:opacity-60"
-            disabled={busyAction === `test-${item.id}` || !item.test_template_id}
-            onClick={() => startTest(item)}
-            type="button"
-          >
-            {done ? "Retake" : "Attempt"}
-          </button>
-        ) : resourceUrl ? (
-          <a
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-surface px-4 font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic"
-            href={resourceUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Open
-          </a>
-        ) : (
-          <button
-            className="h-9 rounded-xl border border-slate-200 bg-surface px-4 !font-heading text-xs !font-black text-slate-700 transition hover:border-civic hover:text-civic disabled:opacity-60"
-            disabled={busyAction === `progress-${item.id}` || done}
-            onClick={() => updateProgress(item, "completed")}
-            type="button"
-          >
-            {done ? "Done" : "Mark done"}
-          </button>
-        )}
-        {!locked && resourceUrl && !isTest && (
-          <button
-            className="h-9 rounded-xl border border-slate-200 bg-surface px-4 !font-heading text-xs !font-black text-slate-600 transition hover:border-civic hover:text-civic disabled:opacity-60"
-            disabled={busyAction === `progress-${item.id}` || done}
-            onClick={() => updateProgress(item, "completed")}
-            type="button"
-          >
-            {done ? "Done" : "Mark done"}
-          </button>
-        )}
-        </div>
-      </div>
-    </article>
+    <StudyPlanDecisionPage
+      plan={plan}
+      isSignedIn={Boolean(token)}
+      busy={busy}
+      message={message}
+      onEnrol={beginEnrolment}
+    />
   );
 }

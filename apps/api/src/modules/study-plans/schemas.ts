@@ -130,6 +130,10 @@ export const updateStudyPlanQuestionSchema = createStudyPlanQuestionSchema.parti
 });
 
 export const enrollStudyPlanSchema = z.object({
+  /** The learner's chosen start date (YYYY-MM-DD). Defaults to today. */
+  start_date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  /** ISO weekdays the learner studies, Monday = 1 through Sunday = 7. */
+  study_days: z.array(z.coerce.number().int().min(1).max(7)).min(1).max(7).optional(),
   provider: z.string().trim().optional(),
   provider_payment_id: z.string().trim().optional(),
   payment_status: z.enum(["free", "pending", "paid", "refunded", "failed"]).optional(),

@@ -117,7 +117,14 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
       // Only allow free enrollment on free plans
       const plan = (await getStudyPlan(params.id, user)) as any;
       if (!plan) return reply.notFound("Study plan not found.");
-      if (Number(plan.price_amount_minor) > 0) {
+      // Free plans, and subscription plans the user's entitlements already
+      // cover, enrol directly; only genuinely one-time plans need the
+      // purchase flow.
+      const coveredFree =
+        plan.access_mode === "free" ||
+        Number(plan.price_amount_minor) === 0 ||
+        (plan.access_mode === "subscription" && plan.covered_by_subscription === true);
+      if (!coveredFree) {
         return reply.status(402).send({ error: "This plan requires payment. Use the purchase flow." });
       }
       const record = await enrollStudyPlan(params.id, { ...body, payment_status: "free" }, user.id);

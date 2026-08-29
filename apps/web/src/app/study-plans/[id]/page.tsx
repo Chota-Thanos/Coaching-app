@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "../study-plans-design.css";
 import { notFound } from "next/navigation";
 import { StudyPlanDetailClient } from "../../../components/study-plans/study-plan-detail-client";
 import { getStudyPlan } from "../../../lib/study-plans-api";

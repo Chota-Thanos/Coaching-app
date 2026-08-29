@@ -4,6 +4,8 @@ import { addCondition, addUpdate, requireUpdates } from "../../common/sql.js";
 import { one, query, transaction } from "../../db.js";
 import { generateAgoraRtcToken, type AgoraRtcRole } from "../../common/agora.js";
 import { calculateObjectiveScore } from "../assessment/score-calculator.js";
+import { getUserEntitlements } from "../billing/service.js";
+import { buildSchedule, computeTracking, deriveTargetEndDate } from "./tracking.js";
 import { upsertStudentTopicMetric } from "../assessment/scoring.service.js";
 import type { ScoreItem } from "../assessment/scoring.types.js";
 import type { UserRole } from "../auth/schemas.js";
@@ -383,7 +385,7 @@ export async function listStudyPlans(options: ListStudyPlansQuery, user?: AuthCo
   const limitPosition = params.length - 1;
   const offsetPosition = params.length;
 
-  return query(
+  const rows = await query<Record<string, any>>(
     `
       select
         sp.*,
@@ -415,6 +417,27 @@ export async function listStudyPlans(options: ListStudyPlansQuery, user?: AuthCo
       limit $${limitPosition} offset $${offsetPosition}
     `,
     params
+  );
+
+  // The SQL above can only see enrollments and price. A subscription plan the
+  // user is entitled to is also "accessible", but that lives in billing, so it
+  // is resolved once here rather than joined per row.
+  if (!user) return rows;
+  const needsEntitlement = rows.some(
+    (row) => row.access_mode === "subscription" && row.required_entitlement_key
+  );
+  if (!needsEntitlement) return rows;
+
+  const entitlements = await getUserEntitlements(user.id);
+  const held = new Set(entitlements.map((entitlement) => entitlement.entitlement_key));
+  return rows.map((row) =>
+    row.access_mode === "subscription" && row.required_entitlement_key
+      ? {
+          ...row,
+          covered_by_subscription: held.has(row.required_entitlement_key),
+          has_access: row.has_access === true || held.has(row.required_entitlement_key)
+        }
+      : { ...row, covered_by_subscription: false }
   );
 }
 
@@ -530,6 +553,10 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
         id: string;
         status: string;
         payment_status: string;
+        start_date: string | null;
+        study_days: number[] | null;
+        target_end_date: string | null;
+        last_activity_at: string | null;
         completed_items: number;
         total_items: number;
         completed_tests: number;
@@ -540,6 +567,10 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
             e.id,
             e.status,
             e.payment_status,
+            e.start_date,
+            e.study_days,
+            e.target_end_date,
+            e.last_activity_at,
             coalesce(count(pi.id) filter (where ip.status = 'completed'), 0)::integer as completed_items,
             coalesce(count(pi.id), 0)::integer as total_items,
             coalesce(count(pi.id) filter (where ip.status = 'completed' and pi.item_type in ('prelims_test', 'csat_test', 'mains_test')), 0)::integer as completed_tests,
@@ -550,7 +581,7 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
           where e.plan_id = $1
             and e.user_id = $2
             and e.status in ('active', 'completed')
-          group by e.id
+          group by e.id, e.start_date, e.study_days, e.target_end_date, e.last_activity_at
           order by e.started_at desc
           limit 1
         `,
@@ -558,9 +589,35 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
       )
     : null;
 
-  const isFreePlan = !plan.price_amount_minor || Number(plan.price_amount_minor) === 0;
-  const enrollmentIsValid = enrollment && (isFreePlan || enrollment.payment_status === "paid");
-  const hasAccess = enrollmentIsValid || isPrivileged(user);
+  // Access now has three routes, not one. A plan can be free, covered by a
+  // subscription the user already holds, or bought outright — and an
+  // enrollment on a subscription plan stays valid only while the entitlement
+  // does, which is why the entitlement is re-checked here rather than trusted
+  // from enrollment.payment_status.
+  // `plan` comes back from a `select sp.*` so the new columns are present but
+  // untyped; read them through one narrow view rather than casting at each use.
+  const planRow = plan as {
+    access_mode?: string;
+    required_entitlement_key?: string | null;
+    target_accuracy?: number | string | null;
+    price_amount_minor?: number | string | null;
+  };
+  const accessMode: string = planRow.access_mode ?? "one_time";
+  const isFreePlan =
+    accessMode === "free" || !planRow.price_amount_minor || Number(planRow.price_amount_minor) === 0;
+
+  let coveredBySubscription = false;
+  const requiredEntitlement = planRow.required_entitlement_key ?? null;
+  if (accessMode === "subscription" && user && requiredEntitlement) {
+    const entitlements = await getUserEntitlements(user.id);
+    coveredBySubscription = entitlements.some(
+      (entitlement) => entitlement.entitlement_key === requiredEntitlement
+    );
+  }
+
+  const enrollmentIsValid =
+    enrollment && (isFreePlan || coveredBySubscription || enrollment.payment_status === "paid");
+  const hasAccess = Boolean(enrollmentIsValid) || isPrivileged(user);
   const items = await query(
     `
       select
@@ -578,6 +635,21 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
           'scheduled_end', lc.scheduled_end,
           'host_user_id', lc.host_user_id
         ) else null end as live_class
+        , coalesce(
+          (
+            select json_agg(json_build_object(
+              'id', r.id,
+              'title', r.title,
+              'resource_kind', r.resource_kind,
+              'url', case when $2::boolean or pi.is_preview then r.url else null end,
+              'body', case when $2::boolean or pi.is_preview then r.body else null end,
+              'display_order', r.display_order
+            ) order by r.display_order, r.id)
+            from study_plan.plan_item_resources r
+            where r.plan_item_id = pi.id
+          ),
+          '[]'::json
+        ) as resources
       from study_plan.plan_items pi
       left join study_plan.test_templates tt on tt.id = pi.test_template_id
       left join study_plan.item_progress ip
@@ -618,9 +690,67 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
     [id]
   );
 
+  // Relative (week, day) content becomes real dates only once an enrollment
+  // supplies a start date, so an unenrolled visitor gets no schedule at all —
+  // which is correct: there is nothing yet to be on time for.
+  const trackableItems = (items as any[]).map((item) => ({
+    id: Number(item.id),
+    week_no: Number(item.week_no),
+    day_no: Number(item.day_no),
+    item_type: String(item.item_type),
+    estimated_minutes: item.estimated_minutes === null ? null : Number(item.estimated_minutes),
+    progress: item.progress
+      ? {
+          status: String(item.progress.status),
+          time_spent_seconds: Number(item.progress.time_spent_seconds ?? 0)
+        }
+      : null
+  }));
+
+  const startDate: string | null = enrollment?.start_date
+    ? String(enrollment.start_date).slice(0, 10)
+    : null;
+
+  let schedule: ReturnType<typeof buildSchedule>["slots"] = [];
+  let tracking: ReturnType<typeof computeTracking> | null = null;
+
+  if (enrollment && startDate && trackableItems.length > 0) {
+    const studyDays = enrollment.study_days ?? [1, 2, 3, 4, 5, 6, 7];
+    schedule = buildSchedule(trackableItems, startDate, studyDays).slots;
+
+    // The depth signal compares the learner's own test accuracy on this plan
+    // against the plan's benchmark; no attempts yet means no opinion, not zero.
+    const accuracyRow = await one<{ average_accuracy: number | null }>(
+      `
+        select avg(tr.accuracy)::float as average_accuracy
+        from study_plan.test_results tr
+        join study_plan.test_attempts ta on ta.id = tr.attempt_id
+        join study_plan.item_progress ip on ip.test_attempt_id = ta.id
+        where ip.enrollment_id = $1 and tr.accuracy is not null
+      `,
+      [enrollment.id]
+    );
+    const rawAccuracy = accuracyRow?.average_accuracy ?? null;
+
+    tracking = computeTracking({
+      items: trackableItems,
+      startDate,
+      studyDays,
+      targetEndDate: enrollment.target_end_date ? String(enrollment.target_end_date).slice(0, 10) : null,
+      targetAccuracy: Number(planRow.target_accuracy ?? 70),
+      // Stored as a 0-1 ratio; the benchmark is a percentage.
+      averageAccuracy: rawAccuracy === null ? null : rawAccuracy <= 1 ? rawAccuracy * 100 : rawAccuracy,
+      lastActivityAt: enrollment.last_activity_at ? String(enrollment.last_activity_at).slice(0, 10) : null
+    });
+  }
+
   return {
     ...plan,
     has_access: hasAccess,
+    access_mode: accessMode,
+    covered_by_subscription: coveredBySubscription,
+    schedule,
+    tracking,
     enrollment,
     progress_summary: enrollment
       ? {
@@ -696,6 +826,21 @@ export async function enrollStudyPlan(
     if (!record) notFound("Study plan not found.");
     if (record.status !== "published") accessDenied("This study plan is not published.");
 
+    // The learner picks the start and which weekdays they study; the target
+    // end date follows from the plan's own content and is then held fixed, so
+    // every later "on time" claim compares against what was agreed here.
+    const startDate = input.start_date ?? new Date().toISOString().slice(0, 10);
+    const studyDays = input.study_days ?? [1, 2, 3, 4, 5, 6, 7];
+    const slotRows = await client.query<{ week_no: number; day_no: number }>(
+      `select week_no, day_no from study_plan.plan_items where plan_id = $1 order by week_no, day_no`,
+      [planId]
+    );
+    const targetEndDate = deriveTargetEndDate(
+      slotRows.rows.map((row) => ({ week_no: Number(row.week_no), day_no: Number(row.day_no) })),
+      startDate,
+      studyDays
+    );
+
     const inserted = await client.query(
       `
         insert into study_plan.enrollments
@@ -712,9 +857,13 @@ export async function enrollStudyPlan(
             payment_currency,
             razorpay_order_id,
             razorpay_payment_id,
-            purchased_at
+            purchased_at,
+            start_date,
+            study_days,
+            target_end_date,
+            last_activity_at
           )
-        values ($1, $2, 'active', $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+        values ($1, $2, 'active', $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), $12, $13, $14, now())
         on conflict (user_id, plan_id)
         do update set
           status = 'active',
@@ -728,6 +877,11 @@ export async function enrollStudyPlan(
           razorpay_order_id = excluded.razorpay_order_id,
           razorpay_payment_id = excluded.razorpay_payment_id,
           purchased_at = coalesce(study_plan.enrollments.purchased_at, now()),
+          -- Re-enrolling (typically the payment landing after a free signup)
+          -- must not silently reset a schedule the learner already set.
+          start_date = coalesce(study_plan.enrollments.start_date, excluded.start_date),
+          study_days = coalesce(study_plan.enrollments.study_days, excluded.study_days),
+          target_end_date = coalesce(study_plan.enrollments.target_end_date, excluded.target_end_date),
           updated_at = now()
         returning *
       `,
@@ -742,7 +896,10 @@ export async function enrollStudyPlan(
         input.payment_amount ?? record.price_amount_minor,
         input.payment_currency ?? record.currency,
         input.razorpay_order_id ?? null,
-        input.razorpay_payment_id ?? null
+        input.razorpay_payment_id ?? null,
+        startDate,
+        studyDays,
+        targetEndDate
       ]
     );
 
