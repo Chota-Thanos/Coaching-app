@@ -22,8 +22,23 @@ echo "🗄️ Running database migrations..."
 npm run db:migrate
 
 # 4. Build application
+#
+# Next's build type-checks the whole app in one Node process. On this box Node
+# sizes its own heap from available RAM and lands around 490 MB, which the
+# type-check phase now exceeds — it dies with "Ineffective mark-compacts near
+# heap limit". Raising the ceiling fixes it, but only if the kernel has
+# somewhere to spill: with ~1 GB of RAM and no swap, a bigger heap just moves
+# the failure from V8's OOM to the kernel's OOM killer. Check swap first.
+SWAP_MB="$(free -m 2>/dev/null | awk '/^Swap:/ {print $2}')"
+if [ -z "$SWAP_MB" ]; then SWAP_MB=0; fi
+if [ "$SWAP_MB" -lt 1024 ]; then
+  echo "⚠️  Less than 1 GB of swap detected. If the build is killed, add some:"
+  echo "     fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile"
+  echo "     echo '/swapfile none swap sw 0 0' >> /etc/fstab   # persist across reboots"
+fi
+
 echo "🛠️ Building API and Web applications..."
-npm run build
+NODE_OPTIONS="--max-old-space-size=${NODE_BUILD_HEAP_MB:-3072}" npm run build
 
 # 4b. tools/posting-agent-mcp is deliberately NOT an npm workspace (adding it
 # would make the two steps above install/build it on every deploy whether or
