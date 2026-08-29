@@ -1,4 +1,15 @@
 export type StudyPlanStatus = "draft" | "in_review" | "published" | "archived";
+/** What kind of product a plan is. Drives the card, the detail page and the
+ *  workspace — see database/migrations/055. */
+export type StudyPlanType = "full_course" | "self_prep" | "test_series";
+export type StudyPlanAccessMode = "one_time" | "subscription" | "free";
+export type StudyPlanTrackingState =
+  | "ahead"
+  | "on_time"
+  | "slipping"
+  | "behind"
+  | "at_risk"
+  | "stalled";
 export type StudyPlanTestType = "prelims_test" | "csat_test" | "mains_test";
 export type StudyPlanItemType =
   | "reading"
@@ -27,6 +38,12 @@ export type StudyPlanSummary = {
   price_amount_minor: number;
   currency: string;
   status: StudyPlanStatus;
+  plan_type: StudyPlanType;
+  access_mode: StudyPlanAccessMode;
+  required_entitlement_key?: string | null;
+  weekly_hours?: number | string | null;
+  target_accuracy?: number | string | null;
+  covered_by_subscription?: boolean;
   item_count?: number;
   test_count?: number;
   published_at: string | null;
@@ -81,6 +98,7 @@ export type StudyPlanItem = {
   test_template_id: number | null;
   is_preview: boolean;
   test_template: StudyPlanTestTemplate | null;
+  resources?: StudyPlanItemResource[];
   live_class_id: number | null;
   live_class: StudyPlanLiveClassSummary | null;
   progress: {
@@ -88,7 +106,54 @@ export type StudyPlanItem = {
     status: StudyPlanProgressStatus;
     completed_at: string | null;
     test_attempt_id: number | null;
+    /** Accumulated time on task — the basis of the tracker's depth signal. */
+    time_spent_seconds?: number | null;
+    /** Where a lecture was last stopped, so "Resume" has a position. */
+    last_position_seconds?: number | null;
   } | null;
+};
+
+export type StudyPlanItemResource = {
+  id: number;
+  title: string;
+  resource_kind: "link" | "pdf" | "note" | "video" | "book_pages";
+  url: string | null;
+  body: string | null;
+  display_order: number;
+};
+
+/** One plan day pinned to a real date by the learner's start date. */
+export type StudyPlanScheduleSlot = {
+  week_no: number;
+  day_no: number;
+  scheduled_date: string;
+};
+
+export type StudyPlanTracking = {
+  state: StudyPlanTrackingState;
+  start_date: string;
+  target_end_date: string | null;
+  projected_end_date: string | null;
+  days_behind: number;
+  total_slots: number;
+  elapsed_slots: number;
+  completed_items: number;
+  total_items: number;
+  due_items: number;
+  completed_due_items: number;
+  open_due_item_ids: number[];
+  percent_complete: number;
+  pace_ratio: number;
+  depth: {
+    score: number;
+    label: string;
+    tests_due: number;
+    tests_done: number;
+    rushed_items: number;
+    average_accuracy: number | null;
+    target_accuracy: number;
+  };
+  today: { date: string; week_no: number | null; day_no: number | null; item_ids: number[] };
 };
 
 export type StudyPlanDetail = StudyPlanSummary & {
@@ -98,6 +163,9 @@ export type StudyPlanDetail = StudyPlanSummary & {
   enrollment: {
     id: number;
     status: string;
+    start_date?: string | null;
+    study_days?: number[] | null;
+    target_end_date?: string | null;
     completed_items: number;
     total_items: number;
     completed_tests: number;
@@ -110,6 +178,8 @@ export type StudyPlanDetail = StudyPlanSummary & {
     total_tests: number;
   } | null;
   items: StudyPlanItem[];
+  schedule?: StudyPlanScheduleSlot[];
+  tracking?: StudyPlanTracking | null;
   week_overviews?: {
     week_no: number;
     title: string;
@@ -199,4 +269,65 @@ export function optionText(option: unknown, index: number): string {
   }
   if (option !== undefined && option !== null) return String(option);
   return `Option ${String.fromCharCode(65 + index)}`;
+}
+
+export const PLAN_TYPE_LABEL: Record<StudyPlanType, string> = {
+  full_course: "Full course",
+  self_prep: "Self-paced",
+  test_series: "Test series"
+};
+
+/** Maps a plan type onto the `sp-type--*` modifier from the ported design CSS. */
+export const PLAN_TYPE_CLASS: Record<StudyPlanType, string> = {
+  full_course: "sp-type--course",
+  self_prep: "sp-type--self",
+  test_series: "sp-type--tests"
+};
+
+export const TRACKING_STATE_LABEL: Record<StudyPlanTrackingState, string> = {
+  ahead: "Ahead",
+  on_time: "On time",
+  slipping: "Slipping",
+  behind: "Behind",
+  at_risk: "At risk",
+  stalled: "Stalled"
+};
+
+export const TRACKING_STATE_CLASS: Record<StudyPlanTrackingState, string> = {
+  ahead: "sp-st-ahead",
+  on_time: "sp-st-ontime",
+  slipping: "sp-st-slip",
+  behind: "sp-st-behind",
+  at_risk: "sp-st-risk",
+  stalled: "sp-st-stall"
+};
+
+/** "3 weeks", "12 weeks" — duration as the catalogue states it. */
+export function formatDuration(weeks: number): string {
+  if (weeks === 1) return "1 week";
+  if (weeks % 4 === 0 && weeks >= 8) {
+    const months = weeks / 4;
+    return `${weeks} weeks · ${months} month${months === 1 ? "" : "s"}`;
+  }
+  return `${weeks} weeks`;
+}
+
+export function formatIsoDate(value: string | null | undefined): string {
+  if (!value) return "";
+  try {
+    return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+export function formatIsoDateLong(value: string | null | undefined): string {
+  if (!value) return "";
+  try {
+    return new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short" }).format(
+      new Date(value)
+    );
+  } catch {
+    return value;
+  }
 }

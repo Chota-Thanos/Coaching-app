@@ -36,7 +36,17 @@ export const createStudyPlanSchema = z.object({
   price_amount_minor: z.coerce.number().int().nonnegative().default(0),
   currency: z.string().trim().length(3).default("INR"),
   status: planStatusSchema.default("draft"),
-  published_at: z.string().datetime().optional()
+  published_at: z.string().datetime().optional(),
+  /** What kind of product this is — drives the card, the detail page and the
+   *  workspace. See database/migrations/055. */
+  plan_type: z.enum(["full_course", "self_prep", "test_series"]).default("self_prep"),
+  /** How a learner gets in: bought outright, covered by a subscription, or free. */
+  access_mode: z.enum(["one_time", "subscription", "free"]).default("one_time"),
+  /** Which entitlement unlocks it when access_mode is "subscription". */
+  required_entitlement_key: z.string().trim().nullable().optional(),
+  weekly_hours: z.coerce.number().positive().nullable().optional(),
+  /** Benchmark the depth signal compares a learner's test average against. */
+  target_accuracy: z.coerce.number().positive().max(100).optional()
 });
 
 export const updateStudyPlanSchema = createStudyPlanSchema.partial().extend({
@@ -130,6 +140,10 @@ export const updateStudyPlanQuestionSchema = createStudyPlanQuestionSchema.parti
 });
 
 export const enrollStudyPlanSchema = z.object({
+  /** The learner's chosen start date (YYYY-MM-DD). Defaults to today. */
+  start_date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  /** ISO weekdays the learner studies, Monday = 1 through Sunday = 7. */
+  study_days: z.array(z.coerce.number().int().min(1).max(7)).min(1).max(7).optional(),
   provider: z.string().trim().optional(),
   provider_payment_id: z.string().trim().optional(),
   payment_status: z.enum(["free", "pending", "paid", "refunded", "failed"]).optional(),
@@ -139,8 +153,35 @@ export const enrollStudyPlanSchema = z.object({
   razorpay_payment_id: z.string().trim().optional()
 });
 
+/** One attachment on a plan day — a chapter reference, a PDF, a link, a note. */
+export const createPlanItemResourceSchema = z.object({
+  title: z.string().trim().min(1),
+  resource_kind: z.enum(["link", "pdf", "note", "video", "book_pages"]).default("link"),
+  url: z.string().trim().nullable().optional(),
+  body: z.string().trim().nullable().optional(),
+  display_order: z.coerce.number().int().default(0)
+}).refine((value) => Boolean(value.url) || Boolean(value.body), {
+  message: "A resource needs either a URL or some body text."
+});
+
+export const updatePlanItemResourceSchema = z.object({
+  title: z.string().trim().min(1).optional(),
+  resource_kind: z.enum(["link", "pdf", "note", "video", "book_pages"]).optional(),
+  url: z.string().trim().nullable().optional(),
+  body: z.string().trim().nullable().optional(),
+  display_order: z.coerce.number().int().optional()
+});
+
 export const updateProgressSchema = z.object({
-  status: z.enum(["not_started", "in_progress", "completed"])
+  status: z.enum(["not_started", "in_progress", "completed"]),
+  /** Seconds the learner actually spent on the item. Accumulated, not
+   *  replaced, so re-opening a day adds to the total rather than resetting it.
+   *  This is what lets the tracker's depth signal tell a read from a
+   *  click-through. */
+  time_spent_seconds: z.coerce.number().int().nonnegative().max(86400).optional(),
+  /** Where the learner stopped watching, so "Resume" has somewhere to resume
+   *  from. Replaced rather than accumulated — it is a position, not a total. */
+  last_position_seconds: z.coerce.number().int().nonnegative().max(86400).optional()
 });
 
 export const startStudyPlanAttemptSchema = z.object({
@@ -198,6 +239,8 @@ export type UpdateStudyPlanTestInput = z.output<typeof updateStudyPlanTestSchema
 export type CreateStudyPlanQuestionInput = z.output<typeof createStudyPlanQuestionSchema>;
 export type UpdateStudyPlanQuestionInput = z.output<typeof updateStudyPlanQuestionSchema>;
 export type EnrollStudyPlanInput = z.output<typeof enrollStudyPlanSchema>;
+export type CreatePlanItemResourceInput = z.output<typeof createPlanItemResourceSchema>;
+export type UpdatePlanItemResourceInput = z.output<typeof updatePlanItemResourceSchema>;
 export type UpdateProgressInput = z.output<typeof updateProgressSchema>;
 export type StartStudyPlanAttemptInput = z.output<typeof startStudyPlanAttemptSchema>;
 export type UpsertStudyPlanResponseInput = z.output<typeof upsertStudyPlanResponseSchema>;

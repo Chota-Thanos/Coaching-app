@@ -6,7 +6,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { authenticatedGet, authenticatedPost, useAuth } from "../auth/auth-context";
-import { formatPlanPrice, type StudyPlanStatus, type StudyPlanSummary } from "../../lib/study-plans";
+import {
+  PLAN_TYPE_LABEL,
+  formatPlanPrice,
+  type StudyPlanAccessMode,
+  type StudyPlanStatus,
+  type StudyPlanSummary,
+  type StudyPlanType
+} from "../../lib/study-plans";
 
 type Exam = { id: number; name: string };
 type TaxonomyNode = { id: number; exam_id: number; name: string; node_type: string; content_type?: string };
@@ -33,6 +40,62 @@ function Field({
   );
 }
 
+/** The type picker's copy — mirrors the catalogue so authors and students see
+ *  the same three products described the same way. */
+const PLAN_TYPE_CARDS: {
+  type: StudyPlanType;
+  heading: string;
+  blurb: string;
+  icon: string;
+  /** Each type carries its own colour so the three do not read as three
+   *  flavours of "course" — the badge alone was not enough separation. */
+  idle: string;
+  active: string;
+  badge: string;
+}[] = [
+  {
+    type: "full_course",
+    heading: "Taught, with video",
+    blurb: "Lectures and live classes, plus materials and tests.",
+    icon: "▶",
+    idle: "border-violet-200 bg-violet-50/60 hover:border-violet-400",
+    active: "border-violet-500 bg-violet-50 ring-2 ring-violet-500/20",
+    badge: "bg-violet-100 text-violet-700"
+  },
+  {
+    type: "self_prep",
+    heading: "Materials and tests",
+    blurb: "Reading and revision week by week. No lectures.",
+    icon: "📄",
+    idle: "border-emerald-200 bg-emerald-50/60 hover:border-emerald-400",
+    active: "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20",
+    badge: "bg-emerald-100 text-emerald-700"
+  },
+  {
+    type: "test_series",
+    heading: "Tests and discussion",
+    blurb: "A fixed test calendar, nothing else.",
+    icon: "✎",
+    idle: "border-amber-200 bg-amber-50/60 hover:border-amber-400",
+    active: "border-amber-500 bg-amber-50 ring-2 ring-amber-500/20",
+    badge: "bg-amber-100 text-amber-800"
+  }
+];
+
+const ACCESS_MODES: { value: StudyPlanAccessMode; label: string; note: string }[] = [
+  {
+    value: "one_time",
+    label: "Sold separately",
+    note: "One-time price. A subscription does not cover it."
+  },
+  {
+    value: "subscription",
+    label: "Included with a subscription",
+    note: "Any subscriber holding the entitlement below enrols free."
+  },
+  { value: "free", label: "Free for everyone", note: "Anyone signed in can enrol." }
+];
+
 export function AdminStudyPlanManagement() {
   const { token, user, isInitialized } = useAuth();
   const router = useRouter();
@@ -50,7 +113,13 @@ export function AdminStudyPlanManagement() {
     subject_node_id: "",
     duration_weeks: "4",
     price_rupees: "999",
-    status: "draft" as StudyPlanStatus
+    status: "draft" as StudyPlanStatus,
+    plan_type: "self_prep" as StudyPlanType,
+    access_mode: "one_time" as StudyPlanAccessMode,
+    required_entitlement_key: "assessment.premium_tests",
+    weekly_hours: "6",
+    level_label: "Prelims",
+    target_accuracy: "70"
   });
 
   const visibleSubjects = useMemo(() => {
@@ -93,7 +162,16 @@ export function AdminStudyPlanManagement() {
         duration_weeks: Number(form.duration_weeks),
         price_amount_minor: Math.round(Number(form.price_rupees) * 100),
         currency: "INR",
-        status: form.status
+        status: form.status,
+        plan_type: form.plan_type,
+        access_mode: form.access_mode,
+        // Only meaningful for subscription plans; sending it otherwise would
+        // leave a stale key behind if the access mode is changed later.
+        required_entitlement_key:
+          form.access_mode === "subscription" ? form.required_entitlement_key : null,
+        weekly_hours: form.weekly_hours ? Number(form.weekly_hours) : null,
+        level_label: form.level_label || undefined,
+        target_accuracy: Number(form.target_accuracy) || 70
       });
       setShowCreate(false);
       router.push(`/admin/study-plans/${created.id}`);
@@ -217,6 +295,73 @@ export function AdminStudyPlanManagement() {
               </button>
             </div>
             <div className="max-h-[72vh] space-y-4 overflow-y-auto p-5">
+              {/* Type first: it decides what the plan is, and therefore which
+                  of the fields below actually matter. */}
+              <div className="grid gap-1.5">
+                <span className="text-[11px] font-black uppercase tracking-wide text-ink/55">Plan type</span>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {PLAN_TYPE_CARDS.map((card) => (
+                    <button
+                      key={card.type}
+                      type="button"
+                      onClick={() => setForm({ ...form, plan_type: card.type })}
+                      aria-pressed={form.plan_type === card.type}
+                      className={`rounded-lg border p-3 text-left transition ${
+                        form.plan_type === card.type ? card.active : card.idle
+                      }`}
+                    >
+                      <span className="mb-1 block text-lg leading-none" aria-hidden="true">
+                        {card.icon}
+                      </span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide ${card.badge}`}>
+                        {PLAN_TYPE_LABEL[card.type]}
+                      </span>
+                      <p className="mt-1 text-sm font-bold text-ink">{card.heading}</p>
+                      <p className="mt-0.5 text-[11px] font-semibold leading-4 text-ink/50">{card.blurb}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <span className="text-[11px] font-black uppercase tracking-wide text-ink/55">Access</span>
+                <div className="grid gap-2">
+                  {ACCESS_MODES.map((mode) => (
+                    <label
+                      key={mode.value}
+                      className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 ${
+                        form.access_mode === mode.value ? "border-civic bg-civic/5" : "border-line bg-surface"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="access_mode"
+                        className="mt-1"
+                        checked={form.access_mode === mode.value}
+                        onChange={() => setForm({ ...form, access_mode: mode.value })}
+                      />
+                      <span>
+                        <span className="block text-sm font-bold text-ink">{mode.label}</span>
+                        <span className="block text-[11px] font-semibold text-ink/50">{mode.note}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {form.access_mode === "subscription" && (
+                <Field
+                  label="Unlocking entitlement"
+                  note="Any subscriber holding this entitlement key enrols free. Must match a key in billing.entitlements."
+                >
+                  <input
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={form.required_entitlement_key}
+                    onChange={(event) => setForm({ ...form, required_entitlement_key: event.target.value })}
+                  />
+                </Field>
+              )}
+
               <Field label="Plan title" note="Shown to students and in this management list.">
                 <input className="h-10 rounded-md border border-line px-3 text-sm" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
               </Field>
@@ -252,6 +397,17 @@ export function AdminStudyPlanManagement() {
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
                   </select>
+                </Field>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Hours per week" note="Shown on the card and the detail page — the first thing a buyer asks.">
+                  <input className="h-10 rounded-md border border-line px-3 text-sm" value={form.weekly_hours} onChange={(event) => setForm({ ...form, weekly_hours: event.target.value })} />
+                </Field>
+                <Field label="Stage" note="Prelims, Mains, CSAT — used as the catalogue's stage filter.">
+                  <input className="h-10 rounded-md border border-line px-3 text-sm" value={form.level_label} onChange={(event) => setForm({ ...form, level_label: event.target.value })} />
+                </Field>
+                <Field label="Target accuracy" note="Benchmark the tracker's depth signal judges test scores against.">
+                  <input className="h-10 rounded-md border border-line px-3 text-sm" value={form.target_accuracy} onChange={(event) => setForm({ ...form, target_accuracy: event.target.value })} />
                 </Field>
               </div>
             </div>

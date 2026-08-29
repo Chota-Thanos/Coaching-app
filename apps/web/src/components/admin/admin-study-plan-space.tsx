@@ -21,6 +21,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
+import { PlanItemResourcesEditor } from "./plan-item-resources-editor";
+import { PlanFreeSamplePicker } from "./plan-free-sample-picker";
 import { RichTextMarkdownEditor } from "../current-affairs/rich-text-editor";
 import {
   formatPlanPrice,
@@ -142,6 +144,12 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
     subject_node_id: "",
     duration_weeks: "4",
     price_rupees: "0",
+    plan_type: "self_prep",
+    access_mode: "one_time",
+    required_entitlement_key: "",
+    weekly_hours: "",
+    level_label: "",
+    target_accuracy: "70",
     status: "draft"
   });
 
@@ -294,7 +302,13 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
       subject_node_id: selectedPlan.subject_node_id ? String(selectedPlan.subject_node_id) : "",
       duration_weeks: String(selectedPlan.duration_weeks),
       price_rupees: String(Number(selectedPlan.price_amount_minor ?? 0) / 100),
-      status: selectedPlan.status
+      status: selectedPlan.status,
+      plan_type: selectedPlan.plan_type ?? "self_prep",
+      access_mode: selectedPlan.access_mode ?? "one_time",
+      required_entitlement_key: selectedPlan.required_entitlement_key ?? "",
+      weekly_hours: selectedPlan.weekly_hours != null ? String(selectedPlan.weekly_hours) : "",
+      level_label: selectedPlan.level_label ?? "",
+      target_accuracy: selectedPlan.target_accuracy != null ? String(selectedPlan.target_accuracy) : "70"
     });
   }, [selectedPlan?.id]);
 
@@ -310,7 +324,16 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
         subject_node_id: planEditForm.subject_node_id ? Number(planEditForm.subject_node_id) : null,
         duration_weeks: Number(planEditForm.duration_weeks),
         price_amount_minor: Math.round(Number(planEditForm.price_rupees) * 100),
-        status: planEditForm.status
+        status: planEditForm.status,
+        plan_type: planEditForm.plan_type,
+        access_mode: planEditForm.access_mode,
+        // Cleared when the plan is not subscription-gated, so a stale key can
+        // never silently unlock a paid plan later.
+        required_entitlement_key:
+          planEditForm.access_mode === "subscription" ? planEditForm.required_entitlement_key || null : null,
+        weekly_hours: planEditForm.weekly_hours ? Number(planEditForm.weekly_hours) : null,
+        level_label: planEditForm.level_label || null,
+        target_accuracy: Number(planEditForm.target_accuracy) || 70
       });
       await loadPlans();
       await loadSelectedPlan(String(selectedPlan.id));
@@ -656,7 +679,14 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                       subject_node_id: selectedPlan.subject_node_id ? String(selectedPlan.subject_node_id) : "",
                       duration_weeks: String(selectedPlan.duration_weeks),
                       price_rupees: String(Number(selectedPlan.price_amount_minor ?? 0) / 100),
-                      status: selectedPlan.status
+                      status: selectedPlan.status,
+                      plan_type: selectedPlan.plan_type ?? "self_prep",
+                      access_mode: selectedPlan.access_mode ?? "one_time",
+                      required_entitlement_key: selectedPlan.required_entitlement_key ?? "",
+                      weekly_hours: selectedPlan.weekly_hours != null ? String(selectedPlan.weekly_hours) : "",
+                      level_label: selectedPlan.level_label ?? "",
+                      target_accuracy:
+                        selectedPlan.target_accuracy != null ? String(selectedPlan.target_accuracy) : "70"
                     });
                     setIsEditingPlanDetails(true);
                   }}
@@ -1011,6 +1041,13 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                     </div>
                   )}
 
+                  {/* Tests carry their questions instead; every other kind of
+                      step is the thing the student opens, so it gets the
+                      resource list. */}
+                  {!isTestStep(selectedItem.item_type) && (
+                    <PlanItemResourcesEditor planItemId={selectedItem.id} />
+                  )}
+
                   {selectedItem.item_type === "live_lecture" && (
                     <div className="mt-4 rounded-md border border-civic/20 bg-surface p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-civic">Live class</p>
@@ -1157,6 +1194,78 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                 </select>
               </FieldReference>
 
+              <FieldReference
+                label="Plan type"
+                reference="Decides the card, the detail page and which workspace the learner gets."
+              >
+                <select
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  value={planEditForm.plan_type}
+                  onChange={(event) => setPlanEditForm({ ...planEditForm, plan_type: event.target.value })}
+                >
+                  <option value="full_course">Full course — taught, with video</option>
+                  <option value="self_prep">Self-paced — materials and tests</option>
+                  <option value="test_series">Test series — tests and discussion</option>
+                </select>
+              </FieldReference>
+
+              <FieldReference
+                label="Access"
+                reference="Sold on its own, covered by a subscription entitlement, or free to anyone signed in."
+              >
+                <select
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  value={planEditForm.access_mode}
+                  onChange={(event) => setPlanEditForm({ ...planEditForm, access_mode: event.target.value })}
+                >
+                  <option value="one_time">Sold separately</option>
+                  <option value="subscription">Included with a subscription</option>
+                  <option value="free">Free for everyone</option>
+                </select>
+              </FieldReference>
+
+              {planEditForm.access_mode === "subscription" && (
+                <FieldReference
+                  label="Unlocking entitlement"
+                  reference="Subscribers holding this entitlement key enrol free."
+                >
+                  <input
+                    className="h-10 rounded-md border border-line px-3 text-sm"
+                    value={planEditForm.required_entitlement_key}
+                    onChange={(event) =>
+                      setPlanEditForm({ ...planEditForm, required_entitlement_key: event.target.value })
+                    }
+                  />
+                </FieldReference>
+              )}
+
+              <FieldReference label="Hours per week" reference="Shown on the card and the detail page.">
+                <input
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  value={planEditForm.weekly_hours}
+                  onChange={(event) => setPlanEditForm({ ...planEditForm, weekly_hours: event.target.value })}
+                />
+              </FieldReference>
+
+              <FieldReference label="Stage" reference="Prelims, Mains, CSAT — the catalogue's stage filter.">
+                <input
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  value={planEditForm.level_label}
+                  onChange={(event) => setPlanEditForm({ ...planEditForm, level_label: event.target.value })}
+                />
+              </FieldReference>
+
+              <FieldReference
+                label="Target accuracy"
+                reference="Benchmark the tracker's depth signal judges test scores against."
+              >
+                <input
+                  className="h-10 rounded-md border border-line px-3 text-sm"
+                  value={planEditForm.target_accuracy}
+                  onChange={(event) => setPlanEditForm({ ...planEditForm, target_accuracy: event.target.value })}
+                />
+              </FieldReference>
+
               <div className="w-full">
                 <RichTextMarkdownEditor
                   label="Description"
@@ -1166,6 +1275,13 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                   minHeightClass="min-h-[200px]"
                 />
               </div>
+
+              {selectedPlan && (
+                <PlanFreeSamplePicker
+                  items={selectedPlan.items}
+                  onChanged={() => loadSelectedPlan(String(selectedPlan.id))}
+                />
+              )}
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button

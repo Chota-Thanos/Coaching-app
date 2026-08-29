@@ -5,11 +5,13 @@ import { requireAdminOrEditor, requireAuth } from "../auth/guards.js";
 import { draftMainsQuestionAI, parseQuizAI } from "../current-affairs/master/ai.service.js";
 import {
   addPlanItem,
+  addPlanItemResource,
   addStudyPlanQuestion,
   addStudyPlanQuestions,
   createStudyPlan,
   createStudyPlanTest,
   deletePlanItem,
+  deletePlanItemResource,
   deleteStudyPlanQuestion,
   enrollStudyPlan,
   getStudyPlan,
@@ -21,7 +23,9 @@ import {
   listStudyPlanTests,
   startStudyPlanAttempt,
   submitStudyPlanAttempt,
+  listPlanItemResources,
   updatePlanItem,
+  updatePlanItemResource,
   updatePlanItemProgress,
   updateStudyPlan,
   updateStudyPlanQuestion,
@@ -54,6 +58,8 @@ import {
   startStudyPlanAttemptSchema,
   submitStudyPlanAttemptSchema,
   testTemplateIdParamSchema,
+  createPlanItemResourceSchema,
+  updatePlanItemResourceSchema,
   updatePlanItemSchema,
   updateProgressSchema,
   updateStudyPlanQuestionSchema,
@@ -117,7 +123,14 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
       // Only allow free enrollment on free plans
       const plan = (await getStudyPlan(params.id, user)) as any;
       if (!plan) return reply.notFound("Study plan not found.");
-      if (Number(plan.price_amount_minor) > 0) {
+      // Free plans, and subscription plans the user's entitlements already
+      // cover, enrol directly; only genuinely one-time plans need the
+      // purchase flow.
+      const coveredFree =
+        plan.access_mode === "free" ||
+        Number(plan.price_amount_minor) === 0 ||
+        (plan.access_mode === "subscription" && plan.covered_by_subscription === true);
+      if (!coveredFree) {
         return reply.status(402).send({ error: "This plan requires payment. Use the purchase flow." });
       }
       const record = await enrollStudyPlan(params.id, { ...body, payment_status: "free" }, user.id);
@@ -287,6 +300,47 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
       const params = parse(idParamSchema, request.params);
       const record = await deletePlanItem(params.id);
       if (!record) return reply.notFound("Study plan item not found.");
+      return record;
+    });
+  });
+
+  // Resources hang off a plan day: a chapter reference, a summary PDF and a
+  // link can all sit on the same item, which the single legacy resource_url
+  // could never express.
+  server.get("/api/v1/study-plan-items/:id/resources", async (request, reply) => {
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      return listPlanItemResources(params.id);
+    });
+  });
+
+  server.post("/api/v1/study-plan-items/:id/resources", async (request, reply) => {
+    await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(createPlanItemResourceSchema, request.body);
+      const record = await addPlanItemResource(params.id, body);
+      return reply.status(201).send(record);
+    });
+  });
+
+  server.patch("/api/v1/study-plan-item-resources/:id", async (request, reply) => {
+    await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(updatePlanItemResourceSchema, request.body);
+      const record = await updatePlanItemResource(params.id, body);
+      if (!record) return reply.notFound("Resource not found.");
+      return record;
+    });
+  });
+
+  server.delete("/api/v1/study-plan-item-resources/:id", async (request, reply) => {
+    await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const record = await deletePlanItemResource(params.id);
+      if (!record) return reply.notFound("Resource not found.");
       return record;
     });
   });

@@ -129,9 +129,14 @@ export function RichTextMarkdownEditor({
       // regardless of how it was left mid-edit.
       Details.configure({
         persist: false,
+        // The NodeView renders this button above the point it belongs to,
+        // which reads as a stray control on its own line. It is hidden in CSS
+        // and replaced by an inline "Detail" chip on the summary itself, so
+        // the marker sits at the end of the point exactly where the reader
+        // sees it. The button stays in the tree for assistive tech.
         renderToggleButton: ({ element, isOpen }) => {
           element.setAttribute("aria-label", isOpen ? "Hide detail" : "Show detail");
-          element.textContent = isOpen ? "🔎 Hide detail" : "🔍 Show detail";
+          element.textContent = "";
           element.className = "pointer-detail-toggle";
         }
       }),
