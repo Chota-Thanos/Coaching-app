@@ -106,6 +106,10 @@ export type StudyPlanItem = {
     status: StudyPlanProgressStatus;
     completed_at: string | null;
     test_attempt_id: number | null;
+    /** Accumulated time on task — the basis of the tracker's depth signal. */
+    time_spent_seconds?: number | null;
+    /** Where a lecture was last stopped, so "Resume" has a position. */
+    last_position_seconds?: number | null;
   } | null;
 };
 

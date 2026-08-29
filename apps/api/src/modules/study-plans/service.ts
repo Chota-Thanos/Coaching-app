@@ -1085,8 +1085,8 @@ export async function updatePlanItemProgress(
     const progress = await client.query(
       `
         insert into study_plan.item_progress
-          (enrollment_id, plan_item_id, status, completed_at, time_spent_seconds, started_at)
-        values ($1, $2, $3, case when $3 = 'completed' then now() else null end, coalesce($4, 0), now())
+          (enrollment_id, plan_item_id, status, completed_at, time_spent_seconds, started_at, last_position_seconds)
+        values ($1, $2, $3, case when $3 = 'completed' then now() else null end, coalesce($4, 0), now(), coalesce($5, 0))
         on conflict (enrollment_id, plan_item_id)
         do update set
           status = excluded.status,
@@ -1095,10 +1095,13 @@ export async function updatePlanItemProgress(
           -- overwriting it, so the depth signal sees total time on task.
           time_spent_seconds = study_plan.item_progress.time_spent_seconds + coalesce($4, 0),
           started_at = coalesce(study_plan.item_progress.started_at, now()),
+          -- A position, not a total: the latest one wins. Null leaves it alone
+          -- so a plain "mark complete" cannot rewind the video.
+          last_position_seconds = coalesce($5, study_plan.item_progress.last_position_seconds),
           updated_at = now()
         returning *
       `,
-      [enrollment.id, itemId, input.status, input.time_spent_seconds ?? 0]
+      [enrollment.id, itemId, input.status, input.time_spent_seconds ?? 0, input.last_position_seconds ?? null]
     );
 
     // Any progress at all counts as activity; without this the tracker would

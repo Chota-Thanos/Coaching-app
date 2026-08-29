@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { authenticatedGet, authenticatedPost, useAuth } from "../auth/auth-context";
 import { browserBaseUrl } from "../../lib/api";
@@ -32,6 +32,7 @@ export function PlanItemResourcesEditor({ planItemId }: { planItemId: number }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState(EMPTY);
+  const [uploading, setUploading] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -58,6 +59,39 @@ export function PlanItemResourcesEditor({ planItemId }: { planItemId: number }) 
   // rejects a resource with neither, so the form enforces the same rule.
   const isNote = draft.resource_kind === "note";
   const canSave = draft.title.trim().length > 0 && (isNote ? draft.body.trim().length > 0 : draft.url.trim().length > 0);
+
+  /**
+   * Uploads through the app's existing media endpoint and drops the returned
+   * URL into the draft, so a PDF can be attached from disk rather than needing
+   * to be hosted somewhere first.
+   */
+  const uploadFile = async (file: File) => {
+    if (!token) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("usage_scope", "study_plan_resource");
+      const response = await fetch(`${browserBaseUrl}/api/v1/media/upload`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: form
+      });
+      if (!response.ok) throw new Error(`Upload failed with ${response.status}`);
+      const asset = (await response.json()) as { file_url?: string };
+      if (!asset.file_url) throw new Error("Upload succeeded but returned no URL.");
+      setDraft((current) => ({
+        ...current,
+        url: asset.file_url as string,
+        title: current.title || file.name.replace(/\.[^.]+$/, "")
+      }));
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Could not upload that file.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const add = async () => {
     if (!token || !canSave) return;
@@ -180,12 +214,31 @@ export function PlanItemResourcesEditor({ planItemId }: { planItemId: number }) 
             onChange={(event) => setDraft({ ...draft, body: event.target.value })}
           />
         ) : (
-          <input
-            className="h-9 rounded-md border border-line px-3 text-sm"
-            placeholder={activeKind?.hint ?? "https://…"}
-            value={draft.url}
-            onChange={(event) => setDraft({ ...draft, url: event.target.value })}
-          />
+          <div className="grid gap-2">
+            <input
+              className="h-9 rounded-md border border-line px-3 text-sm"
+              placeholder={activeKind?.hint ?? "https://…"}
+              value={draft.url}
+              onChange={(event) => setDraft({ ...draft, url: event.target.value })}
+            />
+            {(draft.resource_kind === "pdf" || draft.resource_kind === "video") && (
+              <label className="inline-flex h-9 w-fit cursor-pointer items-center gap-2 rounded-md border border-line bg-paper px-3 text-xs font-bold text-ink/70 hover:border-civic/40">
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                {uploading ? "Uploading…" : "Upload a file instead"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept={draft.resource_kind === "pdf" ? "application/pdf" : "video/*"}
+                  disabled={uploading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadFile(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
         )}
         {error && <p className="text-xs font-bold text-rose-600">{error}</p>}
         <button

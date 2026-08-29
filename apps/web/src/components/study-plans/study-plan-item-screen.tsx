@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticatedGet, useAuth } from "../auth/auth-context";
 import { browserBaseUrl } from "../../lib/api";
 import {
@@ -44,6 +44,64 @@ const KIND_ICON: Record<StudyPlanItemResource["resource_kind"], string> = {
   video: "▶",
   note: "🗒"
 };
+
+/** YouTube and Vimeo need an iframe; a direct file can use a real <video>. */
+function embedUrl(url: string, startSeconds = 0): string | null {
+  try {
+    const parsed = new URL(url, "https://placeholder.invalid");
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") {
+      return `https://www.youtube.com/embed${parsed.pathname}?start=${Math.floor(startSeconds)}`;
+    }
+    if (host.endsWith("youtube.com")) {
+      const id = parsed.searchParams.get("v");
+      if (id) return `https://www.youtube.com/embed/${id}?start=${Math.floor(startSeconds)}`;
+      if (parsed.pathname.startsWith("/embed/")) return url;
+    }
+    if (host.endsWith("vimeo.com")) {
+      const id = parsed.pathname.split("/").filter(Boolean).pop();
+      if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}#t=${Math.floor(startSeconds)}s`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isDirectVideo(url: string): boolean {
+  return /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
+}
+
+function isPdf(url: string): boolean {
+  return /\.pdf(\?|$)/i.test(url);
+}
+
+/** A PDF read in place rather than punted to a new browser tab. */
+function PdfViewer({ url, title }: { url: string; title: string }) {
+  return (
+    <div style={{ border: "1px solid var(--sp-line)", borderRadius: 9, overflow: "hidden" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          padding: "8px 12px",
+          background: "var(--sp-panel-2)",
+          borderBottom: "1px solid var(--sp-line-soft)"
+        }}
+      >
+        <span style={{ fontFamily: "var(--sp-mono)", fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--sp-ink-faint)" }}>
+          {title}
+        </span>
+        <a className="sp-btn sp-btn--sm" href={url} target="_blank" rel="noreferrer noopener">
+          Open full size
+        </a>
+      </div>
+      <iframe src={url} title={title} style={{ width: "100%", height: 520, border: 0, display: "block" }} />
+    </div>
+  );
+}
 
 function ResourceList({ resources }: { resources: StudyPlanItemResource[] }) {
   if (resources.length === 0) {
@@ -143,6 +201,8 @@ export function StudyPlanItemScreen({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [openedAt] = useState(() => Date.now());
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [positionSaved, setPositionSaved] = useState(false);
 
   useEffect(() => {
     if (!isInitialized || !token) return;
@@ -174,6 +234,39 @@ export function StudyPlanItemScreen({
   const isLecture = item.item_type === "live_lecture" || Boolean(item.lecture_url);
   const resources = item.resources ?? [];
   const done = item.progress?.status === "completed";
+
+  const resumeAt = Number(item.progress?.last_position_seconds ?? 0);
+
+  /**
+   * Where the lecture actually plays from. A direct file gets a real <video>
+   * so the position can be read back; YouTube and Vimeo get an iframe with a
+   * start offset, which is as far as their embeds allow without their SDKs.
+   */
+  const lectureSource: { kind: "file" | "iframe"; url: string } | null = (() => {
+    const url = item.lecture_url ?? item.resources?.find((resource) => resource.resource_kind === "video")?.url ?? null;
+    if (!url) return null;
+    if (isDirectVideo(url)) return { kind: "file", url };
+    const embed = embedUrl(url, resumeAt);
+    return embed ? { kind: "iframe", url: embed } : { kind: "iframe", url };
+  })();
+
+  /** Only a real <video> can report a position, so only that path saves one. */
+  const savePosition = useCallback(async () => {
+    const node = videoRef.current;
+    if (!node || !token) return;
+    const seconds = Math.floor(node.currentTime);
+    if (seconds < 3) return;
+    try {
+      await fetch(`${browserBaseUrl}/api/v1/study-plan-items/${itemId}/progress`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: "in_progress", last_position_seconds: seconds })
+      });
+      setPositionSaved(true);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [token, itemId]);
 
   const markComplete = async () => {
     if (!token) return;
@@ -250,19 +343,52 @@ export function StudyPlanItemScreen({
             )}
 
             {isLecture && (
-              <div className="sp-player" style={{ marginTop: 2 }}>
-                <span className="sp-play">▶</span>
-                <div className="sp-cap">
-                  <p>Week {item.week_no} · Lecture</p>
-                  <h4>{item.title}</h4>
+              lectureSource === null ? (
+                <>
+                  <div className="sp-player" style={{ marginTop: 2 }}>
+                    <span className="sp-play">▶</span>
+                    <div className="sp-cap">
+                      <p>Week {item.week_no} · Lecture</p>
+                      <h4>{item.title}</h4>
+                    </div>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--sp-ink-faint)" }}>
+                    No lecture link on this day yet.
+                  </p>
+                </>
+              ) : lectureSource.kind === "file" ? (
+                <div>
+                  <video
+                    ref={videoRef}
+                    src={lectureSource.url}
+                    controls
+                    preload="metadata"
+                    style={{ width: "100%", borderRadius: 11, display: "block", background: "#000" }}
+                    onLoadedMetadata={() => {
+                      // Pick up where they stopped, if they got past the first
+                      // few seconds and did not already finish.
+                      if (videoRef.current && resumeAt > 3) videoRef.current.currentTime = resumeAt;
+                    }}
+                    onPause={savePosition}
+                    onEnded={savePosition}
+                  />
+                  {resumeAt > 3 && !positionSaved && (
+                    <p style={{ margin: "6px 0 0", fontFamily: "var(--sp-mono)", fontSize: 10.5, color: "var(--sp-ink-faint)" }}>
+                      Resuming from {Math.floor(resumeAt / 60)}:{String(Math.floor(resumeAt % 60)).padStart(2, "0")}
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {isLecture && item.lecture_url && (
-              <a className="sp-btn sp-btn--p" href={item.lecture_url} target="_blank" rel="noreferrer noopener">
-                Open the lecture
-              </a>
+              ) : (
+                <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 11, overflow: "hidden" }}>
+                  <iframe
+                    src={lectureSource.url}
+                    title={item.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                  />
+                </div>
+              )
             )}
 
             {isTest ? (
@@ -288,7 +414,14 @@ export function StudyPlanItemScreen({
                 {plan.plan_type === "test_series" && <DiscussionStub />}
               </div>
             ) : (
-              <ResourceList resources={resources} />
+              <>
+                <ResourceList resources={resources} />
+                {resources
+                  .filter((resource) => resource.url && (resource.resource_kind === "pdf" || isPdf(resource.url)))
+                  .map((resource) => (
+                    <PdfViewer key={resource.id} url={resource.url!} title={resource.title} />
+                  ))}
+              </>
             )}
 
             {message && (

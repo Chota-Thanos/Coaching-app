@@ -178,7 +178,10 @@ export const updateProgressSchema = z.object({
    *  replaced, so re-opening a day adds to the total rather than resetting it.
    *  This is what lets the tracker's depth signal tell a read from a
    *  click-through. */
-  time_spent_seconds: z.coerce.number().int().nonnegative().max(86400).optional()
+  time_spent_seconds: z.coerce.number().int().nonnegative().max(86400).optional(),
+  /** Where the learner stopped watching, so "Resume" has somewhere to resume
+   *  from. Replaced rather than accumulated — it is a position, not a total. */
+  last_position_seconds: z.coerce.number().int().nonnegative().max(86400).optional()
 });
 
 export const startStudyPlanAttemptSchema = z.object({
