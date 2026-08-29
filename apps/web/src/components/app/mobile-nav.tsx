@@ -4,25 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Menu,
-  X,
-  Target,
-  Newspaper,
-  FolderOpen,
-  Users,
-  BookOpenCheck,
-  Zap,
-  FileText,
-  ShieldCheck,
-  ChevronRight,
-  Home,
-  UserCheck,
-  CreditCard,
-  BookOpen,
-  Award,
-  Compass
-} from "lucide-react";
+import { Award, BookOpen, BookOpenCheck, ChevronRight, Compass, CreditCard, FileText, FolderOpen, Highlighter, Home, Menu, Newspaper, ShieldCheck, Target, UserCheck, Users, X, Zap } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
 
 export function MobileNav() {
@@ -127,6 +109,22 @@ export function MobileNav() {
                   <div>
                     <p className="text-xs font-bold text-ink dark:text-slate-100">GS Prelims Self-Tests</p>
                     <p className="text-[10px] text-ink/50 dark:text-slate-400">Topic-wise syllabus drills</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-ink/30 dark:text-slate-600 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                href="/current-affairs/workspace/highlights"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-surface dark:hover:bg-slate-800 transition group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                    <Highlighter className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-ink dark:text-slate-100">My Highlights</p>
+                    <p className="text-[10px] text-ink/50 dark:text-slate-400">Every highlight and note in one place</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-ink/30 dark:text-slate-600 group-hover:translate-x-0.5 transition-transform" />

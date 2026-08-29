@@ -9,16 +9,27 @@ import { authenticatedPatch, useAuth } from "../../auth/auth-context";
 type ForkTagQuickEditProps = {
   fork: StudentFork;
   availableTags: string[];
+  /** Tags the learner already uses elsewhere, so the control is still useful
+   *  on a repository whose owner never defined any. */
+  fallbackTags?: string[];
   onChanged: () => Promise<void> | void;
 };
 
-export function ForkTagQuickEdit({ fork, availableTags, onChanged }: ForkTagQuickEditProps) {
+const SUGGESTED_TAGS = ["Revise", "Weak topic", "Prelims fact", "Mains example", "Done"];
+
+export function ForkTagQuickEdit({ fork, availableTags, fallbackTags = [], onChanged }: ForkTagQuickEditProps) {
   const { token, refreshForks } = useAuth();
-  const cleanAvailableTags = useMemo(
-    () => Array.from(new Set(availableTags.map((tag) => tag.trim()).filter(Boolean))),
-    [availableTags]
-  );
   const [selectedTags, setSelectedTags] = useState<string[]>(visibleWorkspaceTags(fork.personal_tags));
+
+  // The repository's own tag definitions come first, then the tags this
+  // learner already uses, then a small starter set. Before this, a repository
+  // with no definitions showed a sentence telling the learner to go and
+  // define some instead of any buttons at all — so the quick editor was
+  // invisible on every repository nobody had configured.
+  const cleanAvailableTags = useMemo(() => {
+    const ordered = [...availableTags, ...fallbackTags, ...selectedTags, ...SUGGESTED_TAGS];
+    return Array.from(new Set(ordered.map((tag) => tag.trim()).filter(Boolean))).slice(0, 12);
+  }, [availableTags, fallbackTags, selectedTags]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -47,14 +58,6 @@ export function ForkTagQuickEdit({ fork, availableTags, onChanged }: ForkTagQuic
       ? selectedTags.filter((item) => item !== tag)
       : [...selectedTags, tag];
     void saveTags(nextTags);
-  }
-
-  if (cleanAvailableTags.length === 0) {
-    return (
-      <p className="mt-2 text-xs font-semibold text-ink/55">
-        Define custom tags for this repository to enable quick tag editing.
-      </p>
-    );
   }
 
   return (

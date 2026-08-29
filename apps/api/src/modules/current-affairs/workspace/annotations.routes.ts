@@ -8,16 +8,36 @@ import {
   updateHighlightSchema,
   updateNoteSchema
 } from "../schemas.js";
-import {
-  createHighlight,
-  createNote,
-  deleteHighlight,
-  deleteNote,
-  updateHighlight,
-  updateNote
-} from "./annotations.service.js";
+import { annotationFacets, createHighlight, createNote, deleteHighlight, deleteNote, listAnnotations, updateHighlight, updateNote } from "./annotations.service.js";
 
 export async function registerCurrentAffairsAnnotationRoutes(server: FastifyInstance): Promise<void> {
+  // Every highlight and margin note across every article. Both tables were
+  // reachable only through a single fork's detail response, so a term's worth
+  // of highlighting could not be reviewed without reopening each article.
+  server.get("/api/v1/current-affairs/me/annotations", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const raw = (request.query ?? {}) as Record<string, string | undefined>;
+      const limit = Math.min(Math.max(Number(raw.limit ?? 100) || 100, 1), 300);
+      const offset = Math.max(Number(raw.offset ?? 0) || 0, 0);
+      return listAnnotations(user.id, {
+        collection_id: raw.collection_id ? Number(raw.collection_id) : undefined,
+        color: raw.color?.trim() || undefined,
+        tag: raw.tag?.trim() || undefined,
+        kind: raw.kind?.trim() || undefined,
+        with_note: raw.with_note === "true",
+        search: raw.search?.trim() || undefined,
+        limit,
+        offset
+      });
+    });
+  });
+
+  server.get("/api/v1/current-affairs/me/annotation-facets", async (request) => {
+    const user = await requireAuth(request);
+    return annotationFacets(user.id);
+  });
+
   server.post("/api/v1/current-affairs/me/forks/:id/highlights", async (request, reply) => {
     const user = await requireAuth(request);
     return withValidation(reply, async () => {

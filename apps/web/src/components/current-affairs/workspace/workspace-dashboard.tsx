@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle2, FileDown, FolderPlus, LayoutDashboard, RefreshCw } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, FileDown, FolderPlus, Highlighter, LayoutDashboard, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type {
@@ -395,6 +395,15 @@ export function WorkspaceDashboard() {
             <FolderPlus aria-hidden="true" className="h-4 w-4" />
             Create Notes
           </Link>
+          {token && (
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic"
+              href="/current-affairs/workspace/highlights"
+            >
+              <Highlighter aria-hidden="true" className="h-4 w-4" />
+              My highlights
+            </Link>
+          )}
           {token && (
             <button
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic disabled:opacity-60"

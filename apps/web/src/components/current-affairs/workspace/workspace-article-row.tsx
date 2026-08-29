@@ -19,6 +19,9 @@ type WorkspaceArticleRowProps = {
   fork: StudentFork;
   collections: StudentCollection[];
   availableTags?: string[];
+  /** Tags the learner already uses, so quick tagging works on a repository
+   *  with no tag definitions of its own. */
+  fallbackTags?: string[];
   compact?: boolean;
   showRepositoryAttach?: boolean;
   trailingAction?: ReactNode;
@@ -34,6 +37,7 @@ export function WorkspaceArticleRow({
   fork,
   collections,
   availableTags,
+  fallbackTags,
   compact = false,
   showRepositoryAttach = true,
   trailingAction,
@@ -383,7 +387,9 @@ export function WorkspaceArticleRow({
             ) : (
               <p className="mt-2 text-sm text-ink/55">No personal tags yet.</p>
             )}
-            {availableTags && <ForkTagQuickEdit availableTags={availableTags} fork={fork} onChanged={onChanged} />}
+            {availableTags && (
+              <ForkTagQuickEdit availableTags={availableTags} fallbackTags={fallbackTags} fork={fork} onChanged={onChanged} />
+            )}
           </section>
 
         </div>
@@ -550,7 +556,7 @@ export function WorkspaceArticleRow({
             <p className="mt-2 text-sm text-ink/55">No personal tags yet.</p>
           )}
           {availableTags && (
-            <ForkTagQuickEdit availableTags={availableTags} fork={fork} onChanged={onChanged} />
+            <ForkTagQuickEdit availableTags={availableTags} fallbackTags={fallbackTags} fork={fork} onChanged={onChanged} />
           )}
         </section>
 

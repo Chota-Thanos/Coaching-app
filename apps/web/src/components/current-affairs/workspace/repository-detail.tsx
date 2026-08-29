@@ -282,6 +282,16 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
   }, [pinnedOnly, repository?.items, revisionOnly, searchQuery, selectedTagFilter]);
 
   const revisionItemCount = useMemo(() => (repository?.items ?? []).filter(isRevisionItem).length, [repository?.items]);
+  // Tags this learner already uses in this repository, so the quick editor is
+  // populated even when nobody defined repository-level tag definitions.
+  const learnerTags = useMemo(() => {
+    const seen = new Set<string>();
+    for (const item of repository?.items ?? []) {
+      for (const tag of visibleWorkspaceTags(item.fork?.personal_tags ?? [])) seen.add(tag);
+    }
+    return [...seen];
+  }, [repository?.items]);
+
   const pinnedItemCount = useMemo(() => (repository?.items ?? []).filter(isPinnedItem).length, [repository?.items]);
   const flashcards = useMemo(() => buildFlashcards(filteredItems), [filteredItems]);
   const hasActiveViewFilter = selectedTagFilter !== "all" || revisionOnly || pinnedOnly || searchQuery.trim().length > 0;
@@ -640,6 +650,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                   return (
                     <WorkspaceArticleRow
                       availableTags={repository.custom_tags ?? []}
+                      fallbackTags={learnerTags}
                       compact
                       collections={[repository]}
                       fork={fork}
