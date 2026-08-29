@@ -36,7 +36,17 @@ export const createStudyPlanSchema = z.object({
   price_amount_minor: z.coerce.number().int().nonnegative().default(0),
   currency: z.string().trim().length(3).default("INR"),
   status: planStatusSchema.default("draft"),
-  published_at: z.string().datetime().optional()
+  published_at: z.string().datetime().optional(),
+  /** What kind of product this is — drives the card, the detail page and the
+   *  workspace. See database/migrations/055. */
+  plan_type: z.enum(["full_course", "self_prep", "test_series"]).default("self_prep"),
+  /** How a learner gets in: bought outright, covered by a subscription, or free. */
+  access_mode: z.enum(["one_time", "subscription", "free"]).default("one_time"),
+  /** Which entitlement unlocks it when access_mode is "subscription". */
+  required_entitlement_key: z.string().trim().nullable().optional(),
+  weekly_hours: z.coerce.number().positive().nullable().optional(),
+  /** Benchmark the depth signal compares a learner's test average against. */
+  target_accuracy: z.coerce.number().positive().max(100).optional()
 });
 
 export const updateStudyPlanSchema = createStudyPlanSchema.partial().extend({

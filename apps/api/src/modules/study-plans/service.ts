@@ -461,10 +461,16 @@ export async function createStudyPlan(input: CreateStudyPlanInput, userId: numbe
           currency,
           status,
           created_by_user_id,
-          published_at
+          published_at,
+          plan_type,
+          access_mode,
+          required_entitlement_key,
+          weekly_hours,
+          target_accuracy
         )
       values
-        ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, 'English'), $10, $11, coalesce($12, 0), coalesce($13, 'INR'), $14, $15, $16)
+        ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, 'English'), $10, $11, coalesce($12, 0), coalesce($13, 'INR'), $14, $15, $16,
+         coalesce($17, 'self_prep'), coalesce($18, 'one_time'), $19, $20, coalesce($21, 70))
       returning *
     `,
     [
@@ -483,7 +489,12 @@ export async function createStudyPlan(input: CreateStudyPlanInput, userId: numbe
       input.currency ?? null,
       input.status,
       userId,
-      input.published_at ?? (input.status === "published" ? new Date() : null)
+      input.published_at ?? (input.status === "published" ? new Date() : null),
+      input.plan_type ?? null,
+      input.access_mode ?? null,
+      input.required_entitlement_key ?? null,
+      input.weekly_hours ?? null,
+      input.target_accuracy ?? null
     ]
   );
 }
@@ -507,6 +518,11 @@ export async function updateStudyPlan(id: number, input: UpdateStudyPlanInput): 
   addUpdate(updates, params, "currency", input.currency);
   addUpdate(updates, params, "status", input.status);
   addUpdate(updates, params, "published_at", input.published_at);
+  addUpdate(updates, params, "plan_type", input.plan_type);
+  addUpdate(updates, params, "access_mode", input.access_mode);
+  addUpdate(updates, params, "required_entitlement_key", input.required_entitlement_key);
+  addUpdate(updates, params, "weekly_hours", input.weekly_hours);
+  addUpdate(updates, params, "target_accuracy", input.target_accuracy);
 
   if (input.status === "published" && input.published_at === undefined) {
     addUpdate(updates, params, "published_at", new Date());
