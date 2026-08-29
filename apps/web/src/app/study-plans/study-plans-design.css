@@ -262,3 +262,26 @@
 
   .sp-v { display:none; }
   .sp-v[data-active="true"] { display:block; }
+
+  /* Plan types must not read as three flavours of the same thing — each gets
+     its own tint, border and accent so the catalogue is scannable by type. */
+  .sp-cat-type--course { border-color:#d3c3f7; background:linear-gradient(180deg,#f5f1ff 0%,var(--sp-panel) 64%); }
+  .sp-cat-type--self   { border-color:var(--sp-good-line); background:linear-gradient(180deg,#e9f9f2 0%,var(--sp-panel) 64%); }
+  .sp-cat-type--tests  { border-color:var(--sp-warn-line); background:linear-gradient(180deg,#fdf4e4 0%,var(--sp-panel) 64%); }
+  .sp-cat-type--course[aria-pressed="true"] { border-color:#7c5cf0; box-shadow:0 0 0 3px rgba(124,92,240,.18); }
+  .sp-cat-type--self[aria-pressed="true"]   { border-color:var(--sp-good); box-shadow:0 0 0 3px rgba(4,129,95,.16); }
+  .sp-cat-type--tests[aria-pressed="true"]  { border-color:var(--sp-warn); box-shadow:0 0 0 3px rgba(184,115,10,.18); }
+  .sp-cat-type .sp-ico { font-size:19px; display:block; margin-bottom:2px; }
+
+  /* A stripe along the top of every plan card, so a grid of mixed types reads
+     by type before you get to the badge. */
+  .sp-pcard { position:relative; }
+  .sp-pcard::before { content:""; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+  .sp-pcard--course::before { background:#7c5cf0; }
+  .sp-pcard--self::before   { background:var(--sp-good); }
+  .sp-pcard--tests::before  { background:var(--sp-warn); }
+
+  html.dark .sp-cat-type--course { border-color:#412f80; background:linear-gradient(180deg,#201a44 0%,var(--sp-panel) 64%); }
+  html.dark .sp-cat-type--self   { border-color:var(--sp-good-line); background:linear-gradient(180deg,#0e2a22 0%,var(--sp-panel) 64%); }
+  html.dark .sp-cat-type--tests  { border-color:var(--sp-warn-line); background:linear-gradient(180deg,#2e230b 0%,var(--sp-panel) 64%); }
+  html.dark .sp-pcard--course::before { background:#8f7dff; }

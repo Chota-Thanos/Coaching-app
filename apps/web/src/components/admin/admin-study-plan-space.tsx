@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
 import { PlanItemResourcesEditor } from "./plan-item-resources-editor";
+import { PlanFreeSamplePicker } from "./plan-free-sample-picker";
 import { RichTextMarkdownEditor } from "../current-affairs/rich-text-editor";
 import {
   formatPlanPrice,
@@ -1274,6 +1275,13 @@ export function AdminStudyPlanSpace({ initialPlanId }: { initialPlanId?: number 
                   minHeightClass="min-h-[200px]"
                 />
               </div>
+
+              {selectedPlan && (
+                <PlanFreeSamplePicker
+                  items={selectedPlan.items}
+                  onChanged={() => loadSelectedPlan(String(selectedPlan.id))}
+                />
+              )}
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button

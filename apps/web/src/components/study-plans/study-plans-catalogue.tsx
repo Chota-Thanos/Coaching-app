@@ -55,23 +55,33 @@ async function browserJson<T>(path: string, token?: string): Promise<T> {
 }
 
 /** The per-type headline the three filter cards carry. */
-const TYPE_CARDS: { type: StudyPlanType; heading: string; blurb: string }[] = [
+const TYPE_CARDS: { type: StudyPlanType; heading: string; blurb: string; icon: string }[] = [
   {
     type: "full_course",
     heading: "Taught, with video",
-    blurb: "Recorded lectures and live classes, plus materials and tests inside the schedule."
+    blurb: "Recorded lectures and live classes, plus materials and tests inside the schedule.",
+    icon: "▶"
   },
   {
     type: "self_prep",
     heading: "Study materials and tests",
-    blurb: "Reading, revision and tests laid out week by week. No lectures — you set the pace."
+    blurb: "Reading, revision and tests laid out week by week. No lectures — you set the pace.",
+    icon: "📄"
   },
   {
     type: "test_series",
     heading: "Only tests and discussion",
-    blurb: "A fixed test calendar with answer discussion after each paper."
+    blurb: "A fixed test calendar with answer discussion after each paper.",
+    icon: "✎"
   }
 ];
+
+/** Modifier suffix shared by the type cards and the plan cards. */
+const TYPE_MODIFIER: Record<StudyPlanType, string> = {
+  full_course: "course",
+  self_prep: "self",
+  test_series: "tests"
+};
 
 function priceLine(plan: StudyPlanSummary): { label: string; free: boolean } {
   if (plan.access_mode === "free" || Number(plan.price_amount_minor) === 0) {
@@ -109,7 +119,7 @@ function PlanCard({ plan }: { plan: StudyPlanSummary }) {
     .join(" · ");
 
   return (
-    <Link className="sp-c sp-pcard" href={studyPlanHref(`/${plan.id}`)}>
+    <Link className={`sp-c sp-pcard sp-pcard--${TYPE_MODIFIER[plan.plan_type]}`} href={studyPlanHref(`/${plan.id}`)}>
       <div className="sp-pcard-body">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
           <span className={`sp-type ${PLAN_TYPE_CLASS[plan.plan_type]}`}>{PLAN_TYPE_LABEL[plan.plan_type]}</span>
@@ -266,11 +276,14 @@ export function StudyPlansCatalogue({
             return (
               <button
                 type="button"
-                className="sp-cat-type"
+                className={`sp-cat-type sp-cat-type--${TYPE_MODIFIER[card.type]}`}
                 key={card.type}
                 aria-pressed={facets.type === card.type}
                 onClick={() => toggle("type", card.type)}
               >
+                <span className="sp-ico" aria-hidden="true">
+                  {card.icon}
+                </span>
                 <span className={`sp-type ${PLAN_TYPE_CLASS[card.type]}`}>{PLAN_TYPE_LABEL[card.type]}</span>
                 <h4>{card.heading}</h4>
                 <p>{card.blurb}</p>

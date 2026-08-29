@@ -42,10 +42,44 @@ function Field({
 
 /** The type picker's copy — mirrors the catalogue so authors and students see
  *  the same three products described the same way. */
-const PLAN_TYPE_CARDS: { type: StudyPlanType; heading: string; blurb: string }[] = [
-  { type: "full_course", heading: "Taught, with video", blurb: "Lectures and live classes, plus materials and tests." },
-  { type: "self_prep", heading: "Materials and tests", blurb: "Reading and revision week by week. No lectures." },
-  { type: "test_series", heading: "Tests and discussion", blurb: "A fixed test calendar, nothing else." }
+const PLAN_TYPE_CARDS: {
+  type: StudyPlanType;
+  heading: string;
+  blurb: string;
+  icon: string;
+  /** Each type carries its own colour so the three do not read as three
+   *  flavours of "course" — the badge alone was not enough separation. */
+  idle: string;
+  active: string;
+  badge: string;
+}[] = [
+  {
+    type: "full_course",
+    heading: "Taught, with video",
+    blurb: "Lectures and live classes, plus materials and tests.",
+    icon: "▶",
+    idle: "border-violet-200 bg-violet-50/60 hover:border-violet-400",
+    active: "border-violet-500 bg-violet-50 ring-2 ring-violet-500/20",
+    badge: "bg-violet-100 text-violet-700"
+  },
+  {
+    type: "self_prep",
+    heading: "Materials and tests",
+    blurb: "Reading and revision week by week. No lectures.",
+    icon: "📄",
+    idle: "border-emerald-200 bg-emerald-50/60 hover:border-emerald-400",
+    active: "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20",
+    badge: "bg-emerald-100 text-emerald-700"
+  },
+  {
+    type: "test_series",
+    heading: "Tests and discussion",
+    blurb: "A fixed test calendar, nothing else.",
+    icon: "✎",
+    idle: "border-amber-200 bg-amber-50/60 hover:border-amber-400",
+    active: "border-amber-500 bg-amber-50 ring-2 ring-amber-500/20",
+    badge: "bg-amber-100 text-amber-800"
+  }
 ];
 
 const ACCESS_MODES: { value: StudyPlanAccessMode; label: string; note: string }[] = [
@@ -273,12 +307,13 @@ export function AdminStudyPlanManagement() {
                       onClick={() => setForm({ ...form, plan_type: card.type })}
                       aria-pressed={form.plan_type === card.type}
                       className={`rounded-lg border p-3 text-left transition ${
-                        form.plan_type === card.type
-                          ? "border-civic bg-civic/5 ring-2 ring-civic/20"
-                          : "border-line bg-surface hover:border-civic/40"
+                        form.plan_type === card.type ? card.active : card.idle
                       }`}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-wide text-civic">
+                      <span className="mb-1 block text-lg leading-none" aria-hidden="true">
+                        {card.icon}
+                      </span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide ${card.badge}`}>
                         {PLAN_TYPE_LABEL[card.type]}
                       </span>
                       <p className="mt-1 text-sm font-bold text-ink">{card.heading}</p>
