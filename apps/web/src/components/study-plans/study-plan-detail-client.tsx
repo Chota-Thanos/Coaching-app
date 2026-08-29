@@ -33,7 +33,18 @@ export function StudyPlanDetailClient({ initialPlan }: { initialPlan: StudyPlanD
   const { token, isInitialized } = useAuth();
   const router = useRouter();
   const [plan, setPlan] = useState<StudyPlanDetail>(initialPlan);
-  const [stage, setStage] = useState<Stage>(initialPlan.has_access ? "work" : "decide");
+
+  /**
+   * `has_access` means "may open the content" — and the API also grants it to
+   * admins, moderators and editors so they can preview an unpublished plan
+   * (service.ts isPrivileged). Being *enrolled* is a different thing: it means
+   * a start date and study days exist, which is what the workspace is built
+   * on. Treating the two as one sent staff straight to a workspace with no
+   * schedule, no health card and no Today panel.
+   */
+  const isEnrolled = (candidate: StudyPlanDetail) => Boolean(candidate.enrollment);
+
+  const [stage, setStage] = useState<Stage>(isEnrolled(initialPlan) ? "work" : "decide");
   const [busy, setBusy] = useState(false);
   const [busyItemId, setBusyItemId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -43,7 +54,7 @@ export function StudyPlanDetailClient({ initialPlan }: { initialPlan: StudyPlanD
     try {
       const fresh = await authenticatedGet<StudyPlanDetail>(`/api/v1/study-plans/${plan.id}`, token);
       setPlan(fresh);
-      setStage(fresh.has_access ? "work" : "decide");
+      setStage(isEnrolled(fresh) ? "work" : "decide");
     } catch (error) {
       console.error(error);
     }
@@ -167,13 +178,13 @@ export function StudyPlanDetailClient({ initialPlan }: { initialPlan: StudyPlanD
         plan={plan}
         busy={busy}
         message={message}
-        onCancel={() => setStage(plan.has_access ? "work" : "decide")}
+        onCancel={() => setStage(isEnrolled(plan) ? "work" : "decide")}
         onStart={startPlan}
       />
     );
   }
 
-  if (stage === "work" && plan.has_access) {
+  if (stage === "work" && isEnrolled(plan)) {
     return <StudyPlanWorkspace plan={plan} onToggleComplete={toggleComplete} busyItemId={busyItemId} />;
   }
 

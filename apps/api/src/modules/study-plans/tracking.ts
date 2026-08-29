@@ -58,6 +58,28 @@ function parseIsoDate(value: string): Date {
   return new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1));
 }
 
+/**
+ * Coerces whatever the driver hands back into a plain YYYY-MM-DD string.
+ *
+ * node-pg returns a DATE column as a JS Date at *local* midnight. Two traps
+ * follow, and this module hit both: `String(date).slice(0, 10)` yields
+ * "Mon Aug 24" rather than an ISO date, and `toISOString()` shifts the day
+ * backwards for any positive UTC offset (local midnight in IST is 18:30 the
+ * previous day in UTC). Reading the local parts avoids both.
+ */
+export function toIsoDateString(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    const year = String(value.getFullYear()).padStart(4, "0");
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  const text = String(value);
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : null;
+}
+
 /** ISO weekday, Monday = 1 through Sunday = 7. */
 function isoWeekday(date: Date): StudyWeekday {
   const jsDay = date.getUTCDay();

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildSchedule, computeTracking, deriveTargetEndDate, planSlots, type TrackableItem } from "./tracking.js";
+import {
+  buildSchedule,
+  computeTracking,
+  deriveTargetEndDate,
+  planSlots,
+  toIsoDateString,
+  type TrackableItem
+} from "./tracking.js";
 
 /** Three plan weeks, one item on each of days 1-3 — nine items, ids 1-9 in
  *  schedule order, with every third one a test. */
@@ -178,5 +185,53 @@ describe("computeTracking", () => {
     assert.equal(tracking.due_items, 0);
     assert.equal(tracking.days_behind, 0);
     assert.equal(tracking.state, "on_time");
+  });
+});
+
+describe("toIsoDateString", () => {
+  // node-pg hands a DATE column back as a JS Date at local midnight. Both of
+  // the obvious coercions are wrong, and getting this wrong once already made
+  // the whole tracker silently compute an empty schedule.
+  it("reads a Date's local parts, not its string form", () => {
+    const date = new Date(2026, 7, 24); // 24 Aug 2026, local midnight
+    assert.equal(toIsoDateString(date), "2026-08-24");
+    assert.notEqual(String(date).slice(0, 10), "2026-08-24");
+  });
+
+  it("does not shift the day backwards under a positive UTC offset", () => {
+    // toISOString() on local midnight in IST yields the previous day.
+    const date = new Date(2026, 7, 24);
+    const viaToIso = date.toISOString().slice(0, 10);
+    const result = toIsoDateString(date);
+    assert.equal(result, "2026-08-24");
+    if (date.getTimezoneOffset() < 0) {
+      assert.notEqual(viaToIso, result, "expected toISOString to disagree east of UTC");
+    }
+  });
+
+  it("passes ISO strings through and rejects anything else", () => {
+    assert.equal(toIsoDateString("2026-08-24"), "2026-08-24");
+    assert.equal(toIsoDateString("2026-08-24T10:00:00.000Z"), "2026-08-24");
+    assert.equal(toIsoDateString(null), null);
+    assert.equal(toIsoDateString(undefined), null);
+    assert.equal(toIsoDateString(""), null);
+    assert.equal(toIsoDateString("Mon Aug 24 2026"), null);
+    assert.equal(toIsoDateString(new Date("nonsense")), null);
+  });
+
+  it("feeds buildSchedule something it can actually use", () => {
+    // The end-to-end shape of the bug: a Date in, a real schedule out.
+    const iso = toIsoDateString(new Date(2026, 7, 31));
+    assert.ok(iso);
+    const { slots } = buildSchedule(
+      [
+        { week_no: 1, day_no: 1 },
+        { week_no: 1, day_no: 2 }
+      ],
+      iso!,
+      [1, 2, 3, 4, 5, 6, 7]
+    );
+    assert.equal(slots.length, 2);
+    assert.equal(slots[0]?.scheduled_date, "2026-08-31");
   });
 });

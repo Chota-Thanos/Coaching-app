@@ -5,7 +5,7 @@ import { one, query, transaction } from "../../db.js";
 import { generateAgoraRtcToken, type AgoraRtcRole } from "../../common/agora.js";
 import { calculateObjectiveScore } from "../assessment/score-calculator.js";
 import { getUserEntitlements } from "../billing/service.js";
-import { buildSchedule, computeTracking, deriveTargetEndDate } from "./tracking.js";
+import { buildSchedule, computeTracking, deriveTargetEndDate, toIsoDateString } from "./tracking.js";
 import { upsertStudentTopicMetric } from "../assessment/scoring.service.js";
 import type { ScoreItem } from "../assessment/scoring.types.js";
 import type { UserRole } from "../auth/schemas.js";
@@ -725,9 +725,7 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
       : null
   }));
 
-  const startDate: string | null = enrollment?.start_date
-    ? String(enrollment.start_date).slice(0, 10)
-    : null;
+  const startDate: string | null = toIsoDateString(enrollment?.start_date);
 
   let schedule: ReturnType<typeof buildSchedule>["slots"] = [];
   let tracking: ReturnType<typeof computeTracking> | null = null;
@@ -754,11 +752,11 @@ export async function getStudyPlan(id: number, user?: AuthContext): Promise<unkn
       items: trackableItems,
       startDate,
       studyDays,
-      targetEndDate: enrollment.target_end_date ? String(enrollment.target_end_date).slice(0, 10) : null,
+      targetEndDate: toIsoDateString(enrollment.target_end_date),
       targetAccuracy: Number(planRow.target_accuracy ?? 70),
       // Stored as a 0-1 ratio; the benchmark is a percentage.
       averageAccuracy: rawAccuracy === null ? null : rawAccuracy <= 1 ? rawAccuracy * 100 : rawAccuracy,
-      lastActivityAt: enrollment.last_activity_at ? String(enrollment.last_activity_at).slice(0, 10) : null
+      lastActivityAt: toIsoDateString(enrollment.last_activity_at)
     });
   }
 
