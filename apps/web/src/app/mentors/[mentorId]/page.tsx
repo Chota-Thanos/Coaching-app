@@ -47,6 +47,8 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [mentor, setMentor] = useState<MentorProfile | null>(null);
   
   // Student Mains attempts
@@ -70,7 +72,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
         const data = await res.json();
         setMentor(data);
       } else {
-        alert("Mentor profile not found");
+        setLoadError("That mentor profile could not be found.");
         router.push("/mentors");
       }
     } catch (err) {
@@ -117,6 +119,7 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
     if (!token) return;
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const payload = {
         mentor_id: mentorId,
@@ -127,14 +130,34 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
       };
 
       await authenticatedPost("/api/v1/mentorship/requests", token, payload);
-      alert("Mentorship request sent successfully! You can track and pay for bookings in your Mentorship Desk.");
-      router.push("/dashboard/mentorship");
+      // A native alert() is how a 2003 form reported a validation error, not
+      // how a product confirms a request that leads to a payment. The desk is
+      // where the request now lives, so go there and say so on arrival.
+      router.push("/dashboard/mentorship?requested=1");
     } catch (err: any) {
-      alert("Failed to submit request: " + err.message);
+      setSubmitError(err?.message || "Could not send that request. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-16">
+        <main className="mx-auto max-w-lg px-4 text-center">
+          <div className="rounded-2xl border border-slate-200 bg-surface p-8 shadow-sm">
+            <p className="text-sm font-semibold text-slate-600">{loadError}</p>
+            <Link
+              href="/mentors"
+              className="mt-5 inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-600"
+            >
+              Back to mentors
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (loading || !mentor) {
     return (
@@ -458,11 +481,11 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                                       const data = await res.json();
                                       setStudentCopy({ file_name: file.name, url: data.url });
                                     } else {
-                                      alert("Upload failed.");
+                                      setSubmitError("That file could not be uploaded. Try a PDF under 10 MB.");
                                     }
                                   } catch (err) {
                                     console.error(err);
-                                    alert("Error uploading file.");
+                                    setSubmitError("Something went wrong uploading that file.");
                                   } finally {
                                     setUploadingCopy(false);
                                   }
@@ -516,6 +539,12 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-xs outline-none transition focus:border-indigo-500 resize-none"
                   />
                 </div>
+
+                {submitError && (
+                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800">
+                    {submitError}
+                  </p>
+                )}
 
                 <button
                   type="submit"

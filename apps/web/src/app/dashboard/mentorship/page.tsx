@@ -255,6 +255,21 @@ export default function LearnerMentorshipPage() {
 
   const [payingNow, setPayingNow] = useState(false);
 
+  const [flash, setFlash] = useState<string | null>(null);
+  const [flashError, setFlashError] = useState<string | null>(null);
+  // Arriving from the mentor profile after sending a request: the confirmation
+  // that used to be an alert() on the previous page now lands here, where the
+  // request itself is. Read from location rather than useSearchParams, which
+  // would force this page behind a Suspense boundary just to show a banner
+  // (the same prerender error /pricing hit).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("requested") === "1") {
+      setFlash("Request sent. The mentor usually replies within 24 hours — nothing is charged yet.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   const handlePayment = async () => {
     if (!token || !selectedRequest) return;
     setPayingNow(true);
@@ -269,7 +284,10 @@ export default function LearnerMentorshipPage() {
 
       const verify = async (payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
         await authenticatedPost(`/api/v1/mentorship/requests/${selectedRequest.id}/payment/verify`, token, payload);
-        alert("Payment successful! You can now book your slot.");
+        // Confirming money with a browser dialog was the single worst moment
+        // in this flow. The desk re-renders into the "pick a slot" state, and
+        // says so inline.
+        setFlash("Payment received. Pick a time below to confirm your session.");
         void fetchRequests();
       };
 
@@ -296,7 +314,7 @@ export default function LearnerMentorshipPage() {
         rzp.open();
       }
     } catch (err: any) {
-      alert("Payment failed: " + err.message);
+      setFlashError(err?.message || "Payment could not be completed.");
     } finally {
       setPayingNow(false);
     }
@@ -308,10 +326,10 @@ export default function LearnerMentorshipPage() {
       await authenticatedPost(`/api/v1/mentorship/requests/${selectedRequest.id}/book-slot`, token, {
         slot_id: Number(selectedSlotId),
       });
-      alert("Slot booked successfully! Your session is scheduled.");
+      setFlash("Session booked. You will get a reminder before it starts.");
       void fetchRequests();
     } catch (err: any) {
-      alert("Booking failed: " + err.message);
+      setFlashError(err?.message || "That slot could not be booked — it may have just been taken.");
     }
   };
 
@@ -328,7 +346,7 @@ export default function LearnerMentorshipPage() {
       setNewAgendaDesc("");
       void fetchAgendas(selectedRequest.id);
     } catch (err: any) {
-      alert("Failed to propose agenda: " + err.message);
+      setFlashError(err?.message || "Could not add that agenda point.");
     } finally {
       setProposingAgenda(false);
     }
@@ -340,7 +358,7 @@ export default function LearnerMentorshipPage() {
       await authenticatedPut(`/api/v1/mentorship/agendas/${agendaId}/agree`, token, {});
       void fetchAgendas(selectedRequest.id);
     } catch (err: any) {
-      alert("Failed to agree to agenda: " + err.message);
+      setFlashError(err?.message || "Could not agree the agenda.");
     }
   };
 
@@ -350,7 +368,7 @@ export default function LearnerMentorshipPage() {
       await authenticatedPut(`/api/v1/mentorship/agendas/${agendaId}/solve-confirm`, token, {});
       void fetchAgendas(selectedRequest.id);
     } catch (err: any) {
-      alert("Failed to confirm solved: " + err.message);
+      setFlashError(err?.message || "Could not mark that point solved.");
     }
   };
 
@@ -361,7 +379,7 @@ export default function LearnerMentorshipPage() {
       await authenticatedDelete(`/api/v1/mentorship/agendas/${agendaId}`, token);
       void fetchAgendas(selectedRequest.id);
     } catch (err: any) {
-      alert("Failed to delete agenda: " + err.message);
+      setFlashError(err?.message || "Could not remove that agenda point.");
     }
   };
 
@@ -386,6 +404,16 @@ export default function LearnerMentorshipPage() {
               <MessageSquare className="h-8 w-8 text-indigo-600" />
               Mentorship Desk
             </h1>
+            {flash && (
+              <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800">
+                {flash}
+              </p>
+            )}
+            {flashError && (
+              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800">
+                {flashError}
+              </p>
+            )}
             <p className="text-slate-500 text-sm">
               Manage your requests, chat with mentors, download evaluations, and book video slots.
             </p>

@@ -265,8 +265,31 @@ export async function reviewOnboarding(applicationId: number, reviewerId: number
 // --- Mentor Profile Directory ---
 
 export async function listMentorProfiles() {
+  // next_free_slot is the browse card's whole reason to exist: a student
+  // picking a mentor is really picking a time, and the card could previously
+  // show neither the fee nor whether the mentor had a single slot open.
+  // Derived from the slots already stored, so nothing new is written.
   return query(
-    `select mp.*, u.email, u.username
+    `select
+       mp.*,
+       u.email,
+       u.username,
+       (
+         select min(ms.starts_at)
+         from app.mentorship_slots ms
+         where ms.mentor_id = mp.user_id
+           and ms.is_active = true
+           and ms.starts_at > now()
+           and ms.booked_count < ms.max_bookings
+       ) as next_free_slot,
+       (
+         select count(*)::int
+         from app.mentorship_slots ms
+         where ms.mentor_id = mp.user_id
+           and ms.is_active = true
+           and ms.starts_at > now()
+           and ms.booked_count < ms.max_bookings
+       ) as open_slot_count
      from app.mentor_profiles mp
      join app.users u on u.id = mp.user_id
      where mp.is_active = true and mp.is_public = true
@@ -378,7 +401,8 @@ export async function createRequest(userId: number, payload: CreateMentorshipReq
   const request = await one<any>(
     `insert into app.mentorship_requests
      (user_id, mentor_id, mains_answer_attempt_id, preferred_mode, note, status, payment_status, payment_amount, meta)
-     values ($1, $2, $3, $4, $5, 'requested', 'pending', 1000, $6)
+     values ($1, $2, $3, $4, $5, 'requested', 'pending',
+             coalesce((select session_fee from app.mentor_profiles where user_id = $2), 1000), $6)
      returning *`,
     [
       userId,

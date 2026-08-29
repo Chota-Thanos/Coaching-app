@@ -15,6 +15,11 @@ type MentorProfile = {
   years_experience: number;
   city: string | null;
   profile_image_url: string | null;
+  session_fee?: number | null;
+  session_minutes?: number | null;
+  /** ISO timestamp of the mentor's next unbooked future slot, or null. */
+  next_free_slot?: string | null;
+  open_slot_count?: number | null;
   education: string | null;
   is_verified: boolean;
   specialization_tags: string[];
@@ -27,6 +32,43 @@ type MentorProfile = {
   specialization_type?: "all_areas" | "specific_field";
   mentor_type?: "evaluation_mentorship" | "only_mentorship";
 };
+
+
+/** Two initials, so a photoless mentor still has a recognisable mark. */
+function mentorInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0]?.[0] ?? "";
+  const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + second).toUpperCase();
+}
+
+/** The mentor's own fee. Falls back to the historic flat rate rather than
+ *  showing a blank where a price belongs. */
+function formatFee(fee: number | null | undefined): string {
+  const amount = Number(fee ?? 1000);
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+/** "Thu 4 Sep, 7:00 pm", or null when the mentor has opened no slots. */
+function formatNextFree(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return new Intl.DateTimeFormat("en-IN", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(iso));
+  } catch {
+    return null;
+  }
+}
 
 export default function MentorsPage() {
   const { token } = useAuth();
@@ -292,7 +334,9 @@ export default function MentorsPage() {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredMentors.map((mentor) => (
+              {filteredMentors.map((mentor) => {
+                const nextFree = formatNextFree(mentor.next_free_slot);
+                return (
                 <article
                   key={mentor.user_id}
                   className="group relative flex flex-col justify-between overflow-hidden rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm transition hover:shadow-xl hover:border-indigo-100"
@@ -304,11 +348,18 @@ export default function MentorsPage() {
                         <img
                           src={mentor.profile_image_url}
                           alt={mentor.display_name}
-                          className="h-14 w-14 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition duration-300"
+                          className="h-16 w-16 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition duration-300"
                         />
                       ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-xl font-black text-indigo-600">
-                          {mentor.display_name.charAt(0)}
+                        /* No mentor has uploaded a photo yet, so this fallback
+                           is what a student actually sees. Initials on a tinted
+                           tile read as a deliberate avatar rather than a
+                           missing image. */
+                        <div
+                          aria-hidden="true"
+                          className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-lg font-black text-white"
+                        >
+                          {mentorInitials(mentor.display_name)}
                         </div>
                       )}
                       <div>
@@ -382,12 +433,23 @@ export default function MentorsPage() {
                         ))}
                       </div>
                     )}
+
+                  {/* When the mentor is next free. A student choosing a mentor
+                      is really choosing a time, and the card never said whether
+                      this one had a single slot open. */}
+                  <div className="mt-4 text-[11px] font-bold">
+                    {nextFree ? (
+                      <span className="text-emerald-700">Next free · {nextFree}</span>
+                    ) : (
+                      <span className="text-amber-700">No open slots right now</span>
+                    )}
+                  </div>
                   </div>
 
                   {/* Footer Action */}
                   <div className="mt-6 border-t border-slate-100 pt-4 flex items-center justify-between gap-2">
                     <span className="text-xs font-black text-slate-900 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg">
-                      ₹1,000 <span className="text-[10px] font-semibold text-slate-500">/ session</span>
+                      {formatFee(mentor.session_fee)} <span className="text-[10px] font-semibold text-slate-500">/ {mentor.session_minutes ?? 45} min</span>
                     </span>
                     
                     <Link
@@ -399,7 +461,8 @@ export default function MentorsPage() {
                     </Link>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
