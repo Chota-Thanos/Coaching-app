@@ -145,7 +145,17 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
       return { x: rect.left, y: rect.top - 8, anchor };
     }
 
-    function handleSelectionFinished() {
+    function handleSelectionFinished(event: Event) {
+      // Releasing the button over the toolbar is not the end of a selection
+      // gesture -- it is the click. Without this guard the sequence was:
+      // mousedown on a swatch (ignored, correctly), the browser collapses the
+      // selection, mouseup lands here and finds nothing selected, the toolbar
+      // is torn down, and the click handler then returns early because there is
+      // no toolbar left. Every highlight and note silently did nothing, which
+      // is exactly what it looked like from the outside: the selection
+      // vanishing and the buttons doing nothing.
+      const target = event.target as HTMLElement | null;
+      if (target && typeof target.closest === "function" && target.closest("[data-annotator-ui]")) return;
       setToolbar(resolveSelectionToolbar());
     }
 
