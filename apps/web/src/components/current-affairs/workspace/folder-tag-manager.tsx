@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Tags, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { useAuth, authenticatedPatch } from "../../auth/auth-context";
 import type { StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
 
@@ -30,6 +30,7 @@ export function FolderTagManager({
 }) {
   const { token } = useAuth();
   const [managing, setManaging] = useState(false);
+  const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
   const [newTag, setNewTag] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -63,6 +64,58 @@ export function FolderTagManager({
       await onChanged();
     } catch {
       setMessage("Could not add that tag.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+  /** Rename a tag everywhere it appears. Delete alone is not "editing": a tag
+   *  is usually wrong rather than unwanted -- "Weakol topic" for "Weak topic" --
+   *  and without this the only repair was to remove it and re-tag by hand. */
+  async function renameTag(from: string, to: string): Promise<void> {
+    const next = to.trim();
+    if (!token || !next || next === from) {
+      setRenaming(null);
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const carriers = items.filter((item) => {
+        const itemTags = item.fork?.personal_tags ?? item.student_article?.personal_tags ?? [];
+        return itemTags.includes(from);
+      });
+
+      for (const item of carriers) {
+        const current = item.fork?.personal_tags ?? item.student_article?.personal_tags ?? [];
+        // Deduplicate: renaming onto a tag the article already has must not
+        // leave it carrying the same tag twice.
+        const swapped = Array.from(new Set(current.map((t) => (t === from ? next : t))));
+        if (item.fork) {
+          await authenticatedPatch(`/api/v1/current-affairs/me/forks/${item.fork.id}`, token, {
+            personal_tags: swapped
+          });
+        } else if (item.student_article) {
+          await authenticatedPatch(`/api/v1/current-affairs/me/articles/${item.student_article.id}`, token, {
+            personal_tags: swapped
+          });
+        }
+      }
+
+      const folderTags = Array.from(
+        new Set((repository.custom_tags ?? []).map((t) => (t === from ? next : t)))
+      );
+      await authenticatedPatch(`/api/v1/current-affairs/me/collections/${repository.id}`, token, {
+        custom_tags: folderTags
+      });
+
+      if (selectedTag === from) onSelectTag(next);
+      setRenaming(null);
+      await onChanged();
+      setMessage(`Renamed "${from}" to "${next}".`);
+    } catch {
+      setMessage("Could not rename that tag everywhere.");
     } finally {
       setBusy(false);
     }
@@ -130,7 +183,7 @@ export function FolderTagManager({
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         <button
-          className={`inline-flex h-8 items-center rounded-full border px-3 text-xs font-bold ${
+          className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-bold ${
             selectedTag === "all"
               ? "border-civic bg-civic text-white"
               : "border-line bg-surface text-ink/70 hover:border-civic"
@@ -142,15 +195,28 @@ export function FolderTagManager({
         </button>
 
         {tags.length === 0 && !managing && (
-          <span className="inline-flex h-8 items-center text-xs font-semibold text-ink/50">
+          <span className="inline-flex h-6 items-center text-[11px] font-semibold text-ink/50">
             No tags yet — add one to sort this folder.
           </span>
         )}
 
         {tags.map(([tag, count]) => (
           <span className="inline-flex items-center" key={tag}>
+            {managing && renaming?.from === tag ? (
+              <input
+                autoFocus
+                className="h-6 w-32 rounded-full border border-civic bg-surface px-2.5 text-[11px] font-bold text-ink"
+                onBlur={() => void renameTag(tag, renaming.to)}
+                onChange={(event) => setRenaming({ from: tag, to: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void renameTag(tag, renaming.to);
+                  if (event.key === "Escape") setRenaming(null);
+                }}
+                value={renaming.to}
+              />
+            ) : (
             <button
-              className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-bold ${
+              className={`inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold ${
                 selectedTag === tag
                   ? "border-civic bg-civic text-white"
                   : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
@@ -161,15 +227,28 @@ export function FolderTagManager({
               {tag}
               <span className={selectedTag === tag ? "text-white/70" : "text-civic/60"}>{count}</span>
             </button>
-            {managing && (
+            )}
+            {managing && renaming?.from !== tag && (
+              <button
+                aria-label={`Rename the tag ${tag}`}
+                className="inline-flex h-6 items-center border-y border-civic/30 bg-civic/5 px-1.5 text-civic disabled:opacity-50"
+                disabled={busy}
+                onClick={() => setRenaming({ from: tag, to: tag })}
+                title="Rename"
+                type="button"
+              >
+                <Pencil aria-hidden="true" className="h-3 w-3" />
+              </button>
+            )}
+            {managing && renaming?.from !== tag && (
               <button
                 aria-label={`Remove the tag ${tag}`}
-                className="inline-flex h-8 items-center rounded-r-full border border-l-0 border-berry/40 bg-berry/10 px-2 text-berry disabled:opacity-50"
+                className="inline-flex h-6 items-center rounded-r-full border border-l-0 border-berry/40 bg-berry/10 px-1.5 text-berry disabled:opacity-50"
                 disabled={busy}
                 onClick={() => void removeTag(tag)}
                 type="button"
               >
-                <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                <Trash2 aria-hidden="true" className="h-3 w-3" />
               </button>
             )}
           </span>

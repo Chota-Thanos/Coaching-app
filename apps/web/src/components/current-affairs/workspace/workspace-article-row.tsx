@@ -217,6 +217,7 @@ export function WorkspaceArticleRow({
     return (
       <article className="rounded-lg border border-line bg-surface p-3 shadow-sm">
         <div className="flex flex-col gap-2.5">
+          <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-base font-extrabold leading-snug text-ink">
               <Link className="hover:text-civic" href={href}>
@@ -239,6 +240,18 @@ export function WorkspaceArticleRow({
               </div>
             </dl>
           </div>
+
+            {/* Top-right: the icon controls, against the title. */}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!editingCopy && (
+                <button aria-label="Edit copy" className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-civic text-white" onClick={() => setEditingCopy(true)} title="Edit copy" type="button">
+                  <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {trailingAction}
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center gap-1.5">
             {!editingCopy && (
               <button
@@ -250,21 +263,6 @@ export function WorkspaceArticleRow({
                 {bodyExpanded ? "Hide" : "Read and edit"}
               </button>
             )}
-            {!editingCopy && (
-              <button aria-label="Edit copy" className="inline-flex h-8 items-center gap-1 rounded-md bg-civic px-2 text-xs font-bold text-white" onClick={() => setEditingCopy(true)} title="Edit copy" type="button">
-                <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
-                <span className="sr-only">Edit copy</span>
-              </button>
-            )}
-            <button
-              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-civic px-2.5 text-xs font-bold text-white disabled:opacity-60"
-              disabled={fork.read_status === "read" || markingRead}
-              onClick={markRead}
-              type="button"
-            >
-              <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
-              {markingRead ? "Saving..." : "Mark read"}
-            </button>
             <Link
               className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-civic/30 bg-civic/10 px-2.5 text-xs font-bold text-civic"
               href={`/current-affairs/workspace/articles/${fork.id}`}
@@ -272,7 +270,18 @@ export function WorkspaceArticleRow({
               <Highlighter aria-hidden="true" className="h-3.5 w-3.5" />
               Highlight &amp; annotate
             </Link>
-            {trailingAction}
+
+            {/* Bottom-right: finishing the article is the last thing you do
+                with it, so it ends the card. */}
+            <button
+              className="ml-auto inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-civic px-2.5 text-xs font-bold text-white disabled:opacity-60"
+              disabled={fork.read_status === "read" || markingRead}
+              onClick={markRead}
+              type="button"
+            >
+              <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+              {markingRead ? "Saving..." : "Mark read"}
+            </button>
           </div>
         </div>
         {markReadError && <p className="mt-2 text-xs font-semibold text-berry">{markReadError}</p>}

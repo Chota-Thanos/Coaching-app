@@ -31,8 +31,6 @@ import { WorkspaceLimitBar, useWorkspaceLimits } from "./workspace-limit-bar";
 import { AiSummarisePanel } from "./ai-summarise-panel";
 import { WorkspaceSignIn } from "./workspace-sign-in";
 import { FolderSuggestions } from "./folder-suggestions";
-import { BulkImportPanel } from "./bulk-import-panel";
-import { PersonalArticlesPanel } from "./personal-articles-panel";
 import { FolderTagManager } from "./folder-tag-manager";
 
 type RepositoryDetailProps = {
@@ -507,91 +505,8 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
             onChanged={loadRepository}
           />
 
-          {/* Both of these produce an article that has to land in a folder, so
-              they belong in one -- on the folder list they asked which folder
-              to use before the learner had opened any. */}
-          <details className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-            <summary className="cursor-pointer text-sm font-black text-ink">Bulk import articles into this folder</summary>
-            <div className="mt-4">
-              <BulkImportPanel collections={[repository]} onChanged={loadRepository} />
-            </div>
-          </details>
-
-          <details className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-            <summary className="cursor-pointer text-sm font-black text-ink">Write your own note in this folder</summary>
-            <div className="mt-4">
-              <PersonalArticlesPanel articles={[]} collections={[repository]} onChanged={loadRepository} />
-            </div>
-          </details>
           {pdfError && <p className="text-sm font-semibold text-berry">{pdfError}</p>}
 
-          <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-civic/10 text-civic">
-                <Tags aria-hidden="true" className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h2 className="text-base font-black text-ink">Repository tag definitions</h2>
-                    <p className="mt-1 text-sm leading-6 text-ink/65">
-                      These are the quick-edit tag choices for this repository.
-                    </p>
-                  </div>
-                  {!editingTagDefinitions && (
-                    <button
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-civic px-3 text-xs font-bold text-white"
-                      onClick={() => setEditingTagDefinitions(true)}
-                      type="button"
-                    >
-                      <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
-                      Edit tags
-                    </button>
-                  )}
-                </div>
-                {editingTagDefinitions ? (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                    <input
-                      className="h-10 rounded-md border border-line px-3 text-sm text-ink"
-                      onChange={(event) => setTagDraft(event.target.value)}
-                      placeholder="Weak topic, Revise before mock, Done"
-                      value={tagDraft}
-                    />
-                    <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-civic px-3 text-sm font-bold text-white disabled:opacity-60"
-                      disabled={savingTags}
-                      onClick={saveRepositoryTags}
-                      type="button"
-                    >
-                      <Save aria-hidden="true" className="h-4 w-4" />
-                      {savingTags ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink"
-                      onClick={cancelRepositoryTags}
-                      type="button"
-                    >
-                      <X aria-hidden="true" className="h-4 w-4" />
-                      Cancel
-                    </button>
-                  </div>
-                ) : repository.custom_tags && repository.custom_tags.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {repository.custom_tags.map((tag) => (
-                      <span className="rounded-full bg-civic/10 px-3 py-1 text-xs font-bold text-civic" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 rounded-lg border border-dashed border-line bg-paper/40 px-3 py-2 text-sm text-ink/60">
-                    No custom tag definitions yet.
-                  </p>
-                )}
-                {tagMessage && <p className="mt-2 text-xs font-semibold text-civic">{tagMessage}</p>}
-              </div>
-            </div>
-          </section>
 
           <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
             <div className="grid gap-4">
@@ -656,26 +571,19 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 selectedTag={selectedTagFilter}
               />
 
-              {/* What this folder can do, said once at the top. These are the
-                  three things learners were not discovering: that a tag makes
-                  the list filterable, that the saved copy is theirs to rewrite,
-                  and that a short note of their own can sit on each article. */}
-              <ul className="grid gap-1.5 rounded-lg border border-civic/20 bg-civic/[0.04] p-3 text-xs leading-5 text-ink/70 sm:grid-cols-3">
-                <li>
-                  <strong className="font-black text-ink">Tag an article</strong> to filter this folder by
-                  it later — the tags above are the ones in use.
-                </li>
-                <li>
-                  <strong className="font-black text-ink">Edit any article</strong>: the copy in your folder
-                  is yours, so cut it down to what you will actually revise.
-                </li>
-                <li>
-                  <strong className="font-black text-ink">Add a personal note</strong> to any article — the
-                  line you would use in an answer.
-                </li>
-              </ul>
+
             </div>
           </section>
+
+          {/* Plain points rather than a panel: this is orientation, read once,
+              and a bordered box gave it the weight of a control. */}
+          <ol className="ml-4 list-decimal space-y-1 text-xs leading-5 text-ink/60">
+            <li>You can tag each article for quick filtering.</li>
+            <li>You can edit articles in your notes, as per your need.</li>
+            <li>You can add quick reading notes on each article.</li>
+            <li>Select any text inside an article to highlight it or attach a note.</li>
+          </ol>
+
 
           {repository.items.length === 0 ? (
             <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
