@@ -14,8 +14,6 @@ import type {
 import { CURRENT_AFFAIRS_HUBS, articleHref, contentKindLabel } from "../../../lib/current-affairs";
 import { authenticatedGet, authenticatedPost, useAuth } from "../../auth/auth-context";
 import { downloadScannedPdf, type PdfSection } from "../../../lib/export-pdf";
-import { BulkImportPanel } from "./bulk-import-panel";
-import { PersonalArticlesPanel } from "./personal-articles-panel";
 import { RepositoryManager } from "./repository-manager";
 import { WorkspaceLimitBar, useWorkspaceLimits } from "./workspace-limit-bar";
 import { WorkspaceQueuePanel } from "./workspace-queue-panel";
@@ -182,7 +180,7 @@ export function WorkspaceDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-8 px-4 pb-16 pt-5">
+    <main className="mx-auto max-w-3xl space-y-6 px-4 pb-16 pt-5">
       <section className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-civic">
@@ -278,23 +276,10 @@ export function WorkspaceDashboard() {
             }}
           />
 
-          <details id="tour-bulk-import" className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-            <summary className="cursor-pointer text-base font-black text-ink">Bulk import articles</summary>
-            <div className="mt-4">
-              <BulkImportPanel collections={state.collections} onChanged={loadWorkspace} />
-            </div>
-          </details>
-
-          <details id="tour-personal-notes" className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-            <summary className="cursor-pointer text-base font-black text-ink">Write your own note</summary>
-            <div className="mt-4">
-              <PersonalArticlesPanel
-                articles={state.studentArticles}
-                collections={state.collections}
-                onChanged={loadWorkspace}
-              />
-            </div>
-          </details>
+          {/* Bulk import and writing your own note both need a folder to put
+              the result in, so they live inside a folder now rather than on the
+              list of folders, where they asked which folder to use before the
+              learner had opened one. */}
 
         </>
       )}

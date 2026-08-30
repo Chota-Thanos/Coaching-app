@@ -32,6 +32,9 @@ import { WorkspaceLimitBar, useWorkspaceLimits } from "./workspace-limit-bar";
 import { AiSummarisePanel } from "./ai-summarise-panel";
 import { WorkspaceSignIn } from "./workspace-sign-in";
 import { FolderSuggestions } from "./folder-suggestions";
+import { BulkImportPanel } from "./bulk-import-panel";
+import { PersonalArticlesPanel } from "./personal-articles-panel";
+import { FolderTagManager } from "./folder-tag-manager";
 
 type RepositoryDetailProps = {
   id: string;
@@ -410,7 +413,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 pb-16 pt-5">
+    <main className="mx-auto max-w-4xl space-y-5 px-4 pb-16 pt-5">
       <Link className="inline-flex items-center gap-2 text-sm font-bold text-civic" href="/current-affairs/workspace">
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         Notes Space
@@ -497,6 +500,23 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
             items={repository.items ?? []}
             onChanged={loadRepository}
           />
+
+          {/* Both of these produce an article that has to land in a folder, so
+              they belong in one -- on the folder list they asked which folder
+              to use before the learner had opened any. */}
+          <details className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-black text-ink">Bulk import articles into this folder</summary>
+            <div className="mt-4">
+              <BulkImportPanel collections={[repository]} onChanged={loadRepository} />
+            </div>
+          </details>
+
+          <details className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-black text-ink">Write your own note in this folder</summary>
+            <div className="mt-4">
+              <PersonalArticlesPanel articles={[]} collections={[repository]} onChanged={loadRepository} />
+            </div>
+          </details>
           {pdfError && <p className="text-sm font-semibold text-berry">{pdfError}</p>}
 
           <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
@@ -590,7 +610,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                     type="button"
                   >
                     <Brain aria-hidden="true" className="h-3.5 w-3.5" />
-                    Revision mode
+                    Due for revision
                     <span className={revisionOnly ? "text-white/80" : "text-civic/70"}>{revisionItemCount}</span>
                   </button>
                   <button
@@ -620,39 +640,21 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 />
               </label>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-bold ${
-                    selectedTagFilter === "all"
-                      ? "border-civic bg-civic text-white"
-                      : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
-                  }`}
-                  onClick={() => setSelectedTagFilter("all")}
-                  type="button"
-                >
-                  All tags
-                </button>
-                {repositoryTagFilters.map((tag) => (
-                  <button
-                    className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-bold ${
-                      selectedTagFilter === tag
-                        ? "border-civic bg-civic text-white"
-                        : "border-civic/30 bg-surface text-civic hover:bg-civic/10"
-                    }`}
-                    key={tag}
-                    onClick={() => setSelectedTagFilter(tag)}
-                    type="button"
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
+              {/* Was a row of filter chips only. Tag editing used to live on
+                  every article row; it lives here now, so the chips both filter
+                  and are the place tags are added and removed. */}
+              <FolderTagManager
+                onChanged={loadRepository}
+                onSelectTag={setSelectedTagFilter}
+                repository={repository}
+                selectedTag={selectedTagFilter}
+              />
             </div>
           </section>
 
           {repository.items.length === 0 ? (
             <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">
-              Import institute articles or add your own article to start building this repository.
+              Nothing here yet. Import articles into this folder, or write your own note, using the panels below.
             </p>
           ) : filteredItems.length === 0 ? (
             <p className="rounded-lg border border-dashed border-line bg-surface p-5 text-sm text-ink/65">

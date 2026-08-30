@@ -11,9 +11,7 @@ import { authenticatedPatch, authenticatedPut, useAuth } from "../../auth/auth-c
 import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { RenderedContent } from "../rendered-content";
 import { downloadScannedPdf } from "../../../lib/export-pdf";
-import { ForkTagQuickEdit } from "./fork-tag-quick-edit";
 import { RepositoryAttachControl } from "./repository-attach-control";
-import { SourceArticleConnections } from "./source-article-connections";
 
 type WorkspaceArticleRowProps = {
   fork: StudentFork;
@@ -217,7 +215,7 @@ export function WorkspaceArticleRow({
   if (compact) {
     return (
       <article className="rounded-lg border border-line bg-surface p-3 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2.5">
           <div className="min-w-0">
             <h3 className="text-base font-extrabold leading-snug text-ink">
               <Link className="hover:text-civic" href={href}>
@@ -240,10 +238,10 @@ export function WorkspaceArticleRow({
               </div>
             </dl>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {!editingCopy && (
               <button
-                className="inline-flex h-9 items-center gap-1 rounded-md border border-civic/30 bg-civic/10 px-3 text-xs font-bold text-civic"
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-civic/30 bg-civic/10 px-2.5 text-xs font-bold text-civic"
                 onClick={() => setBodyExpanded((value) => !value)}
                 type="button"
               >
@@ -252,13 +250,13 @@ export function WorkspaceArticleRow({
               </button>
             )}
             {!editingCopy && (
-              <button className="inline-flex h-9 items-center gap-1 rounded-md bg-civic px-3 text-xs font-bold text-white" onClick={() => setEditingCopy(true)} type="button">
+              <button className="inline-flex h-8 items-center gap-1 rounded-md bg-civic px-2.5 text-xs font-bold text-white" onClick={() => setEditingCopy(true)} type="button">
                 <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
                 Edit copy
               </button>
             )}
             <button
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-civic px-3 text-xs font-bold text-white disabled:opacity-60"
+              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-civic px-2.5 text-xs font-bold text-white disabled:opacity-60"
               disabled={fork.read_status === "read" || markingRead}
               onClick={markRead}
               type="button"
@@ -266,17 +264,8 @@ export function WorkspaceArticleRow({
               <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
               {markingRead ? "Saving..." : "Mark read"}
             </button>
-            <button
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink disabled:opacity-60"
-              disabled={downloadingPdf}
-              onClick={downloadPdf}
-              type="button"
-            >
-              <Download aria-hidden="true" className="h-3.5 w-3.5" />
-              {downloadingPdf ? "Preparing..." : "Download PDF"}
-            </button>
             <Link
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-xs font-bold text-civic"
+              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-civic/30 bg-civic/10 px-2.5 text-xs font-bold text-civic"
               href={`/current-affairs/workspace/articles/${fork.id}`}
             >
               <Highlighter aria-hidden="true" className="h-3.5 w-3.5" />
@@ -346,51 +335,6 @@ export function WorkspaceArticleRow({
         </section>
 
         <div className="mt-2">
-          <section className="rounded-md border border-line bg-paper/20 px-3 py-2">
-            <div className="flex items-center justify-between gap-3">
-              <p className="inline-flex items-center gap-2 text-sm font-black text-ink">
-                <Tags aria-hidden="true" className="h-4 w-4 text-civic" />
-                Tags
-              </p>
-              {!editingTags && (
-                <button className="text-xs font-bold text-civic" onClick={() => setEditingTags(true)} type="button">
-                  {savedTags.length > 0 ? "Edit" : "Add"}
-                </button>
-              )}
-            </div>
-            {editingTags ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                <input
-                  className="h-9 rounded-md border border-line bg-surface px-3 text-sm text-ink"
-                  onChange={(event) => setTagsDraft(event.target.value)}
-                  placeholder="Difficult, Revise before mock"
-                  value={tagsDraft}
-                />
-                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-civic px-3 text-xs font-bold text-white disabled:opacity-60" disabled={savingTags} onClick={saveTags} type="button">
-                  <Save aria-hidden="true" className="h-3.5 w-3.5" />
-                  Save
-                </button>
-                <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-xs font-bold text-ink" onClick={cancelTags} type="button">
-                  <X aria-hidden="true" className="h-3.5 w-3.5" />
-                  Cancel
-                </button>
-                {tagsError && <p className="col-span-full text-xs font-semibold text-berry">{tagsError}</p>}
-              </div>
-            ) : savedTags.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {savedTags.map((tag) => (
-                  <span className="rounded-full bg-civic/10 px-3 py-1 text-xs font-bold text-civic" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-ink/55">No personal tags yet.</p>
-            )}
-            {availableTags && (
-              <ForkTagQuickEdit availableTags={availableTags} fallbackTags={fallbackTags} fork={fork} onChanged={onChanged} />
-            )}
-          </section>
 
         </div>
 
@@ -440,7 +384,6 @@ export function WorkspaceArticleRow({
         )}
 
         <div className="mt-2">
-          <SourceArticleConnections article={article} />
         </div>
       </article>
     );
@@ -471,7 +414,7 @@ export function WorkspaceArticleRow({
             </div>
           </dl>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-civic px-3 text-sm font-bold text-white disabled:opacity-60"
             disabled={fork.read_status === "read" || markingRead}
@@ -480,15 +423,6 @@ export function WorkspaceArticleRow({
           >
             <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
             {markingRead ? "Saving..." : "Mark read"}
-          </button>
-          <button
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
-            disabled={downloadingPdf}
-            onClick={downloadPdf}
-            type="button"
-          >
-            <Download aria-hidden="true" className="h-4 w-4" />
-            {downloadingPdf ? "Preparing..." : "Download PDF"}
           </button>
           <Link
             className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-sm font-bold text-civic"
@@ -514,51 +448,6 @@ export function WorkspaceArticleRow({
       )}
 
       <div className="mt-4 grid gap-3">
-        <section className="rounded-lg border border-line bg-paper/30 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="inline-flex items-center gap-2 text-sm font-black text-ink">
-              <Tags aria-hidden="true" className="h-4 w-4 text-civic" />
-              Tags
-            </p>
-            {!editingTags && (
-              <button className="text-xs font-bold text-civic" onClick={() => setEditingTags(true)} type="button">
-                {savedTags.length > 0 ? "Edit" : "Add"}
-              </button>
-            )}
-          </div>
-          {editingTags ? (
-            <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-              <input
-                className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-ink"
-                onChange={(event) => setTagsDraft(event.target.value)}
-                placeholder="Difficult, Revise before mock"
-                value={tagsDraft}
-              />
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-civic px-3 text-sm font-bold text-white disabled:opacity-60" disabled={savingTags} onClick={saveTags} type="button">
-                <Save aria-hidden="true" className="h-4 w-4" />
-                Save
-              </button>
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-bold text-ink" onClick={cancelTags} type="button">
-                <X aria-hidden="true" className="h-4 w-4" />
-                Cancel
-              </button>
-              {tagsError && <p className="col-span-full text-xs font-semibold text-berry">{tagsError}</p>}
-            </div>
-          ) : savedTags.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {savedTags.map((tag) => (
-                <span className="rounded-full bg-civic/10 px-3 py-1 text-xs font-bold text-civic" key={tag}>
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-ink/55">No personal tags yet.</p>
-          )}
-          {availableTags && (
-            <ForkTagQuickEdit availableTags={availableTags} fallbackTags={fallbackTags} fork={fork} onChanged={onChanged} />
-          )}
-        </section>
 
         <section className="rounded-lg border border-line bg-paper/30 p-3">
           <div className="flex items-center justify-between gap-3">
@@ -655,7 +544,6 @@ export function WorkspaceArticleRow({
           )}
         </section>
 
-        <SourceArticleConnections article={article} />
       </div>
     </article>
   );

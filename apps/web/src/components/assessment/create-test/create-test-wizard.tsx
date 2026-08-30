@@ -399,7 +399,7 @@ export function CreateTestWizard() {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-24">
       <div className="border-b border-line bg-surface px-4 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -443,7 +443,7 @@ export function CreateTestWizard() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-8">
         {error && (
           <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-semibold text-rose-700">{error}</div>
         )}
