@@ -13,6 +13,7 @@ import { SessionWrapUpEditor } from "../../../components/mentorship/session-wrap
 import { CancelRequestControl, ReportNoShowControl } from "../../../components/mentorship/request-controls";
 import { MentorSchedulePanel } from "../../../components/mentorship/mentor-schedule-panel";
 import { MentorReviewsPanel } from "../../../components/mentorship/mentor-reviews-panel";
+import { MentorDashboardPanel } from "../../../components/mentorship/mentor-dashboard-panel";
 import Link from "next/link";
 
 type MentorshipMessage = {
@@ -127,7 +128,7 @@ export default function MentorWorkspacePage() {
   const [selectedOffers, setSelectedOffers] = useState<number[]>([]);
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "requests" | "schedules" | "reviews" | "calendar" | "profile" | "settings"
+    "overview" | "requests" | "schedules" | "reviews" | "calendar" | "profile"
   >("overview");
   /* Which slice of the bookings list is on screen. "all" first, then one per
      status, so a mentor can answer "what is outstanding" and "what did I
@@ -1084,7 +1085,7 @@ export default function MentorWorkspacePage() {
         <header className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
           <div>
             <h1 className="text-2xl font-black text-slate-800 capitalize tracking-tight">
-              {activeTab === "overview" ? "Dashboard" : activeTab === "requests" ? "Bookings" : activeTab === "schedules" ? "Schedules" : activeTab === "reviews" ? "Reviews" : activeTab === "calendar" ? "Availability" : activeTab === "profile" ? "My Profile" : "Workspace Settings"}
+              {activeTab === "overview" ? "Dashboard" : activeTab === "requests" ? "Bookings" : activeTab === "schedules" ? "Schedules" : activeTab === "reviews" ? "Reviews" : activeTab === "calendar" ? "Availability" : activeTab === "profile" ? "My Profile" : "Mentor's Corner"}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               {activeTab === "overview" && "What needs you today, and who you are seeing next."}
@@ -1093,7 +1094,7 @@ export default function MentorWorkspacePage() {
               {activeTab === "requests" && "Every request a student has sent you."}
               {activeTab === "calendar" && "The times students can book you."}
               {activeTab === "profile" && "How you appear in the mentor directory."}
-              {activeTab === "settings" && "Configure directory visibility and availability toggles."}
+              
             </p>
           </div>
           
@@ -1200,71 +1201,15 @@ export default function MentorWorkspacePage() {
         </div>
 
         {activeTab === "overview" && (
-          <div className="space-y-8 animate-in fade-in duration-200">
-            {/* Welcome Banner */}
-            <div className="rounded-[32px] bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-8 text-white relative overflow-hidden shadow-xl">
-              <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-indigo-500/10 blur-[80px] -mr-20 -mt-20" />
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-bold uppercase tracking-widest text-indigo-300">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
-                Coaching Operations Active
-              </span>
-              <h1 className="text-3xl md:text-4xl font-black mt-4 tracking-tight">
-                Welcome back, <span className="bg-gradient-to-r from-indigo-300 to-sky-200 bg-clip-text text-transparent">{displayName || "Mentor"}</span>!
-              </h1>
-              <p className="text-slate-300 text-sm mt-3 max-w-xl leading-relaxed">
-                Manage your UPSC candidates' copy evaluations, conduct private Agora video call triage sessions, and configure your slot schedule calendar details.
-              </p>
-            </div>
-
-            {/* Metrics Cards Grid */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "Pending Requests", value: requests.filter((r) => r.status === "requested").length },
-                { label: "Active Bookings", value: requests.filter((r) => r.status === "accepted").length },
-                { label: "Defined Slots", value: mySlots.length },
-                { label: "Experience Years", value: `${yearsExp} Years` }
-              ].map((card, idx) => (
-                <div key={idx} className="rounded-2xl border border-slate-200 p-5 bg-surface shadow-sm flex flex-col justify-between h-28 hover:shadow-md transition">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-400">{card.label}</span>
-                  <span className="text-2xl font-black text-slate-800 mt-2">{card.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Tasks Card */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4 hover:border-indigo-100 transition">
-                <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-indigo-600" />
-                  Pending Student Reviews
-                </h3>
-                <p className="text-sm text-slate-500">
-                  You have {requests.filter((r) => r.status === "requested").length} new student requests waiting for review and evaluation.
-                </p>
-                <button
-                  onClick={() => setActiveTab("requests")}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:underline"
-                >
-                  Go to Student Requests <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-4 hover:border-indigo-100 transition">
-                <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-indigo-600" />
-                  Calendar Desk
-                </h3>
-                <p className="text-sm text-slate-500">
-                  Configure availability ranges, select weekdays, exclude public holidays/festivals, and generate bulk slots.
-                </p>
-                <button
-                  onClick={() => setActiveTab("calendar")}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:underline"
-                >
-                  Open Calendar Scheduler <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+          <div className="animate-in fade-in duration-200">
+            <MentorDashboardPanel
+              mentorName={displayName}
+              onOpenAvailability={() => setActiveTab("calendar")}
+              onOpenBookings={() => setActiveTab("requests")}
+              onOpenSchedules={() => setActiveTab("schedules")}
+              requests={requests}
+              slots={mySlots}
+            />
           </div>
         )}
 
@@ -2442,9 +2387,9 @@ export default function MentorWorkspacePage() {
           </div>
         )}
 
-        {activeTab === "settings" && (
+        {activeTab === "profile" && (
           <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm max-w-xl mx-auto animate-in fade-in duration-200">
-            <h2 className="text-xl font-black text-slate-800 mb-2">Workspace Settings</h2>
+            <h2 className="text-xl font-black text-slate-800 mb-2">Visibility &amp; bookings</h2>
             <p className="text-slate-500 text-xs mb-8">
               Configure your visibility options and request acceptance preferences.
             </p>
@@ -2493,7 +2438,7 @@ export default function MentorWorkspacePage() {
                 disabled={savingSettings}
                 className="w-full rounded-2xl bg-indigo-600 py-3.5 font-bold text-white transition hover:bg-indigo-700 shadow-lg shadow-indigo-600/10 disabled:opacity-60"
               >
-                {savingSettings ? "Saving Settings..." : "Save Workspace Settings"}
+                {savingSettings ? "Saving..." : "Save these settings"}
               </button>
             </form>
           </div>

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { parse, withValidation } from "../../common/http.js";
 import { requireAuth, requireAdminOrEditor, requireRole } from "../auth/guards.js";
 import { one } from "../../db.js";
+import type { MultipartFile } from "@fastify/multipart";
+import { saveUploadedMedia } from "../media/service.js";
 import {
   saveOnboardingDraft,
   submitOnboarding,
@@ -88,6 +90,16 @@ const sessionIdParamSchema = z.object({
   sessionId: z.coerce.number().int().positive()
 });
 
+/** Reads a plain text field that travelled alongside an uploaded file. */
+function multipartFieldValue(file: MultipartFile, name: string): string | undefined {
+  const field = file.fields[name];
+  const item = Array.isArray(field) ? field[0] : field;
+  if (!item || item.type !== "field") return undefined;
+  if (typeof item.value === "string") return item.value;
+  if (item.value === null || item.value === undefined) return undefined;
+  return String(item.value);
+}
+
 export async function registerMentorshipRoutes(server: FastifyInstance): Promise<void> {
   // --- Onboarding Endpoints ---
 
@@ -148,22 +160,47 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
     });
   });
 
+  /**
+   * Mentor onboarding documents: headshot, proof of service, sample evaluation.
+   *
+   * This endpoint used to store nothing. It took a filename in a JSON body,
+   * invented a path, and returned a hardcoded URL pointing at a GitHub
+   * repository -- so every applicant's "proof of service" resolved to the same
+   * file, and the verification the entire mentor programme rests on was
+   * collecting no documents at all.
+   *
+   * It now takes a real multipart file through the same media pipeline the rest
+   * of the app uses. Unlike `/api/v1/media/upload`, which is staff-only, this is
+   * open to any signed-in user -- an applicant is not staff -- and is scoped so
+   * onboarding assets can be told apart from article media.
+   */
   server.post("/api/v1/onboarding/assets/upload", async (request, reply) => {
     const user = await requireAuth(request);
     return withValidation(reply, async () => {
-      const body = (request.body || {}) as { file_name?: string; asset_kind?: string };
-      const fileName = body.file_name || "proof.pdf";
-      const assetKind = body.asset_kind || "proof_document";
-      const mockPath = `onboarding/${user.id}_${Date.now()}_${fileName}`;
+      const file = await request.file();
+      if (!file) return reply.badRequest("Choose a file to upload.");
+
+      const assetKind = multipartFieldValue(file, "asset_kind") || "proof_document";
+
+      let asset;
+      try {
+        asset = await saveUploadedMedia(file, user.id, {
+          usage_scope: `mentor_onboarding:${assetKind}`
+        });
+      } catch (err: any) {
+        // The media pipeline rejects anything that is not an image or a PDF.
+        return reply.badRequest(err?.message || "That file type is not accepted.");
+      }
+
       return {
-        bucket: "public_assets",
-        path: mockPath,
-        file_name: fileName,
-        mime_type: "application/pdf",
-        size_bytes: 1024 * 102,
-        uploaded_at: new Date().toISOString(),
+        bucket: asset.storage_disk,
+        path: asset.storage_path,
+        file_name: asset.original_file_name,
+        mime_type: asset.mime_type,
+        size_bytes: asset.size_bytes,
+        uploaded_at: asset.created_at,
         asset_kind: assetKind,
-        url: `https://raw.githubusercontent.com/creator-alpha001/new-upsc-git/main/docs/${fileName}`
+        url: asset.file_url
       };
     });
   });

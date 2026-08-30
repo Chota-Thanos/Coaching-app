@@ -86,6 +86,7 @@ export default function ProfileApplyPage() {
   const [videoUrl, setVideoUrl] = useState("");
 
   const [uploadingKind, setUploadingKind] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isInitialized && !user) {
@@ -140,24 +141,44 @@ export default function ProfileApplyPage() {
     }
   }, [token]);
 
-  const handleMockUpload = async (kind: "headshot" | "proof" | "sample", name: string) => {
+  /**
+   * Send the file the applicant actually chose.
+   *
+   * What was here posted a hardcoded filename and no file at all, against an
+   * endpoint that stored nothing and answered with a fixed GitHub URL — so
+   * nobody applying to mentor had ever successfully attached their photo,
+   * their proof of service, or a sample evaluation, and every application
+   * reviewed by staff pointed at the same placeholder document.
+   */
+  const handleUpload = async (kind: "headshot" | "proof" | "sample", file: File) => {
     if (!token) return;
+    setUploadError(null);
     setUploadingKind(kind);
     try {
-      const result = await authenticatedPost<OnboardingAsset>(
-        "/api/v1/onboarding/assets/upload",
-        token,
-        { file_name: name, asset_kind: kind }
-      );
+      const form = new FormData();
+      form.append("asset_kind", kind);
+      form.append("file", file);
+
+      const res = await fetch(`${browserBaseUrl}/api/v1/onboarding/assets/upload`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: form
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.message || "Upload failed.");
+      }
+      const result: OnboardingAsset = await res.json();
+
       if (kind === "headshot") {
         setHeadshot(result);
       } else if (kind === "proof") {
         setProofs((prev) => [...prev, result]);
-      } else if (kind === "sample") {
+      } else {
         setSampleEvaluation(result);
       }
-    } catch (err) {
-      alert("Mock upload failed");
+    } catch (err: any) {
+      setUploadError(err?.message || "Could not upload that file. Try a JPG, PNG, WebP or PDF.");
     } finally {
       setUploadingKind(null);
     }
@@ -457,15 +478,26 @@ export default function ProfileApplyPage() {
                   <div>
                     <h3 className="text-sm font-bold text-slate-800">Professional Headshot</h3>
                     <p className="text-xs text-slate-500">Becomes your profile picture. JPG, PNG or WEBP.</p>
-                    <button
-                      type="button"
-                      disabled={uploadingKind !== null}
-                      onClick={() => void handleMockUpload("headshot", "headshot.jpg")}
-                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    <label
+                      className="mt-2.5 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 aria-disabled:opacity-60"
+                      aria-disabled={uploadingKind !== null}
                     >
                       <Upload className="h-3.5 w-3.5" />
-                      {uploadingKind === "headshot" ? "Uploading..." : "Mock Upload Photo"}
-                    </button>
+                      {uploadingKind === "headshot" ? "Uploading..." : "Choose photo"}
+                      <input
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={uploadingKind !== null}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          // Clearing the value lets the same file be re-picked after a
+                          // failed upload, which otherwise fires no change event.
+                          event.target.value = "";
+                          if (file) void handleUpload("headshot", file);
+                        }}
+                        type="file"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -547,15 +579,24 @@ export default function ProfileApplyPage() {
                     <p className="text-xs text-slate-400 italic">No files attached yet.</p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  disabled={uploadingKind !== null}
-                  onClick={() => void handleMockUpload("proof", "marksheet_upsc.pdf")}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                <label
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer aria-disabled:opacity-60"
+                  aria-disabled={uploadingKind !== null}
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  {uploadingKind === "proof" ? "Uploading..." : "Mock Upload Proof"}
-                </button>
+                  {uploadingKind === "proof" ? "Uploading..." : "Choose file"}
+                  <input
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    disabled={uploadingKind !== null}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void handleUpload("proof", file);
+                    }}
+                    type="file"
+                  />
+                </label>
               </div>
             </div>
           )}
@@ -651,15 +692,24 @@ export default function ProfileApplyPage() {
                 ) : (
                   <p className="mt-4 text-xs text-slate-400 italic">No file attached yet.</p>
                 )}
-                <button
-                  type="button"
-                  disabled={uploadingKind !== null}
-                  onClick={() => void handleMockUpload("sample", "sample_mains_evaluation.pdf")}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                <label
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer aria-disabled:opacity-60"
+                  aria-disabled={uploadingKind !== null}
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  {uploadingKind === "sample" ? "Uploading..." : "Mock Upload Sample"}
-                </button>
+                  {uploadingKind === "sample" ? "Uploading..." : "Choose file"}
+                  <input
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    disabled={uploadingKind !== null}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void handleUpload("sample", file);
+                    }}
+                    type="file"
+                  />
+                </label>
               </div>
             </div>
           )}
@@ -680,6 +730,11 @@ export default function ProfileApplyPage() {
 
           {/* Form Actions */}
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-8">
+            {uploadError && (
+              <p className="mb-3 w-full rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-700">
+                {uploadError}
+              </p>
+            )}
             <button
               type="button"
               disabled={currentStep === 0}
