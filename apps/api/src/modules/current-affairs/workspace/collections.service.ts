@@ -36,7 +36,27 @@ export async function getCollection(id: number, userId: number): Promise<unknown
               'student_article_id', sci.student_article_id,
               'display_order', sci.display_order,
               'created_at', sci.created_at,
-              'fork', case when saf.id is null then null else to_jsonb(saf) end,
+              -- Highlights travel with the fork so the folder list can paint
+              -- them on the expanded copy. Without them the same article showed
+              -- its highlights on the reader page and none in the folder.
+              'fork', case
+                when saf.id is null then null
+                else to_jsonb(saf) || jsonb_build_object(
+                  'highlights', coalesce(
+                    (
+                      select jsonb_agg(jsonb_build_object(
+                        'id', sah.id,
+                        'anchor_json', sah.anchor_json,
+                        'color', sah.color,
+                        'note', sah.note
+                      ) order by sah.id)
+                      from current_affairs.student_article_highlights sah
+                      where sah.fork_id = saf.id
+                    ),
+                    '[]'::jsonb
+                  )
+                )
+              end,
               'master_article', case
                 when ma.id is null then null
                 else to_jsonb(ma) || jsonb_build_object(

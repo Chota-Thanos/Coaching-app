@@ -15,19 +15,23 @@ type ForkTagQuickEditProps = {
   onChanged: () => Promise<void> | void;
 };
 
-const SUGGESTED_TAGS = ["Revise", "Weak topic", "Prelims fact", "Mains example", "Done"];
+/* "Revise" is the one tag the product itself depends on: the Due for revision
+   filter looks for it, so it is always offered even on a folder that defines no
+   tags of its own. Everything else comes from the folder, which is what makes
+   the tag manager authoritative -- previously a fixed list of five was appended
+   to every article, so removing a tag in the manager changed nothing here and
+   the deleted tags simply reappeared. */
+const ALWAYS_OFFERED = ["Revise"];
 
 export function ForkTagQuickEdit({ fork, availableTags, fallbackTags = [], onChanged }: ForkTagQuickEditProps) {
   const { token, refreshForks } = useAuth();
   const [selectedTags, setSelectedTags] = useState<string[]>(visibleWorkspaceTags(fork.personal_tags));
 
-  // The repository's own tag definitions come first, then the tags this
-  // learner already uses, then a small starter set. Before this, a repository
-  // with no definitions showed a sentence telling the learner to go and
-  // define some instead of any buttons at all — so the quick editor was
-  // invisible on every repository nobody had configured.
+  // The folder's own tags, plus whatever this article already carries so an
+  // existing tag can be switched off, plus Revise. Deliberately no starter set:
+  // the tag manager at the top of the folder decides what exists here.
   const cleanAvailableTags = useMemo(() => {
-    const ordered = [...availableTags, ...fallbackTags, ...selectedTags, ...SUGGESTED_TAGS];
+    const ordered = [...availableTags, ...fallbackTags, ...selectedTags, ...ALWAYS_OFFERED];
     return Array.from(new Set(ordered.map((tag) => tag.trim()).filter(Boolean))).slice(0, 12);
   }, [availableTags, fallbackTags, selectedTags]);
   const [saving, setSaving] = useState(false);

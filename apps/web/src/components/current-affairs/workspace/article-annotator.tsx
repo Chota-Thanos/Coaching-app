@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useLayoutEffect} from "react";
 import { Highlighter, MessageSquarePlus, Save, Trash2, X } from "lucide-react";
 import type { StudentHighlight, StudentNote, TextAnchor } from "../../../lib/api";
 import { ApiError, authenticatedDelete, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
@@ -50,6 +50,51 @@ type ArticleAnnotatorProps = {
   className?: string;
 };
 
+
+/**
+ * Wrap everything a range covers, one text node at a time.
+ *
+ * `Range.surroundContents` throws the moment a range partially covers an
+ * element rather than plain text — which is exactly what happens as soon as a
+ * second highlight overlaps a first, since the first is now a <mark> in the
+ * way. That threw for any overlapping or adjacent selection and the highlight
+ * silently never appeared.
+ *
+ * Splitting the range across the text nodes it actually touches has no such
+ * restriction: each piece is wrapped in its own clone of the wrapper, so
+ * overlapping highlights nest instead of colliding.
+ */
+function wrapRange(range: Range, wrapper: HTMLElement): void {
+  const root = range.commonAncestorContainer;
+  const doc = root.ownerDocument ?? document;
+  const walker = doc.createTreeWalker(
+    root.nodeType === Node.TEXT_NODE ? (root.parentNode as Node) : root,
+    NodeFilter.SHOW_TEXT
+  );
+
+  const touched: Text[] = [];
+  let node = walker.nextNode() as Text | null;
+  while (node) {
+    if (range.intersectsNode(node) && (node.textContent ?? "").length > 0) touched.push(node);
+    node = walker.nextNode() as Text | null;
+  }
+
+  for (const text of touched) {
+    // Trim each node to the part the range actually covers.
+    const startOffset = text === range.startContainer ? range.startOffset : 0;
+    const endOffset = text === range.endContainer ? range.endOffset : (text.textContent ?? "").length;
+    if (endOffset <= startOffset) continue;
+
+    let target = text;
+    if (endOffset < (target.textContent ?? "").length) target.splitText(endOffset);
+    if (startOffset > 0) target = target.splitText(startOffset);
+
+    const clone = wrapper.cloneNode(false) as HTMLElement;
+    target.parentNode?.insertBefore(clone, target);
+    clone.appendChild(target);
+  }
+}
+
 export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, className }: ArticleAnnotatorProps) {
   const { token } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,9 +109,46 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
 
   const html = toRenderableHtml(body);
 
-  useEffect(() => {
+  /* The article body is written into the container by hand rather than through
+     dangerouslySetInnerHTML.
+     React re-commits that prop on every render, and each commit replaced the
+     whole subtree -- discarding every highlight this component had painted and
+     collapsing any selection the reader was in the middle of making. Writing it
+     ourselves, only when the body actually changes, means React never touches
+     the subtree after mount: highlights stay painted and a selection survives
+     until the reader acts on it. */
+  const renderedHtmlRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    if (renderedHtmlRef.current === html) return;
+    container.innerHTML = html;
+    renderedHtmlRef.current = html;
+  }, [html]);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Repaint only when what is on screen no longer matches what should be.
+    //
+    // This effect runs after every commit so it can repair React's wiping of
+    // the subtree, but the repaint replaces text nodes -- and replacing the
+    // text nodes under a live selection destroys it. Selecting a sentence
+    // therefore deselected it instantly, before a colour could be chosen.
+    // Comparing first means the common render touches nothing at all.
+    const painted = new Set(
+      [...container.querySelectorAll("[data-annotation-id]")].map(
+        (el) => (el as HTMLElement).dataset.annotationId ?? ""
+      )
+    );
+    const wanted = new Set([
+      ...highlights.map((h) => `highlight-${h.id}`),
+      ...notes.map((n) => `note-${n.id}`)
+    ]);
+    const upToDate =
+      painted.size === wanted.size && [...wanted].every((id) => painted.has(id));
+    if (upToDate) return;
 
     container.querySelectorAll("[data-annotation-id]").forEach((el) => {
       const parent = el.parentNode;
@@ -85,9 +167,10 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
         mark.dataset.annotationId = `highlight-${highlight.id}`;
         mark.className = `${colorSwatch(highlight.color)} cursor-pointer rounded-sm px-0.5`;
         if (highlight.note) mark.title = highlight.note;
-        range.surroundContents(mark);
+        wrapRange(range, mark);
       } catch {
-        // Selection crosses an element boundary oddly (e.g. spans a link) - the list below still covers it.
+        // Nothing left to try for this one; the list below the article still
+        // shows it, so the annotation is not lost, only unpainted.
       }
     }
 
@@ -99,12 +182,21 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
         const span = document.createElement("span");
         span.dataset.annotationId = `note-${note.id}`;
         span.className = "cursor-pointer border-b-2 border-dotted border-saffron bg-saffron/10";
-        range.surroundContents(span);
+        wrapRange(range, span);
       } catch {
         // ignore
       }
     }
-  }, [html, highlights, notes]);
+    // Deliberately no dependency array.
+    //
+    // The article body is rendered through dangerouslySetInnerHTML, so React
+    // owns that subtree; whenever it re-commits it, every <mark> this effect
+    // inserted is wiped. With a dependency list the effect had already run and
+    // did not run again, so the highlights simply disappeared and stayed gone
+    // until a reload -- which is what "my highlights vanish when I select
+    // something else" was. Running after every commit repaints them straight
+    // back. It is cheap: the loop is a handful of ranges over one article.
+  });
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -275,7 +367,8 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
   return (
     <div className="relative">
       <div className="mb-2 text-xs font-semibold text-ink/45">Select any text below to highlight it or attach a note.</div>
-      <div className={className} dangerouslySetInnerHTML={{ __html: html }} ref={containerRef} />
+      {/* Intentionally not dangerouslySetInnerHTML: see renderedHtmlRef. */}
+      <div className={className} ref={containerRef} />
 
       {toolbar && (
         <div

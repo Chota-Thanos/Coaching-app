@@ -13,6 +13,7 @@ import { RenderedContent } from "../rendered-content";
 import { downloadScannedPdf } from "../../../lib/export-pdf";
 import { RepositoryAttachControl } from "./repository-attach-control";
 import { ForkTagQuickEdit } from "./fork-tag-quick-edit";
+import { HighlightedContent } from "./highlighted-content";
 
 type WorkspaceArticleRowProps = {
   fork: StudentFork;
@@ -356,10 +357,25 @@ export function WorkspaceArticleRow({
 
         {(editingCopy || bodyExpanded) && (
         <section className="mt-2 rounded-md border border-line bg-paper/25 p-3">
-          <p className="inline-flex items-center gap-2 text-sm font-black text-ink">
-            <FileText aria-hidden="true" className="h-4 w-4 text-civic" />
-            Editable article copy
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="inline-flex items-center gap-2 text-sm font-black text-ink">
+              <FileText aria-hidden="true" className="h-4 w-4 text-civic" />
+              Editable article copy
+            </p>
+            {/* Expanding the copy is where a reader decides it needs changing,
+                so the way to change it belongs here rather than only as an icon
+                up beside the title. */}
+            {!editingCopy && (
+              <button
+                className="inline-flex items-center gap-1 text-xs font-bold text-civic"
+                onClick={() => setEditingCopy(true)}
+                type="button"
+              >
+                <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
+                Edit this copy
+              </button>
+            )}
+          </div>
           {editingCopy ? (
             <div className="mt-3 grid gap-2">
               <input
@@ -391,9 +407,10 @@ export function WorkspaceArticleRow({
               </div>
             </div>
           ) : bodyExpanded ? (
-            <RenderedContent
+            <HighlightedContent
               className="mt-2 text-sm leading-6 text-ink/70"
               content={articleBody || "The article body is ready to edit after the note is saved."}
+              highlights={fork.highlights ?? []}
             />
           ) : null}
         </section>
