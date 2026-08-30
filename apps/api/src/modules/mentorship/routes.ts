@@ -45,6 +45,9 @@ import {
   deleteActionItem,
   rateSession,
   listMentorReviews,
+  cancelRequest,
+  refundMentorshipRequest,
+  reportNoShow,
   getMentorshipSettings,
   updateMentorshipSetting
 } from "./service.js";
@@ -68,6 +71,9 @@ import {
   createActionItemSchema,
   setActionItemDoneSchema,
   rateSessionSchema,
+  cancelRequestSchema,
+  refundRequestSchema,
+  reportNoShowSchema,
   promoteMentorSchema
 } from "./schemas.js";
 
@@ -648,6 +654,52 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
     return withValidation(reply, async () => {
       const params = parse(idParamSchema, request.params);
       return await listMentorReviews(params.id);
+    });
+  });
+
+
+  // --- Cancellation, refunds and no-shows ---
+
+  // Either party may cancel; the service decides what that means for the money.
+  server.post("/api/v1/mentorship/requests/:id/cancel", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(cancelRequestSchema, request.body ?? {});
+      try {
+        return await cancelRequest(params.id, user.id, user.role, body.reason ?? null);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  // Staff-only. The automatic path covers mentor cancellation; everything else
+  // -- a no-show, a session that went wrong, a duplicate charge -- is a
+  // judgement someone has to make.
+  server.post("/api/v1/admin/mentorship/requests/:id/refund", async (request, reply) => {
+    const user = await requireRole(request, ["admin", "moderator"]);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(refundRequestSchema, request.body);
+      try {
+        return await refundMentorshipRequest(params.id, body.reason);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.post("/api/v1/mentorship/sessions/:id/no-show", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(reportNoShowSchema, request.body ?? {});
+      try {
+        return await reportNoShow(params.id, user.id, body.note ?? null);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
     });
   });
 

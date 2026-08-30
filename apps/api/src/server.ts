@@ -9,6 +9,8 @@ import swaggerUi from "@fastify/swagger-ui";
 import Fastify, { type FastifyInstance } from "fastify";
 import { mkdir } from "node:fs/promises";
 import { config } from "./config.js";
+import { registerScheduler } from "./common/scheduler.js";
+import { expireStaleRequests, sendSessionReminders } from "./modules/mentorship/service.js";
 import { registerAssessmentRoutes } from "./modules/assessment/routes.js";
 import { registerMainsAssessmentRoutes } from "./modules/assessment/mains.routes.js";
 import { registerQuestionImportRoutes } from "./modules/assessment/imports.routes.js";
@@ -143,6 +145,23 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerStudyPlanRoutes(server);
   await registerCurrentAffairsRoutes(server);
   await registerMentorshipRoutes(server);
+
+  // Two things the schema and the interface both described but which had never
+  // actually happened, because nothing in this API ran on a timer.
+  registerScheduler(server, [
+    {
+      name: "mentorship:expire-requests",
+      everyMs: 30 * 60_000,
+      run: expireStaleRequests
+    },
+    {
+      name: "mentorship:session-reminders",
+      // Shorter than the two-hour reminder window, so a session booked at short
+      // notice still gets its reminder.
+      everyMs: 10 * 60_000,
+      run: sendSessionReminders
+    }
+  ]);
 
   return server;
 }

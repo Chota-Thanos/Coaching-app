@@ -231,3 +231,19 @@ export const rateSessionSchema = z.object({
 });
 
 export type RateSessionInput = z.output<typeof rateSessionSchema>;
+
+// --- Cancellation, refunds and no-shows ---
+
+export const cancelRequestSchema = z.object({
+  // Optional because a student pulling out at short notice should not be made
+  // to justify themselves before the button will work.
+  reason: z.string().trim().max(1000).nullish()
+});
+
+export const refundRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(1000)
+});
+
+export const reportNoShowSchema = z.object({
+  note: z.string().trim().max(1000).nullish()
+});

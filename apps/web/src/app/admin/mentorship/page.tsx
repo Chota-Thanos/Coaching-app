@@ -17,6 +17,13 @@ type MentorshipEngagement = {
   status: "requested" | "accepted" | "rejected" | "completed" | "cancelled" | "expired";
   scheduled_slot_id: number | null;
   payment_status: "pending" | "paid" | "refunded" | "failed";
+  refunded_at?: string | null;
+  refund_reason?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  session_no_show_reported_at?: string | null;
+  session_no_show_role?: string | null;
+  session_no_show_note?: string | null;
   payment_amount: number;
   payment_currency: string;
   meta: { student_copy?: { url: string; file_name: string } | null; evaluation?: any } | null;
@@ -108,6 +115,13 @@ export default function AdminMentorshipPage() {
   const [applications, setApplications] = useState<OnboardingApplication[]>([]);
   const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "more_info_required" | "all" | "settings" | "engagements">("pending");
   const [selectedApp, setSelectedApp] = useState<OnboardingApplication | null>(null);
+
+  // Refunding is a judgement call staff make: the automatic path only covers a
+  // mentor cancelling, so everything else -- a no-show, a session that went
+  // wrong, a duplicate charge -- comes through here.
+  const [refundReason, setRefundReason] = useState("");
+  const [refunding, setRefunding] = useState(false);
+  const [refundMessage, setRefundMessage] = useState<string | null>(null);
 
   // Live mentorship engagements (oversight tab)
   const [engagements, setEngagements] = useState<MentorshipEngagement[]>([]);
@@ -208,6 +222,26 @@ export default function AdminMentorshipPage() {
       }
     }
   }, [token, statusFilter]);
+
+  const handleRefund = async (requestId: number) => {
+    if (!token || !refundReason.trim()) return;
+    setRefunding(true);
+    setRefundMessage(null);
+    try {
+      await authenticatedPost(
+        `/api/v1/admin/mentorship/requests/${requestId}/refund`,
+        token,
+        { reason: refundReason.trim() }
+      );
+      setRefundReason("");
+      setRefundMessage("Marked refunded. Issue the actual refund in Razorpay.");
+      await fetchEngagements();
+    } catch {
+      setRefundMessage("Could not mark this refunded. Only a captured payment can be refunded.");
+    } finally {
+      setRefunding(false);
+    }
+  };
 
   const fetchEngagements = async () => {
     if (!token) return;
@@ -540,6 +574,72 @@ export default function AdminMentorshipPage() {
                       agendas: engagementAgendas
                     }}
                   />
+
+                  {/* Anything that went wrong, and the money. Kept together
+                      because staff open this panel for exactly one reason: to
+                      decide whether someone should get their fee back. */}
+                  {(selectedEngagement.session_no_show_reported_at ||
+                    selectedEngagement.cancelled_at ||
+                    selectedEngagement.payment_status === "paid" ||
+                    selectedEngagement.payment_status === "refunded") && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                      {selectedEngagement.session_no_show_reported_at && (
+                        <p className="text-xs font-bold text-amber-900">
+                          No-show reported against the {selectedEngagement.session_no_show_role || "other party"} on{" "}
+                          {new Date(selectedEngagement.session_no_show_reported_at).toLocaleDateString()}.
+                          {selectedEngagement.session_no_show_note && (
+                            <span className="block mt-1 font-medium text-amber-800">
+                              &ldquo;{selectedEngagement.session_no_show_note}&rdquo;
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      {selectedEngagement.cancelled_at && (
+                        <p className="text-xs font-bold text-slate-700">
+                          Cancelled on {new Date(selectedEngagement.cancelled_at).toLocaleDateString()}.
+                          {selectedEngagement.cancellation_reason && (
+                            <span className="block mt-1 font-medium text-slate-600">
+                              &ldquo;{selectedEngagement.cancellation_reason}&rdquo;
+                            </span>
+                          )}
+                        </p>
+                      )}
+
+                      {selectedEngagement.payment_status === "refunded" ? (
+                        <p className="text-xs font-bold text-emerald-700">
+                          Refunded{selectedEngagement.refunded_at ? ` on ${new Date(selectedEngagement.refunded_at).toLocaleDateString()}` : ""}.
+                          {selectedEngagement.refund_reason && (
+                            <span className="block mt-1 font-medium text-slate-600">
+                              &ldquo;{selectedEngagement.refund_reason}&rdquo;
+                            </span>
+                          )}
+                        </p>
+                      ) : selectedEngagement.payment_status === "paid" ? (
+                        <div className="space-y-2">
+                          <input
+                            className="w-full rounded-xl border border-slate-200 bg-surface px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-amber-400"
+                            onChange={(e) => setRefundReason(e.target.value)}
+                            placeholder="Why is this being refunded?"
+                            value={refundReason}
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                              disabled={refunding || refundReason.trim().length === 0}
+                              onClick={() => handleRefund(selectedEngagement.id)}
+                              type="button"
+                            >
+                              {refunding ? "Recording..." : "Mark refunded"}
+                            </button>
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              Record-keeping only &mdash; issue the actual refund in Razorpay.
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {refundMessage && <p className="text-xs font-bold text-slate-700">{refundMessage}</p>}
+                    </div>
+                  )}
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-slate-100 p-4 space-y-1.5 text-xs text-slate-600">

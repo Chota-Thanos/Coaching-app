@@ -98,6 +98,32 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
     }
   };
 
+  // What previous students said. This page is the last screen before a student
+  // spends a thousand rupees, and until now it showed Biography, Education,
+  // Specialties, Highlights and Credentials -- everything the mentor says about
+  // themselves, and nothing anyone else said.
+  const [reviews, setReviews] = useState<
+    { rating: number; comment: string | null; created_at: string; reviewer_first_name: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${browserBaseUrl}/api/v1/mentorship/mentors/${mentorId}/reviews`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setReviews(Array.isArray(data) ? data : []);
+      } catch {
+        // A profile that loads without its reviews is still useful; failing
+        // the whole page over them would not be.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mentorId]);
+
   useEffect(() => {
     if (mentorId) {
       void fetchMentor();
@@ -339,6 +365,47 @@ export default function MentorDetailPage({ params }: { params: Promise<{ mentorI
                     <div key={idx} className="flex items-center gap-2.5 rounded-2xl bg-slate-50 border border-slate-100 p-4 text-xs font-bold text-slate-700">
                       <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                       <span>{cred}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reviews */}
+            {reviews.length > 0 && (
+              <div className="rounded-[32px] border border-slate-200 bg-surface p-8 shadow-sm">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
+                  What students said
+                </h3>
+                <div className="space-y-4">
+                  {reviews.map((review, idx) => (
+                    <div className="border-b border-slate-100 pb-4 last:border-b-0 last:pb-0" key={idx}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <Star
+                              aria-hidden="true"
+                              className={`h-3.5 w-3.5 ${
+                                value <= review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"
+                              }`}
+                              key={value}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-black text-slate-700">
+                          {review.reviewer_first_name || "A student"}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-400">
+                          {new Date(review.created_at).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                          })}
+                        </span>
+                      </div>
+                      {review.comment && (
+                        <p className="mt-1.5 text-sm leading-6 text-slate-600">{review.comment}</p>
+                      )}
                     </div>
                   ))}
                 </div>

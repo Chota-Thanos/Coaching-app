@@ -10,6 +10,7 @@ import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
 import { ChatThread } from "../../../components/mentorship/chat-thread";
 import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
 import { SessionWrapUpEditor } from "../../../components/mentorship/session-wrap-up-editor";
+import { CancelRequestControl, ReportNoShowControl } from "../../../components/mentorship/request-controls";
 import Link from "next/link";
 
 type MentorshipMessage = {
@@ -59,6 +60,7 @@ type MentorshipRequest = {
   session_ends_at: string | null;
   session_meeting_link: string | null;
   session_status: string | null;
+  session_no_show_reported_at?: string | null;
   
   // Attempt Evaluation fields
   evaluation_status?: "pending" | "ai_evaluating" | "evaluated" | "needs_manual_review";
@@ -1537,6 +1539,27 @@ export default function MentorWorkspacePage() {
                 {/* Writing the wrap-up is the mentor's last job on a session,
                     so it sits directly under the agenda they worked from. */}
                 {selectedRequest.session_id && <SessionWrapUpEditor sessionId={selectedRequest.session_id} />}
+
+                {!["completed", "cancelled", "rejected", "expired"].includes(selectedRequest.status) && (
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-slate-200 bg-white p-4">
+                    <CancelRequestControl
+                      isBooked={Boolean(selectedRequest.scheduled_slot_id)}
+                      isPaid={selectedRequest.payment_status === "paid"}
+                      onDone={fetchRequests}
+                      requestId={selectedRequest.id}
+                      viewer="mentor"
+                    />
+                    {selectedRequest.session_id && selectedRequest.session_starts_at &&
+                      new Date(selectedRequest.session_starts_at).getTime() < Date.now() && (
+                        <ReportNoShowControl
+                          alreadyReported={Boolean(selectedRequest.session_no_show_reported_at)}
+                          onDone={fetchRequests}
+                          sessionId={selectedRequest.session_id}
+                          viewer="mentor"
+                        />
+                      )}
+                  </div>
+                )}
 
                 {/* Segmented Chat System */}
                 {selectedRequest.payment_status === "paid" ? (

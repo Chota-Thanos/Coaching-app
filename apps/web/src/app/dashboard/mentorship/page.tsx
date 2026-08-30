@@ -11,6 +11,7 @@ import { ChatThread } from "../../../components/mentorship/chat-thread";
 import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
 import { MentorshipScenarioPanel, deriveScenario } from "../../../components/mentorship/scenario-panel";
 import { SessionWrapUp } from "../../../components/mentorship/session-wrap-up";
+import { CancelRequestControl, ReportNoShowControl } from "../../../components/mentorship/request-controls";
 
 type MentorshipMessage = {
   id: number;
@@ -64,6 +65,7 @@ type MentorshipRequest = {
   session_ends_at: string | null;
   session_meeting_link: string | null;
   session_status: string | null;
+  session_no_show_reported_at?: string | null;
   
   // Attempt Evaluation fields
   evaluation_status?: "pending" | "ai_evaluating" | "evaluated" | "needs_manual_review";
@@ -644,6 +646,30 @@ export default function LearnerMentorshipPage() {
                       </>
                     }
                   />
+
+                  {/* Leaving, and saying they never arrived. Both are quiet
+                      text links rather than buttons: they are the right action
+                      rarely, and a mis-click costs a booked appointment. */}
+                  {!["completed", "cancelled", "rejected", "expired"].includes(selectedRequest.status) && (
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-4">
+                      <CancelRequestControl
+                        isBooked={Boolean(selectedRequest.scheduled_slot_id)}
+                        isPaid={selectedRequest.payment_status === "paid"}
+                        onDone={fetchRequests}
+                        requestId={selectedRequest.id}
+                        viewer="student"
+                      />
+                      {selectedRequest.session_id && selectedRequest.session_starts_at &&
+                        new Date(selectedRequest.session_starts_at).getTime() < Date.now() && (
+                          <ReportNoShowControl
+                            alreadyReported={Boolean(selectedRequest.session_no_show_reported_at)}
+                            onDone={fetchRequests}
+                            sessionId={selectedRequest.session_id}
+                            viewer="student"
+                          />
+                        )}
+                    </div>
+                  )}
                 </div>
 
                  {/* Custom copy evaluation view */}

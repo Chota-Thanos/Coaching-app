@@ -407,9 +407,11 @@ export async function createRequest(userId: number, payload: CreateMentorshipReq
 
   const request = await one<any>(
     `insert into app.mentorship_requests
-     (user_id, mentor_id, mains_answer_attempt_id, preferred_mode, note, status, payment_status, payment_amount, meta)
+     (user_id, mentor_id, mains_answer_attempt_id, preferred_mode, note, status, payment_status, payment_amount, meta, expires_at)
      values ($1, $2, $3, $4, $5, 'requested', 'pending',
-             coalesce((select session_fee from app.mentor_profiles where user_id = $2), 1000), $6)
+             coalesce((select session_fee from app.mentor_profiles where user_id = $2), 1000), $6,
+             -- A request that nobody answers stops waiting on its own.
+             now() + ($7 || ' days')::interval)
      returning *`,
     [
       userId,
@@ -417,7 +419,8 @@ export async function createRequest(userId: number, payload: CreateMentorshipReq
       payload.mains_answer_attempt_id || null,
       payload.preferred_mode,
       payload.note || "",
-      JSON.stringify(meta)
+      JSON.stringify(meta),
+      REQUEST_EXPIRY_DAYS
     ]
   );
 
@@ -521,6 +524,7 @@ export async function listRequests(userId: number, userRole: string, mode: "user
            s.ends_at as session_ends_at,
            s.meeting_link as session_meeting_link,
            s.status as session_status,
+           s.no_show_reported_at as session_no_show_reported_at,
            maa.evaluation_status,
            maa.score as evaluation_score,
            maa.max_score as evaluation_max_score,
@@ -571,6 +575,9 @@ export async function listAllRequestsForAdmin(filter: { status?: string; payment
            s.starts_at as session_starts_at,
            s.ends_at as session_ends_at,
            s.status as session_status,
+           s.no_show_reported_at as session_no_show_reported_at,
+           s.no_show_role as session_no_show_role,
+           s.no_show_note as session_no_show_note,
            maa.evaluation_status,
            maa.score as evaluation_score,
            maa.max_score as evaluation_max_score,
@@ -943,8 +950,7 @@ export async function acceptSlotAndBook(requestId: number, userId: number, slotI
         slot.mode,
         slot.starts_at,
         slot.ends_at,
-        slot.meeting_link || `https://meet.jit.si/CoachingMentorshipRoom-${requestId}`,
-        slot.starts_at
+        slot.meeting_link || `https://meet.jit.si/CoachingMentorshipRoom-${requestId}`
       ],
       client
     );
@@ -1850,4 +1856,305 @@ export async function listMentorReviews(mentorId: number, limit = 20) {
      limit $2`,
     [mentorId, limit]
   );
+}
+
+// --- Cancellation, refunds, expiry, reminders and no-shows ---
+//
+// The module could take a booking but never unwind one. Everything below is
+// the other direction: giving back a slot, giving back money, and letting a
+// request that nobody answered stop pretending it is still live.
+
+/** How long an unanswered request waits before it gives up. */
+export const REQUEST_EXPIRY_DAYS = 7;
+
+/** How long before a session starts we remind both sides. */
+const REMINDER_LEAD_MINUTES = 120;
+
+/**
+ * Put a booked slot back on the mentor's calendar.
+ *
+ * `booked_count` only ever incremented before this existed, which was
+ * consistent only because nothing could cancel. The guard against going below
+ * zero matters: a slot could otherwise be released twice by a cancel racing a
+ * no-show report, and a negative count would make the slot look bookable
+ * forever.
+ */
+async function releaseSlot(slotId: number | null, client: DbClient): Promise<void> {
+  if (!slotId) return;
+  await client.query(
+    `update app.mentorship_slots
+     set booked_count = greatest(booked_count - 1, 0), updated_at = now()
+     where id = $1`,
+    [slotId]
+  );
+}
+
+/**
+ * Mark the money refunded, on the request and in the billing ledger.
+ *
+ * This is record-keeping: it does not call Razorpay. Refunds are issued from
+ * the Razorpay dashboard, and this records that the decision was made so the
+ * student sees it and the ledger reconciles. Deliberately mirrors how
+ * `markPaymentRefunded` already works for every other product.
+ */
+async function recordMentorshipRefund(
+  requestId: number,
+  reason: string,
+  client: DbClient
+): Promise<void> {
+  await client.query(
+    `update app.mentorship_requests
+     set payment_status = 'refunded', refunded_at = now(), refund_reason = $2, updated_at = now()
+     where id = $1 and payment_status = 'paid'`,
+    [requestId, reason]
+  );
+  await client.query(
+    `update billing.payments
+     set status = 'refunded',
+         meta = meta || jsonb_build_object('refunded_at', now(), 'refund_reason', $2::text),
+         updated_at = now()
+     where product_type = 'mentorship' and product_id = $1 and status = 'paid'`,
+    [requestId, reason]
+  );
+}
+
+/**
+ * Either side calls off a request or a booked session.
+ *
+ * One function rather than two, because the unwinding is identical whoever
+ * asked: release the slot, close the session, tell the other person. What
+ * differs is the money. A mentor who cancels refunds the student in full; a
+ * student who cancels does not get an automatic refund, because the mentor has
+ * already held the time. Staff can still refund by hand from the ledger.
+ */
+export async function cancelRequest(
+  requestId: number,
+  actorId: number,
+  actorRole: string,
+  reason: string | null
+) {
+  return transaction(async (client) => {
+    const request = await one<any>(
+      `select * from app.mentorship_requests where id = $1 for update`,
+      [requestId],
+      client
+    );
+    if (!request) throw new Error("Request not found.");
+
+    const isStudent = Number(request.user_id) === actorId;
+    const isMentor = Number(request.mentor_id) === actorId;
+    const isStaff = ["admin", "moderator"].includes(actorRole);
+    if (!isStudent && !isMentor && !isStaff) {
+      throw new Error("You cannot cancel this request.");
+    }
+    if (["completed", "cancelled", "rejected", "expired"].includes(request.status)) {
+      throw new Error("This request is already closed.");
+    }
+
+    await releaseSlot(request.scheduled_slot_id, client);
+
+    await client.query(
+      `update app.mentorship_sessions
+       set status = 'cancelled', cancelled_at = now(), cancelled_by_user_id = $2,
+           cancellation_reason = $3, updated_at = now()
+       where request_id = $1 and status = 'scheduled'`,
+      [requestId, actorId, reason]
+    );
+
+    // The mentor pulling out is the one case where the student is made whole
+    // without having to ask. Staff cancelling on the mentor's behalf counts the
+    // same way -- from the student's side nothing distinguishes them.
+    const refundDue = request.payment_status === "paid" && !isStudent;
+    if (refundDue) {
+      await recordMentorshipRefund(requestId, reason || "Mentor cancelled the session", client);
+    }
+
+    const updated = await one<any>(
+      `update app.mentorship_requests
+       set status = 'cancelled', cancelled_at = now(), cancelled_by_user_id = $2,
+           cancellation_reason = $3, scheduled_slot_id = null, updated_at = now()
+       where id = $1
+       returning *`,
+      [requestId, actorId, reason],
+      client
+    );
+
+    const notifyUserId = isStudent ? Number(request.mentor_id) : Number(request.user_id);
+    const who = isStudent ? "The student" : "Your mentor";
+    await createNotification(
+      notifyUserId,
+      "request_updated",
+      "Mentorship session cancelled",
+      refundDue
+        ? `${who} cancelled the session. Your payment is being refunded.`
+        : `${who} cancelled the session.`,
+      isStudent ? "/mentor/workspace" : "/dashboard/mentorship",
+      client
+    );
+
+    return { request: updated, refunded: refundDue };
+  });
+}
+
+/**
+ * Staff refund a mentorship payment by hand.
+ *
+ * Needed because the automatic case above only covers mentor cancellation. A
+ * session that went badly, a no-show the student reported, a duplicate charge --
+ * all of those are judgement calls someone has to make.
+ */
+export async function refundMentorshipRequest(requestId: number, reason: string) {
+  return transaction(async (client) => {
+    const request = await one<any>(
+      `select * from app.mentorship_requests where id = $1`,
+      [requestId],
+      client
+    );
+    if (!request) throw new Error("Request not found.");
+    if (request.payment_status !== "paid") throw new Error("This request has no captured payment to refund.");
+
+    await recordMentorshipRefund(requestId, reason, client);
+
+    await createNotification(
+      Number(request.user_id),
+      "request_updated",
+      "Mentorship payment refunded",
+      `Your payment for this mentorship session has been refunded. ${reason}`,
+      "/dashboard/mentorship",
+      client
+    );
+
+    return one(`select * from app.mentorship_requests where id = $1`, [requestId], client);
+  });
+}
+
+/**
+ * One side says the other did not turn up.
+ *
+ * Recorded, not adjudicated. Whoever reports it, the accusation is against the
+ * other party -- there is no way to report yourself -- and staff decide what
+ * follows from the admin screen. A student reporting the mentor is the case
+ * that usually ends in a refund, which is why it notifies staff rather than
+ * quietly filing itself.
+ */
+export async function reportNoShow(sessionId: number, reporterId: number, note: string | null) {
+  return transaction(async (client) => {
+    const session = await one<any>(
+      `select * from app.mentorship_sessions where id = $1`,
+      [sessionId],
+      client
+    );
+    if (!session) throw new Error("Session not found.");
+
+    const isStudent = Number(session.user_id) === reporterId;
+    const isMentor = Number(session.mentor_id) === reporterId;
+    if (!isStudent && !isMentor) throw new Error("You were not part of this session.");
+    if (new Date(session.starts_at).getTime() > Date.now()) {
+      throw new Error("This session has not started yet.");
+    }
+
+    const missingRole = isStudent ? "mentor" : "student";
+
+    const updated = await one<any>(
+      `update app.mentorship_sessions
+       set no_show_reported_at = now(), no_show_reported_by_user_id = $2,
+           no_show_role = $3, no_show_note = $4, updated_at = now()
+       where id = $1
+       returning *`,
+      [sessionId, reporterId, missingRole, note],
+      client
+    );
+
+    await createNotification(
+      isStudent ? Number(session.mentor_id) : Number(session.user_id),
+      "request_updated",
+      "A no-show was reported",
+      `The other participant reported that you did not join the session on ${new Date(session.starts_at).toDateString()}.`,
+      isStudent ? "/mentor/workspace" : "/dashboard/mentorship",
+      client
+    );
+
+    return updated;
+  });
+}
+
+/**
+ * Close requests no mentor ever answered.
+ *
+ * Run on a timer. Without this a request sits at "waiting on your mentor"
+ * indefinitely -- the `expired` status existed in the schema and in the
+ * interface from the start, but nothing ever produced it, so no student had
+ * ever seen it.
+ */
+export async function expireStaleRequests(): Promise<number> {
+  const rows = await query<any>(
+    `update app.mentorship_requests
+     set status = 'expired', updated_at = now()
+     where status = 'requested'
+       and expires_at is not null
+       and expires_at < now()
+     returning id, user_id, mentor_id`
+  );
+
+  for (const row of rows) {
+    await createNotification(
+      Number(row.user_id),
+      "request_updated",
+      "Mentorship request expired",
+      "Your mentor did not respond in time, so the request was closed. Nothing was charged.",
+      "/mentors"
+    );
+  }
+
+  return rows.length;
+}
+
+/**
+ * Remind both sides a couple of hours before a session.
+ *
+ * `reminder_sent_at` is the idempotency guard -- the sweep runs on a short
+ * timer and must not send twice. Stamped in the same statement that selects the
+ * rows, so two workers cannot both claim the same session.
+ */
+export async function sendSessionReminders(): Promise<number> {
+  const rows = await query<any>(
+    `update app.mentorship_sessions
+     set reminder_sent_at = now()
+     where id in (
+       select id from app.mentorship_sessions
+       where status = 'scheduled'
+         and reminder_sent_at is null
+         and starts_at > now()
+         and starts_at < now() + ($1 || ' minutes')::interval
+       for update skip locked
+     )
+     returning id, user_id, mentor_id, starts_at, request_id`,
+    [REMINDER_LEAD_MINUTES]
+  );
+
+  for (const row of rows) {
+    const whenText = new Date(row.starts_at).toLocaleString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+    await createNotification(
+      Number(row.user_id),
+      "session_reminder",
+      "Your mentorship session is soon",
+      `Your session starts ${whenText}. The join button is on your mentorship desk.`,
+      "/dashboard/mentorship"
+    );
+    await createNotification(
+      Number(row.mentor_id),
+      "session_reminder",
+      "You have a session soon",
+      `Your session with a student starts ${whenText}.`,
+      "/mentor/workspace"
+    );
+  }
+
+  return rows.length;
 }
