@@ -10,9 +10,12 @@ import { SignInPanel } from "../auth/sign-in-panel";
 import { WayToIASLogo } from "./logo";
 import { TopBar } from "./top-bar";
 import { SidebarNav } from "./sidebar-nav";
+import { isMentorArea } from "./mentor-corner-button";
+import { usePathname } from "next/navigation";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, isInitialized } = useAuth();
+  const pathname = usePathname() || "/";
 
   if (!isInitialized || !user) {
     return (
@@ -38,6 +41,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </>
     );
+  }
+
+  // The Mentor's Corner supplies its own complete chrome -- brand, profile,
+  // navigation, sign-out. Wrapping it in the student shell as well put two
+  // navigations on screen at once, the outer one full of Study Plans and
+  // Current Affairs links that have nothing to do with mentoring, and on a
+  // phone cost the desk a third of its width. Mentors get their own surface.
+  if (isMentorArea(pathname)) {
+    return <>{children}</>;
   }
 
   return (

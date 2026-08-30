@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
+import { MentorCornerButton } from "./mentor-corner-button";
 import {
   PRIMARY_ITEMS,
   NAV_GROUPS,
@@ -84,6 +85,10 @@ export function SidebarNav({ className = "" }: { className?: string }) {
       aria-label="Sidebar navigation"
     >
       <div className="flex flex-col gap-5 p-3.5">
+        {/* Pinned above everything else, and on the phone drawer too: for a
+            mentor this is the destination, not one entry among thirty. */}
+        <MentorCornerButton />
+
         <div className="space-y-0.5">
           {PRIMARY_ITEMS.map((item) => (
             <NavRow key={item.href} item={item} active={isNavItemActive(pathname, item.href, item.exact, search)} />

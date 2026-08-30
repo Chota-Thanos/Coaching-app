@@ -4,6 +4,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { SidebarDrawer } from "./sidebar-drawer";
 import { SubscriptionStatusLink } from "../billing/subscription-status-link";
+import { MentorCornerButton } from "./mentor-corner-button";
 import { UserCircle } from "lucide-react";
 
 export function TopBar() {
@@ -21,6 +22,8 @@ export function TopBar() {
         </div>
 
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+          {/* Renders only for mentors, and never inside the corner itself. */}
+          <MentorCornerButton compact />
           <SubscriptionStatusLink compact />
           {/* `/profile` has no page -- only `/profile/apply` exists -- so this
               button had always 404'd. The account screen is `/account`.

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, authenticatedGet, authenticatedPost, authenticatedPut, authenticatedPatch, authenticatedDelete } from "../../../components/auth/auth-context";
 import { browserBaseUrl } from "../../../lib/api";
-import { Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Upload, Plus, Trash2, ArrowRight, Sparkles, LayoutDashboard, Settings, User, ClipboardList, LogOut, Globe, Bell } from "lucide-react";
+import { Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Upload, Plus, Trash2, ArrowRight, Sparkles, LayoutDashboard, Settings, User, ClipboardList, LogOut, Globe, Bell, ArrowLeft} from "lucide-react";
 import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifecycle-tracker";
 import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
 import { ChatThread } from "../../../components/mentorship/chat-thread";
@@ -943,6 +943,16 @@ export default function MentorWorkspacePage() {
 
         {/* Sidebar Footer */}
         <div className="p-6 border-t border-slate-100 space-y-4">
+          {/* The corner has no app header of its own, so without this a mentor
+              has no route back to the rest of Way To IAS except the browser's
+              back button. */}
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-600"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Way To IAS
+          </Link>
           <Link
             href="/mentors"
             target="_blank"
@@ -985,6 +995,13 @@ export default function MentorWorkspacePage() {
               <p className="truncate text-sm font-black leading-tight text-slate-800">{displayName}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest leading-none text-indigo-500">Mentor Desk</p>
             </div>
+            <Link
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500"
+              href="/"
+              title="Back to Way To IAS"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
             <Link
               className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500"
               href="/mentors"
