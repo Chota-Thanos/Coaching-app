@@ -5,8 +5,9 @@ import { ImagePlus, Plus, Trash2, Link2, ExternalLink, Sparkles, Search, CheckCi
 import { useState, useEffect, useMemo } from "react";
 import type { FormEvent } from "react";
 import type { AdminArticleDetail, AdminArticleSummary, CategoryNode, CreateArticleAssetPayload } from "../../../lib/api";
+import { resolveMediaUrl } from "../../../lib/api";
 import { articleHref } from "../../../lib/current-affairs";
-import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { authenticatedDelete, authenticatedGet, authenticatedPatch, authenticatedPost, authenticatedUpload, useAuth } from "../../auth/auth-context";
 import { SplitScreenTransferModal } from "./split-screen-transfer-modal";
 
 type AdminArticleDetailPanelProps = {
@@ -21,12 +22,16 @@ type AssetState = {
   fileUrl: string;
   altText: string;
   fileName: string;
+  mimeType: string;
+  sizeBytes: number | null;
 };
 
 const emptyAsset: AssetState = {
   fileUrl: "",
   altText: "",
-  fileName: ""
+  fileName: "",
+  mimeType: "",
+  sizeBytes: null
 };
 
 export function AdminArticleDetailPanel({
@@ -39,6 +44,7 @@ export function AdminArticleDetailPanel({
   const { token } = useAuth();
   const [asset, setAsset] = useState<AssetState>(emptyAsset);
   const [pending, setPending] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Relations & backlink state variables
@@ -131,6 +137,37 @@ export function AdminArticleDetailPanel({
     );
   }
 
+  async function handleFileUpload(file: File | null): Promise<void> {
+    if (!file || !token) return;
+
+    setUploadingImage(true);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("usage_scope", "current_affairs_article");
+      formData.append("alt_text", asset.altText || file.name.replace(/\.[^/.]+$/, ""));
+      formData.append("file", file);
+
+      const uploaded = await authenticatedUpload<{ file_url: string; mime_type: string; size_bytes: number }>(
+        "/api/v1/media/upload",
+        token,
+        formData
+      );
+      setAsset((prev) => ({
+        ...prev,
+        fileUrl: uploaded.file_url,
+        fileName: file.name,
+        mimeType: uploaded.mime_type,
+        sizeBytes: uploaded.size_bytes,
+        altText: prev.altText || file.name.replace(/\.[^/.]+$/, "")
+      }));
+    } catch (err: any) {
+      setMessage(err?.message || "Failed to upload image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   async function createAsset(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (!token || !article || !asset.fileUrl.trim()) return;
@@ -139,7 +176,7 @@ export function AdminArticleDetailPanel({
       asset_type: "image",
       file_name: asset.fileName || asset.altText || "article_image",
       file_url: asset.fileUrl.trim(),
-      mime_type: "image/jpeg",
+      mime_type: asset.mimeType || "image/jpeg",
       alt_text: asset.altText.trim() || undefined
     };
 
@@ -221,43 +258,35 @@ export function AdminArticleDetailPanel({
         {/* Compact inline image upload / link form */}
         <form className="grid gap-2.5 sm:grid-cols-12 items-end rounded-xl border border-line bg-surface p-3 shadow-2xs" onSubmit={createAsset}>
           <div className="sm:col-span-6 grid gap-1">
-            <label className="text-xs font-bold text-ink">Image File URL or Browse Local File</label>
+            <label className="text-xs font-bold text-ink">Image File URL or Upload a Local File</label>
             <div className="flex items-center gap-2">
               <input
                 className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 text-xs font-normal text-ink outline-none focus:border-civic"
-                onChange={(e) => setAsset((prev) => ({ ...prev, fileUrl: e.target.value }))}
-                placeholder="Paste image URL (https://...) or upload file"
+                onChange={(e) => setAsset((prev) => ({ ...prev, fileUrl: e.target.value, mimeType: "", sizeBytes: null }))}
+                placeholder="Paste image URL (https://...) or upload a file"
                 required
-                type="url"
+                type="text"
                 value={asset.fileUrl}
               />
-              <label className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-xs font-bold text-ink hover:bg-line cursor-pointer">
+              <label className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-xs font-bold text-ink hover:bg-line cursor-pointer disabled:opacity-60">
                 <ImagePlus className="h-3.5 w-3.5 text-civic" />
-                <span>Upload</span>
+                <span>{uploadingImage ? "Uploading..." : "Upload"}</span>
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
+                  disabled={uploadingImage}
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                      const res = evt.target?.result as string;
-                      if (res) {
-                        setAsset((prev) => ({
-                          ...prev,
-                          fileUrl: res,
-                          fileName: file.name,
-                          altText: prev.altText || file.name.replace(/\.[^/.]+$/, "")
-                        }));
-                      }
-                    };
-                    reader.readAsDataURL(file);
+                    const file = e.target.files?.[0] ?? null;
+                    void handleFileUpload(file);
+                    e.target.value = "";
                   }}
                 />
               </label>
             </div>
+            {asset.fileUrl && asset.mimeType && (
+              <p className="text-[11px] text-emerald-700 font-semibold">Uploaded — ready to add below.</p>
+            )}
           </div>
 
           <div className="sm:col-span-4 grid gap-1">
@@ -274,7 +303,7 @@ export function AdminArticleDetailPanel({
           <div className="sm:col-span-2">
             <button
               className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-civic px-3 text-xs font-bold text-white shadow-xs hover:bg-civic/90 transition-all disabled:opacity-60"
-              disabled={pending || !asset.fileUrl}
+              disabled={pending || uploadingImage || !asset.fileUrl}
               type="submit"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -289,7 +318,7 @@ export function AdminArticleDetailPanel({
             {article.assets.map((item) => (
               <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-2.5 shadow-2xs">
                 <img
-                  src={item.file_url}
+                  src={resolveMediaUrl(item.file_url) || item.file_url}
                   alt={item.alt_text || item.file_name}
                   className="h-12 w-16 rounded-lg object-cover border border-line bg-paper/40 shrink-0"
                 />

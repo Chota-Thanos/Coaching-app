@@ -10,6 +10,7 @@ import { authenticatedGet, useAuth } from "../../auth/auth-context";
 import { ArticleAnnotator } from "./article-annotator";
 import { SourceArticleConnections } from "./source-article-connections";
 import { WorkspaceSignIn } from "./workspace-sign-in";
+import { BackLink } from "../../app/back-link";
 
 type ForkReaderProps = {
   forkId: string;
@@ -82,10 +83,10 @@ export function ForkReader({ forkId }: ForkReaderProps) {
 
   return (
     <main className="mx-auto max-w-4xl space-y-5 px-4 pb-16 pt-5">
-      <Link className="inline-flex items-center gap-2 text-sm font-bold text-civic" href="/current-affairs/workspace">
+      <BackLink className="inline-flex items-center gap-2 text-sm font-bold text-civic" fallbackHref="/current-affairs/workspace">
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         Notes Space
-      </Link>
+      </BackLink>
 
       {error && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{error}</p>}
       {loading && !fork && <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading article...</p>}

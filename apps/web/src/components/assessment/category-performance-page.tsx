@@ -10,6 +10,7 @@ import { StartTestPill } from "./start-test-pill";
 import { useSubscription } from "../../lib/use-subscription";
 import { tierAwareQuestionCount } from "../../lib/subscription-plans";
 import type { StartTestCategory } from "../../lib/use-start-test";
+import { BackLink } from "../app/back-link";
 
 /**
  * This page never sees the full taxonomy tree (unlike the dashboard's
@@ -210,13 +211,13 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
   return (
     <main className="min-h-screen bg-slate-50 pb-16">
       <div className="mx-auto max-w-7xl space-y-6 px-4 pt-5">
-        <Link
-          href={`/assessment/dashboard?tab=${backTab}`}
+        <BackLink
+          fallbackHref={`/assessment/dashboard?tab=${backTab}`}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Performance Dashboard
-        </Link>
+        </BackLink>
 
         {message && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">

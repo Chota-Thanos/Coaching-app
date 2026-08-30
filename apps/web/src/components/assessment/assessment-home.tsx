@@ -32,6 +32,7 @@ import { useSubscription } from "../../lib/use-subscription";
 import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
 import { UserQuestionForm } from "./user-question-form";
 import { GuidedTourController, type TourStep } from "../app/guided-tour-engine";
+import { InlineSignInPrompt } from "./sign-in-required-notice";
 
 type ActiveTab = "gk" | "aptitude" | "mains" | "bookmarks";
 type QuestionFamily = "objective" | "mains_subjective";
@@ -268,6 +269,7 @@ export function AssessmentHomePage({
   const [promptNode, setPromptNode] = useState<TreeNodeType | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const [activeFormNode, setActiveFormNode] = useState<TreeNodeType | null>(null);
   // "Add your questions" — one entry point that offers Write manually / Parse
   // with AI, matching the mobile app's single-button + choice-sheet pattern
@@ -957,7 +959,7 @@ export function AssessmentHomePage({
 
   const handleStartTest = async (node: TreeNodeType) => {
     if (!token) {
-      setError("Please sign in to take practice assessments.");
+      setNeedsSignIn(true);
       return;
     }
     if (!examId) {
@@ -1196,7 +1198,7 @@ export function AssessmentHomePage({
 
   const handleSaveCartAsNewTest = async (title: string) => {
     if (!token) {
-      setError("Please sign in to save custom tests.");
+      setNeedsSignIn(true);
       return;
     }
     if (!title.trim()) return;
@@ -1403,6 +1405,11 @@ export function AssessmentHomePage({
           </section>
         )}
 
+      {needsSignIn && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          <InlineSignInPrompt message="Practice tests and saved tests need an account." />
+        </div>
+      )}
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
           <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-rose-500" />

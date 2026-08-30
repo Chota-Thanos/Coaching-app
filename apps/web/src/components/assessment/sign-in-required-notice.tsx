@@ -83,3 +83,31 @@ export function SignInRequiredNotice({
     </div>
   );
 }
+
+/**
+ * The login route that returns here afterwards.
+ *
+ * Any prompt that names signing in as the fix should link somewhere, and it
+ * should come back to the screen the reader was on. Exported separately so
+ * inline messages -- a one-line error under a button, say -- can offer the
+ * action without adopting the whole notice's layout.
+ */
+export function useLoginHref(): string {
+  const pathname = usePathname() || "/";
+  const search = useSearchParams()?.toString();
+  const next = encodeURIComponent(search ? `${pathname}?${search}` : pathname);
+  return `/login?next=${next}`;
+}
+
+/** A short message with a sign-in link beside it, for inline error slots. */
+export function InlineSignInPrompt({ message, className = "" }: { message: string; className?: string }) {
+  const loginHref = useLoginHref();
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-1.5 ${className}`}>
+      <span>{message}</span>
+      <Link className="font-black underline underline-offset-2" href={loginHref}>
+        Sign in
+      </Link>
+    </span>
+  );
+}

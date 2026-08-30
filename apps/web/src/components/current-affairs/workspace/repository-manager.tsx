@@ -9,6 +9,7 @@ import type { FormEvent } from "react";
 import type { StudentCollection } from "../../../lib/api";
 import { splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
 import { authenticatedPost, useAuth } from "../../auth/auth-context";
+import { InlineSignInPrompt } from "../../../components/assessment/sign-in-required-notice";
 
 type RepositoryManagerProps = {
   collections: StudentCollection[];
@@ -22,6 +23,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
   const [customTags, setCustomTags] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const [capError, setCapError] = useState<ApiError | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeFilterTags, setActiveFilterTags] = useState<string[]>([]);
@@ -49,7 +51,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
     setCapError(null);
     try {
       if (!token) {
-        setMessage("Sign in to create a repository — your notes are saved to your account, not just this browser.");
+        setNeedsSignIn(true);
         return;
       }
 
@@ -135,6 +137,11 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
             {pending ? "Creating..." : "Create repository"}
           </button>
         </form>
+      )}
+      {needsSignIn && (
+        <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">
+          <InlineSignInPrompt message="Repositories are saved to your account, not this browser." />
+        </p>
       )}
       {message && <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">{message}</p>}
       {capError && <CapReachedNotice error={capError} module="current_affairs" />}

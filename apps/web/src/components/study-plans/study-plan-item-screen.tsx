@@ -12,6 +12,7 @@ import {
   type StudyPlanItem,
   type StudyPlanItemResource
 } from "../../lib/study-plans";
+import { InlineSignInPrompt } from "../assessment/sign-in-required-notice";
 
 /**
  * One day of a plan, opened.
@@ -444,7 +445,7 @@ export function StudyPlanItemScreen({
 
             {!token && (
               <p style={{ margin: 0, fontSize: 12, color: "var(--sp-ink-faint)" }}>
-                Sign in to record your progress on this day.
+                <InlineSignInPrompt message="Sign in to record your progress on this day." />
               </p>
             )}
           </div>

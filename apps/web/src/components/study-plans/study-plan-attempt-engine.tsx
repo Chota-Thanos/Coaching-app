@@ -12,6 +12,7 @@ import {
 } from "../../lib/study-plans";
 import { SignInPanel } from "../auth/sign-in-panel";
 import { authenticatedGet, authenticatedPost, authenticatedPut, useAuth } from "../auth/auth-context";
+import { BackLink } from "../app/back-link";
 
 type StudyPlanAttemptEngineProps = {
   attemptId: string;
@@ -273,10 +274,10 @@ export function StudyPlanAttemptEngine({ attemptId }: StudyPlanAttemptEngineProp
     <div className="min-h-screen bg-slate-50 pb-16">
       <main className="mx-auto max-w-7xl px-4 pt-6 space-y-6">
         {/* Back link */}
-        <Link className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700" href="/study-plans">
+        <BackLink className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700" fallbackHref="/study-plans">
           <ArrowLeft className="h-4 w-4" />
           Study plans
-        </Link>
+        </BackLink>
 
       {/* ── Status Bar ── */}
       <section className="sticky top-16 z-20 rounded-2xl border border-line bg-surface/95 backdrop-blur-md p-4 shadow-sm">

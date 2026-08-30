@@ -82,9 +82,16 @@ function CustomTestsListInner() {
   };
 
   useEffect(() => {
-    if (isInitialized && token) {
+    if (!isInitialized) return;
+    if (token) {
       fetchCustomTests();
+      return;
     }
+    // Signed out there is nothing to fetch -- but `loading` starts true and
+    // only the fetch cleared it, so this screen sat on its spinner forever for
+    // every signed-out visitor. Nothing below rendered, including the notice
+    // explaining why the list would be empty.
+    setLoading(false);
   }, [token, isInitialized, contentParam]);
 
   const handleStartAttempt = async (testId: number) => {
@@ -174,6 +181,12 @@ function CustomTestsListInner() {
         </div>
       </div>
 
+      {/* Saved tests belong to an account; signed out this list is always
+          empty and never said why. */}
+      <div className="mx-auto max-w-7xl px-4 pt-4">
+        <SignInRequiredNotice benefit="tests you build are not saved to an account" />
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 mt-8">
         {error && (
           <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-semibold text-rose-700">
@@ -234,17 +247,6 @@ function CustomTestsListInner() {
                         })}
                       </span>
                     </div>
-
-                    {/* Saved tests belong to an account; signed out this list is always
-
-                        empty and never says why. */}
-
-                    <div className="mx-auto max-w-7xl px-4 pt-4">
-
-                      <SignInRequiredNotice benefit="tests you build are not saved to an account" />
-
-                    </div>
-
 
                     {/* Test Title */}
                     <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition leading-snug text-sm sm:text-base">

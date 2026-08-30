@@ -9,6 +9,7 @@ import { SignInPanel } from "../auth/sign-in-panel";
 import { TopicHeatmap } from "../assessment/topic-heatmap";
 import { TimeChart } from "../assessment/time-chart";
 import { ErrorTagger } from "../assessment/error-tagger";
+import { BackLink } from "../app/back-link";
 
 type Tab = "summary" | "questions" | "topics" | "time";
 type QuestionFilter = "all" | "correct" | "incorrect" | "unattempted";
@@ -356,10 +357,10 @@ export function StudyPlanResultReview({ resultId }: { resultId: string }) {
     <div className="min-h-screen bg-slate-50 pb-16">
       <main className="mx-auto max-w-7xl space-y-5 px-4 pt-5">
         {/* Back button */}
-        <Link className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700" href="/study-plans">
+        <BackLink className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700" fallbackHref="/study-plans">
           <ArrowLeft className="h-4 w-4" />
           Back to Study Plans
-        </Link>
+        </BackLink>
 
       {/* Header */}
       <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface px-5 py-4 shadow-card sm:flex-row sm:items-center sm:justify-between">

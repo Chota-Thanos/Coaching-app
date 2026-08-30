@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ContentKind } from "../../lib/current-affairs";
 import type { StudentFork } from "../../lib/api";
 import { authenticatedPost, useAuth } from "../auth/auth-context";
+import { InlineSignInPrompt } from "../../components/assessment/sign-in-required-notice";
 
 type ForkArticleButtonProps = {
   articleId: number;
@@ -17,11 +18,14 @@ export function ForkArticleButton({ articleId, contentKind }: ForkArticleButtonP
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const isSaved = saved || Boolean(existingFork);
 
   async function saveArticle(): Promise<void> {
     if (!token) {
-      setMessage("Sign in to save.");
+      // Was a bare sentence with no route; saving genuinely needs an
+      // account, so the message carries the way to get one.
+      setNeedsSignIn(true);
       return;
     }
     if (isSaved) return;
@@ -54,6 +58,11 @@ export function ForkArticleButton({ articleId, contentKind }: ForkArticleButtonP
         {isSaved ? <BookmarkCheck aria-hidden="true" className="h-4 w-4" /> : <BookmarkPlus aria-hidden="true" className="h-4 w-4" />}
         {isSaved ? "Saved" : pending ? "Saving..." : "Save"}
       </button>
+      {needsSignIn && (
+        <p className="mt-2 text-xs font-semibold text-civic">
+          <InlineSignInPrompt message="Sign in to save this article." />
+        </p>
+      )}
       {message && <p className="mt-2 text-xs font-semibold text-civic">{message}</p>}
     </div>
   );
