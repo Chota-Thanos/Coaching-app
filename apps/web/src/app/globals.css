@@ -43,7 +43,7 @@
   /* The reading face for article and note bodies — deliberately separate from
      the UI sans so long-form text can be changed without touching the chrome.
      Swap this one line to move every article to a different face. */
-  --article-font: "Source Serif 4", Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --article-font: Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 :root.dark, html.dark {
@@ -246,12 +246,14 @@ img {
 }
 
 /* Article body premium rich text styling */
-/* Article and note bodies read in the serif; the surrounding app chrome stays
-   on the UI sans. Applied to the editor too, so the Visual Editor shows the
-   same face the reader will see rather than only matching in Preview. */
+/* Article and note bodies read in Roboto at 400, kept separate from the UI
+   font so long-form text can be changed without touching the chrome. Applied
+   to the editor too, so the Visual Editor shows the face the reader will see
+   rather than matching only in Preview. */
 .article-body,
 .tiptap-prosemirror {
   font-family: var(--article-font);
+  font-weight: 400;
 }
 
 .article-body p {
@@ -262,8 +264,8 @@ img {
      a phone, up to 1.0625rem on a wide screen. The previous flat 1.125rem was
      noticeably oversized on a 360px-wide device. */
   font-size: clamp(1rem, 0.965rem + 0.18vw, 1.0625rem);
-  /* Old-style figures sit better in running serif text than lining ones. */
-  font-variant-numeric: oldstyle-nums proportional-nums;
+  /* Roboto has no old-style figures; lining ones are what it is drawn with. */
+  font-variant-numeric: normal;
   letter-spacing: 0.001em;
 }
 
