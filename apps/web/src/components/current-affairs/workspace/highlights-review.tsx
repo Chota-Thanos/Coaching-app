@@ -68,14 +68,22 @@ export function HighlightsReview() {
   const [error, setError] = useState<string | null>(null);
 
   /* Opened from inside a folder, this arrives as ?collection_id= so the view
-     starts scoped to that folder rather than to everything the learner has
-     ever highlighted. */
-  const [collectionId, setCollectionId] = useState<number | null>(() => {
-    if (typeof window === "undefined") return null;
+     starts scoped to that folder rather than to everything the learner has ever
+     highlighted.
+     Read after mount rather than in the initial state: reading it during render
+     gave the server (no URL) and the client (a URL) different first renders,
+     which React reports as a hydration mismatch and, in its words, "won't be
+     patched up" -- the filter chip kept the server's markup while the state
+     said otherwise. `useSearchParams` would be the tidier route but needs a
+     Suspense boundary this page does not have, and adding one has broken the
+     production build on two other pages in this app. */
+  const [collectionId, setCollectionId] = useState<number | null>(null);
+
+  useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("collection_id");
     const parsed = raw ? Number(raw) : NaN;
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  });
+    if (Number.isFinite(parsed) && parsed > 0) setCollectionId(parsed);
+  }, []);
   const [color, setColor] = useState<string | null>(null);
   const [withNote, setWithNote] = useState(false);
   const [search, setSearch] = useState("");
