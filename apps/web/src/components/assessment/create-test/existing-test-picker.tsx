@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, Layers, Loader2, Plus } from "lucide-react";
 import { authenticatedGet, useAuth } from "../../auth/auth-context";
 import type { ContentType } from "./category-picker";
+import { SignInRequiredNotice } from "../sign-in-required-notice";
 
 export type CategoryBreakdown = {
   subject_node_id: number;
@@ -105,10 +106,15 @@ export function ExistingTestPicker({
   }, [contentType, token]);
 
   if (!token) {
+    // This told the reader to sign in and then gave them nowhere to do it --
+    // no link, no button. Saved tests genuinely require an account, so this is
+    // a blocker rather than a warning, and it now carries them to the login
+    // screen and back here afterwards.
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-surface p-6 text-center text-sm font-semibold text-slate-500">
-        Sign in to add questions to your saved tests.
-      </div>
+      <SignInRequiredNotice
+        benefit="Sign in to add these questions to a test you already saved."
+        variant="blocker"
+      />
     );
   }
 

@@ -11,6 +11,8 @@ import { WayToIASLogo } from "./logo";
 import { TopBar } from "./top-bar";
 import { SidebarNav } from "./sidebar-nav";
 import { isMentorArea } from "./mentor-corner-button";
+import { NavigationHistoryRecorder } from "./navigation-history-recorder";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -20,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!isInitialized || !user) {
     return (
       <>
+        <Suspense fallback={null}><NavigationHistoryRecorder /></Suspense>
         <header className="sticky top-0 z-30 border-b border-line/60 bg-surface/95 shadow-card backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3">
             <Link className="flex flex-col items-center justify-center shrink-0 hover:opacity-90 transition-opacity group select-none py-0.5" href="/" title="Way To IAS Home">
@@ -49,11 +52,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Current Affairs links that have nothing to do with mentoring, and on a
   // phone cost the desk a third of its width. Mentors get their own surface.
   if (isMentorArea(pathname)) {
-    return <>{children}</>;
+    return (
+      <>
+        <Suspense fallback={null}><NavigationHistoryRecorder /></Suspense>
+        {children}
+      </>
+    );
   }
 
   return (
     <div className="flex min-h-screen flex-col">
+      <Suspense fallback={null}><NavigationHistoryRecorder /></Suspense>
       <TopBar />
       <div className="flex flex-1">
         <SidebarNav className="hidden lg:flex" />

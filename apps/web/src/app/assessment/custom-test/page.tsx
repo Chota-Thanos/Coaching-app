@@ -19,6 +19,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth, authenticatedGet, authenticatedDelete, authenticatedPost } from "../../../components/auth/auth-context";
+import { SignInRequiredNotice } from "../../../components/assessment/sign-in-required-notice";
 
 type CustomTest = {
   id: number;
@@ -233,6 +234,17 @@ function CustomTestsListInner() {
                         })}
                       </span>
                     </div>
+
+                    {/* Saved tests belong to an account; signed out this list is always
+
+                        empty and never says why. */}
+
+                    <div className="mx-auto max-w-7xl px-4 pt-4">
+
+                      <SignInRequiredNotice benefit="tests you build are not saved to an account" />
+
+                    </div>
+
 
                     {/* Test Title */}
                     <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition leading-snug text-sm sm:text-base">

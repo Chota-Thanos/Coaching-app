@@ -9,6 +9,7 @@ import { AssessmentDashboard } from './assessment-dashboard';
 import { CategoryBrowseView } from './category-browse-view';
 import { authenticatedGet, useAuth } from '../auth/auth-context';
 import { tabStripClass, tabButtonClass } from '../ui/tabs';
+import { SignInRequiredNotice } from "./sign-in-required-notice";
 
 interface ContentTypePageProps {
   contentType: 'gk' | 'aptitude' | 'mains';
@@ -123,6 +124,14 @@ function ContentTypePageInner({ contentType, label, shortLabel }: ContentTypePag
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Signed-out learners can browse and attempt here, but at a smaller cap
+          and with nothing saved. That was said only inside the create-test
+          wizard, so anyone who arrived at Categories, Performance or Revision
+          first met the limits with no explanation. */}
+      <div className="mx-auto max-w-7xl px-4 pt-4">
+        <SignInRequiredNotice benefit="tests are capped and your results are not saved" />
       </div>
 
       {/* Tab content */}

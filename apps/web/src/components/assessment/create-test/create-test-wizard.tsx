@@ -44,6 +44,7 @@ import {
 import { ExistingTestPicker, type ExistingTest } from "./existing-test-picker";
 import { TierLimitBanner } from "./tier-limit-banner";
 import { getQuestionCap, GUEST_QUESTION_CAP } from "./tier-caps";
+import { hasAppHistory } from "../../../lib/navigation-history";
 
 const PAGE_TOUR_RANGES_ATTEMPT_START = PAGE_TOUR_RANGES.attempt[0];
 
@@ -375,6 +376,16 @@ export function CreateTestWizard() {
     }
   }
 
+  /* Whether `router.back()` lands somewhere inside the app.
+     `document.referrer` cannot answer this -- it is only set by a full page
+     load, so after any client-side navigation it is empty, which is what made
+     the first attempt at this fix fall through to the push-and-loop path every
+     time. The trail recorded by the shell knows. */
+  const cameFromApp = useRef(false);
+  useEffect(() => {
+    cameFromApp.current = hasAppHistory(window.location.pathname + window.location.search);
+  }, []);
+
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -393,12 +404,25 @@ export function CreateTestWizard() {
             <button
               type="button"
               onClick={() => {
-                if (mode === "choose") {
-                  router.push("/assessment/custom-test");
+                if (mode !== "choose") {
+                  setMode("choose");
+                  setError(null);
                   return;
                 }
-                setMode("choose");
-                setError(null);
+                // `router.push` here appended a history entry instead of
+                // removing one, so back landed on My Custom Tests, the
+                // browser's back button returned to the wizard, and the two
+                // bounced off each other forever. The wizard is entered from
+                // the home page, the tests list, a content-type page and a
+                // saved test, so a single hardcoded destination was wrong for
+                // most arrivals anyway: go back to wherever they actually
+                // came from, and only fall back when there is no history --
+                // a direct link, or a fresh tab.
+                if (cameFromApp.current) {
+                  router.back();
+                } else {
+                  router.push("/assessment/custom-test");
+                }
               }}
               className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-surface transition hover:bg-slate-50"
             >
