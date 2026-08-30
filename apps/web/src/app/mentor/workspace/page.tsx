@@ -853,10 +853,26 @@ export default function MentorWorkspacePage() {
     );
   }
 
+  /* The desk's five tabs, defined once. The sidebar renders them vertically;
+     the phone header renders the same list as a scrolling strip. Two copies
+     would have drifted the first time a tab was added. */
+  const WORKSPACE_TABS = [
+    { id: "overview", label: "Dashboard Overview", short: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: "requests", label: "Student Requests", short: "Requests", icon: <ClipboardList className="h-4 w-4" />, badge: requests.length },
+    { id: "calendar", label: "Availability Desk", short: "Availability", icon: <Calendar className="h-4 w-4" />, badge: mySlots.length },
+    { id: "profile", label: "Edit Public Profile", short: "Profile", icon: <User className="h-4 w-4" /> },
+    { id: "settings", label: "Workspace Settings", short: "Settings", icon: <Settings className="h-4 w-4" /> }
+  ];
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Left Sidebar Navigation */}
-      <aside className="w-72 bg-surface border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0 animate-in slide-in-from-left duration-200">
+      {/* A 288px sidebar held its width on a 375px phone, leaving `main`
+          87px -- and `p-10` took 80 of those, so the content box was 7px
+          wide and everything in it was clipped. The desk was unusable on a
+          phone. Below `lg` the sidebar is replaced by the header further
+          down, which carries the same five tabs. */}
+      <aside className="hidden lg:flex w-72 bg-surface border-r border-slate-200 flex-col justify-between shrink-0 h-screen sticky top-0 animate-in slide-in-from-left duration-200">
         <div className="p-6">
           {/* Brand header */}
           <div className="flex items-center gap-2 mb-8 border-b border-slate-100 pb-4">
@@ -896,13 +912,7 @@ export default function MentorWorkspacePage() {
 
           {/* Navigation Links */}
           <nav className="space-y-1">
-            {[
-              { id: "overview", label: "Dashboard Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
-              { id: "requests", label: "Student Requests", icon: <ClipboardList className="h-4 w-4" />, badge: requests.length },
-              { id: "calendar", label: "Availability Desk", icon: <Calendar className="h-4 w-4" />, badge: mySlots.length },
-              { id: "profile", label: "Edit Public Profile", icon: <User className="h-4 w-4" /> },
-              { id: "settings", label: "Workspace Settings", icon: <Settings className="h-4 w-4" /> }
-            ].map((item) => {
+            {WORKSPACE_TABS.map((item) => {
               const active = activeTab === item.id;
               return (
                 <button
@@ -957,7 +967,67 @@ export default function MentorWorkspacePage() {
       </aside>
 
       {/* Right Content Area */}
-      <main className="flex-1 overflow-y-auto p-10 min-w-0 relative">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 min-w-0 relative">
+        {/* Phone header. Identity, then the same five tabs as a strip that
+            scrolls sideways inside itself -- five full labels cannot fit
+            across 375px, and stacking them would push the actual work below
+            the fold on every screen. */}
+        <div className="lg:hidden -mx-4 -mt-4 mb-4 border-b border-slate-200 bg-surface sm:-mx-6 sm:-mt-6">
+          <div className="flex items-center gap-2.5 px-4 py-3 sm:px-6">
+            {profileImage ? (
+              <img alt={displayName} className="h-9 w-9 shrink-0 rounded-xl border border-slate-200 object-cover" src={profileImage} />
+            ) : (
+              <div aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-sm font-black text-white">
+                {(displayName || "M").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black leading-tight text-slate-800">{displayName}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest leading-none text-indigo-500">Mentor Desk</p>
+            </div>
+            <Link
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500"
+              href="/mentors"
+              target="_blank"
+              title="View public directory"
+            >
+              <Globe className="h-4 w-4" />
+            </Link>
+            <button
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400"
+              onClick={logout}
+              title="Sign out"
+              type="button"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 sm:px-6">
+            {WORKSPACE_TABS.map((item) => {
+              const active = activeTab === item.id;
+              return (
+                <button
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                    active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                  }`}
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  type="button"
+                >
+                  {item.icon}
+                  {item.short}
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className={`rounded-full px-1.5 text-[10px] font-black ${active ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-700"}`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Top Header Bar */}
         <header className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
           <div>
