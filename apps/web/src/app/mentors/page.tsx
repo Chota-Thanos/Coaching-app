@@ -20,6 +20,8 @@ type MentorProfile = {
   /** ISO timestamp of the mentor's next unbooked future slot, or null. */
   next_free_slot?: string | null;
   open_slot_count?: number | null;
+  rating_average?: number | string | null;
+  rating_count?: number | null;
   education: string | null;
   is_verified: boolean;
   specialization_tags: string[];
@@ -336,6 +338,9 @@ export default function MentorsPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredMentors.map((mentor) => {
                 const nextFree = formatNextFree(mentor.next_free_slot);
+                const ratingCount = mentor.rating_count ?? 0;
+                const parsedRating = Number(mentor.rating_average);
+                const ratingAverage = Number.isFinite(parsedRating) ? parsedRating : null;
                 return (
                 <article
                   key={mentor.user_id}
@@ -437,11 +442,25 @@ export default function MentorsPage() {
                   {/* When the mentor is next free. A student choosing a mentor
                       is really choosing a time, and the card never said whether
                       this one had a single slot open. */}
-                  <div className="mt-4 text-[11px] font-bold">
+                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold">
                     {nextFree ? (
                       <span className="text-emerald-700">Next free · {nextFree}</span>
                     ) : (
                       <span className="text-amber-700">No open slots right now</span>
+                    )}
+                    {/* Postgres returns numeric as a string, so this is coerced
+                        rather than trusted. A mentor with no ratings yet says
+                        so plainly — an empty space would read as zero stars. */}
+                    {ratingCount > 0 && ratingAverage !== null ? (
+                      <span className="inline-flex items-center gap-1 text-amber-700">
+                        <Star aria-hidden="true" className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        {ratingAverage.toFixed(1)}
+                        <span className="font-semibold text-slate-500">
+                          ({ratingCount} {ratingCount === 1 ? "review" : "reviews"})
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-slate-400">No reviews yet</span>
                     )}
                   </div>
                   </div>

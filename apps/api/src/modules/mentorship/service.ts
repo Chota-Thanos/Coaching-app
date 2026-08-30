@@ -293,7 +293,14 @@ export async function listMentorProfiles() {
      from app.mentor_profiles mp
      join app.users u on u.id = mp.user_id
      where mp.is_active = true and mp.is_public = true
-     order by mp.years_experience desc, mp.created_at desc`
+     order by
+       -- Rated mentors first, best rated among them; then the unrated ones by
+       -- seniority as before. A plain nulls-last ordering would not do this, because an
+       -- unrated mentor must not outrank a well-rated junior one.
+       (mp.rating_count > 0) desc,
+       mp.rating_average desc nulls last,
+       mp.years_experience desc,
+       mp.created_at desc`
   );
 }
 
@@ -1623,3 +1630,210 @@ export async function updateMentorshipSetting(key: string, value: string[]): Pro
   );
 }
 
+// --- Session wrap-up, action items and ratings ---
+//
+// Everything below hangs off a finished session. Access is the same in every
+// case: the two people who were in the call, plus staff. Rather than repeat
+// that check five times, `sessionParties` resolves it once.
+
+type SessionParties = { mentorId: number; userId: number; requestId: number; status: string };
+
+async function sessionParties(sessionId: number): Promise<SessionParties | null> {
+  const row = await one<any>(
+    `select mentor_id, user_id, request_id, status
+     from app.mentorship_sessions where id = $1`,
+    [sessionId]
+  );
+  if (!row) return null;
+  return {
+    mentorId: Number(row.mentor_id),
+    userId: Number(row.user_id),
+    requestId: Number(row.request_id),
+    status: String(row.status)
+  };
+}
+
+function isParty(parties: SessionParties, userId: number, role?: string): boolean {
+  if (parties.mentorId === userId || parties.userId === userId) return true;
+  return Boolean(role && ["admin", "moderator"].includes(role));
+}
+
+/**
+ * The mentor's written wrap-up, plus the action points, plus any rating.
+ *
+ * Returned as one object because the student's after-session screen shows all
+ * three together and there is no case where one is wanted without the others.
+ * An unpublished wrap-up is hidden from the student but returned to its author,
+ * so the mentor can come back to a draft.
+ */
+export async function getSessionWrapUp(sessionId: number, userId: number, role?: string) {
+  const parties = await sessionParties(sessionId);
+  if (!parties) throw new Error("Session not found.");
+  if (!isParty(parties, userId, role)) throw new Error("You were not part of this session.");
+
+  const isMentor = parties.mentorId === userId;
+  const note = await one<any>(
+    `select * from app.mentorship_session_notes where session_id = $1`,
+    [sessionId]
+  );
+
+  const actionItems = await query(
+    `select * from app.mentorship_action_items
+     where session_id = $1
+     order by position asc, id asc`,
+    [sessionId]
+  );
+
+  const rating = await one<any>(
+    `select * from app.mentorship_ratings where session_id = $1`,
+    [sessionId]
+  );
+
+  return {
+    note: note && (note.published_at || isMentor) ? note : null,
+    /** True only for the mentor, so the interface can say "draft, not yet shared". */
+    note_is_draft: Boolean(note && !note.published_at && isMentor),
+    action_items: actionItems,
+    rating,
+    can_write_note: isMentor,
+    can_rate: parties.userId === userId
+  };
+}
+
+/** Create or replace the mentor's wrap-up. Publishing is a separate flag so a
+ *  half-written note never reaches the student. */
+export async function saveSessionNote(
+  sessionId: number,
+  mentorId: number,
+  payload: { covered?: string | null; guidance?: string | null; resources?: unknown[]; publish?: boolean }
+) {
+  const parties = await sessionParties(sessionId);
+  if (!parties) throw new Error("Session not found.");
+  if (parties.mentorId !== mentorId) throw new Error("Only the mentor can write the session wrap-up.");
+
+  return one(
+    `insert into app.mentorship_session_notes
+       (session_id, mentor_id, covered, guidance, resources, published_at)
+     values ($1, $2, $3, $4, $5::jsonb, case when $6 then now() else null end)
+     on conflict (session_id) do update
+       set covered = excluded.covered,
+           guidance = excluded.guidance,
+           resources = excluded.resources,
+           -- Publishing is one-way: once the student has seen it, silently
+           -- un-publishing it would make their record disappear.
+           published_at = coalesce(app.mentorship_session_notes.published_at, excluded.published_at),
+           updated_at = now()
+     returning *`,
+    [
+      sessionId,
+      mentorId,
+      payload.covered ?? null,
+      payload.guidance ?? null,
+      JSON.stringify(payload.resources ?? []),
+      payload.publish === true
+    ]
+  );
+}
+
+/** Add one action point. Either party may add; only the student ticks off. */
+export async function addActionItem(
+  sessionId: number,
+  userId: number,
+  payload: { title: string; detail?: string | null; due_on?: string | null }
+) {
+  const parties = await sessionParties(sessionId);
+  if (!parties) throw new Error("Session not found.");
+  if (!isParty(parties, userId)) throw new Error("You were not part of this session.");
+
+  return one(
+    `insert into app.mentorship_action_items (session_id, created_by_user_id, title, detail, due_on, position)
+     values ($1, $2, $3, $4, $5,
+       coalesce((select max(position) + 1 from app.mentorship_action_items where session_id = $1), 0))
+     returning *`,
+    [sessionId, userId, payload.title, payload.detail ?? null, payload.due_on ?? null]
+  );
+}
+
+/** Tick an action point off, or put it back. Student-only: the mentor sets the
+ *  work, the student reports on it. */
+export async function setActionItemDone(itemId: number, userId: number, done: boolean) {
+  const row = await one<any>(
+    `select ai.id, s.user_id
+     from app.mentorship_action_items ai
+     join app.mentorship_sessions s on s.id = ai.session_id
+     where ai.id = $1`,
+    [itemId]
+  );
+  if (!row) throw new Error("Action point not found.");
+  if (Number(row.user_id) !== userId) throw new Error("Only the student can tick off their own action points.");
+
+  return one(
+    `update app.mentorship_action_items
+     set completed_at = case when $2 then now() else null end
+     where id = $1
+     returning *`,
+    [itemId, done]
+  );
+}
+
+export async function deleteActionItem(itemId: number, userId: number) {
+  const row = await one<any>(
+    `select ai.created_by_user_id, s.mentor_id
+     from app.mentorship_action_items ai
+     join app.mentorship_sessions s on s.id = ai.session_id
+     where ai.id = $1`,
+    [itemId]
+  );
+  if (!row) throw new Error("Action point not found.");
+  const isAuthor = Number(row.created_by_user_id) === userId;
+  const isMentor = Number(row.mentor_id) === userId;
+  if (!isAuthor && !isMentor) throw new Error("You cannot remove this action point.");
+
+  await query(`delete from app.mentorship_action_items where id = $1`, [itemId]);
+  return { deleted: true };
+}
+
+/**
+ * The student rates the session.
+ *
+ * One rating per session, editable afterwards — a first impression written
+ * minutes after the call is often not the considered one. The mentor's average
+ * is maintained by trigger, so nothing is recomputed here.
+ */
+export async function rateSession(
+  sessionId: number,
+  userId: number,
+  payload: { rating: number; comment?: string | null; is_public?: boolean }
+) {
+  const parties = await sessionParties(sessionId);
+  if (!parties) throw new Error("Session not found.");
+  if (parties.userId !== userId) throw new Error("Only the student who attended can rate this session.");
+  if (parties.status !== "completed") throw new Error("You can rate a session once it has finished.");
+
+  return one(
+    `insert into app.mentorship_ratings (session_id, mentor_id, user_id, rating, comment, is_public)
+     values ($1, $2, $3, $4, $5, $6)
+     on conflict (session_id) do update
+       set rating = excluded.rating,
+           comment = excluded.comment,
+           is_public = excluded.is_public,
+           updated_at = now()
+     returning *`,
+    [sessionId, parties.mentorId, userId, payload.rating, payload.comment ?? null, payload.is_public !== false]
+  );
+}
+
+/** Public reviews for one mentor's profile page. Anonymous by first name only:
+ *  a student's full identity is not part of a public review. */
+export async function listMentorReviews(mentorId: number, limit = 20) {
+  return query(
+    `select r.rating, r.comment, r.created_at,
+            split_part(u.username, ' ', 1) as reviewer_first_name
+     from app.mentorship_ratings r
+     join app.users u on u.id = r.user_id
+     where r.mentor_id = $1 and r.is_public = true and r.comment is not null
+     order by r.created_at desc
+     limit $2`,
+    [mentorId, limit]
+  );
+}

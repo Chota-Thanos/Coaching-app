@@ -9,6 +9,8 @@ import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifec
 import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
 import { ChatThread } from "../../../components/mentorship/chat-thread";
 import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
+import { MentorshipScenarioPanel, deriveScenario } from "../../../components/mentorship/scenario-panel";
+import { SessionWrapUp } from "../../../components/mentorship/session-wrap-up";
 
 type MentorshipMessage = {
   id: number;
@@ -86,6 +88,43 @@ type AvailabilitySlot = {
   max_bookings: number;
   title: string | null;
 };
+
+
+/** "2 hours ago" - how long the mentor has been sitting on a request. */
+function timeAgo(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return null;
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return hours === 1 ? "an hour ago" : `${hours} hours ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+/** "Thursday 4 September, 7:00 pm" - the booked session, spelled out. */
+function slotLabel(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return new Intl.DateTimeFormat("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(iso));
+  } catch {
+    return null;
+  }
+}
+
+/** The fee actually recorded on this request, not a hardcoded number. */
+function formatFee(amount: number | null | undefined): string {
+  const value = typeof amount === "number" && amount > 0 ? amount : 1000;
+  return `\u20b9${value.toLocaleString("en-IN")}`;
+}
 
 export default function LearnerMentorshipPage() {
   const router = useRouter();
@@ -513,71 +552,98 @@ export default function LearnerMentorshipPage() {
                   />
                 </div>
 
-                {/* Status card */}
-                <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected Mentor</span>
-                    <h2 className="text-xl font-black text-slate-900">{selectedRequest.mentor_name}</h2>
-                    <p className="text-xs text-slate-500">Preferred Mode: {selectedRequest.preferred_mode === "video" ? "Video Consultation" : "Chat Only"}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {/* Action conditional based on request status */}
-                    {selectedRequest.status === "accepted" && selectedRequest.payment_status === "pending" && (
-                      <div className="flex flex-col items-end gap-1.5">
-                        <button
-                          onClick={handlePayment}
-                          disabled={payingNow || agendas.some((a) => a.status === "proposed")}
-                          className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-indigo-700 flex items-center gap-1.5 transition disabled:opacity-50"
-                        >
-                          <CreditCard className="h-4 w-4" />
-                          {payingNow ? "Processing..." : "Pay & Book Session (₹1000)"}
-                        </button>
-                        {agendas.some((a) => a.status === "proposed") && (
-                          <span className="text-[10px] text-rose-500 font-semibold">
-                            Agreement on all proposed agendas required
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {selectedRequest.payment_status === "paid" && !selectedRequest.scheduled_slot_id && (
-                      <div className="flex flex-col sm:flex-row items-center gap-3">
-                        <select
-                          value={selectedSlotId}
-                          onChange={(e) => setSelectedSlotId(e.target.value)}
-                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none font-bold text-slate-700 cursor-pointer"
-                        >
-                          {slots.length === 0 ? (
-                            <option>No slots offered yet</option>
-                          ) : (
-                            slots.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {new Date(s.starts_at).toLocaleString()}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                        <button
-                          onClick={handleBookSlot}
-                          disabled={slots.length === 0}
-                          className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0"
-                        >
-                          Confirm Slot
-                        </button>
-                      </div>
-                    )}
-
+                {/* Where this request stands, and the one thing to do next.
+                    Previously each control decided for itself whether to
+                    appear, which left `expired` and `completed` requests
+                    showing nothing at all and a disabled Pay button
+                    explaining itself in fine print. */}
+                <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-sm space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected Mentor</span>
+                      <h2 className="text-xl font-black text-slate-900">{selectedRequest.mentor_name}</h2>
+                      <p className="text-xs text-slate-500">
+                        Preferred Mode: {selectedRequest.preferred_mode === "video" ? "Video Consultation" : "Chat Only"}
+                      </p>
+                    </div>
                     {selectedRequest.scheduled_slot_id && selectedRequest.session_id && (
                       <Link
                         href={`/mentorship/session/${selectedRequest.session_id}`}
-                        className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-bold text-white hover:bg-indigo-700 flex items-center gap-1.5 transition animate-pulse"
+                        className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-bold text-white hover:bg-indigo-700 flex items-center gap-1.5 transition"
                       >
                         <Video className="h-4 w-4" />
                         Join Call Room
                       </Link>
                     )}
                   </div>
+
+                  <MentorshipScenarioPanel
+                    state={deriveScenario({
+                      status: selectedRequest.status,
+                      paymentStatus: selectedRequest.payment_status,
+                      scheduledSlotId: selectedRequest.scheduled_slot_id,
+                      hasProposedAgenda: agendas.some((a) => a.status === "proposed"),
+                      agendaCount: agendas.length
+                    })}
+                    mentorName={selectedRequest.mentor_name}
+                    fee={formatFee(selectedRequest.payment_amount)}
+                    sentAgo={timeAgo(selectedRequest.created_at)}
+                    slotLabel={slotLabel(selectedRequest.session_starts_at)}
+                    action={
+                      <>
+                        {selectedRequest.status === "accepted" &&
+                          selectedRequest.payment_status !== "paid" &&
+                          !agendas.some((a) => a.status === "proposed") && (
+                            <button
+                              onClick={handlePayment}
+                              disabled={payingNow}
+                              className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-indigo-700 flex items-center gap-1.5 transition disabled:opacity-50"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              {payingNow ? "Processing..." : `Pay ${formatFee(selectedRequest.payment_amount)}`}
+                            </button>
+                          )}
+
+                        {selectedRequest.payment_status === "paid" && !selectedRequest.scheduled_slot_id && (
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <select
+                              value={selectedSlotId}
+                              onChange={(e) => setSelectedSlotId(e.target.value)}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none font-bold text-slate-700 cursor-pointer"
+                            >
+                              {slots.length === 0 ? (
+                                <option>No times offered yet</option>
+                              ) : (
+                                slots.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {slotLabel(s.starts_at) ?? new Date(s.starts_at).toLocaleString()}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                            <button
+                              onClick={handleBookSlot}
+                              disabled={slots.length === 0}
+                              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+                            >
+                              Book this time
+                            </button>
+                          </div>
+                        )}
+
+                        {(selectedRequest.status === "rejected" ||
+                          selectedRequest.status === "cancelled" ||
+                          selectedRequest.status === "expired") && (
+                          <Link
+                            href="/mentors"
+                            className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                          >
+                            Find another mentor
+                          </Link>
+                        )}
+                      </>
+                    }
+                  />
                 </div>
 
                  {/* Custom copy evaluation view */}
@@ -853,6 +919,11 @@ export default function LearnerMentorshipPage() {
                   titlePlaceholder="e.g. Can you review my Essay writing structure?"
                   emptyStateText="No agendas proposed yet."
                 />
+
+                {/* Once a session exists there is something to take away from
+                    it. Before that there is nothing to show, so this stays
+                    out of the way entirely. */}
+                {selectedRequest.session_id && <SessionWrapUp sessionId={selectedRequest.session_id} />}
 
                 {/* Segmented Chat System */}
                 {selectedRequest.payment_status === "paid" ? (

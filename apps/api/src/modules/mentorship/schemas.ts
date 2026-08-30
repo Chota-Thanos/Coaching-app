@@ -190,4 +190,44 @@ export const updateMentorshipSettingSchema = z.object({
 
 export type UpdateMentorshipSettingInput = z.output<typeof updateMentorshipSettingSchema>;
 
+// --- Session wrap-up, action points and ratings ---
 
+export const saveSessionNoteSchema = z.object({
+  covered: z.string().trim().max(8000).nullish(),
+  guidance: z.string().trim().max(8000).nullish(),
+  // A resource is a label the student can read plus, optionally, somewhere to
+  // go. Offline recommendations ("Laxmikanth, chapter 12") have no URL.
+  resources: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(300),
+        url: z.string().url().nullish()
+      })
+    )
+    .max(30)
+    .optional(),
+  publish: z.boolean().optional()
+});
+
+export type SaveSessionNoteInput = z.output<typeof saveSessionNoteSchema>;
+
+export const createActionItemSchema = z.object({
+  title: z.string().trim().min(1).max(300),
+  detail: z.string().trim().max(2000).nullish(),
+  due_on: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date.")
+    .nullish()
+});
+
+export type CreateActionItemInput = z.output<typeof createActionItemSchema>;
+
+export const setActionItemDoneSchema = z.object({ done: z.boolean() });
+
+export const rateSessionSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(2000).nullish(),
+  is_public: z.boolean().optional()
+});
+
+export type RateSessionInput = z.output<typeof rateSessionSchema>;

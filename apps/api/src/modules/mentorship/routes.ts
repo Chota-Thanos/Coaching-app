@@ -38,6 +38,13 @@ import {
   proposeSolveAgenda,
   confirmSolveAgenda,
   deleteAgenda,
+  getSessionWrapUp,
+  saveSessionNote,
+  addActionItem,
+  setActionItemDone,
+  deleteActionItem,
+  rateSession,
+  listMentorReviews,
   getMentorshipSettings,
   updateMentorshipSetting
 } from "./service.js";
@@ -57,6 +64,10 @@ import {
   createAgendaSchema,
   verifyMentorshipPaymentSchema,
   updateMentorshipSettingSchema,
+  saveSessionNoteSchema,
+  createActionItemSchema,
+  setActionItemDoneSchema,
+  rateSessionSchema,
   promoteMentorSchema
 } from "./schemas.js";
 
@@ -548,4 +559,96 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
       return record;
     });
   });
+
+  // --- Session wrap-up, action points and ratings ---
+  //
+  // All of these hang off a finished session rather than the request, because
+  // a request that was never scheduled has nothing to wrap up. Authorisation
+  // lives in the service, which already knows who was in the room.
+
+  server.get("/api/v1/mentorship/sessions/:id/wrap-up", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      try {
+        return await getSessionWrapUp(params.id, user.id, user.role);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.put("/api/v1/mentorship/sessions/:id/note", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(saveSessionNoteSchema, request.body);
+      try {
+        return await saveSessionNote(params.id, user.id, body);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.post("/api/v1/mentorship/sessions/:id/action-items", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(createActionItemSchema, request.body);
+      try {
+        const record = await addActionItem(params.id, user.id, body);
+        return reply.status(201).send(record);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.put("/api/v1/mentorship/action-items/:id", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(setActionItemDoneSchema, request.body);
+      try {
+        return await setActionItemDone(params.id, user.id, body.done);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.delete("/api/v1/mentorship/action-items/:id", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      try {
+        return await deleteActionItem(params.id, user.id);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  server.put("/api/v1/mentorship/sessions/:id/rating", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      const body = parse(rateSessionSchema, request.body);
+      try {
+        return await rateSession(params.id, user.id, body);
+      } catch (err: any) {
+        return reply.badRequest(err.message);
+      }
+    });
+  });
+
+  // Public: shown on a mentor's profile before a student commits to booking.
+  server.get("/api/v1/mentorship/mentors/:id/reviews", async (request, reply) => {
+    return withValidation(reply, async () => {
+      const params = parse(idParamSchema, request.params);
+      return await listMentorReviews(params.id);
+    });
+  });
+
 }

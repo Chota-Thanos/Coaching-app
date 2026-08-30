@@ -9,6 +9,7 @@ import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifec
 import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
 import { ChatThread } from "../../../components/mentorship/chat-thread";
 import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
+import { SessionWrapUpEditor } from "../../../components/mentorship/session-wrap-up-editor";
 import Link from "next/link";
 
 type MentorshipMessage = {
@@ -1532,6 +1533,10 @@ export default function MentorWorkspacePage() {
                     ) : undefined
                   }
                 />
+
+                {/* Writing the wrap-up is the mentor's last job on a session,
+                    so it sits directly under the agenda they worked from. */}
+                {selectedRequest.session_id && <SessionWrapUpEditor sessionId={selectedRequest.session_id} />}
 
                 {/* Segmented Chat System */}
                 {selectedRequest.payment_status === "paid" ? (
