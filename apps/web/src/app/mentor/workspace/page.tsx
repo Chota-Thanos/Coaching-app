@@ -4,13 +4,15 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, authenticatedGet, authenticatedPost, authenticatedPut, authenticatedPatch, authenticatedDelete } from "../../../components/auth/auth-context";
 import { browserBaseUrl } from "../../../lib/api";
-import { Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Upload, Plus, Trash2, ArrowRight, Sparkles, LayoutDashboard, Settings, User, ClipboardList, LogOut, Globe, Bell, ArrowLeft} from "lucide-react";
+import { Calendar, Video, CheckCircle2, MessageSquare, AlertCircle, FileText, Upload, Plus, Trash2, ArrowRight, Sparkles, LayoutDashboard, Settings, User, ClipboardList, LogOut, Globe, Bell, ArrowLeft, CalendarClock, Star} from "lucide-react";
 import { MentorshipLifecycleTracker } from "../../../components/mentorship/lifecycle-tracker";
 import { AgendaPanel } from "../../../components/mentorship/agenda-panel";
 import { ChatThread } from "../../../components/mentorship/chat-thread";
 import { PremiumSidePanel } from "../../../components/mentorship/premium-side-panel";
 import { SessionWrapUpEditor } from "../../../components/mentorship/session-wrap-up-editor";
 import { CancelRequestControl, ReportNoShowControl } from "../../../components/mentorship/request-controls";
+import { MentorSchedulePanel } from "../../../components/mentorship/mentor-schedule-panel";
+import { MentorReviewsPanel } from "../../../components/mentorship/mentor-reviews-panel";
 import Link from "next/link";
 
 type MentorshipMessage = {
@@ -124,7 +126,15 @@ export default function MentorWorkspacePage() {
   // Offer slots selection state
   const [selectedOffers, setSelectedOffers] = useState<number[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"overview" | "requests" | "calendar" | "profile" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "requests" | "schedules" | "reviews" | "calendar" | "profile" | "settings"
+  >("overview");
+  /* Which slice of the bookings list is on screen. "all" first, then one per
+     status, so a mentor can answer "what is outstanding" and "what did I
+     finish" without reading every row. */
+  const [bookingFilter, setBookingFilter] = useState<
+    "all" | "requested" | "accepted" | "completed" | "closed"
+  >("all");
 
   // Notifications states
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -856,12 +866,37 @@ export default function MentorWorkspacePage() {
   /* The desk's five tabs, defined once. The sidebar renders them vertically;
      the phone header renders the same list as a scrolling strip. Two copies
      would have drifted the first time a tab was added. */
+  /* The badge counts only what is actually waiting on the mentor. Badging the
+     total made a desk with nothing to do look permanently busy. */
+  const awaitingDecision = requests.filter((r) => r.status === "requested").length;
+
+  const BOOKING_FILTERS = [
+    { id: "all" as const, label: "All" },
+    { id: "requested" as const, label: "New" },
+    { id: "accepted" as const, label: "In progress" },
+    { id: "completed" as const, label: "Completed" },
+    { id: "closed" as const, label: "Closed" }
+  ];
+
+  /* `closed` gathers the three endings a mentor does not distinguish between
+     when scanning -- declined, withdrawn, timed out -- so they do not each take
+     a tab of their own. */
+  const matchesFilter = (status: string, filter: string) => {
+    if (filter === "all") return true;
+    if (filter === "closed") return ["rejected", "cancelled", "expired"].includes(status);
+    return status === filter;
+  };
+
+  const filteredRequests = requests.filter((r) => matchesFilter(r.status, bookingFilter));
+  const countForFilter = (filter: string) => requests.filter((r) => matchesFilter(r.status, filter)).length;
+
   const WORKSPACE_TABS = [
-    { id: "overview", label: "Dashboard Overview", short: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
-    { id: "requests", label: "Student Requests", short: "Requests", icon: <ClipboardList className="h-4 w-4" />, badge: requests.length },
-    { id: "calendar", label: "Availability Desk", short: "Availability", icon: <Calendar className="h-4 w-4" />, badge: mySlots.length },
-    { id: "profile", label: "Edit Public Profile", short: "Profile", icon: <User className="h-4 w-4" /> },
-    { id: "settings", label: "Workspace Settings", short: "Settings", icon: <Settings className="h-4 w-4" /> }
+    { id: "overview", label: "Dashboard", short: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: "requests", label: "Bookings", short: "Bookings", icon: <ClipboardList className="h-4 w-4" />, badge: awaitingDecision },
+    { id: "schedules", label: "Schedules", short: "Schedules", icon: <CalendarClock className="h-4 w-4" /> },
+    { id: "reviews", label: "Reviews", short: "Reviews", icon: <Star className="h-4 w-4" /> },
+    { id: "calendar", label: "Availability", short: "Availability", icon: <Calendar className="h-4 w-4" />, badge: mySlots.length },
+    { id: "profile", label: "My Profile", short: "Profile", icon: <User className="h-4 w-4" /> }
   ];
 
   return (
@@ -1049,13 +1084,15 @@ export default function MentorWorkspacePage() {
         <header className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
           <div>
             <h1 className="text-2xl font-black text-slate-800 capitalize tracking-tight">
-              {activeTab === "overview" ? "Dashboard Overview" : activeTab === "requests" ? "Student Requests Inbox" : activeTab === "calendar" ? "Availability Desk" : activeTab === "profile" ? "Edit Public Profile" : "Workspace Settings"}
+              {activeTab === "overview" ? "Dashboard" : activeTab === "requests" ? "Bookings" : activeTab === "schedules" ? "Schedules" : activeTab === "reviews" ? "Reviews" : activeTab === "calendar" ? "Availability" : activeTab === "profile" ? "My Profile" : "Workspace Settings"}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              {activeTab === "overview" && "Check your stats, quick tasks, and operations status."}
-              {activeTab === "requests" && "Manage applicant requests, grade mains answers, and chat."}
-              {activeTab === "calendar" && "Configure single and bulk availability slot ranges."}
-              {activeTab === "profile" && "Edit details displayed in the public mentor directory."}
+              {activeTab === "overview" && "What needs you today, and who you are seeing next."}
+              {activeTab === "schedules" && "Every booked session, by day."}
+              {activeTab === "reviews" && "What students said after their sessions."}
+              {activeTab === "requests" && "Every request a student has sent you."}
+              {activeTab === "calendar" && "The times students can book you."}
+              {activeTab === "profile" && "How you appear in the mentor directory."}
               {activeTab === "settings" && "Configure directory visibility and availability toggles."}
             </p>
           </div>
@@ -1231,20 +1268,57 @@ export default function MentorWorkspacePage() {
           </div>
         )}
 
+        {activeTab === "schedules" && (
+          <div className="animate-in fade-in duration-200">
+            <MentorSchedulePanel />
+          </div>
+        )}
+
+        {activeTab === "reviews" && (
+          <div className="animate-in fade-in duration-200">
+            <MentorReviewsPanel />
+          </div>
+        )}
+
         {activeTab === "requests" && (
           <div className="grid gap-8 lg:grid-cols-[360px_1fr] animate-in fade-in duration-200">
             {/* Incoming Requests List */}
             <div className="space-y-4">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">
-                Applicant Requests ({requests.length})
-              </h2>
+              {/* "Applicant" is onboarding vocabulary -- these are students.
+                  The filter row is All plus one tab per status, so the list can
+                  answer a specific question instead of always showing all of
+                  history at once. */}
+              <div className="space-y-2 px-1">
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Student Bookings ({filteredRequests.length})
+                </h2>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {BOOKING_FILTERS.map((f) => {
+                    const count = countForFilter(f.id);
+                    const on = bookingFilter === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setBookingFilter(f.id)}
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
+                          on ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {f.label}
+                        <span className={`font-mono ${on ? "text-white/70" : "text-slate-400"}`}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
                 {requests.length === 0 ? (
                   <div className="rounded-3xl border border-dashed border-slate-200 bg-surface p-8 text-center text-xs text-slate-400">
                     No active student requests.
                   </div>
                 ) : (
-                  requests.map((req) => (
+                  filteredRequests.map((req) => (
                     <button
                       key={req.id}
                       onClick={() => setSelectedRequest(req)}

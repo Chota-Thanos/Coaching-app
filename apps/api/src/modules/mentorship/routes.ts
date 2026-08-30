@@ -48,6 +48,9 @@ import {
   cancelRequest,
   refundMentorshipRequest,
   reportNoShow,
+  listMyReviews,
+  myReviewSummary,
+  listMySessions,
   getMentorshipSettings,
   updateMentorshipSetting
 } from "./service.js";
@@ -700,6 +703,27 @@ export async function registerMentorshipRoutes(server: FastifyInstance): Promise
       } catch (err: any) {
         return reply.badRequest(err.message);
       }
+    });
+  });
+
+
+  // --- The mentor's own pages ---
+
+  server.get("/api/v1/mentorship/me/reviews", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const [items, summary] = await Promise.all([
+        listMyReviews(user.id),
+        myReviewSummary(user.id)
+      ]);
+      return { items, summary };
+    });
+  });
+
+  server.get("/api/v1/mentorship/me/sessions", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      return await listMySessions(user.id);
     });
   });
 

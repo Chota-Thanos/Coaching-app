@@ -513,8 +513,14 @@ export async function submitCustomCopyEvaluation(
 export async function listRequests(userId: number, userRole: string, mode: "user" | "provider") {
   let sql = `
     select r.*, 
-           lm.full_name as learner_name,
-           lm.email_snapshot as learner_email,
+           -- The learner's name came only from the mentor-onboarding table, so
+           -- it was populated exactly when the student had themselves applied
+           -- to be a mentor -- i.e. almost never. Every request in a mentor's
+           -- inbox read "Student #376 / No email", which is no way to decide
+           -- whether to accept one. The admin view already joined app.users
+           -- for this; the mentor's own view never did.
+           coalesce(lm.full_name, u_l.username) as learner_name,
+           coalesce(lm.email_snapshot, u_l.email) as learner_email,
            mp.display_name as mentor_name,
            mp.profile_image_url as mentor_headshot,
            mp.meta as mentor_meta,
@@ -537,6 +543,7 @@ export async function listRequests(userId: number, userRole: string, mode: "user
            qv.question_statement as attempt_question_statement
     from app.mentorship_requests r
     left join app.professional_onboarding_requests lm on lm.user_id = r.user_id and lm.status = 'approved'
+    left join app.users u_l on u_l.id = r.user_id
     left join app.mentor_profiles mp on mp.user_id = r.mentor_id
     left join app.users u_m on u_m.id = r.mentor_id
     left join app.mentorship_sessions s on s.request_id = r.id
@@ -2157,4 +2164,77 @@ export async function sendSessionReminders(): Promise<number> {
   }
 
   return rows.length;
+}
+
+// --- The mentor's own pages ---
+
+/**
+ * Every rating this mentor has received, for their Reviews page.
+ *
+ * Distinct from `listMentorReviews`, which is the public profile version and
+ * deliberately shows only public, commented ones. A mentor should see all of
+ * theirs — a bare 3 with no comment still tells them something, and a rating
+ * the student marked private still counts toward the average shown on their
+ * card, so hiding it would make that average look wrong.
+ */
+export async function listMyReviews(mentorId: number, limit = 100) {
+  return query(
+    `select r.id, r.rating, r.comment, r.is_public, r.created_at,
+            u.username as student_name,
+            s.starts_at as session_starts_at,
+            s.id as session_id
+     from app.mentorship_ratings r
+     join app.users u on u.id = r.user_id
+     left join app.mentorship_sessions s on s.id = r.session_id
+     where r.mentor_id = $1
+     order by r.created_at desc
+     limit $2`,
+    [mentorId, limit]
+  );
+}
+
+/** The rating summary a mentor sees above their reviews: the average their
+ *  card shows, and how it is distributed. */
+export async function myReviewSummary(mentorId: number) {
+  return one(
+    `select
+       count(*)::int as total,
+       round(avg(rating)::numeric, 2) as average,
+       count(*) filter (where rating = 5)::int as five,
+       count(*) filter (where rating = 4)::int as four,
+       count(*) filter (where rating = 3)::int as three,
+       count(*) filter (where rating = 2)::int as two,
+       count(*) filter (where rating = 1)::int as one
+     from app.mentorship_ratings
+     where mentor_id = $1`,
+    [mentorId]
+  );
+}
+
+/**
+ * The mentor's timetable.
+ *
+ * Sessions rather than requests: a request is a negotiation, a session is an
+ * appointment with a time attached, and the schedule screen is about time.
+ * Includes who it is with and whether the wrap-up is still owed, because those
+ * are the two things a mentor looks for when scanning their week.
+ */
+export async function listMySessions(mentorId: number, limit = 200) {
+  return query(
+    `select s.id, s.request_id, s.starts_at, s.ends_at, s.mode, s.status,
+            s.meeting_link, s.cancelled_at, s.no_show_reported_at, s.no_show_role,
+            u.username as student_name,
+            r.payment_status,
+            r.payment_amount,
+            (n.id is not null and n.published_at is not null) as wrap_up_shared,
+            (n.id is not null) as wrap_up_started
+     from app.mentorship_sessions s
+     join app.users u on u.id = s.user_id
+     join app.mentorship_requests r on r.id = s.request_id
+     left join app.mentorship_session_notes n on n.session_id = s.id
+     where s.mentor_id = $1
+     order by s.starts_at desc
+     limit $2`,
+    [mentorId, limit]
+  );
 }
