@@ -296,3 +296,74 @@
   .sp-pcover[data-type="tests"]  { background-color:var(--sp-warn-soft); }
   .sp-pcover-glyph { font-size:26px; opacity:.5; }
   html.dark .sp-pcover[data-type="course"] { background-color:#241a4d; }
+
+  /* ------------------------------------------------------------------
+   * Phones.
+   *
+   * The mockup this file was ported from was drawn at desktop width and
+   * carried exactly one media query, which adjusted padding and nothing else.
+   * Every fixed multi-column grid above therefore held its column count all
+   * the way down to 375px, so the catalogue's three type cards, the plan grid
+   * and every table row ran off the side of the screen. Most users are on a
+   * phone, so this is not a polish layer -- it is the layout most people see.
+   *
+   * Columns collapse rather than shrink: a five-column table squeezed into
+   * 375px is unreadable long before it stops overflowing. The one exception is
+   * the calendar, where seven columns *are* the information -- a week that
+   * wraps is no longer a week -- so it tightens instead.
+   * ------------------------------------------------------------------ */
+  /* Two-pane workspace bodies. These were written as inline grid styles,
+     which cannot carry a media query -- so they stayed two columns at 375px
+     no matter what. As classes the mobile layer below can reach them. */
+  .sp-split { display:grid; grid-template-columns:1.5fr 1fr; gap:12px; align-items:start; }
+  .sp-split--wide { grid-template-columns:1.35fr 1fr; }
+
+  @media (max-width:720px) {
+    /* Nothing may push the page sideways. */
+    .sp-root { overflow-x:hidden; }
+
+    /* Choosing a plan type: three cards stack, and each keeps its tint. */
+    .sp-cat-top { grid-template-columns:1fr; gap:8px; }
+    .sp-cat-type { text-align:left; }
+
+    /* The plan catalogue itself. */
+    .sp-grid3 { grid-template-columns:1fr; }
+
+    /* Summary strips: five across becomes two, which still reads as a row. */
+    .sp-facts { grid-template-columns:repeat(2,1fr); }
+    .sp-health, .sp-rank { grid-template-columns:1fr; }
+
+    /* Two-pane screens become one pane; the side rail follows the main body
+       rather than sitting in a 260px column that no longer fits. */
+    .sp-today, .sp-setup, .sp-split, .sp-split--wide { grid-template-columns:1fr; }
+
+    /* Rows: keep the leading marker, drop the trailing fixed columns onto a
+       second line instead of letting them overhang. */
+    .sp-irow { grid-template-columns:24px 1fr; gap:8px 10px; padding:11px 14px; }
+    .sp-irow > :nth-child(n+3) { grid-column:2; }
+    .sp-lec { grid-template-columns:22px 1fr; gap:6px 10px; padding:10px 14px; }
+    .sp-lec > :nth-child(n+3) { grid-column:2; }
+    .sp-paper { grid-template-columns:1fr 1fr; gap:6px 10px; padding:11px 14px; }
+    .sp-task { grid-template-columns:26px 1fr; gap:6px 10px; }
+    .sp-task > :nth-child(n+3) { grid-column:2; }
+
+    .sp-sample { grid-template-columns:1fr; gap:10px; }
+    .sp-inc { grid-template-columns:1fr; }
+
+    /* A week stays seven days wide; it just gets tighter. */
+    .sp-cal, .sp-cal-head { gap:3px; padding-left:10px; padding-right:10px; }
+    .sp-cal { font-size:11px; }
+
+    /* Filters wrap as one long run of chips, which mixed the group labels into
+       the middle of the previous group's chips ("3 months +  SUBJECT"). Making
+       each label take a full line puts every group back under its own heading. */
+    .sp-facet-lab { flex-basis:100%; margin-top:6px; }
+
+    /* Long words -- plan titles, mentor names, email addresses -- must break
+       rather than widen their container. */
+    .sp-root h1, .sp-root h2, .sp-root h3, .sp-root p, .sp-root b, .sp-root span { overflow-wrap:anywhere; }
+
+    /* Anything genuinely tabular that still cannot fit scrolls inside itself
+       rather than taking the page with it. */
+    .sp-scrollx { overflow-x:auto; }
+  }

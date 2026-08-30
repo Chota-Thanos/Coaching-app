@@ -184,8 +184,8 @@ export default function MentorsPage() {
       </section>
 
       {/* Discovery Filters Workspace */}
-      <main className="container mx-auto -mt-8 max-w-6xl px-6">
-        <div className="rounded-[32px] border border-slate-200 bg-surface p-6 shadow-xl">
+      <main className="container mx-auto -mt-8 max-w-6xl px-4 sm:px-6">
+        <div className="rounded-[24px] sm:rounded-[32px] border border-slate-200 bg-surface p-4 sm:p-6 shadow-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -200,14 +200,14 @@ export default function MentorsPage() {
             </div>
 
             {/* Experience Filter Dropdown */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-3">
               <label className="text-xs font-black uppercase tracking-wider text-slate-500 shrink-0">
                 Experience
               </label>
               <select
                 value={minExperience}
                 onChange={(e) => setMinExperience(Number(e.target.value))}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
+                className="w-full min-w-0 sm:w-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
               >
                 <option value={0}>Any Experience</option>
                 <option value={2}>2+ Years</option>
@@ -219,14 +219,14 @@ export default function MentorsPage() {
 
           <div className="mt-4 grid gap-4 sm:grid-cols-3 border-t border-slate-100 pt-4">
             {/* Mentor Type Filter */}
-            <div className="flex items-center gap-3 justify-between sm:justify-start">
+            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
               <label className="text-xs font-black uppercase tracking-wider text-slate-500 shrink-0">
                 Mentorship Type
               </label>
               <select
                 value={mentorTypeFilter}
                 onChange={(e) => setMentorTypeFilter(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
+                className="w-full min-w-0 sm:w-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
               >
                 <option value="all">Any Type</option>
                 <option value="evaluation_mentorship">Evaluation + Mentorship</option>
@@ -235,14 +235,14 @@ export default function MentorsPage() {
             </div>
 
             {/* Specialization Type Filter */}
-            <div className="flex items-center gap-3 justify-between sm:justify-start">
+            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
               <label className="text-xs font-black uppercase tracking-wider text-slate-500 shrink-0">
                 Specialization Scope
               </label>
               <select
                 value={specializationFilter}
                 onChange={(e) => setSpecializationFilter(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
+                className="w-full min-w-0 sm:w-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
               >
                 <option value="all">Any Scope</option>
                 <option value="all_areas">Expert in all areas</option>
@@ -251,14 +251,14 @@ export default function MentorsPage() {
             </div>
 
             {/* Exams Filter */}
-            <div className="flex items-center gap-3 justify-between sm:justify-start">
+            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
               <label className="text-xs font-black uppercase tracking-wider text-slate-500 shrink-0">
                 Target Exam
               </label>
               <select
                 value={examFilter}
                 onChange={(e) => setExamFilter(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
+                className="w-full min-w-0 sm:w-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-indigo-500"
               >
                 <option value="all">Any Exam</option>
                 {allExams.map((exam) => (

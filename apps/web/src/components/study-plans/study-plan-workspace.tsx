@@ -258,7 +258,7 @@ function CourseBody({ plan, weeks, tracking }: BodyProps) {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: liveClasses.length > 0 ? "1.5fr 1fr" : "1fr", gap: 12, alignItems: "start" }}>
+      <div className={liveClasses.length > 0 ? "sp-split" : ""} style={liveClasses.length > 0 ? undefined : { display: "grid", gap: 12, alignItems: "start" }}>
         <div className="sp-c" style={{ overflow: "hidden" }}>
           {resumeItem ? (
             <>
@@ -409,7 +409,7 @@ function TestSeriesBody({ plan, scheduleFor, tracking }: BodyProps) {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 12, alignItems: "start" }}>
+      <div className="sp-split sp-split--wide">
         <div className="sp-c" style={{ overflow: "hidden" }}>
           <div className="sp-ph">
             <div>

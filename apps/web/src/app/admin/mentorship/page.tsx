@@ -1060,7 +1060,7 @@ export default function AdminMentorshipPage() {
                       <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-2">
                         Mentorship Specifications (Required for Approval)
                       </label>
-                      <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="grid grid-cols-1 gap-2 mb-3 sm:grid-cols-2">
                         {approvedSpecs.map((spec) => {
                           const isChecked = selectedSpecs.includes(spec);
                           return (

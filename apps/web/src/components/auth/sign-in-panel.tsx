@@ -77,22 +77,24 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           type="button"
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-100 hover:text-indigo-600 transition-all focus:outline-none"
+          className="inline-flex h-10 min-w-0 max-w-[9.5rem] items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-100 hover:text-indigo-600 transition-all focus:outline-none sm:max-w-none sm:gap-2 sm:px-3.5"
         >
-          <User className="h-4 w-4 text-slate-500" />
-          <span>{user.username}</span>
+          <User className="h-4 w-4 shrink-0 text-slate-500" />
+          {/* An email-shaped username is easily 25 characters; unclamped it
+              pushed everything else in the header off the screen. */}
+          <span className="truncate">{user.username}</span>
           {isMentor && (
             <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
               Mentor
             </span>
           )}
-          <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`} />
         </button>
 
         {/* Dropdown Menu */}
         {menuOpen && (
           <div 
-            className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-xl shadow-slate-100 animate-in fade-in slide-in-from-top-2 duration-150"
+            className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-xl shadow-slate-100 animate-in fade-in slide-in-from-top-2 duration-150"
             onMouseEnter={openMenu}
             onMouseLeave={closeMenu}
           >
@@ -241,9 +243,9 @@ export function SignInPanel({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <Link
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
           href={loginHref}
         >
           <LogIn aria-hidden="true" className="h-4 w-4" />

@@ -1668,7 +1668,7 @@ export default function MentorWorkspacePage() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Start Time</label>
                       <input
@@ -1701,7 +1701,7 @@ export default function MentorWorkspacePage() {
                 </form>
               ) : (
                 <form onSubmit={handleBulkGenerateSlots} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="text-[9px] font-bold uppercase tracking-wider text-slate-600">Start Date</label>
                       <input

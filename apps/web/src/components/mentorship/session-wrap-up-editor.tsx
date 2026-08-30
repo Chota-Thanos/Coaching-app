@@ -140,9 +140,11 @@ export function SessionWrapUpEditor({ sessionId }: { sessionId: number }) {
         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recommended reading</span>
         <div className="mt-1.5 space-y-2">
           {resources.map((resource, index) => (
-            <div className="flex items-center gap-2" key={index}>
+            /* Label, link and remove sat in one row with a fixed 12rem link
+               field, which does not fit beside anything on a phone. */
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center" key={index}>
               <input
-                className="h-9 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                className="h-9 w-full min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
                 onChange={(event) =>
                   setResources((current) =>
                     current.map((row, rowIndex) => (rowIndex === index ? { ...row, label: event.target.value } : row))
@@ -152,7 +154,7 @@ export function SessionWrapUpEditor({ sessionId }: { sessionId: number }) {
                 value={resource.label}
               />
               <input
-                className="h-9 w-48 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                className="h-9 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 sm:w-48"
                 onChange={(event) =>
                   setResources((current) =>
                     current.map((row, rowIndex) =>
@@ -165,7 +167,7 @@ export function SessionWrapUpEditor({ sessionId }: { sessionId: number }) {
               />
               <button
                 aria-label="Remove this recommendation"
-                className="text-slate-300 hover:text-rose-500"
+                className="self-end shrink-0 text-slate-300 hover:text-rose-500 sm:self-auto"
                 onClick={() => setResources((current) => current.filter((_, rowIndex) => rowIndex !== index))}
                 type="button"
               >
