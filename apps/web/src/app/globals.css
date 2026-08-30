@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -37,7 +37,7 @@
   --bar-bg: rgba(244,245,251,0.85);
   --hero-glow: rgba(74,63,224,0.10);
   --card-shadow: rgba(30,32,60,0.14);
-  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "JetBrains Mono", monospace;
   --measure: 620px;
   /* The reading face for article and note bodies — deliberately separate from
@@ -178,8 +178,12 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Roboto across the interface. Only the family moves -- every weight class in
+   the app keeps its own value, so buttons stay bold and body copy stays
+   regular. Article and note bodies are pinned to 400 separately, through
+   --article-font. */
 body, input, select, textarea, button {
-  font-family: "Inter", "Roboto", system-ui, -apple-system, sans-serif !important;
+  font-family: "Roboto", "Inter", system-ui, -apple-system, sans-serif !important;
 }
 
 body {
@@ -203,7 +207,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Plus Jakarta Sans", "Inter", "Roboto", system-ui, -apple-system, sans-serif !important;
+  font-family: "Roboto", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif !important;
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
 }

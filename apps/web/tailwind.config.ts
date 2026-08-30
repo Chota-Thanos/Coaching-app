@@ -60,8 +60,8 @@ const config: Config = {
         glow: "0 0 0 3px rgba(14, 159, 142, 0.15)"
       },
       fontFamily: {
-        sans: ["Google Sans Text", "Inter", "Roboto", "system-ui", "sans-serif"],
-        heading: ["Google Sans", "Plus Jakarta Sans", "Inter", "Roboto", "system-ui", "sans-serif"],
+        sans: ["Roboto", "Google Sans Text", "Inter", "system-ui", "sans-serif"],
+        heading: ["Roboto", "Google Sans", "Plus Jakarta Sans", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"]
       },
       animation: {
