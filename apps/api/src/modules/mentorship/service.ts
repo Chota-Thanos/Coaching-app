@@ -636,6 +636,20 @@ export async function updateRequestStatus(requestId: number, mentorId: number, s
       client
     );
 
+    if (request && status === "completed") {
+      // The session row was created as 'scheduled' and nothing ever moved it
+      // on, so every session in the database was permanently mid-flight. That
+      // was invisible while nothing read the column; ratings read it, and are
+      // refused until the session is actually finished.
+      await query(
+        `update app.mentorship_sessions
+         set status = 'completed', updated_at = now()
+         where request_id = $1 and status = 'scheduled'`,
+        [requestId],
+        client
+      );
+    }
+
     if (request) {
       const mentor = await one<{ display_name: string }>(
         `select display_name from app.mentor_profiles where user_id = $1`,
