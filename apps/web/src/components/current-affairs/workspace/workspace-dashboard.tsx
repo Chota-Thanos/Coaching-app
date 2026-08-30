@@ -388,10 +388,10 @@ export function WorkspaceDashboard() {
             Save institute articles into repositories, define your own tags, quick-edit personal notes, and import filtered articles in bulk.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <Link
             id="tour-create-notes-btn"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-civic text-white px-4 text-sm font-bold shadow hover:bg-civic/90 transition-all"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-civic text-white px-3 text-xs font-bold shadow hover:bg-civic/90 transition-all sm:h-11 sm:px-4 sm:text-sm"
             href="/current-affairs/workspace/create"
           >
             <FolderPlus aria-hidden="true" className="h-4 w-4" />
@@ -399,7 +399,7 @@ export function WorkspaceDashboard() {
           </Link>
           {token && (
             <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-xs font-bold text-civic sm:h-11 sm:px-4 sm:text-sm"
               href="/current-affairs/workspace/highlights"
             >
               <Highlighter aria-hidden="true" className="h-4 w-4" />
@@ -408,7 +408,7 @@ export function WorkspaceDashboard() {
           )}
           {token && (
             <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-xs font-bold text-civic disabled:opacity-60 sm:h-11 sm:px-4 sm:text-sm"
               disabled={downloadingAll}
               onClick={downloadAllNotes}
               type="button"
@@ -418,7 +418,7 @@ export function WorkspaceDashboard() {
             </button>
           )}
           <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-4 text-sm font-bold text-civic disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-xs font-bold text-civic disabled:opacity-60 sm:h-11 sm:px-4 sm:text-sm"
             disabled={loading}
             onClick={loadWorkspace}
             type="button"

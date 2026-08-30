@@ -410,6 +410,36 @@ img {
   color: rgb(var(--c-ink));
 }
 
+/* ------------------------------------------------------------------------
+ * Phone legibility floor.
+ *
+ * The app leans hard on micro-labels: 539 uses of `text-[10px]` and 67 of
+ * `text-[9px]` across 85 files, for chips, metadata, badges and uppercase
+ * eyebrows. At a desk that reads as precision. Held at the same size on a
+ * 375px phone -- where most of the users are -- 9 and 10px is simply below
+ * what a person can comfortably read, and several of those chips are links
+ * you are expected to tap.
+ *
+ * Raising the floor here rather than at 600 call sites keeps one rule to
+ * reason about and cannot miss a component. The steps are deliberately small
+ * (9 -> 10.5, 10 -> 11.5, 11 -> 12): enough to cross into legible, not so much
+ * chips outgrow the rows they sit in. `em`-based padding is untouched, so
+ * nothing reflows.
+ *
+ * Utilities live in Tailwind's `utilities` layer; this rule is unlayered and
+ * therefore wins regardless of source order.
+ * ---------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .text-\[9px\] { font-size: 10.5px; }
+  .text-\[10px\] { font-size: 11.5px; }
+  .text-\[11px\] { font-size: 12px; }
+
+  /* A tappable chip needs a thumb-sized target, not just readable text.
+     Applies only to interactive elements, so static badges keep their
+     shape. */
+  a[class*="rounded-full"], button[class*="rounded-full"] { min-height: 32px; }
+}
+
 @media (max-width: 640px) {
   .article-body p { margin-bottom: 1rem; }
   .article-body h2 { margin: 1.75rem 0 0.7rem; }

@@ -363,6 +363,18 @@
        rather than widen their container. */
     .sp-root h1, .sp-root h2, .sp-root h3, .sp-root p, .sp-root b, .sp-root span { overflow-wrap:anywhere; }
 
+    /* The same legibility floor the rest of the app gets on phones. These
+       carry their own px sizes in this stylesheet, so the global Tailwind
+       floor cannot reach them: type badges and facet labels sit at 9.5px and
+       the metadata rows at 10px, which is below comfortable reading on a
+       375px screen. Nudged just over the line, not resized wholesale. */
+    .sp-type, .sp-facet-lab { font-size:11px; }
+    /* Two-class selectors upstream (`.sp-cat-type .sp-n`, `.sp-pcard .sp-sub`,
+       `.sp-lec .sp-n`) outrank a bare class, so these have to match that
+       specificity to take effect. */
+    .sp-pill { font-size:11.5px; }
+    .sp-cat-type .sp-n, .sp-pcard .sp-sub, .sp-lec .sp-n { font-size:11.5px; }
+
     /* Anything genuinely tabular that still cannot fit scrolls inside itself
        rather than taking the page with it. */
     .sp-scrollx { overflow-x:auto; }
