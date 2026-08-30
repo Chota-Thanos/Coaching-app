@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FolderKanban, Plus, X, Filter } from "lucide-react";
+import { ArrowRight, Folder, FolderKanban, FolderPlus, Plus, X, Filter } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ApiError } from "../../auth/auth-context";
 import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
@@ -43,6 +43,64 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
     setActiveFilterTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
   }
 
+  /* Starter folders.
+     The empty state used to be a sentence suggesting what a learner might make
+     ("monthly revision, syllabus topics, interview prep") and then handed them
+     a blank form. These are the same suggestions, but each one builds the
+     folder, so the first note-taking decision is a click rather than a naming
+     problem. */
+  const FOLDER_TEMPLATES: { name: string; description: string; tags: string[]; hint: string }[] = [
+    {
+      name: "Monthly revision",
+      description: "Everything worth re-reading from this month, in one place.",
+      tags: ["revision"],
+      hint: "Save daily news as you read, then download the whole folder before revision."
+    },
+    {
+      name: "Polity & Governance",
+      description: "Bills, judgments, institutions and schemes under GS Paper II.",
+      tags: ["gs2", "polity"],
+      hint: "One folder per subject keeps Mains answers sourced from the right notes."
+    },
+    {
+      name: "Editorials worth keeping",
+      description: "Arguments and data you can quote in an answer.",
+      tags: ["editorial"],
+      hint: "Add your own note on each one — the line you would actually use."
+    },
+    {
+      name: "Interview / DAF prep",
+      description: "Home state, optional subject, hobbies and current issues around them.",
+      tags: ["interview"],
+      hint: "Start it early; it is the folder people wish they had begun sooner."
+    }
+  ];
+
+  async function createFromTemplate(template: { name: string; description: string; tags: string[] }): Promise<void> {
+    if (!token) {
+      setNeedsSignIn(true);
+      return;
+    }
+    setPending(true);
+    setMessage(null);
+    setCapError(null);
+    try {
+      await authenticatedPost<StudentCollection>("/api/v1/current-affairs/me/collections", token, {
+        name: template.name,
+        slug: workspaceSlug(template.name),
+        description: template.description,
+        custom_tags: template.tags
+      });
+      await onChanged();
+      setMessage(`"${template.name}" created. Open it to start adding articles.`);
+    } catch (err) {
+      if (isCapError(err)) setCapError(err);
+      else setMessage("Could not create that folder. You may already have one with this name.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function createRepository(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -66,15 +124,15 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
       setCustomTags("");
       setShowCreateForm(false);
       await onChanged();
-      setMessage("Repository created.");
+      setMessage("Notes folder created.");
     } catch (err) {
-      // A free account at its repository cap gets a 402 whose message names the
+      // A free account at its folder cap gets a 402 whose message names the
       // limit. Reporting that as "use a unique name" sent people off renaming
-      // instead of telling them they had run out of repositories.
+      // instead of telling them they had run out of folders.
       if (isCapError(err)) {
         setCapError(err);
       } else {
-        setMessage("Could not create repository. Use a unique name.");
+        setMessage("Could not create that folder. Use a name you have not used before.");
       }
     } finally {
       setPending(false);
@@ -86,7 +144,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <FolderKanban aria-hidden="true" className="h-5 w-5 text-civic" />
-          <h2 className="text-lg font-black text-ink">Repositories</h2>
+          <h2 className="text-lg font-black text-ink">Notes Folders</h2>
         </div>
         <button
           id="tour-create-repo-btn"
@@ -95,14 +153,14 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
           type="button"
         >
           {showCreateForm ? <X aria-hidden="true" className="h-4 w-4" /> : <Plus aria-hidden="true" className="h-4 w-4" />}
-          {showCreateForm ? "Close" : "New repository"}
+          {showCreateForm ? "Close" : "New Notes Folder"}
         </button>
       </div>
 
       {showCreateForm && (
         <form className="grid gap-3 rounded-lg border border-line bg-surface p-4" onSubmit={createRepository}>
           <label className="grid gap-1 text-sm font-bold text-ink">
-            Repository name
+            Folder name
             <input
               className="h-11 rounded-md border border-line px-3 text-base font-normal"
               onChange={(event) => setName(event.target.value)}
@@ -140,7 +198,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
       )}
       {needsSignIn && (
         <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">
-          <InlineSignInPrompt message="Repositories are saved to your account, not this browser." />
+          <InlineSignInPrompt message="Notes folders are saved to your account, not this browser." />
         </p>
       )}
       {message && <p className="rounded-lg border border-civic/20 bg-civic/10 px-3 py-2 text-sm font-semibold text-civic">{message}</p>}
@@ -175,12 +233,34 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
 
       <div className="grid gap-3">
         {collections.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">
-            Create repositories for monthly revision, syllabus topics, interview prep, or PYQ practice.
-          </p>
+          <div className="rounded-lg border border-dashed border-line bg-surface p-4">
+            <p className="text-sm font-black text-ink">Start with a folder</p>
+            <p className="mt-1 text-sm text-ink/65">
+              A folder is where saved articles and your own notes live together. Pick one of these, or
+              make your own above.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {FOLDER_TEMPLATES.map((template) => (
+                <button
+                  className="flex flex-col items-start gap-1 rounded-lg border border-line bg-paper/40 p-3 text-left transition hover:border-civic hover:bg-civic/5 disabled:opacity-60"
+                  disabled={pending}
+                  key={template.name}
+                  onClick={() => void createFromTemplate(template)}
+                  type="button"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <FolderPlus aria-hidden="true" className="h-4 w-4 shrink-0 text-civic" />
+                    <span className="text-sm font-black text-ink">{template.name}</span>
+                  </span>
+                  <span className="text-xs leading-5 text-ink/65">{template.description}</span>
+                  <span className="text-[11px] font-semibold leading-4 text-ink/45">{template.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ) : filteredCollections.length === 0 ? (
           <p className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-ink/65">
-            No repositories match the selected tags.
+            No folders match the selected tags.
           </p>
         ) : (
           filteredCollections.map((collection) => (
@@ -189,7 +269,9 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
               href={`/current-affairs/workspace/repositories/${collection.id}`}
               key={collection.id}
             >
-              <span className="min-w-0">
+              <span className="flex min-w-0 items-start gap-2.5">
+                <Folder aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-civic" />
+                <span className="min-w-0">
                 <span className="block truncate text-base font-extrabold text-ink">{collection.name}</span>
                 <span className="mt-1 block text-sm text-ink/65">
                   {collection.item_count ?? 0} items
@@ -204,6 +286,7 @@ export function RepositoryManager({ collections, onChanged }: RepositoryManagerP
                     ))}
                   </span>
                 )}
+                </span>
               </span>
               <ArrowRight aria-hidden="true" className="h-5 w-5 shrink-0 text-civic" />
             </Link>

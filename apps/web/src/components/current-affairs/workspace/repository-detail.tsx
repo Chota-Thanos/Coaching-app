@@ -31,6 +31,7 @@ import { WorkspaceArticleRow } from "./workspace-article-row";
 import { WorkspaceLimitBar, useWorkspaceLimits } from "./workspace-limit-bar";
 import { AiSummarisePanel } from "./ai-summarise-panel";
 import { WorkspaceSignIn } from "./workspace-sign-in";
+import { FolderSuggestions } from "./folder-suggestions";
 
 type RepositoryDetailProps = {
   id: string;
@@ -417,7 +418,7 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
 
       {error && <p className="rounded-lg border border-berry/30 bg-berry/10 p-4 text-sm font-semibold text-berry">{error}</p>}
       {loading && !repository && (
-        <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading repository...</p>
+        <p className="rounded-lg border border-line bg-surface p-5 text-sm font-semibold text-ink/70">Loading folder...</p>
       )}
 
       {repository && (
@@ -490,6 +491,12 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
               </button>
             </div>
           </section>
+
+          <FolderSuggestions
+            collectionId={repository.id}
+            items={repository.items ?? []}
+            onChanged={loadRepository}
+          />
           {pdfError && <p className="text-sm font-semibold text-berry">{pdfError}</p>}
 
           <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">

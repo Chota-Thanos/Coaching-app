@@ -8,7 +8,9 @@ type WorkspaceStatGridProps = {
   dashboard: ReadingDashboard;
 };
 
-const statClasses = "rounded-lg border border-line bg-surface p-4 shadow-sm";
+/* These are a status line, not the point of the page. At full card size they
+   pushed the folders — the thing a learner came to open — below the fold. */
+const statClasses = "flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2";
 
 export function WorkspaceStatGrid({ dashboard }: WorkspaceStatGridProps) {
   const stats = [
@@ -24,9 +26,11 @@ export function WorkspaceStatGrid({ dashboard }: WorkspaceStatGridProps) {
         const Icon = stat.icon;
         return (
           <article className={statClasses} key={stat.label}>
-            <Icon aria-hidden="true" className="h-5 w-5 text-civic" />
-            <p className="mt-3 text-2xl font-black text-ink">{stat.value}</p>
-            <p className="mt-1 text-sm font-semibold text-ink/65">{stat.label}</p>
+            <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-civic" />
+            <span className="min-w-0">
+              <span className="block text-base font-black leading-none text-ink">{stat.value}</span>
+              <span className="mt-0.5 block truncate text-[11px] font-semibold text-ink/60">{stat.label}</span>
+            </span>
           </article>
         );
       })}
