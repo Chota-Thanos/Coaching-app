@@ -67,7 +67,15 @@ export function HighlightsReview() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [collectionId, setCollectionId] = useState<number | null>(null);
+  /* Opened from inside a folder, this arrives as ?collection_id= so the view
+     starts scoped to that folder rather than to everything the learner has
+     ever highlighted. */
+  const [collectionId, setCollectionId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = new URLSearchParams(window.location.search).get("collection_id");
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  });
   const [color, setColor] = useState<string | null>(null);
   const [withNote, setWithNote] = useState(false);
   const [search, setSearch] = useState("");

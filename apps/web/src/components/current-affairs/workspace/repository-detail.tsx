@@ -18,8 +18,7 @@ import {
   Star,
   Tags,
   Trash2,
-  X
-} from "lucide-react";
+  X, Highlighter} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { StudentArticle, StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
 import { joinWorkspaceTags, splitWorkspaceTags, visibleWorkspaceTags } from "../../../lib/workspace";
@@ -492,6 +491,13 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 <FileDown aria-hidden="true" className="h-4 w-4" />
                 {downloadingPdf ? "Preparing PDF..." : "Download PDF"}
               </button>
+              <Link
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-civic/30 bg-civic/10 px-3 text-sm font-bold text-civic"
+                href={`/current-affairs/workspace/highlights?collection_id=${repository.id}`}
+              >
+                <Highlighter aria-hidden="true" className="h-4 w-4" />
+                Highlights
+              </Link>
             </div>
           </section>
 
@@ -649,6 +655,25 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                 repository={repository}
                 selectedTag={selectedTagFilter}
               />
+
+              {/* What this folder can do, said once at the top. These are the
+                  three things learners were not discovering: that a tag makes
+                  the list filterable, that the saved copy is theirs to rewrite,
+                  and that a short note of their own can sit on each article. */}
+              <ul className="grid gap-1.5 rounded-lg border border-civic/20 bg-civic/[0.04] p-3 text-xs leading-5 text-ink/70 sm:grid-cols-3">
+                <li>
+                  <strong className="font-black text-ink">Tag an article</strong> to filter this folder by
+                  it later — the tags above are the ones in use.
+                </li>
+                <li>
+                  <strong className="font-black text-ink">Edit any article</strong>: the copy in your folder
+                  is yours, so cut it down to what you will actually revise.
+                </li>
+                <li>
+                  <strong className="font-black text-ink">Add a personal note</strong> to any article — the
+                  line you would use in an answer.
+                </li>
+              </ul>
             </div>
           </section>
 
@@ -684,24 +709,26 @@ export function RepositoryDetail({ id }: RepositoryDetailProps) {
                       trailingAction={(
                         <>
                           <button
-                            className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold ${
+                            aria-label={isPinnedItem(item) ? "Unpin this article" : "Pin this article"}
+                            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
                               isPinnedItem(item)
                                 ? "border-civic bg-civic text-white"
                                 : "border-civic/30 bg-civic/10 text-civic hover:bg-civic/15"
                             }`}
                             onClick={() => void togglePinnedItem(item)}
+                            title={isPinnedItem(item) ? "Pinned" : "Pin"}
                             type="button"
                           >
                             <Star aria-hidden="true" className={`h-4 w-4 ${isPinnedItem(item) ? "fill-white" : ""}`} />
-                            {isPinnedItem(item) ? "Pinned" : "Pin"}
                           </button>
                           <button
-                            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-berry/30 bg-berry/10 px-3 text-sm font-bold text-berry hover:bg-berry/15"
+                            aria-label="Remove from this folder"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-berry/30 bg-berry/10 text-berry hover:bg-berry/15"
                             onClick={() => void removeItem(item.id)}
+                            title="Remove from this folder"
                             type="button"
                           >
                             <Trash2 aria-hidden="true" className="h-4 w-4" />
-                            Remove
                           </button>
                         </>
                       )}

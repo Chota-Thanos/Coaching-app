@@ -12,6 +12,7 @@ import { RichTextMarkdownEditor } from "../rich-text-editor";
 import { RenderedContent } from "../rendered-content";
 import { downloadScannedPdf } from "../../../lib/export-pdf";
 import { RepositoryAttachControl } from "./repository-attach-control";
+import { ForkTagQuickEdit } from "./fork-tag-quick-edit";
 
 type WorkspaceArticleRowProps = {
   fork: StudentFork;
@@ -246,13 +247,13 @@ export function WorkspaceArticleRow({
                 type="button"
               >
                 {bodyExpanded ? <ChevronUp aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />}
-                {bodyExpanded ? "Hide body" : "Body"}
+                {bodyExpanded ? "Hide" : "Read and edit"}
               </button>
             )}
             {!editingCopy && (
-              <button className="inline-flex h-8 items-center gap-1 rounded-md bg-civic px-2.5 text-xs font-bold text-white" onClick={() => setEditingCopy(true)} type="button">
+              <button aria-label="Edit copy" className="inline-flex h-8 items-center gap-1 rounded-md bg-civic px-2 text-xs font-bold text-white" onClick={() => setEditingCopy(true)} title="Edit copy" type="button">
                 <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
-                Edit copy
+                <span className="sr-only">Edit copy</span>
               </button>
             )}
             <button
@@ -337,6 +338,12 @@ export function WorkspaceArticleRow({
         <div className="mt-2">
 
         </div>
+
+        {availableTags && (
+          <div className="mt-2">
+            <ForkTagQuickEdit availableTags={availableTags} fallbackTags={fallbackTags} fork={fork} onChanged={onChanged} />
+          </div>
+        )}
 
         {(editingCopy || bodyExpanded) && (
         <section className="mt-2 rounded-md border border-line bg-paper/25 p-3">
@@ -502,7 +509,7 @@ export function WorkspaceArticleRow({
             {!editingCopy && (
               <button className="inline-flex items-center gap-1 text-xs font-bold text-civic" onClick={() => setEditingCopy(true)} type="button">
                 <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
-                Edit copy
+                <span className="sr-only">Edit copy</span>
               </button>
             )}
           </div>

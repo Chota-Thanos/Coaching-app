@@ -281,6 +281,11 @@ export function ArticleAnnotator({ forkId, body, highlights, notes, onChanged, c
         <div
           className="fixed z-40 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-md border border-line bg-midnight px-2 py-1.5 shadow-xl"
           data-annotator-ui
+          /* Pressing a control here would otherwise move focus, and the browser
+             collapses the selection when it does -- so the text a reader had
+             just dragged over visibly deselected the instant they reached for a
+             colour. Refusing the default keeps it selected while they choose. */
+          onMouseDown={(event) => event.preventDefault()}
           style={{ left: toolbar.x, top: toolbar.y }}
         >
           {HIGHLIGHT_COLORS.map((entry) => (
