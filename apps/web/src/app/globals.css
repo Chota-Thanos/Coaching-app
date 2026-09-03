@@ -308,6 +308,33 @@ img {
   color: rgb(var(--c-ink));
 }
 
+/* h1 and h4-h6 were left out when the heading treatment above was written,
+   which was only safe while every article used h2/h3. Real content does not:
+   a Mains Note in the library carries its section headings as <h4>, so it got
+   no heading styling at all and read as one undifferentiated block -- the
+   reason the typography work appeared to skip Mains Notes entirely. An <h1>
+   inside a body is rare (the page's own title is the real h1) but is sized
+   here rather than left to the browser default, which would out-shout it. */
+.article-body h1 {
+  margin: 2.75rem 0 1rem;
+  font-size: clamp(1.45rem, 1.2rem + 0.9vw, 1.8rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  color: rgb(var(--c-ink));
+}
+
+.article-body h4,
+.article-body h5,
+.article-body h6 {
+  margin: 1.75rem 0 0.6rem;
+  font-size: clamp(1rem, 0.97rem + 0.15vw, 1.08rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.4;
+  letter-spacing: -0.003em;
+  color: rgb(var(--c-ink));
+}
+
 /* Tailwind's preflight reset sets list-style: none on every <ul>/<ol> by
    default. The Visual Editor (.tiptap-prosemirror) explicitly restores
    markers for its own view (see below), but .article-body — the actual
@@ -515,6 +542,8 @@ img {
   .article-body p { margin-bottom: 1.15rem; }
   .article-body h2 { margin: 2rem 0 0.7rem; }
   .article-body h3 { margin: 1.6rem 0 0.6rem; }
+  .article-body h1 { margin: 2rem 0 0.7rem; }
+  .article-body h4, .article-body h5, .article-body h6 { margin: 1.35rem 0 0.5rem; }
 }
 
 /* Pointer disclosure — a point's short label (<summary>) stays always
