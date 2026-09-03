@@ -1,10 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { idParamSchema, listQuerySchema, parse, withValidation } from "../../common/http.js";
 import { requireAdminOrEditor, requireAuth } from "../auth/guards.js";
+import { assertHasPerformanceCoachAccess } from "../billing/free-tier.js";
+import { runPerformanceCoach, type CoachContentType } from "./performance-coach.service.js";
 import {
   createBookmarkSchema,
   createErrorLogSchema,
   createErrorTypeSchema,
+  performanceCoachSchema,
   updateErrorTypeSchema
 } from "./review.schemas.js";
 import {
@@ -116,6 +119,26 @@ export async function registerReviewRoutes(server: FastifyInstance): Promise<voi
       const record = await getStudentCategoryPerformance(user.id, params.id, query?.content_type);
       if (!record) return reply.notFound("Category performance not found.");
       return record;
+    });
+  });
+
+  /**
+   * The AI performance coach. Premium, and deliberately scoped to one content
+   * type per conversation -- a question about Prelims accuracy should never be
+   * answered from Mains evaluations.
+   */
+  server.post("/api/v1/assessment/me/performance-coach", async (request, reply) => {
+    const user = await requireAuth(request);
+    return withValidation(reply, async () => {
+      await assertHasPerformanceCoachAccess(user.id);
+      const body = parse(performanceCoachSchema, request.body);
+      return runPerformanceCoach({
+        userId: user.id,
+        contentType: body.content_type as CoachContentType,
+        message: body.message,
+        history: body.history,
+        taxonomyNodeId: body.taxonomy_node_id ?? null
+      });
     });
   });
 }

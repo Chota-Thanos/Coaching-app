@@ -40,6 +40,14 @@ export const FREE_MAX_NOTES_PER_FORK = 10;
 /** Any of these keys means the user has paid for the notes workspace. */
 const NOTES_PREMIUM_KEYS = ["current_affairs.notes_workspace", "current_affairs.editorial_access"];
 
+/**
+ * The AI performance coach is its own entitlement rather than riding on an
+ * existing one: it reads a student's whole answer history and costs a real AI
+ * call per question asked, so it needs to be priceable on its own. Attach this
+ * key to whichever plan should include it.
+ */
+const PERFORMANCE_COACH_KEYS = ["assessment.performance_coach"];
+
 async function hasAnyEntitlement(userId: number, keys: string[]): Promise<boolean> {
   const entitlements = await getUserEntitlements(userId);
   return entitlements.some((e) => keys.includes(e.entitlement_key));
@@ -197,6 +205,19 @@ export async function assertCanAddNote(userId: number, forkId: number): Promise<
  * gated behind the subscription entirely, the same way assessment.ai_evaluation
  * gates Mains AI evaluation.
  */
+/**
+ * Throws a 402-style error when the user doesn't hold the performance coach
+ * entitlement. Gated outright rather than capped, like AI notes and Mains
+ * evaluation, since every question runs several model calls.
+ */
+export async function assertHasPerformanceCoachAccess(userId: number): Promise<void> {
+  if (await hasAnyEntitlement(userId, PERFORMANCE_COACH_KEYS)) return;
+  throw capExceededError(
+    "The AI performance coach is a premium feature. Upgrade to have it read your attempts and tell you what you keep getting wrong.",
+    "premium_required"
+  );
+}
+
 export async function assertHasAiNotesAccess(userId: number): Promise<void> {
   if (await hasAnyEntitlement(userId, NOTES_PREMIUM_KEYS)) return;
   throw capExceededError(

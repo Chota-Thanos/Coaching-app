@@ -11,6 +11,7 @@ import { useSubscription } from "../../lib/use-subscription";
 import { tierAwareQuestionCount } from "../../lib/subscription-plans";
 import type { StartTestCategory } from "../../lib/use-start-test";
 import { BackLink } from "../app/back-link";
+import { PerformanceCoachPanel } from "./performance-coach-panel";
 
 /**
  * This page never sees the full taxonomy tree (unlike the dashboard's
@@ -306,6 +307,13 @@ export function CategoryPerformancePage({ nodeId }: CategoryPerformancePageProps
                   <OutcomeTile label="Skipped" value={skipped} className="border-slate-200 bg-slate-50 text-slate-600" />
                 </div>
               </section>
+
+              <PerformanceCoachPanel
+                contentType={backTab === "aptitude" ? "aptitude" : backTab === "mains" ? "mains" : "gk"}
+                examId={examId}
+                taxonomyNodeId={Number(nodeId) || null}
+                topicName={data.category?.name}
+              />
 
               {/* Subcategories breakdown */}
               {data.children && data.children.length > 0 && (() => {

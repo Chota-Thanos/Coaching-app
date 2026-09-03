@@ -37,3 +37,19 @@ export type CreateBookmarkInput = z.output<typeof createBookmarkSchema>;
 export type CreateErrorLogInput = z.output<typeof createErrorLogSchema>;
 export type CreateErrorTypeInput = z.output<typeof createErrorTypeSchema>;
 export type UpdateErrorTypeInput = z.output<typeof updateErrorTypeSchema>;
+
+export const performanceCoachSchema = z.object({
+  message: z.string().trim().min(1).max(1000),
+  content_type: z.enum(["gk", "aptitude", "mains"]).default("gk"),
+  /** The node the student is looking at, so "this topic" resolves. */
+  taxonomy_node_id: idSchema.optional().nullable(),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().trim().min(1).max(4000)
+      })
+    )
+    .max(20)
+    .optional()
+});
