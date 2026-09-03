@@ -325,6 +325,18 @@ function CourseBody({ plan, weeks, tracking }: BodyProps) {
                   <p style={{ margin: "4px 0 0", fontFamily: "var(--sp-display)", fontSize: 13, fontWeight: 720 }}>
                     {item.live_class!.title}
                   </p>
+                  {/* A class that has actually started is a door, not a
+                      notice — this list used to name the session and leave
+                      the learner with nowhere to click. */}
+                  {item.live_class!.status === "live" && (
+                    <Link
+                      className="sp-btn sp-btn--p"
+                      href={studyPlanHref(`/live/${item.live_class!.id}`)}
+                      style={{ marginTop: 9 }}
+                    >
+                      Join the class
+                    </Link>
+                  )}
                 </div>
               ))}
               <p style={{ margin: 0, fontSize: 11.5, color: "var(--sp-ink-soft)" }}>

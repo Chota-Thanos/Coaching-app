@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticatedGet, useAuth } from "../auth/auth-context";
 import { browserBaseUrl } from "../../lib/api";
 import {
+  formatIsoDateLong,
   PLAN_TYPE_CLASS,
   PLAN_TYPE_LABEL,
   studyPlanHref,
@@ -233,6 +234,7 @@ export function StudyPlanItemScreen({
 
   const isTest = TEST_TYPES.has(item.item_type);
   const isLecture = item.item_type === "live_lecture" || Boolean(item.lecture_url);
+  const liveClass = item.live_class;
   const resources = item.resources ?? [];
   const done = item.progress?.status === "completed";
 
@@ -343,20 +345,95 @@ export function StudyPlanItemScreen({
               </p>
             )}
 
+            {/* A class taught in the app, rather than linked out to. The room
+                itself decides host vs viewer from the server's own token, so
+                this is only the way in. */}
+            {liveClass && liveClass.status !== "cancelled" && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "12px 14px",
+                  borderRadius: 11,
+                  border: liveClass.status === "live" ? "1px solid var(--sp-accent-line)" : "1px solid var(--sp-line)",
+                  background: liveClass.status === "live" ? "var(--sp-accent-soft)" : "var(--sp-panel-2)"
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontFamily: "var(--sp-mono)",
+                      fontSize: 10.5,
+                      letterSpacing: ".08em",
+                      textTransform: "uppercase",
+                      color: liveClass.status === "live" ? "var(--sp-accent-ink)" : "var(--sp-ink-faint)"
+                    }}
+                  >
+                    {liveClass.status === "live"
+                      ? "● Live now"
+                      : liveClass.status === "ended"
+                        ? "Class ended"
+                        : "Live class scheduled"}
+                  </p>
+                  <p style={{ margin: "4px 0 0", fontSize: 13, fontWeight: 650 }}>{liveClass.title}</p>
+                  {liveClass.status === "scheduled" && (
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--sp-ink-faint)" }}>
+                      Starts {formatIsoDateLong(liveClass.scheduled_start)}
+                    </p>
+                  )}
+                </div>
+                {liveClass.status === "live" ? (
+                  <Link className="sp-btn sp-btn--p" href={studyPlanHref(`/live/${liveClass.id}`)}>
+                    Join the class
+                  </Link>
+                ) : liveClass.status === "scheduled" ? (
+                  <span style={{ fontSize: 12, color: "var(--sp-ink-faint)" }}>
+                    The join button appears here when your teacher starts.
+                  </span>
+                ) : null}
+              </div>
+            )}
+
+            {/* When a day has both, the video below is the recording of the
+                class above — say so, rather than leaving two players' worth of
+                lecture on one screen with no explanation. */}
+            {liveClass && liveClass.status !== "cancelled" && lectureSource !== null && (
+              <p
+                style={{
+                  margin: "2px 0 0",
+                  fontFamily: "var(--sp-mono)",
+                  fontSize: 10.5,
+                  letterSpacing: ".08em",
+                  textTransform: "uppercase",
+                  color: "var(--sp-ink-faint)"
+                }}
+              >
+                {liveClass.status === "ended" ? "Recording of this class" : "Recording — available if you miss it"}
+              </p>
+            )}
+
             {isLecture && (
               lectureSource === null ? (
-                <>
-                  <div className="sp-player" style={{ marginTop: 2 }}>
-                    <span className="sp-play">▶</span>
-                    <div className="sp-cap">
-                      <p>Week {item.week_no} · Lecture</p>
-                      <h4>{item.title}</h4>
+                // A day whose lecture is taught live in the app has no link to
+                // show, and saying "no lecture link" there reads as a mistake.
+                liveClass && liveClass.status !== "cancelled" ? null : (
+                  <>
+                    <div className="sp-player" style={{ marginTop: 2 }}>
+                      <span className="sp-play">▶</span>
+                      <div className="sp-cap">
+                        <p>Week {item.week_no} · Lecture</p>
+                        <h4>{item.title}</h4>
+                      </div>
                     </div>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--sp-ink-faint)" }}>
-                    No lecture link on this day yet.
-                  </p>
-                </>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--sp-ink-faint)" }}>
+                      No lecture link on this day yet.
+                    </p>
+                  </>
+                )
               ) : lectureSource.kind === "file" ? (
                 <div>
                   <video

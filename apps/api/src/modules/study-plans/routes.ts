@@ -39,7 +39,10 @@ import {
   scheduleLiveClass,
   startLiveClass,
   endLiveClass,
-  getLiveClassToken
+  getLiveClassToken,
+  getLiveClassActivity,
+  postLiveClassMessage,
+  setLiveClassHand
 } from "./service.js";
 import {
   attemptIdParamSchema,
@@ -49,8 +52,11 @@ import {
   createStudyPlanTestSchema,
   enrollStudyPlanSchema,
   idParamSchema,
+  liveClassActivityQuerySchema,
   liveClassIdParamSchema,
   listStudyPlansQuerySchema,
+  postLiveClassMessageSchema,
+  setLiveClassHandSchema,
   listStudyPlanTestsQuerySchema,
   parseStudyPlanQuestionsSchema,
   saveStudyPlanQuestionsDraftSchema,
@@ -628,6 +634,35 @@ export async function registerStudyPlanRoutes(server: FastifyInstance): Promise<
     return withValidation(reply, async () => {
       const params = parse(liveClassIdParamSchema, request.params);
       return getLiveClassToken(params.liveClassId, auth);
+    });
+  });
+
+  // Chat and raised hands. Polled by the room every couple of seconds, so both
+  // are served by one request rather than two.
+  server.get("/api/v1/study-plan-live-classes/:liveClassId/activity", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(liveClassIdParamSchema, request.params);
+      const queryParams = parse(liveClassActivityQuerySchema, request.query);
+      return getLiveClassActivity(params.liveClassId, auth, queryParams.after ?? 0);
+    });
+  });
+
+  server.post("/api/v1/study-plan-live-classes/:liveClassId/messages", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(liveClassIdParamSchema, request.params);
+      const body = parse(postLiveClassMessageSchema, request.body);
+      return postLiveClassMessage(params.liveClassId, auth, body.body);
+    });
+  });
+
+  server.post("/api/v1/study-plan-live-classes/:liveClassId/hand", async (request, reply) => {
+    const auth = await requireAuth(request);
+    return withValidation(reply, async () => {
+      const params = parse(liveClassIdParamSchema, request.params);
+      const body = parse(setLiveClassHandSchema, request.body);
+      return setLiveClassHand(params.liveClassId, auth, body.raised, body.user_id);
     });
   });
 }

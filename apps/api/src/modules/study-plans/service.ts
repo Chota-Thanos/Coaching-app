@@ -2534,3 +2534,139 @@ export async function getLiveClassToken(
   const { appId, token, uid, expiresInSeconds } = generateAgoraRtcToken(liveClass.channel_name, requestingUser.id, role);
   return { appId, token, uid, channelName: liveClass.channel_name, role, expiresInSeconds };
 }
+
+// --- Live class chat and raised hands (migration 061) ---
+
+/**
+ * Everyone in the room may read and write the room's chat: the host, and any
+ * student enrolled in the plan the class belongs to. Returns whether the
+ * caller is the host, since that decides who may lower someone else's hand.
+ *
+ * Deliberately more permissive than `getLiveClassToken` about class status —
+ * a student reading back what was said after the class ended is reasonable,
+ * while joining the video after it ended is not.
+ */
+async function requireLiveClassParticipant(
+  liveClassId: number,
+  requestingUser: AuthContext
+): Promise<{ planId: number; isHost: boolean }> {
+  const liveClass = await getLiveClass(liveClassId);
+  if (!liveClass) notFound("Live class not found.");
+
+  const isHost = isPrivileged(requestingUser) || liveClass.host_user_id === requestingUser.id;
+  if (!isHost) {
+    const enrolled = await checkUserEnrollment(liveClass.plan_id, requestingUser.id);
+    if (!enrolled) {
+      const error = new Error("You must be enrolled in this study plan to take part in its live classes.") as Error & {
+        statusCode?: number;
+      };
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+  return { planId: liveClass.plan_id, isHost };
+}
+
+/**
+ * One poll returns both halves of the room's side-channel: the chat since the
+ * caller's last message id, and the current set of raised hands.
+ *
+ * Together in one response on purpose — a class open in a browser polls this
+ * every couple of seconds, and two endpoints would double that traffic for no
+ * benefit. `after` makes the chat half incremental; hands are a small live set
+ * and are always returned whole.
+ */
+export async function getLiveClassActivity(
+  liveClassId: number,
+  requestingUser: AuthContext,
+  afterMessageId = 0
+): Promise<{
+  messages: unknown[];
+  hands: unknown[];
+  is_host: boolean;
+}> {
+  const { isHost } = await requireLiveClassParticipant(liveClassId, requestingUser);
+
+  const [messages, hands] = await Promise.all([
+    query(
+      `
+        select m.id, m.user_id, m.body, m.created_at, u.username as author_name
+        from study_plan.live_class_messages m
+        join app.users u on u.id = m.user_id
+        where m.live_class_id = $1 and m.id > $2
+        order by m.id asc
+        limit 200
+      `,
+      [liveClassId, afterMessageId]
+    ),
+    query(
+      `
+        select h.user_id, h.raised_at, u.username as student_name
+        from study_plan.live_class_hands h
+        join app.users u on u.id = h.user_id
+        where h.live_class_id = $1
+        order by h.raised_at asc
+      `,
+      [liveClassId]
+    )
+  ]);
+
+  return { messages, hands, is_host: isHost };
+}
+
+export async function postLiveClassMessage(
+  liveClassId: number,
+  requestingUser: AuthContext,
+  body: string
+): Promise<unknown> {
+  await requireLiveClassParticipant(liveClassId, requestingUser);
+  const rows = await query(
+    `
+      insert into study_plan.live_class_messages (live_class_id, user_id, body)
+      values ($1, $2, $3)
+      returning id, user_id, body, created_at
+    `,
+    [liveClassId, requestingUser.id, body.trim()]
+  );
+  return rows[0];
+}
+
+/**
+ * Raising and lowering a hand, and the host clearing someone else's.
+ *
+ * `raised` false with a `targetUserId` is the host calling on a student and
+ * putting their hand back down; only the host may aim it at anyone but
+ * themselves.
+ */
+export async function setLiveClassHand(
+  liveClassId: number,
+  requestingUser: AuthContext,
+  raised: boolean,
+  targetUserId?: number
+): Promise<{ ok: true }> {
+  const { isHost } = await requireLiveClassParticipant(liveClassId, requestingUser);
+  const userId = targetUserId ?? requestingUser.id;
+
+  if (userId !== requestingUser.id && !isHost) {
+    const error = new Error("Only the host can lower another student's hand.") as Error & { statusCode?: number };
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (raised) {
+    await query(
+      `
+        insert into study_plan.live_class_hands (live_class_id, user_id)
+        values ($1, $2)
+        on conflict (live_class_id, user_id) do nothing
+      `,
+      [liveClassId, userId]
+    );
+  } else {
+    await query(`delete from study_plan.live_class_hands where live_class_id = $1 and user_id = $2`, [
+      liveClassId,
+      userId
+    ]);
+  }
+  return { ok: true };
+}

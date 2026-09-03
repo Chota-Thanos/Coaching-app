@@ -218,6 +218,21 @@ export const testTemplateIdParamSchema = z.object({ testTemplateId: idSchema });
 export const attemptIdParamSchema = z.object({ attemptId: idSchema });
 export const liveClassIdParamSchema = z.object({ liveClassId: idSchema });
 
+export const liveClassActivityQuerySchema = z.object({
+  /** Last message id the caller already has; 0 or absent means "from the top". */
+  after: z.coerce.number().int().nonnegative().optional()
+});
+
+export const postLiveClassMessageSchema = z.object({
+  body: z.string().trim().min(1).max(2000)
+});
+
+export const setLiveClassHandSchema = z.object({
+  raised: z.boolean(),
+  /** Host only, to lower a student's hand after calling on them. */
+  user_id: optionalIdSchema
+});
+
 export const scheduleLiveClassSchema = z.object({
   plan_item_id: optionalIdSchema,
   title: z.string().trim().min(1),

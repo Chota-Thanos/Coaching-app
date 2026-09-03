@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { AdminStudyPlanSpace } from "../../../../components/admin/admin-study-plan-space";
+import { StudyPlanBuilder } from "../../../../components/admin/study-plan-builder/study-plan-builder";
 
 export const metadata: Metadata = {
   title: "Study Plans Admin",
@@ -13,5 +13,5 @@ export default async function AdminStudyPlansPage({ params }: { params: Promise<
   if (!Number.isInteger(planId) || planId <= 0) {
     redirect("/admin/study-plans");
   }
-  return <AdminStudyPlanSpace initialPlanId={planId} />;
+  return <StudyPlanBuilder planId={planId} />;
 }
