@@ -21,6 +21,18 @@ import { workspaceSlug } from "../../../lib/workspace";
  * Affairs Pro server-side, so an unentitled learner gets the upgrade prompt
  * rather than a raw failure.
  */
+/**
+ * Starting points, not a menu — each one only fills the box, so a learner can
+ * edit it before running. They exist because "what kind of summary do you
+ * want?" is a hard question to answer from a blank field.
+ */
+export const SUMMARY_PRESETS: Array<{ label: string; prompt: string }> = [
+  { label: "Prelims pointers", prompt: "Give me ten one-line prelims pointers — the facts most likely to be asked: names, numbers, dates, Articles and scheme ministries." },
+  { label: "Mains answer material", prompt: "Organise this as Mains answer material: the issue, the arguments on each side, the data I can quote, and a way forward." },
+  { label: "One-page revision", prompt: "Compress this into a single page I can revise in five minutes, grouped by theme, with the key figures in a table." },
+  { label: "Just the facts", prompt: "Strip out all analysis and give me only the hard facts, as a short bulleted list." }
+];
+
 export function AiSummarisePanel({
   collectionId,
   forks,
@@ -34,6 +46,7 @@ export function AiSummarisePanel({
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
+  const [instructions, setInstructions] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [capError, setCapError] = useState<ApiError | null>(null);
@@ -52,7 +65,11 @@ export function AiSummarisePanel({
       const note = await authenticatedPost<{ title: string; body: string }>(
         "/api/v1/current-affairs/me/ai/generate-notes",
         token,
-        { collection_id: collectionId, fork_ids: selected }
+        {
+          collection_id: collectionId,
+          fork_ids: selected,
+          instructions: instructions.trim() || undefined
+        }
       );
       // The endpoint returns the note; saving it as a personal article and
       // filing it in this repository is what makes it part of the notes.
@@ -67,6 +84,7 @@ export function AiSummarisePanel({
         student_article_id: article.id
       });
       setSelected([]);
+      setInstructions("");
       setOpen(false);
       await onCreated();
     } catch (err) {
@@ -117,6 +135,35 @@ export function AiSummarisePanel({
                 </label>
               );
             })}
+          </div>
+
+          <div className="grid gap-2">
+            <label className="grid gap-1.5">
+              <span className="text-[11px] font-black uppercase tracking-wide text-ink/55">
+                What kind of summary do you want?
+              </span>
+              <textarea
+                className="min-h-20 rounded-md border border-line bg-surface p-2.5 text-xs font-semibold text-ink outline-none focus:border-civic"
+                onChange={(event) => setInstructions(event.target.value)}
+                placeholder="Example: ten one-line prelims pointers, focusing on the schemes and their ministries."
+                value={instructions}
+              />
+              <span className="text-[11px] font-semibold leading-4 text-ink/45">
+                Optional. Say what you want out of these articles and the note is written to that.
+              </span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {SUMMARY_PRESETS.map((preset) => (
+                <button
+                  className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-ink/70 hover:border-civic hover:text-civic"
+                  key={preset.label}
+                  onClick={() => setInstructions(preset.prompt)}
+                  type="button"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {capError && <CapReachedNotice error={capError} module="current_affairs" compact />}

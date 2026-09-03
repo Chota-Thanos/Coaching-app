@@ -1,5 +1,6 @@
 import { one, query } from "../../../db.js";
 import { getContentTypeBrief } from "./content-type-prompts.js";
+import { ensureHtmlBody } from "./html-body.js";
 import { GoogleAuth } from "google-auth-library";
 
 // Types for AI output
@@ -1681,7 +1682,7 @@ ${sp.donts ? `- Donts: ${Array.isArray(sp.donts) ? sp.donts.join("; ") : sp.dont
  * to the requesting user before being passed in here.
  */
 export async function generateStudentNotesAI(
-  options: { sources: Array<{ title: string; body: string }> }
+  options: { sources: Array<{ title: string; body: string }>; instructions?: string }
 ): Promise<{ title: string; body: string }> {
   if (!hasAiCredentials()) {
     throw new Error("AI notes generation is not configured on this server.");
@@ -1690,14 +1691,53 @@ export async function generateStudentNotesAI(
     throw new Error("No source articles were supplied to summarize.");
   }
 
-  const systemPrompt = `You are a UPSC current affairs study-notes writer, helping a student condense their own saved articles into a single revision note.
-You will be given one or more full articles the student has already selected. Summarize ONLY what is in these articles — do not add facts, statistics, dates, or names that are not present in the supplied text, and do not draw on outside knowledge of the topic.
-Write a concise, well-structured note in Markdown (## headings and bullet points) that pulls together the key points across all the supplied articles, organized by theme rather than repeating each article separately.
+  const instructions = options.instructions?.trim();
+
+  /*
+   * Two things this prompt has to fight.
+   *
+   * First, these articles are ALREADY terse — a daily current-affairs piece on
+   * this platform is usually a short bulleted list, not prose. Told only to
+   * "summarize what is here and add nothing", a model hands the same bullets
+   * back, which is exactly what students reported: a summary indistinguishable
+   * from the source. So the note is asked for as a rewrite with a real
+   * compression target and a ban on lifting sentences whole, not a précis.
+   *
+   * Second, the output has to be HTML. Every article body on this platform is
+   * HTML, and student notes are rendered by the same component; the Markdown
+   * this used to request was stored raw and shown to the reader as literal
+   * "##" and "-" characters. `ensureHtmlBody` below is the safety net for a
+   * model that ignores the instruction anyway.
+   */
+  const systemPrompt = `You are helping a UPSC aspirant turn current-affairs articles they have saved into one revision note.
+
+${instructions
+    ? `WHAT THE STUDENT ASKED FOR (this is the most important instruction — follow it):
+"""
+${instructions}
+"""
+Shape the note to this request. If it asks for a particular angle, length, format or exam focus, that decides the structure. Only fall back to the default structure below for anything the request does not cover.`
+    : `The student gave no specific instruction, so write a general revision note: the key facts, why each matters, and what an examiner could ask.`}
+
+HOW TO WRITE IT
+- This is a REWRITE, not a reproduction. Merge everything into one note organised by theme, so a fact appearing in two articles is stated once, in the place it belongs.
+- Be substantially shorter than the sources you were given. If the articles are already terse bullet points, compress further by grouping related points and cutting repetition — handing back the same bullets is a failure.
+- Do not copy sentences verbatim. Say it in your own words, more briefly.
+- Keep every figure, date, name, Article/Section number and official scheme name exactly as given.
+
+ACCURACY
+- Use ONLY what is in the supplied articles. Never add a fact, statistic, date or name that is not there, and never draw on outside knowledge of the topic.
+- If the articles genuinely do not support something the student asked for, write the note from what they do contain and say plainly in one line what was missing.
+
+FORMAT
+- "body" must be clean HTML: <h2> for sections, <p> for prose, <strong> for emphasis, <ul><li> for lists, and <table><thead><tr><th>…</th></tr></thead><tbody><tr><td>…</td></tr></tbody></table> where the content is genuinely tabular.
+- Never use Markdown syntax ("##", "**", "-"). It is stored as-is and a reader sees the raw characters, not formatting.
+- The source articles may themselves arrive as HTML. Do not echo their markup — write fresh HTML for your own note.
 
 Return ONLY valid JSON in this format:
 {
   "title": "A concise title for this note",
-  "body": "The full note in Markdown"
+  "body": "The full note as HTML"
 }`;
 
   const userPrompt = options.sources
@@ -1709,7 +1749,10 @@ Return ONLY valid JSON in this format:
   if (!parsed?.title || !parsed?.body) {
     throw new Error("AI response was missing a title or body.");
   }
-  return { title: String(parsed.title), body: String(parsed.body) };
+  // Safety net for a model that returns Markdown despite the instruction —
+  // without it, "## Heading" reaches the reader as punctuation.
+  const { body } = ensureHtmlBody(String(parsed.body));
+  return { title: String(parsed.title), body };
 }
 
 async function performOcrVertexAI(

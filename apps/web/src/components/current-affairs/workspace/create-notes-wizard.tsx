@@ -28,6 +28,8 @@ import {
 import type { StudentArticle, StudentCollection, StudentCollectionDetail, StudentCollectionItem } from "../../../lib/api";
 import { splitWorkspaceTags, workspaceSlug } from "../../../lib/workspace";
 import { ApiError, authenticatedGet, authenticatedPatch, authenticatedPost, useAuth } from "../../auth/auth-context";
+import { RenderedContent } from "../rendered-content";
+import { SUMMARY_PRESETS } from "./ai-summarise-panel";
 import { CapReachedNotice, isCapError } from "../../billing/cap-reached-notice";
 import { downloadScannedPdf, type PdfSection } from "../../../lib/export-pdf";
 import { useSubscription } from "../../../lib/use-subscription";
@@ -216,6 +218,7 @@ export function CreateNotesWizard() {
   const [selectedForSummary, setSelectedForSummary] = useState<Set<number>>(new Set());
   const [generatedSummary, setGeneratedSummary] = useState<{ title: string; body: string } | null>(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [aiInstructions, setAiInstructions] = useState("");
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -390,7 +393,11 @@ export function CreateNotesWizard() {
       const note = await authenticatedPost<{ title: string; body: string }>(
         "/api/v1/current-affairs/me/ai/generate-notes",
         token,
-        { collection_id: repository.id, fork_ids: forkIds }
+        {
+          collection_id: repository.id,
+          fork_ids: forkIds,
+          instructions: aiInstructions.trim() || undefined
+        }
       );
       const slug = `${workspaceSlug(note.title)}-${Date.now().toString().slice(-4)}`;
       const articleRecord = await authenticatedPost<StudentArticle>("/api/v1/current-affairs/me/articles", token, {
@@ -791,9 +798,13 @@ export function CreateNotesWizard() {
                 <div className="space-y-3 rounded-lg border border-civic/20 bg-civic/5 p-4">
                   <p className="text-[10px] font-black uppercase tracking-wider text-civic">Saved to your repository</p>
                   <h3 className="text-lg font-black text-ink">{generatedSummary.title}</h3>
-                  <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-sm leading-relaxed text-ink/80">
-                    {generatedSummary.body}
-                  </div>
+                  {/* The note comes back as HTML, like every other article
+                      body on the platform — printed as text it would show the
+                      reader its own tags. */}
+                  <RenderedContent
+                    className="rich-html max-h-64 overflow-y-auto rounded-md bg-surface p-3 text-sm leading-relaxed text-ink/80"
+                    content={generatedSummary.body}
+                  />
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -811,6 +822,29 @@ export function CreateNotesWizard() {
                         />
                         <span className="truncate text-sm font-semibold text-ink/80">{itemTitle(item)}</span>
                       </label>
+                    ))}
+                  </div>
+                  <label className="grid gap-1.5">
+                    <span className="text-[11px] font-black uppercase tracking-wide text-ink/55">
+                      What kind of summary do you want?
+                    </span>
+                    <textarea
+                      className="min-h-20 rounded-md border border-line bg-surface p-2.5 text-xs font-semibold text-ink outline-none focus:border-civic"
+                      onChange={(event) => setAiInstructions(event.target.value)}
+                      placeholder="Example: ten one-line prelims pointers, focusing on the schemes and their ministries."
+                      value={aiInstructions}
+                    />
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUMMARY_PRESETS.map((preset) => (
+                      <button
+                        className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-ink/70 hover:border-civic hover:text-civic"
+                        key={preset.label}
+                        onClick={() => setAiInstructions(preset.prompt)}
+                        type="button"
+                      >
+                        {preset.label}
+                      </button>
                     ))}
                   </div>
                   <button
