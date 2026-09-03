@@ -45,6 +45,22 @@ NAMING
   then the abbreviation. "Monetary Policy Committee (MPC)", then "MPC".
 - Cite Articles, Sections and Schedules precisely (e.g. "Article 356").
 
+TABLES — use one when it is genuinely the clearer format, never as decoration
+- A table earns its place when you are comparing the SAME attributes across
+  three or more items (states, schemes, years, countries), or laying out
+  several rows of paired figures (a scheme's year-by-year outlay, a
+  before/after comparison). A single fact, or a list where each point is a
+  different kind of thing, stays a bullet list — do not force one into a
+  table just because it has numbers in it.
+- Write it as real HTML, exactly this shape, even in a section you are
+  otherwise writing in Markdown-ish prose with "##"/"-"/"**":
+  <table><thead><tr><th>Column</th><th>Column</th></tr></thead><tbody><tr><td>Value</td><td>Value</td></tr></tbody></table>
+- Always include a <thead> header row naming what each column is. Keep cell
+  text short — a figure, a name, a short phrase — not a full sentence; the
+  explanation belongs in the surrounding prose, not crammed into a cell.
+- Never emit a Markdown pipe table ("| a | b |"). It is not converted and
+  will render to readers as a line of literal pipe and dash characters.
+
 DATES — this controls where the article appears in the feed
 - "publication_date" MUST be the date the event happened or was reported, in
   YYYY-MM-DD.
@@ -110,7 +126,7 @@ const COMMON_PROPERTIES = {
 
 const sectionsProperty = (
   guidance: string,
-  contentFieldDescription = "Markdown. Bullet lists for facts and figures."
+  contentFieldDescription = "Markdown. Bullet lists for facts and figures. See TABLES in the brief for genuinely tabular data — a real <table> HTML block, never a Markdown pipe table."
 ) => ({
   type: "array",
   description: guidance,
@@ -276,7 +292,7 @@ ${COMMON_RULES}`,
             ...COMMON_PROPERTIES,
             sections: sectionsProperty(
               "The eight sections described in the brief, in order.",
-              'Clean HTML, never Markdown. See POINTER FORMAT in the brief for list-style sections — collapsed <details><summary>label</summary><div data-type="detailsContent">explanation</div></details> pairs, not <li>. See SUB-POINTS for a point that itself breaks into several distinct sub-points.'
+              'Clean HTML, never Markdown. See POINTER FORMAT in the brief for list-style sections — collapsed <details><summary>label</summary><div data-type="detailsContent">explanation</div></details> pairs, not <li>. See SUB-POINTS for a point that itself breaks into several distinct sub-points. See TABLES for genuinely tabular data (e.g. "Committees, Reports and Data" comparing several sources) — a real <table> block.'
             )
           }
         }

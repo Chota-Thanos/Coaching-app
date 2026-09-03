@@ -1,7 +1,7 @@
 import type { MultipartFile } from "@fastify/multipart";
 import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, unlink } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve, sep } from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -202,6 +202,54 @@ export async function saveUploadedMedia(
     await unlink(absolutePath).catch(() => undefined);
     throw error;
   }
+}
+
+export type SavedImageBuffer = {
+  file_url: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+};
+
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+/**
+ * Disk-write counterpart to `saveUploadedMedia` for bytes that didn't arrive
+ * as a multipart upload (e.g. an image the posting agent produced locally).
+ * Writes to the same `/uploads/yyyy/mm/...` layout but does not touch
+ * `media.assets` — the caller links the result into whatever table it needs.
+ */
+export async function saveImageBuffer(
+  buffer: Buffer,
+  originalFileName: string,
+  mimeType: string
+): Promise<SavedImageBuffer> {
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+    throw httpError(415, "Unsupported image type. Upload JPG, PNG, WebP, or GIF.");
+  }
+  if (buffer.byteLength > MEDIA_MAX_FILE_SIZE_BYTES) {
+    throw httpError(413, "File is too large.");
+  }
+
+  const sanitizedOriginalName = sanitizeFileName(originalFileName || "upload");
+  const fileName = buildStoredFileName(sanitizedOriginalName, mimeType);
+  const relativeDirectory = utcUploadDirectory(new Date());
+  const uploadRoot = getMediaUploadRoot();
+  const absoluteDirectory = join(uploadRoot, relativeDirectory);
+  const storagePath = `${relativeDirectory}/${fileName}`;
+  const absolutePath = join(absoluteDirectory, fileName);
+
+  await mkdir(absoluteDirectory, { recursive: true });
+  await writeFile(absolutePath, buffer);
+
+  return {
+    file_url: buildMediaUrl(storagePath),
+    storage_path: storagePath,
+    file_name: sanitizedOriginalName,
+    mime_type: mimeType,
+    size_bytes: buffer.byteLength
+  };
 }
 
 export async function listMediaAssets(options: ListMediaAssetsQuery): Promise<MediaAsset[]> {

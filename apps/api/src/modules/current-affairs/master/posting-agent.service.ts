@@ -472,6 +472,7 @@ EDITOR MARKERS (the editor may embed these in the source; when present they OVER
 STRICT RULES:
 - Do NOT invent facts. Only restructure and lightly copy-edit the provided text. If the source is thin, keep the article thin — never fabricate.
 - "body" must be clean HTML, matching this platform's article format exactly: paragraphs as <p>, section headings as <h2>, bold as <strong>, bullet lists as <ul><li>...</li></ul>${input.content_kind === "mains_topic_note" ? " (except the collapsed-pointer sections — see MAINS NOTE POINTER FORMAT below)" : ""}. Do not use Markdown syntax (##, **, -, *) anywhere in "body" — every real article on the platform is stored as HTML, and Markdown left in this field renders as literal punctuation to readers, not formatting. Remove site chrome, ads, share buttons, cookie notices.
+- If the source contains a genuine table (a data table, a comparison grid, several rows sharing the same columns), rebuild it as real HTML in "body" instead of flattening it into prose or bullets: <table><thead><tr><th>Column</th><th>Column</th></tr></thead><tbody><tr><td>Value</td><td>Value</td></tr></tbody></table>. Keep cell text short — a figure or a name, not a sentence. Do not invent a table for data that was actually a plain list or a single paragraph in the source.
 - "excerpt" is a 1-2 sentence summary.
 ${mainsNotePointerGuidance}
 CATEGORY CLASSIFICATION:
@@ -487,7 +488,7 @@ Return ONLY JSON in this exact shape:
       "title": "string",
       "article_role": "event | concept",
       "excerpt": "string",
-      "body": "string (HTML: <p>, <h2>, <strong>, <ul><li> — never Markdown)",
+      "body": "string (HTML: <p>, <h2>, <strong>, <ul><li>, and <table> for genuinely tabular data — never Markdown)",
       "publication_date": "YYYY-MM-DD",
       "category_node_ids": [number, ...],
       "seo_title": "string",

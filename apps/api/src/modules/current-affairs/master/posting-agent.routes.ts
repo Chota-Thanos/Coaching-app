@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { parse, withValidation } from "../../../common/http.js";
 import { requireAdminOrEditor } from "../../auth/guards.js";
 import {
+  attachImageBytesSchema,
   commitPostingAgentSchema,
   extractSourceSchema,
   parsePostingAgentSchema,
@@ -9,7 +10,7 @@ import {
 } from "../schemas.js";
 import { extractFromDocument, extractFromUrl } from "./extraction.service.js";
 import { parsePostingAgent } from "./posting-agent.service.js";
-import { commitPostingAgent } from "./posting-agent-commit.service.js";
+import { attachImageBytes, commitPostingAgent } from "./posting-agent-commit.service.js";
 import { rewordText } from "./reword.service.js";
 
 export async function registerCurrentAffairsPostingAgentRoutes(server: FastifyInstance): Promise<void> {
@@ -45,6 +46,17 @@ export async function registerCurrentAffairsPostingAgentRoutes(server: FastifyIn
       const body = parse(commitPostingAgentSchema, request.body);
       const result = await commitPostingAgent(body, user.id);
       return reply.status(201).send(result);
+    });
+  });
+
+  // Attach an actual image file (e.g. an AI-annotated picture) to an
+  // already-committed article.
+  server.post("/api/v1/current-affairs/admin/agent/attach-image", async (request, reply) => {
+    const user = await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const body = parse(attachImageBytesSchema, request.body);
+      const record = await attachImageBytes(body, user.id);
+      return reply.status(201).send(record);
     });
   });
 

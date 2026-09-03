@@ -14,9 +14,9 @@
  *
  * Deliberately hand-rolled instead of pulling in a Markdown library: the
  * surface this needs to cover is exactly what the prompts ask for (headings,
- * bold, bullet lists, paragraphs) — nothing more exotic like tables or nested
- * lists — so a small, fully-tested function is safer than a new runtime
- * dependency for a handful of patterns.
+ * bold, bullet lists, paragraphs, and — for genuinely tabular data — a real
+ * HTML table) — so a small, fully-tested function is safer than a new
+ * runtime dependency for a handful of patterns.
  */
 
 export function looksLikeMarkdown(text: string): boolean {
@@ -32,6 +32,17 @@ export function looksLikeMarkdown(text: string): boolean {
   // `details`/`summary` are here for the same reason: a Mains Note pointer's
   // hidden-detail wrapper (<details><summary>label</summary>...</details>) is
   // real HTML that must never be run through the Markdown converter.
+  //
+  // Deliberately NOT extended to `table` here: a Daily News or Editorial
+  // Summary body is still genuinely built from Markdown-ish sections (see
+  // content-type-prompts.ts), and one section adding a real <table> block for
+  // tabular data must not make this check back off and leave every OTHER
+  // section's "##"/"-"/"**" sitting unconverted across the whole article. A
+  // bare table with no surrounding prose doesn't match the shape checks below
+  // anyway, so it is already left alone; a table inside Markdown-ish text is
+  // handled inside markdownToHtml() below instead, which preserves a
+  // <table>...</table> block untouched while still converting the Markdown
+  // around it.
   if (/<\/?(p|h[1-6]|ul|ol|li|strong|em|div|a|details|summary)\b/i.test(text)) return false; // already has real HTML
   return /^#{1,6}\s/m.test(text) || /^[-*]\s/m.test(text) || /\*\*[^*]+\*\*/.test(text);
 }
@@ -41,6 +52,10 @@ export function markdownToHtml(text: string): string {
   const htmlBlocks: string[] = [];
   let listBuffer: string[] = [];
   let paraBuffer: string[] = [];
+  // Raw lines collected while inside a <table>...</table> block written
+  // directly as real HTML for tabular data (see content-type-prompts.ts) —
+  // null when not currently inside one.
+  let tableBuffer: string[] | null = null;
 
   const inline = (s: string) =>
     s
@@ -63,6 +78,35 @@ export function markdownToHtml(text: string): string {
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
+
+    // A table is written as real HTML even inside otherwise-Markdown text
+    // (writers are told to do exactly this for genuinely tabular data) — it
+    // must survive byte-for-byte, not get read as a run of stray paragraph
+    // lines and HTML-escaped into visible "&lt;table&gt;" punctuation. Once a
+    // <table line is seen, every line up to and including the matching
+    // </table> is copied through untouched; nothing on those lines is
+    // interpreted as a heading, bullet or paragraph.
+    if (tableBuffer) {
+      tableBuffer.push(rawLine);
+      if (/<\/table\s*>/i.test(line)) {
+        htmlBlocks.push(tableBuffer.join("\n"));
+        tableBuffer = null;
+      }
+      continue;
+    }
+    if (/^<table[\s>]/i.test(line)) {
+      flushList();
+      flushPara();
+      tableBuffer = [rawLine];
+      if (/<\/table\s*>/i.test(line)) {
+        // Whole table on one line — close it immediately rather than waiting
+        // for a </table> that has already gone by.
+        htmlBlocks.push(tableBuffer.join("\n"));
+        tableBuffer = null;
+      }
+      continue;
+    }
+
     const heading = line.match(/^(#{1,6})\s+(.*)$/);
     const bullet = line.match(/^[-*]\s+(.*)$/);
 
@@ -85,6 +129,11 @@ export function markdownToHtml(text: string): string {
   }
   flushList();
   flushPara();
+  // An unterminated <table> (the model cut off, or omitted the closing tag)
+  // still gets emitted rather than silently dropping the content — the
+  // resulting markup may be invalid HTML, but that is visible and fixable in
+  // review, unlike vanishing text.
+  if (tableBuffer) htmlBlocks.push(tableBuffer.join("\n"));
 
   return htmlBlocks.join("");
 }

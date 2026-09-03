@@ -84,6 +84,41 @@ Commit in batches of ≤ 50 articles so a single failure doesn't lose the run.
 After committing, report the returned ids and the admin URL
 (`/admin/current-affairs`) so the user can see the result.
 
+## Annotating a source image (Editorial Summaries only)
+
+If the user hands you a photo/diagram alongside an Editorial Summary
+(`daily_editorial_summary`) and asks for it to be annotated, draw the
+article's major points onto it before attaching it — don't attach the source
+image as-is.
+
+One-time setup, if not already done: `pip install -r scripts/requirements.txt`
+from this skill's directory.
+
+1. From the drafted/reviewed article body, pick 3–6 major points. For each,
+   write a short point (one sentence) and a short free-form dimension label
+   — a couple of words naming what angle that point is ("Constitutional
+   angle", "Economic impact", "Judicial precedent"). Pick labels fresh per
+   article; there's no fixed list to choose from. Reused labels across points
+   share a colour automatically.
+2. Write those to a JSON file, e.g.:
+   ```json
+   [
+     {"text": "Nine-judge bench widens the definition of 'industry' beyond commercial activity.", "dimension": "Judicial precedent"},
+     {"text": "Extends labour protections to charitable and quasi-governmental bodies.", "dimension": "Labour rights"}
+   ]
+   ```
+3. Run the script:
+   ```
+   python scripts/annotate_image.py --source <path-to-photo> --points <path-to-json> --out <path-to-annotated.png>
+   ```
+4. Read the output PNG yourself before attaching it — check the labels are
+   legible and say what you meant, not truncated or misassigned. Re-run with
+   adjusted points if not.
+5. Once the article is committed (`ca_commit`), attach the annotated image
+   with `ca_attach_image` using the article id from the commit result.
+6. Report back what was attached the same way a commit is reported — id and
+   admin URL.
+
 ## Rewording
 
 `ca_reword` rewrites a passage in house style (`concise`, `expand`, `simplify`,

@@ -301,7 +301,14 @@ server.registerTool(
         .array(
           z.object({
             title: z.string().min(1),
-            body: z.string().min(1),
+            body: z
+              .string()
+              .min(1)
+              .describe(
+                'HTML — paragraphs as <p>, section headings as <h2>, bold as <strong>, bullet lists as <ul><li>. Never Markdown ("##", "-", "**"). ' +
+                  'For genuinely tabular data (a comparison across several items, paired figures) use a real table: ' +
+                  '<table><thead><tr><th>Column</th><th>Column</th></tr></thead><tbody><tr><td>Value</td><td>Value</td></tr></tbody></table> — never a Markdown pipe table.',
+              ),
             slug: z.string().optional(),
             excerpt: z.string().optional(),
             article_role: z.enum(['event', 'concept']).optional(),
@@ -515,7 +522,7 @@ server.registerTool(
   {
     title: 'Correct a posted article',
     description:
-      'Edits an already-posted article or concept primer — the fix for one that turns out to be factually wrong. Only the fields passed are changed; everything else is left exactly as it is, so a single wrong figure does not require resupplying the whole article. Call ca_get_article first. Bodies must be HTML (<p>, <h2>, <strong>, <ul><li>), same as when posting.\n\nNEVER edit on your own judgement. Every change to anything already posted — drafts included — must be put to the user and agreed by them first, then sent with confirm_change. If you notice something wrong while doing other work, say so and wait; do not fix it silently. A published article needs confirm_live_edit as well, since students are reading it. To pull a live article down instead of fixing it in place, set status to "draft".',
+      'Edits an already-posted article or concept primer — the fix for one that turns out to be factually wrong. Only the fields passed are changed; everything else is left exactly as it is, so a single wrong figure does not require resupplying the whole article. Call ca_get_article first. Bodies must be HTML (<p>, <h2>, <strong>, <ul><li>, <table> for tabular data), same as when posting.\n\nNEVER edit on your own judgement. Every change to anything already posted — drafts included — must be put to the user and agreed by them first, then sent with confirm_change. If you notice something wrong while doing other work, say so and wait; do not fix it silently. A published article needs confirm_live_edit as well, since students are reading it. To pull a live article down instead of fixing it in place, set status to "draft".',
     inputSchema: {
       article_id: z.number().int().positive().describe('From ca_find_articles.'),
       title: z.string().min(1).optional(),
@@ -523,7 +530,12 @@ server.registerTool(
         .string()
         .min(1)
         .optional()
-        .describe('The complete replacement body as HTML — not a fragment, not a diff.'),
+        .describe(
+          'The complete replacement body as HTML — not a fragment, not a diff. ' +
+            'For genuinely tabular data (a comparison across several items, paired figures) use a real table: ' +
+            '<table><thead><tr><th>Column</th><th>Column</th></tr></thead><tbody><tr><td>Value</td><td>Value</td></tr></tbody></table>. ' +
+            'Never a Markdown pipe table ("| a | b |") — it renders to readers as literal pipe characters, not a table.',
+        ),
       category_node_ids: z
         .array(z.number().int().positive())
         .max(50)
@@ -605,6 +617,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  'ca_attach_image',
+  {
+    title: 'Attach an image to a posted article',
+    description:
+      'Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Accepts .png, .jpg, .jpeg, .webp.',
+    inputSchema: {
+      article_id: z.number().int().positive().describe('From ca_commit\'s result, or ca_find_articles.'),
+      file_path: z.string().min(1).describe('Local path to the image file to upload.'),
+      alt_text: z.string().trim().optional(),
+      caption: z.string().trim().optional(),
+    },
+  },
+  async ({ article_id, file_path, alt_text, caption }) =>
+    run(async () => {
+      const file = await fileSource(file_path);
+      return api.post('/api/v1/current-affairs/admin/agent/attach-image', {
+        article_id,
+        file_name: file.filename,
+        base64_data: file.base64_data,
+        mime_type: file.mime_type,
+        alt_text,
+        caption,
+      });
+    }),
+);
+
+server.registerTool(
   'ca_link_concept',
   {
     title: 'Link a background concept to news articles',
@@ -627,7 +666,9 @@ server.registerTool(
               'HTML, never Markdown. The evergreen explainer — no dates, no "recently". ' +
                 'Same Format Library shape you would use for a news article about this entity ' +
                 '(scheme, report/index, organisation, etc. — whichever fits), just written ' +
-                'evergreen and at full depth rather than trimmed for a specific day\'s news.',
+                'evergreen and at full depth rather than trimmed for a specific day\'s news. ' +
+                'A real <table> is fine for genuinely tabular data (e.g. year-by-year figures, ' +
+                'a comparison across states) — never a Markdown pipe table.',
             ),
           slug: z.string().optional(),
           category_node_ids: z

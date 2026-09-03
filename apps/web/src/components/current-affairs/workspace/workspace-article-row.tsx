@@ -408,7 +408,7 @@ export function WorkspaceArticleRow({
             </div>
           ) : bodyExpanded ? (
             <HighlightedContent
-              className="mt-2 text-sm leading-6 text-ink/70"
+              className="rich-html mt-2 text-sm leading-6 text-ink/70"
               content={articleBody || "The article body is ready to edit after the note is saved."}
               highlights={fork.highlights ?? []}
             />

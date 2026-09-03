@@ -1,6 +1,8 @@
 import { createMasterArticle } from "./articles.service.js";
-import { query } from "../../../db.js";
+import { one, query } from "../../../db.js";
+import { saveImageBuffer } from "../../media/service.js";
 import type {
+  AttachImageBytesInput,
   CommitPostingAgentInput,
   CreateMasterArticleInput
 } from "../schemas.js";
@@ -123,6 +125,49 @@ async function attachImage(
   } catch (err) {
     console.error(`[commit] could not record image for article ${articleId}:`, err);
   }
+}
+
+/**
+ * Attaches a real image file to an article that already exists — the
+ * counterpart to `attachImage()` above, for when the posting agent has
+ * produced (or been handed) actual bytes rather than just a URL/intent.
+ * Writes the file to the same disk layout `POST /api/v1/media/upload` uses,
+ * then links it in as a normal `master_article_assets` row.
+ */
+export async function attachImageBytes(
+  input: AttachImageBytesInput,
+  userId: number
+): Promise<unknown> {
+  const article = await one<{ id: number }>(
+    "select id from current_affairs.master_articles where id = $1",
+    [input.article_id]
+  );
+  if (!article) {
+    const err = new Error("Article not found.") as Error & { statusCode: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const buffer = Buffer.from(input.base64_data, "base64");
+  const saved = await saveImageBuffer(buffer, input.file_name, input.mime_type);
+
+  return one(
+    `insert into current_affairs.master_article_assets
+       (article_id, asset_type, file_name, file_url, mime_type, size_bytes, alt_text, caption, metadata, uploaded_by_user_id)
+     values ($1, 'image', $2, $3, $4, $5, $6, $7, $8, $9)
+     returning *`,
+    [
+      input.article_id,
+      saved.file_name,
+      saved.file_url,
+      saved.mime_type,
+      saved.size_bytes,
+      input.alt_text ?? null,
+      input.caption ?? null,
+      JSON.stringify({ source: "ai_annotated" }),
+      userId
+    ]
+  );
 }
 
 export async function commitPostingAgent(

@@ -89,6 +89,19 @@ export const commitPostingAgentSchema = z.object({
     .max(500)
 });
 
+// ── Attach an actual image file to an already-committed article ─────────────
+// (`commitPostingAgentSchema`'s `image` field above only ever carries a URL
+// or an intent; this carries real bytes for an article that already exists.)
+
+export const attachImageBytesSchema = z.object({
+  article_id: idSchema,
+  file_name: z.string().trim().min(1),
+  base64_data: z.string().trim().min(1),
+  mime_type: z.string().trim().min(1),
+  alt_text: z.string().trim().optional(),
+  caption: z.string().trim().optional()
+});
+
 // ── Editor rewording (Phase 6) ───────────────────────────────────────────────
 
 const rewordModeEnum = z.enum(["concise", "expand", "simplify", "exam_tone", "grammar"]);
@@ -113,4 +126,5 @@ export const rewordSchema = z
 export type ExtractSourceInput = z.output<typeof extractSourceSchema>;
 export type ParsePostingAgentInput = z.output<typeof parsePostingAgentSchema>;
 export type CommitPostingAgentInput = z.output<typeof commitPostingAgentSchema>;
+export type AttachImageBytesInput = z.output<typeof attachImageBytesSchema>;
 export type RewordInput = z.output<typeof rewordSchema>;

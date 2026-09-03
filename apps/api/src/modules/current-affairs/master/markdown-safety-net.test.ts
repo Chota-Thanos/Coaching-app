@@ -75,6 +75,49 @@ test("a body carrying reference links is never converted, so the links survive",
   assert.doesNotMatch(ensureHtmlBody(mixed).body, /&lt;a/);
 });
 
+test("a <table> block inside otherwise-Markdown text survives conversion untouched, and the Markdown around it still converts", () => {
+  const mixed =
+    "## Key Facts\n" +
+    "- The scheme covers 12 states.\n\n" +
+    "## Comparison\n" +
+    "<table><thead><tr><th>State</th><th>Coverage</th></tr></thead>" +
+    "<tbody><tr><td>Bihar</td><td>68%</td></tr></tbody></table>\n\n" +
+    "## Significance\n" +
+    "**Fiscal federalism**: Widens central transfers to states.";
+
+  const html = markdownToHtml(mixed);
+
+  assert.match(html, /<h2>Key Facts<\/h2>/);
+  assert.match(html, /<ul><li>The scheme covers 12 states\.<\/li><\/ul>/);
+  assert.match(html, /<h2>Comparison<\/h2>/);
+  // The table survives byte-for-byte — not escaped, not wrapped in a <p>.
+  assert.match(
+    html,
+    /<table><thead><tr><th>State<\/th><th>Coverage<\/th><\/tr><\/thead><tbody><tr><td>Bihar<\/td><td>68%<\/td><\/tr><\/tbody><\/table>/
+  );
+  assert.doesNotMatch(html, /&lt;table/);
+  // The Markdown on either side of the table still converted normally.
+  assert.match(html, /<h2>Significance<\/h2>/);
+  assert.match(html, /<strong>Fiscal federalism<\/strong>: Widens central transfers to states\./);
+  assert.doesNotMatch(html, /##/);
+  assert.doesNotMatch(html, /\*\*/);
+});
+
+test("a <table> spanning several lines is preserved with its original line breaks", () => {
+  const withMultilineTable =
+    "Some intro text.\n\n" +
+    "<table>\n" +
+    "<tr><th>Year</th><th>GDP Growth</th></tr>\n" +
+    "<tr><td>2023</td><td>7.2%</td></tr>\n" +
+    "</table>\n\n" +
+    "More text after.";
+
+  const html = markdownToHtml(withMultilineTable);
+  assert.match(html, /<p>Some intro text\.<\/p>/);
+  assert.match(html, /<table>\n<tr><th>Year<\/th><th>GDP Growth<\/th><\/tr>\n<tr><td>2023<\/td><td>7\.2%<\/td><\/tr>\n<\/table>/);
+  assert.match(html, /<p>More text after\.<\/p>/);
+});
+
 test("ensureHtmlBody reports whether it actually had to convert anything", () => {
   const untouched = ensureHtmlBody("<p>Already fine.</p>");
   assert.equal(untouched.converted, false);

@@ -261,7 +261,11 @@ img {
 }
 
 .article-body p {
-  margin: 0 0 1.25rem;
+  /* Was 1.25rem. A reader's own paragraph breaks (the actual sense-units of
+     the article) need to read as more of a pause than a wrapped line does —
+     20px wasn't clearly more than the 1.75 line-height already gives a
+     wrapped line, so a paragraph break barely registered as one. */
+  margin: 0 0 1.5rem;
   line-height: 1.75;
   color: rgb(var(--s-700));
   /* Scales with the viewport rather than sitting at one desktop size: 1rem on
@@ -278,18 +282,29 @@ img {
   line-height: 1.7;
 }
 
+/* Headings were carrying the body's own weight (400) and letter-spacing —
+   correct for the Source Serif 4 face this used to be set in, where a serif's
+   own contrast does the work of standing apart from body text, but Roboto at
+   400 has none of that: a "Significance" heading and the paragraph under it
+   read as the same voice. 600 plus a touch of negative tracking is what
+   nutriscan.app's article headings do, and it's what actually reads as "this
+   is a heading" in a face with no serifs to lean on. Body paragraphs keep
+   their own font-weight (400) and letter-spacing untouched. */
 .article-body h2 {
-  margin: 2.5rem 0 1rem;
+  margin: 2.75rem 0 1rem;
   font-size: clamp(1.3rem, 1.12rem + 0.8vw, 1.625rem) !important; /* Restoring specific sizing for rich article text */
-  font-weight: 400 !important;
+  font-weight: 600 !important;
   line-height: 1.3;
+  letter-spacing: -0.01em;
   color: rgb(var(--c-ink));
 }
 
 .article-body h3 {
-  margin: 1.85rem 0 0.85rem;
+  margin: 2.1rem 0 0.85rem;
   font-size: clamp(1.1rem, 1.02rem + 0.35vw, 1.25rem) !important;
-  font-weight: 400 !important;
+  font-weight: 600 !important;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
   color: rgb(var(--c-ink));
 }
 
@@ -300,37 +315,59 @@ img {
    treatment, so bullets have been invisible on every real article page with
    a bulleted list, not just new content. Nested sub-lists get a different
    marker per level, matching normal browser/editor convention, so a
-   sub-point visibly reads as "under" its parent rather than identical to it. */
-.article-body ul {
+   sub-point visibly reads as "under" its parent rather than identical to it.
+   Shared with .rich-html — the lightweight structural layer applied to HTML
+   bodies rendered outside the main article page (e.g. the notes workspace's
+   inline preview card), which wants the same bullets/table/blockquote
+   treatment without the full reading-page heading and paragraph sizing. */
+.article-body ul,
+.rich-html ul {
   list-style-type: disc;
 }
 
-.article-body ul ul {
+.article-body ul ul,
+.rich-html ul ul {
   list-style-type: circle;
 }
 
-.article-body ul ul ul {
+.article-body ul ul ul,
+.rich-html ul ul ul {
   list-style-type: square;
 }
 
-.article-body ol {
+.article-body ol,
+.rich-html ol {
   list-style-type: decimal;
 }
 
+/* Indent as padding, not margin, on the list itself — the conventional way
+   to hang-indent a marker, and what keeps a wrapped second line sitting
+   flush under the first rather than under the marker. 1.4rem (was a 1.5rem
+   margin-left) also opens a slightly wider, more even gap between the marker
+   and the text, closer to what nutriscan.app's lists do — the previous
+   figure left the dot crowding the first letter in some browsers' default
+   marker box. */
 .article-body ul,
-.article-body ol {
-  margin: 0 0 1.25rem 1.5rem;
+.article-body ol,
+.rich-html ul,
+.rich-html ol {
+  margin: 0 0 1.25rem;
+  padding-left: 1.4rem;
+  list-style-position: outside;
   line-height: 1.8;
   color: rgb(var(--s-700));
   font-size: 1.05rem;
 }
 
-.article-body li {
+.article-body li,
+.rich-html li {
   margin-bottom: 0.5rem;
 }
 
 .article-body li > ul,
-.article-body li > ol {
+.article-body li > ol,
+.rich-html li > ul,
+.rich-html li > ol {
   margin-top: 0.5rem;
   margin-bottom: 0;
 }
@@ -382,36 +419,64 @@ img {
   transition: stroke-dashoffset 1s ease-out;
 }
 
-/* Table & blockquote formatting inside article body */
-.article-body table {
+/* Table formatting inside article body — one design, applied everywhere an
+   article/note HTML body is rendered (the reading page, the admin preview
+   panels, and the notes workspace's inline card via .rich-html), so a table
+   posted through the MCP agent looks the same wherever a reader meets it.
+   Modelled on nutriscan.app's nutrition tables: a hairline border per cell,
+   a shaded header row, and nothing else competing for attention — no zebra
+   striping, no outer card. Zebra striping was dropped: with a shaded header
+   already marking the top row, alternating body rows added a second visual
+   rhythm that fought the columns' own alignment rather than helping it. */
+.article-body table,
+.rich-html table {
   width: 100%;
   border-collapse: collapse;
   margin: 1.5rem 0;
   font-size: 0.95rem;
+  /* A table wider than its column can hold (many columns, long figures) used
+     to force the whole page to scroll sideways on a phone — nothing here
+     contained it. block + overflow-x makes the table itself the thing that
+     scrolls, matching how the Visual Editor already handles its own tables. */
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
-.article-body th {
+.article-body th,
+.rich-html th {
   background-color: rgb(var(--s-50));
   font-weight: 700;
   color: rgb(var(--c-ink));
   border: 1px solid rgb(var(--s-200));
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 1rem;
+  text-align: left;
+  white-space: nowrap;
 }
-.article-body td {
+.article-body td,
+.rich-html td {
   border: 1px solid rgb(var(--s-200));
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 1rem;
   color: rgb(var(--s-700));
+  vertical-align: top;
 }
-.article-body tr:nth-child(even) {
-  background-color: rgb(var(--s-50));
+/* First column reads as the row's label in almost every table this platform
+   posts (a nutrient, a scheme, a year) — bolding it gives a scanning reader
+   something to anchor on without needing a second shaded column. */
+.article-body td:first-child,
+.rich-html td:first-child {
+  font-weight: 600;
+  color: rgb(var(--c-ink));
 }
-.article-body blockquote {
+.article-body blockquote,
+.rich-html blockquote {
   border-left: 4px solid #4f46e5;
   padding-left: 1.25rem;
   margin: 1.5rem 0;
   font-style: italic;
   color: rgb(var(--s-600));
 }
-.article-body strong, .article-body b {
+.article-body strong, .article-body b,
+.rich-html strong, .rich-html b {
   font-weight: 700;
   color: rgb(var(--c-ink));
 }
@@ -447,9 +512,9 @@ img {
 }
 
 @media (max-width: 640px) {
-  .article-body p { margin-bottom: 1rem; }
-  .article-body h2 { margin: 1.75rem 0 0.7rem; }
-  .article-body h3 { margin: 1.35rem 0 0.6rem; }
+  .article-body p { margin-bottom: 1.15rem; }
+  .article-body h2 { margin: 2rem 0 0.7rem; }
+  .article-body h3 { margin: 1.6rem 0 0.6rem; }
 }
 
 /* Pointer disclosure — a point's short label (<summary>) stays always
@@ -680,6 +745,14 @@ html.dark .tiptap-prosemirror div[data-type="details"] > div > summary::after {
   background: rgb(var(--s-50));
   color: rgb(var(--c-ink));
   font-weight: 700;
+  text-align: left;
+}
+/* Matches the published table's own first-column emphasis (see .article-body
+   td:first-child) so the editor doesn't show something visibly plainer than
+   what the reader ends up seeing. */
+.tiptap-prosemirror td:first-child {
+  font-weight: 600;
+  color: rgb(var(--c-ink));
 }
 .tiptap-prosemirror .selectedCell::after {
   content: "";

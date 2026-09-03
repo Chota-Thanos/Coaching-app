@@ -10,7 +10,7 @@ export const listArticleAssetsQuerySchema = listQuerySchema.extend({
 export const createArticleAssetSchema = z.object({
   asset_type: articleAssetTypeSchema.default("image"),
   file_name: z.string().trim().min(1),
-  file_url: z.string().url(),
+  file_url: z.string().trim().min(1),
   mime_type: z.string().trim().optional(),
   size_bytes: z.number().int().nonnegative().optional(),
   alt_text: z.string().trim().optional(),
@@ -22,7 +22,7 @@ export const createArticleAssetSchema = z.object({
 export const updateArticleAssetSchema = z.object({
   asset_type: articleAssetTypeSchema.optional(),
   file_name: z.string().trim().min(1).optional(),
-  file_url: z.string().url().optional(),
+  file_url: z.string().trim().min(1).optional(),
   mime_type: z.string().trim().nullable().optional(),
   size_bytes: z.number().int().nonnegative().nullable().optional(),
   alt_text: z.string().trim().nullable().optional(),
