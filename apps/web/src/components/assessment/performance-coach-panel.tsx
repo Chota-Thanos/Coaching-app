@@ -45,6 +45,13 @@ const STARTERS = [
   "Am I rushing or overthinking?"
 ];
 
+/** A result page is a different question: it is about the paper just sat. */
+const RESULT_STARTERS = [
+  "Why did I get these wrong?",
+  "What should I revise from this test?",
+  "Did I lose marks to time or to knowledge?"
+];
+
 /** Chrome and Edge expose this prefixed; nothing else reliably has it. */
 function getSpeechRecognition(): any | null {
   if (typeof window === "undefined") return null;
@@ -56,13 +63,19 @@ export function PerformanceCoachPanel({
   contentType,
   examId,
   taxonomyNodeId,
-  topicName
+  topicName,
+  attemptId,
+  attemptSource = "assessment"
 }: {
   contentType: "gk" | "aptitude" | "mains";
   /** Needed to start the practice the coach recommends, same as StartTestPill. */
   examId: number | null;
   taxonomyNodeId?: number | null;
   topicName?: string;
+  /** On a result page: the attempt being reviewed, so "this test" resolves. */
+  attemptId?: number | null;
+  /** Study-plan attempts live in their own tables; custom tests do not. */
+  attemptSource?: "assessment" | "study_plan";
 }) {
   const { token } = useAuth();
   const { start: startTest, starting } = useStartTest();
@@ -183,6 +196,8 @@ export function PerformanceCoachPanel({
           message,
           content_type: contentType,
           taxonomy_node_id: taxonomyNodeId ?? undefined,
+          attempt_id: attemptId ?? undefined,
+          attempt_source: attemptSource,
           history
         }
       );
@@ -230,8 +245,9 @@ export function PerformanceCoachPanel({
           <div>
             <p className="text-sm font-black text-ink">Ask about your performance</p>
             <p className="mt-0.5 text-xs font-semibold text-ink/55">
-              Reads your actual attempts — the questions you got wrong and what you picked
-              {topicName ? ` in ${topicName}` : ""}.
+              {attemptId
+                ? "Reads this paper question by question — what you picked, and where the time went."
+                : `Reads your actual attempts — the questions you got wrong and what you picked${topicName ? ` in ${topicName}` : ""}.`}
             </p>
           </div>
         </div>
@@ -290,7 +306,7 @@ export function PerformanceCoachPanel({
 
       {turns.length === 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {STARTERS.map((starter) => (
+          {(attemptId ? RESULT_STARTERS : STARTERS).map((starter) => (
             <button
               className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-ink/70 hover:border-civic hover:text-civic"
               key={starter}

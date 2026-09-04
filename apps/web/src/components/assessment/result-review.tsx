@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PerformanceCoachPanel } from "./performance-coach-panel";
 import { useRouter } from "next/navigation";
 import { BarChart3, CheckCircle2, CircleAlert, Clock3, Filter, Target, Trophy, XCircle, Bookmark, Sparkles, FileCheck2, ExternalLink, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -837,6 +838,22 @@ export function ResultReview({ resultId }: { resultId: string }) {
             </Link>
           </div>
         </div>
+
+        {/* Sits above the tabs: the question a student has the moment a score
+            lands is "why", and that should not be buried in a tab. */}
+        <PerformanceCoachPanel
+          attemptId={Number((review as any).attempt?.id) || null}
+          attemptSource="assessment"
+          contentType={
+            review.test_template.test_type === "mains_test"
+              ? "mains"
+              : (review.topic_breakdowns?.[0] as any)?.taxonomy_content_type === "aptitude"
+                ? "aptitude"
+                : "gk"
+          }
+          examId={Number(review.test_template.exam_id) || null}
+          topicName={review.test_template.title as string | undefined}
+        />
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-surface p-1.5 shadow-card">

@@ -33,6 +33,16 @@ export type CoachContentType = "gk" | "aptitude" | "mains";
 
 export type CoachTurn = { role: "user" | "assistant"; content: string };
 
+/**
+ * Which attempt table a result page is showing.
+ *
+ * Study plans keep their own `study_plan.test_attempts` /
+ * `study_plan.attempt_responses`, entirely separate from `assessment.*`; a
+ * self-made ("custom") test is an ordinary assessment attempt whose questions
+ * happen to be user-private, so it needs no branch of its own.
+ */
+export type CoachAttemptSource = "assessment" | "study_plan";
+
 export type CoachProposedAction = {
   kind: "start_practice_test";
   label: string;
@@ -148,6 +158,78 @@ async function recentMistakes(
 }
 
 /**
+ * Every answer in ONE attempt, right and wrong alike.
+ *
+ * This is what a result page needs and the topic tools cannot give: a student
+ * looking at a paper they just submitted is asking about that paper, not about
+ * their six-month average. Correct answers come back too, because "you got
+ * these three right but took 90 seconds each" is a finding.
+ *
+ * The user id is in the WHERE clause, not merely checked beforehand: this is
+ * the query that would otherwise hand one student another student's paper.
+ */
+async function attemptReview(
+  userId: number,
+  attemptId: number,
+  source: CoachAttemptSource
+): Promise<unknown[]> {
+  if (source === "study_plan") {
+    return query(
+      `
+        select
+          q.question_statement,
+          q.options,
+          q.correct_answer,
+          ar.selected_answer,
+          q.explanation,
+          ar.time_spent_seconds,
+          ar.status,
+          (ar.selected_answer is not null and ar.selected_answer = q.correct_answer) as was_correct,
+          coalesce(subtopic.name, topic.name, subject.name) as topic
+        from study_plan.attempt_responses ar
+        join study_plan.test_attempts ta on ta.id = ar.attempt_id
+        join study_plan.test_questions q on q.id = ar.question_id
+        left join assessment.assessment_taxonomy_nodes subject on subject.id = q.subject_node_id
+        left join assessment.assessment_taxonomy_nodes topic on topic.id = q.topic_node_id
+        left join assessment.assessment_taxonomy_nodes subtopic on subtopic.id = q.subtopic_node_id
+        where ar.attempt_id = $1 and ta.user_id = $2
+        order by q.display_order asc
+        limit 100
+      `,
+      [attemptId, userId]
+    );
+  }
+
+  return query(
+    `
+      select
+        qv.question_statement,
+        qv.options,
+        qv.correct_answer,
+        ar.selected_answer,
+        qv.explanation,
+        ar.time_spent_seconds,
+        ar.status,
+        (ar.selected_answer is not null and ar.selected_answer = qv.correct_answer) as was_correct,
+        coalesce(subtopic.name, topic.name, subject.name) as topic,
+        qn.name as question_nature
+      from assessment.attempt_responses ar
+      join assessment.test_attempts ta on ta.id = ar.attempt_id
+      join assessment.question_versions qv on qv.id = ar.question_version_id
+      join assessment.questions q on q.id = qv.question_id
+      left join assessment.question_taxonomy_links qtl on qtl.question_id = q.id
+      left join assessment.assessment_taxonomy_nodes subject on subject.id = qtl.subject_node_id
+      left join assessment.assessment_taxonomy_nodes topic on topic.id = qtl.topic_node_id
+      left join assessment.assessment_taxonomy_nodes subtopic on subtopic.id = qtl.subtopic_node_id
+      left join assessment.question_natures qn on qn.id = qtl.question_nature_id
+      where ar.attempt_id = $1 and ta.user_id = $2
+      limit 100
+    `,
+    [attemptId, userId]
+  );
+}
+
+/**
  * Whether speed is the problem. Rushing and freezing look identical in an
  * accuracy percentage and completely different in the timings.
  */
@@ -218,6 +300,7 @@ const TOOL_BRIEF = `TOOLS you may call, one per turn:
 - {"tool":"weak_topics","limit":8} — worst-accuracy topics (only where they have attempted at least 3).
 - {"tool":"recent_mistakes","limit":12,"taxonomy_node_id":null} — the actual questions they got wrong: the statement, the options, the option THEY chose, the correct one, the explanation, and the seconds spent. This is your best evidence; read it before diagnosing anything.
 - {"tool":"timing"} — average seconds when right vs wrong, plus how much they skip and mark for review.
+- {"tool":"attempt_review"} — every answer in the ONE test they are looking at, right and wrong, with the option they picked and the seconds spent. Only available when they are on a result page; when it is, start here, because they are asking about this paper.
 - {"tool":"log_mistake","note":"..."} — file a short note against their most recent wrong answer. Only when they ask you to record something.
 
 When you have enough, answer with:
@@ -225,8 +308,12 @@ When you have enough, answer with:
 
 "actions" is optional and only for practice you are recommending. The student confirms it themselves, so never say you have already started a test.`;
 
-function systemPrompt(contentType: CoachContentType): string {
+function systemPrompt(contentType: CoachContentType, hasAttempt: boolean): string {
   return `You are a UPSC performance coach talking to one aspirant about their own test history (${contentType}).
+
+${hasAttempt
+    ? `They are looking at the result of ONE test they just finished. Read it with attempt_review before anything else, and answer about THIS paper first — which questions went wrong and why, where the time went. Reach for their wider history only to place this paper in it ("you have done this in three of your last five tests").`
+    : `They are looking at their overall performance, not a single test.`}
 
 You answer with evidence from their attempts, never generic advice. "Revise Polity more" is worthless. "In your last 12 wrong answers, 7 were statement-based questions where you chose 'both correct' but only one statement held" is what they are paying for.
 
@@ -248,6 +335,8 @@ export async function runPerformanceCoach(input: {
   message: string;
   history?: CoachTurn[];
   taxonomyNodeId?: number | null;
+  attemptId?: number | null;
+  attemptSource?: CoachAttemptSource;
 }): Promise<CoachResult> {
   const usedTools: string[] = [];
   const transcript: string[] = [];
@@ -258,12 +347,17 @@ export async function runPerformanceCoach(input: {
     transcript.push(`${turn.role === "user" ? "STUDENT" : "YOU"}: ${turn.content}`);
   }
   transcript.push(`STUDENT: ${input.message}`);
-  if (input.taxonomyNodeId) {
+  if (input.attemptId) {
+    transcript.push(`(They are on the result page of attempt ${input.attemptId}. Use attempt_review.)`);
+  } else if (input.taxonomyNodeId) {
     transcript.push(`(They are looking at taxonomy node ${input.taxonomyNodeId} on their performance page.)`);
   }
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
-    const response = await generateText(systemPrompt(input.contentType), transcript.join("\n\n"));
+    const response = await generateText(
+      systemPrompt(input.contentType, Boolean(input.attemptId)),
+      transcript.join("\n\n")
+    );
     const parsed = parseJsonRobust(response);
     const tool = String(parsed?.tool ?? "answer");
 
@@ -309,6 +403,10 @@ export async function runPerformanceCoach(input: {
         );
       } else if (tool === "timing") {
         result = await timingSignals(input.userId, input.contentType);
+      } else if (tool === "attempt_review") {
+        result = input.attemptId
+          ? await attemptReview(input.userId, input.attemptId, input.attemptSource ?? "assessment")
+          : { error: "No test is open — this tool only works on a result page." };
       } else if (tool === "log_mistake") {
         result = await logMistake(input.userId, String(parsed.note ?? ""));
       } else {

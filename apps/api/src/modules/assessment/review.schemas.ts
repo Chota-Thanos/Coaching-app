@@ -43,6 +43,10 @@ export const performanceCoachSchema = z.object({
   content_type: z.enum(["gk", "aptitude", "mains"]).default("gk"),
   /** The node the student is looking at, so "this topic" resolves. */
   taxonomy_node_id: idSchema.optional().nullable(),
+  /** The attempt whose result page they are on, so "this test" resolves. */
+  attempt_id: idSchema.optional().nullable(),
+  /** Study-plan attempts live in their own tables; custom tests do not. */
+  attempt_source: z.enum(["assessment", "study_plan"]).default("assessment"),
   history: z
     .array(
       z.object({

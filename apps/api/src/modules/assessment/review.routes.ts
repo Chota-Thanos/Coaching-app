@@ -2,7 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { idParamSchema, listQuerySchema, parse, withValidation } from "../../common/http.js";
 import { requireAdminOrEditor, requireAuth } from "../auth/guards.js";
 import { assertHasPerformanceCoachAccess } from "../billing/free-tier.js";
-import { runPerformanceCoach, type CoachContentType } from "./performance-coach.service.js";
+import {
+  runPerformanceCoach,
+  type CoachAttemptSource,
+  type CoachContentType
+} from "./performance-coach.service.js";
 import {
   createBookmarkSchema,
   createErrorLogSchema,
@@ -137,7 +141,9 @@ export async function registerReviewRoutes(server: FastifyInstance): Promise<voi
         contentType: body.content_type as CoachContentType,
         message: body.message,
         history: body.history,
-        taxonomyNodeId: body.taxonomy_node_id ?? null
+        taxonomyNodeId: body.taxonomy_node_id ?? null,
+        attemptId: body.attempt_id ?? null,
+        attemptSource: body.attempt_source as CoachAttemptSource
       });
     });
   });

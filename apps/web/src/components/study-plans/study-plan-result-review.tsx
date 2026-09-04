@@ -10,6 +10,7 @@ import { TopicHeatmap } from "../assessment/topic-heatmap";
 import { TimeChart } from "../assessment/time-chart";
 import { ErrorTagger } from "../assessment/error-tagger";
 import { BackLink } from "../app/back-link";
+import { PerformanceCoachPanel } from "../assessment/performance-coach-panel";
 
 type Tab = "summary" | "questions" | "topics" | "time";
 type QuestionFilter = "all" | "correct" | "incorrect" | "unattempted";
@@ -385,6 +386,23 @@ export function StudyPlanResultReview({ resultId }: { resultId: string }) {
           </div>
         </div>
       </div>
+
+      {/* The same coach as the assessment result page, pointed at the study
+          plan's own attempt tables. examId is absent here, so it advises
+          without offering to start a compiled test it could not scope. */}
+      <PerformanceCoachPanel
+        attemptId={review.attempt_id}
+        attemptSource="study_plan"
+        contentType={
+          review.test_template.test_type === "mains_test"
+            ? "mains"
+            : review.test_template.test_type === "csat_test"
+              ? "aptitude"
+              : "gk"
+        }
+        examId={null}
+        topicName={review.test_template.title}
+      />
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 rounded-2xl border border-line bg-surface p-1.5 shadow-card">
