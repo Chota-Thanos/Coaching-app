@@ -297,6 +297,10 @@ export async function getUserSubscriptions(userId: number): Promise<unknown[]> {
           { id: 10, entitlement_key: "assessment.max_questions_per_test", limit_value: null, metadata: {} },
           { id: 11, entitlement_key: "assessment.ai_evaluation", limit_value: null, metadata: {} },
           { id: 12, entitlement_key: "assessment.performance_analytics", limit_value: null, metadata: {} },
+          // Mirrors the bundle's real rows (migration 062). Without it staff --
+          // who reach this synthetic subscription rather than a billing row --
+          // would be refused the AI coach their own subscribers can use.
+          { id: 16, entitlement_key: "assessment.performance_coach", limit_value: null, metadata: {} },
           { id: 13, entitlement_key: "current_affairs.daily_reads", limit_value: null, metadata: {} },
           { id: 14, entitlement_key: "current_affairs.editorial_access", limit_value: null, metadata: {} },
           { id: 15, entitlement_key: "current_affairs.notes_workspace", limit_value: null, metadata: {} }

@@ -10,6 +10,9 @@
  *                                question-caps.ts (50/100 objective, 10/25 mains),
  *                                enforced on both test creation and attempts
  *   assessment.ai_evaluation   → mains.routes.ts (AI answer evaluation)
+ *   assessment.performance_coach → free-tier.ts assertHasPerformanceCoachAccess,
+ *                                enforced on /me/performance-coach (the AI coach
+ *                                on the performance page and every result page)
  *   current_affairs.notes_workspace / .editorial_access
  *                              → billing/free-tier.ts (every notes-workspace cap
  *                                and the AI Notes Helper gate)
@@ -82,7 +85,11 @@ export const SUBSCRIPTION_MODULES: SubscriptionModule[] = [
     name: "Assessment Premium",
     cardTitle: "Upgrade Self-Preparation",
     tagline: "Take the caps off practice",
-    entitlementKeys: ["assessment.premium_tests", "assessment.ai_evaluation"],
+    entitlementKeys: [
+      "assessment.premium_tests",
+      "assessment.ai_evaluation",
+      "assessment.performance_coach"
+    ],
     features: [
       {
         label: "Unlimited tests you build yourself",
@@ -98,6 +105,10 @@ export const SUBSCRIPTION_MODULES: SubscriptionModule[] = [
       },
       {
         label: "AI evaluation on your Mains answers",
+        free: "Not included"
+      },
+      {
+        label: "AI performance coach — reads the questions you got wrong and tells you why",
         free: "Not included"
       }
     ],
