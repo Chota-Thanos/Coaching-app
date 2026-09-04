@@ -15,6 +15,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { Details, DetailsSummary, DetailsContent } from "@tiptap/extension-details";
+import TiptapImage from "@tiptap/extension-image";
 import { useKaTeX, renderMathAndMarkdown } from "./admin/katex-renderer";
 
 import {
@@ -28,6 +29,7 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
+  Image as ImageIcon,
   Table as TableIcon,
   PlusSquare,
   MinusSquare,
@@ -47,7 +49,8 @@ import {
   ChevronDown,
   Search
 } from "lucide-react";
-import { authenticatedPost, useAuth } from "../auth/auth-context";
+import { authenticatedPost, authenticatedUpload, useAuth } from "../auth/auth-context";
+import { resolveMediaUrl } from "../../lib/api";
 
 const REWORD_MODES: { value: string; label: string }[] = [
   { value: "exam_tone", label: "Exam tone" },
@@ -92,6 +95,9 @@ export function RichTextMarkdownEditor({
   onEditorReady
 }: RichTextMarkdownEditorProps) {
   const [tab, setTab] = useState<"visual" | "html" | "preview">("visual");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
   const { token } = useAuth();
   // Loads the KaTeX CDN assets so the Preview tab can actually render any
   // $...$/$$...$$ LaTeX in the content — without this, math shows as raw
@@ -115,6 +121,11 @@ export function RichTextMarkdownEditor({
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TiptapImage.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: { class: "article-inline-image" }
+      }),
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
@@ -229,6 +240,48 @@ export function RichTextMarkdownEditor({
       alert(err instanceof Error ? err.message : "Rewording failed.");
     } finally {
       setRewording(false);
+    }
+  };
+
+  /**
+   * Put a picture between two paragraphs.
+   *
+   * Uploads through the same /api/v1/media/upload every other admin screen
+   * uses, then inserts the returned path. The stored src stays site-relative
+   * ("/uploads/2026/...") so the body is portable across environments; it is
+   * made absolute for display, both here and on the reading page.
+   */
+  const insertImage = async (file: File) => {
+    if (!editor || !token) return;
+    setUploadingImage(true);
+    setImageError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("usage_scope", "current_affairs_article");
+      const asset = await authenticatedUpload<{ file_url: string; alt_text?: string | null }>(
+        "/api/v1/media/upload",
+        token,
+        formData
+      );
+      if (!asset?.file_url) throw new Error("The upload did not return a file.");
+      const caption = window.prompt("Caption for this image (optional):", "")?.trim();
+      const alt = caption || file.name;
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: asset.file_url, alt })
+        .run();
+      // A caption is a separate paragraph under the image rather than a
+      // figcaption, because the editor's schema has no figure node and a
+      // paragraph survives every round-trip through it.
+      if (caption) {
+        editor.chain().focus().createParagraphNear().insertContent(`<em>${caption}</em>`).run();
+      }
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : "That image could not be uploaded.");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -485,6 +538,30 @@ export function RichTextMarkdownEditor({
 
             <span className="rte-sep h-4 w-[1px] bg-line/80 mx-1" />
 
+            {/* Image insert. A hidden file input rather than a URL prompt:
+                an editor almost always has the picture on disk, not hosted
+                somewhere they can paste from. */}
+            <input
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void insertImage(file);
+                event.target.value = "";
+              }}
+              ref={imageInputRef}
+              type="file"
+            />
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={uploadingImage}
+              className="p-1.5 text-ink/70 hover:text-civic hover:bg-civic/5 rounded-md transition-all disabled:opacity-50"
+              title={uploadingImage ? "Uploading..." : "Insert image"}
+            >
+              <ImageIcon className="h-4 w-4" />
+            </button>
+
             {/* Table insert */}
             <button
               type="button"
@@ -629,6 +706,14 @@ export function RichTextMarkdownEditor({
               Clear Format
             </button>
           </div>
+        )}
+
+        {/* An upload that failed has to say so: the picture simply not
+            appearing is indistinguishable from a slow one. */}
+        {imageError && (
+          <p className="px-3 py-2 text-xs font-bold text-berry bg-berry/5 border-b border-berry/20">
+            {imageError}
+          </p>
         )}
 
         {/* Edit / Code / Preview areas */}

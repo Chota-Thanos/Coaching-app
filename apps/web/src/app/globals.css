@@ -513,6 +513,45 @@ img {
   font-weight: 600;
   color: rgb(var(--c-ink));
 }
+/* Images placed between paragraphs.
+   Full column width and never taller than a screenful, so a portrait scan of a
+   newspaper clipping cannot push the rest of the article below the fold. The
+   figure/figcaption pair is what the editor inserts when a caption is given;
+   a bare <img> is styled the same minus the caption. */
+.article-body img,
+.rich-html img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  margin: 1.5rem 0;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--s-200));
+  background: rgb(var(--s-50));
+}
+
+.article-body figure,
+.rich-html figure {
+  margin: 1.5rem 0;
+}
+
+/* Inside a figure the image's own margin would double the gap the figure
+   already provides. */
+.article-body figure img,
+.rich-html figure img {
+  margin: 0;
+}
+
+.article-body figcaption,
+.rich-html figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgb(var(--s-500));
+  text-align: center;
+}
+
 .article-body blockquote,
 .rich-html blockquote {
   border-left: 4px solid #4f46e5;
