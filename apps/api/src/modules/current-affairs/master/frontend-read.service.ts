@@ -182,6 +182,13 @@ export async function listFrontendArticles(options: FrontendArticleListQuery & {
             select row_to_json(asset.*)
             from current_affairs.master_article_assets asset
             where asset.article_id = ma.id
+              -- An asset with no file is a REQUEST for a picture, not a
+              -- picture. The AI writer files one of these per article
+              -- (metadata.pending_upload, file_url '') describing the image it
+              -- wants, and being created first with display_order 0 it won
+              -- this ordering outright -- so a real image uploaded afterwards
+              -- was never chosen, and the card rendered <img src="">.
+              and coalesce(btrim(asset.file_url), '') <> ''
             order by
               case asset.asset_type
                 when 'thumbnail' then 1

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, ChevronRight, ExternalLink } from "lucide-react";
-import { getArticleBySlug } from "../../../../lib/api";
+import { getArticleBySlug, resolveMediaUrl } from "../../../../lib/api";
 import { articleHref, contentKindLabel, CURRENT_AFFAIRS_HUBS } from "../../../../lib/current-affairs";
 import { GatedArticleBody } from "../../../../components/current-affairs/gated-article-body";
 import { AdminArticleActions } from "../../../../components/current-affairs/admin-article-actions";
@@ -95,6 +95,24 @@ function articleKeywords(article: {
   });
 }
 
+/**
+ * The article's picture, if it actually has one.
+ *
+ * The AI writer files an asset row per article describing the image it wants —
+ * `metadata.pending_upload`, empty `file_url` — so "has an asset" and "has an
+ * image" are different questions. Asking the first one is why every article
+ * rendered <img src=""> and showed nothing. A relative /uploads path also has
+ * to be made absolute: it is served by the API, not by this app.
+ */
+function heroImage(article: { assets: Array<{ asset_type: string; file_url: string; alt_text?: string | null; caption?: string | null }> }) {
+  const asset = article.assets.find(
+    (candidate) => ["thumbnail", "image"].includes(candidate.asset_type) && candidate.file_url?.trim()
+  );
+  if (!asset) return null;
+  const url = resolveMediaUrl(asset.file_url);
+  return url ? { ...asset, file_url: url } : null;
+}
+
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
   try {
@@ -103,7 +121,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     // no seo_description exists. Both fields were being ignored before.
     const description = article.seo_description?.trim() || articleDescription(article.body);
     const title = article.seo_title?.trim() || article.title;
-    const image = article.assets.find((asset) => ["thumbnail", "image"].includes(asset.asset_type))?.file_url;
+    const image = heroImage(article)?.file_url;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
     const articleUrl = `${baseUrl}${articleHref(article.slug)}`;
 
@@ -145,7 +163,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   }
 
   const hub = CURRENT_AFFAIRS_HUBS.find((item) => item.contentKind === article.content_kind);
-  const heroAsset = article.assets.find((asset) => ["thumbnail", "image"].includes(asset.asset_type));
+  const heroAsset = heroImage(article);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
   const articleUrl = `${baseUrl}${articleHref(article.slug)}`;
 
