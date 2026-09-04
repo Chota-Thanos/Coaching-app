@@ -399,6 +399,25 @@ img {
   margin-bottom: 0;
 }
 
+/* A paragraph inside a list item is that item's text, not a paragraph in its
+   own right, and must not carry the standalone paragraph's bottom margin.
+   The editor wraps every bullet as <li><p>…</p></li>, so that margin (18.4px)
+   was dominating the 8px the list itself sets -- every bulleted point on a
+   Daily News or Editorial page sat more than twice as far from the next as
+   intended, reading as a stack of loose paragraphs rather than a list. Mains
+   Notes escaped it only because their points are <details> blocks, which is
+   why those pages looked tighter and better organised than everything else.
+   A genuinely multi-paragraph item still separates its own paragraphs. */
+.article-body li > p,
+.rich-html li > p {
+  margin-bottom: 0;
+}
+
+.article-body li > p ~ p,
+.rich-html li > p ~ p {
+  margin-top: 0.5rem;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
