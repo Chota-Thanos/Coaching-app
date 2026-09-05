@@ -105,7 +105,26 @@ const imageSourceFields = {
   file_name: z.string().trim().min(1).optional(),
   base64_data: z.string().trim().min(1).optional(),
   mime_type: z.string().trim().min(1).optional(),
-  source_url: z.string().trim().url().optional(),
+  // .url() alone is not enough: zod accepts any scheme it can parse, so
+  // "javascript:alert(1)" and "file:///etc/passwd" both pass it. The fetcher
+  // refuses those too, but a bad scheme should be a clear validation error
+  // rather than a failure three layers down.
+  source_url: z
+    .string()
+    .trim()
+    .url()
+    .refine(
+      (value) => {
+        try {
+          const protocol = new URL(value).protocol;
+          return protocol === "http:" || protocol === "https:";
+        } catch {
+          return false;
+        }
+      },
+      { message: "Image URLs must be http or https." }
+    )
+    .optional(),
   alt_text: z.string().trim().optional(),
   caption: z.string().trim().optional()
 };
