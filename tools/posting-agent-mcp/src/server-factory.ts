@@ -624,22 +624,39 @@ server.registerTool(
   {
     title: 'Attach an image to a posted article',
     description:
-      'THE way to put a real picture on an article — the ca_commit `image` field records only a URL, never a file. Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
+      'THE way to put a real picture on an article — the ca_commit `image` field records only a URL, never a file. Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Pass EITHER a local file_path OR a public image_url \u2014 use image_url when this connection is remote, since file_path is read on the server, not on your machine. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
     inputSchema: {
       article_id: z.number().int().positive().describe('From ca_commit\'s result, or ca_find_articles.'),
-      file_path: z.string().min(1).describe('Local path to the image file to upload.'),
+      file_path: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'Local path to an image file. This is read by the MCP server process, so it only works when that process runs on the same machine as the file \u2014 over a remote connection use image_url instead.',
+        ),
+      image_url: z
+        .string()
+        .url()
+        .optional()
+        .describe(
+          'Public http/https URL of the image; the server downloads it. Use this whenever you are not running on the same machine as the file.',
+        ),
       alt_text: z.string().trim().optional(),
       caption: z.string().trim().optional(),
     },
   },
-  async ({ article_id, file_path, alt_text, caption }) =>
+  async ({ article_id, file_path, image_url, alt_text, caption }) =>
     run(async () => {
-      const file = await fileSource(file_path);
+      if (!file_path && !image_url) throw new Error('Provide either file_path or image_url.');
+      const source = image_url
+        ? { source_url: image_url }
+        : await (async () => {
+            const file = await fileSource(file_path!);
+            return { file_name: file.filename, base64_data: file.base64_data, mime_type: file.mime_type };
+          })();
       return api.post('/api/v1/current-affairs/admin/agent/attach-image', {
         article_id,
-        file_name: file.filename,
-        base64_data: file.base64_data,
-        mime_type: file.mime_type,
+        ...source,
         alt_text,
         caption,
       });
@@ -651,10 +668,23 @@ server.registerTool(
   {
     title: 'Put an image inside the article text',
     description:
-      'Uploads a local image and places it BETWEEN two blocks of the article body — a diagram after the paragraph it explains, a chart in the middle of the analysis. Use this for pictures that belong in the text; use ca_attach_image for the single header picture. Works on drafts and published articles alike, and because adding a picture is not a factual correction it needs no confirm_change gate. Call ca_get_article first to count the blocks and pick a position. Images are resized and re-encoded server-side, so upload the original — do not shrink it yourself. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
+      'Uploads a local image and places it BETWEEN two blocks of the article body — a diagram after the paragraph it explains, a chart in the middle of the analysis. Use this for pictures that belong in the text; use ca_attach_image for the single header picture. Works on drafts and published articles alike, and because adding a picture is not a factual correction it needs no confirm_change gate. Call ca_get_article first to count the blocks and pick a position. Images are resized and re-encoded server-side, so upload the original — do not shrink it yourself. Pass EITHER a local file_path OR a public image_url \u2014 use image_url when this connection is remote, since file_path is read on the server, not on your machine. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
     inputSchema: {
       article_id: z.number().int().positive().describe('From the ca_commit result, or ca_find_articles.'),
-      file_path: z.string().min(1).describe('Local path to the image file to upload.'),
+      file_path: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'Local path to an image file. This is read by the MCP server process, so it only works when that process runs on the same machine as the file \u2014 over a remote connection use image_url instead.',
+        ),
+      image_url: z
+        .string()
+        .url()
+        .optional()
+        .describe(
+          'Public http/https URL of the image; the server downloads it. Use this whenever you are not running on the same machine as the file.',
+        ),
       after_block: z
         .number()
         .int()
@@ -668,14 +698,18 @@ server.registerTool(
       caption: z.string().trim().optional().describe('Visible caption rendered under the image.'),
     },
   },
-  async ({ article_id, file_path, after_block, alt_text, caption }) =>
+  async ({ article_id, file_path, image_url, after_block, alt_text, caption }) =>
     run(async () => {
-      const file = await fileSource(file_path);
+      if (!file_path && !image_url) throw new Error('Provide either file_path or image_url.');
+      const source = image_url
+        ? { source_url: image_url }
+        : await (async () => {
+            const file = await fileSource(file_path!);
+            return { file_name: file.filename, base64_data: file.base64_data, mime_type: file.mime_type };
+          })();
       return api.post('/api/v1/current-affairs/admin/agent/insert-body-image', {
         article_id,
-        file_name: file.filename,
-        base64_data: file.base64_data,
-        mime_type: file.mime_type,
+        ...source,
         after_block,
         alt_text,
         caption,

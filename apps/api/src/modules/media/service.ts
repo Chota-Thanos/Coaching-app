@@ -438,3 +438,29 @@ export async function deleteMediaAsset(id: number): Promise<boolean> {
   }
   return true;
 }
+
+/**
+ * Turns "bytes, or a URL" into bytes.
+ *
+ * Both article-image paths accept either, so the choice is resolved in one
+ * place rather than duplicated in each service — and a caller that supplies
+ * neither is a validation error the schema has already rejected before this
+ * runs.
+ */
+export async function resolveImageSource(input: {
+  base64_data?: string;
+  mime_type?: string;
+  file_name?: string;
+  source_url?: string;
+}): Promise<{ buffer: Buffer; mime_type: string; file_name: string }> {
+  if (input.source_url) {
+    const { fetchRemoteImage } = await import("./fetch-remote-image.js");
+    return fetchRemoteImage(input.source_url);
+  }
+
+  return {
+    buffer: Buffer.from(input.base64_data!, "base64"),
+    mime_type: input.mime_type!,
+    file_name: input.file_name!
+  };
+}

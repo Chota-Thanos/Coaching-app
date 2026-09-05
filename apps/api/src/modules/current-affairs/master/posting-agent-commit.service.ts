@@ -1,6 +1,6 @@
 import { createMasterArticle } from "./articles.service.js";
 import { one, query } from "../../../db.js";
-import { saveImageBuffer } from "../../media/service.js";
+import { resolveImageSource, saveImageBuffer } from "../../media/service.js";
 import type {
   AttachImageBytesInput,
   CommitPostingAgentInput,
@@ -157,8 +157,8 @@ export async function attachImageBytes(
     throw err;
   }
 
-  const buffer = Buffer.from(input.base64_data, "base64");
-  const saved = await saveImageBuffer(buffer, input.file_name, input.mime_type);
+  const source = await resolveImageSource(input);
+  const saved = await saveImageBuffer(source.buffer, source.file_name, source.mime_type);
 
   return one(
     `insert into current_affairs.master_article_assets

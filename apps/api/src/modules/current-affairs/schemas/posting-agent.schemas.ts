@@ -93,32 +93,62 @@ export const commitPostingAgentSchema = z.object({
 // (`commitPostingAgentSchema`'s `image` field above only ever carries a URL
 // or an intent; this carries real bytes for an article that already exists.)
 
-export const attachImageBytesSchema = z.object({
-  article_id: idSchema,
-  file_name: z.string().trim().min(1),
-  base64_data: z.string().trim().min(1),
-  mime_type: z.string().trim().min(1),
+/**
+ * Bytes OR a URL, never neither.
+ *
+ * The byte fields were originally required, which quietly made these endpoints
+ * unusable from the remote MCP deployment: the caller had to read the file
+ * itself, and a hosted AI client has no access to the disk the server reads
+ * from. Accepting `source_url` lets the server fetch the picture instead.
+ */
+const imageSourceFields = {
+  file_name: z.string().trim().min(1).optional(),
+  base64_data: z.string().trim().min(1).optional(),
+  mime_type: z.string().trim().min(1).optional(),
+  source_url: z.string().trim().url().optional(),
   alt_text: z.string().trim().optional(),
   caption: z.string().trim().optional()
-});
+};
+
+function requireOneImageSource<T extends { base64_data?: string; mime_type?: string; file_name?: string; source_url?: string }>(
+  value: T,
+  ctx: z.RefinementCtx
+): void {
+  const hasBytes = Boolean(value.base64_data);
+  if (hasBytes === Boolean(value.source_url)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either base64_data (with file_name and mime_type) or source_url, but not both."
+    });
+    return;
+  }
+  if (hasBytes && (!value.file_name || !value.mime_type)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "base64_data also needs file_name and mime_type."
+    });
+  }
+}
+
+export const attachImageBytesSchema = z
+  .object({ article_id: idSchema, ...imageSourceFields })
+  .superRefine(requireOneImageSource);
 
 // ── Put an image inside an article's body text ──────────────────────────────
 // (`attachImageBytes` above files a picture as the article's hero asset and
 // leaves the text alone; this one places it between two blocks of the body.)
 
-export const insertBodyImageSchema = z.object({
-  article_id: idSchema,
-  file_name: z.string().trim().min(1),
-  base64_data: z.string().trim().min(1),
-  mime_type: z.string().trim().min(1),
-  alt_text: z.string().trim().optional(),
-  caption: z.string().trim().optional(),
+export const insertBodyImageSchema = z
+  .object({
+    article_id: idSchema,
+    ...imageSourceFields,
   // Which top-level block to place the picture after: 0 puts it above
   // everything, omitted appends it to the end. Out-of-range values are clamped
   // rather than rejected — asking for block 40 of a 12-block article plainly
   // means "at the end", and failing the upload over it would be unhelpful.
-  after_block: z.number().int().min(0).max(500).optional()
-});
+    after_block: z.number().int().min(0).max(500).optional()
+  })
+  .superRefine(requireOneImageSource);
 
 // ── Editor rewording (Phase 6) ───────────────────────────────────────────────
 
