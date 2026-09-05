@@ -315,16 +315,51 @@ export function AdminArticleDetailPanel({
         {/* Compact Image Cards Grid */}
         {article.assets.length > 0 && (
           <div className="grid gap-2.5 sm:grid-cols-2">
-            {article.assets.map((item) => (
+            {article.assets.map((item) => {
+              /*
+               * An asset row is not the same thing as an image.
+               *
+               * When the AI writer wants a picture it cannot produce one, so it
+               * files a row describing the image it would like — alt text, a
+               * search query, `metadata.pending_upload`, and an empty
+               * `file_url`. Rendering that through <img> produced <img src="">,
+               * which every browser draws as a broken-image icon, so an
+               * unfulfilled request looked exactly like a corrupt upload. It is
+               * a to-do, and it says so now. The public reading page already
+               * filters these out, which is why readers see no broken images.
+               */
+              const hasFile = Boolean(item.file_url?.trim());
+              const requestedQuery =
+                item.metadata && typeof item.metadata === "object"
+                  ? (item.metadata as Record<string, unknown>).search_query
+                  : null;
+
+              return (
               <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-2.5 shadow-2xs">
-                <img
-                  src={resolveMediaUrl(item.file_url) || item.file_url}
-                  alt={item.alt_text || item.file_name}
-                  className="h-12 w-16 rounded-lg object-cover border border-line bg-paper/40 shrink-0"
-                />
+                {hasFile ? (
+                  <img
+                    src={resolveMediaUrl(item.file_url) || item.file_url}
+                    alt={item.alt_text || item.file_name}
+                    className="h-12 w-16 rounded-lg object-cover border border-line bg-paper/40 shrink-0"
+                  />
+                ) : (
+                  <span
+                    className="grid h-12 w-16 shrink-0 place-items-center rounded-lg border border-dashed border-amber-400/70 bg-amber-50 text-amber-600"
+                    title="No image file has been uploaded for this request yet"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <h5 className="text-xs font-extrabold text-ink truncate">{item.alt_text || item.file_name || "Image Asset"}</h5>
-                  <p className="text-[11px] text-ink/50 truncate font-mono mt-0.5">{item.file_url}</p>
+                  {hasFile ? (
+                    <p className="text-[11px] text-ink/50 truncate font-mono mt-0.5">{item.file_url}</p>
+                  ) : (
+                    <p className="text-[11px] text-amber-700 truncate mt-0.5">
+                      Image requested by AI — no file uploaded yet
+                      {typeof requestedQuery === "string" && requestedQuery ? `: "${requestedQuery}"` : ""}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => void deleteAsset(item.id)}
@@ -335,7 +370,8 @@ export function AdminArticleDetailPanel({
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

@@ -6,7 +6,12 @@ export type IngestionItemStatus = "pending_review" | "approved" | "rejected" | "
 export type IngestionJobStatus = "queued" | "parsed" | "reviewed" | "published" | "failed";
 export type IngestionParserKind = "structured_current_affairs" | "plain_text" | "manual_json" | "external_ai";
 export type IngestionSourceKind = "manual_text" | "source_url" | "file_url" | "rss_feed" | "ai_prompt";
-export type ArticleAssetType = "image" | "thumbnail" | "pdf" | "source_file" | "audio" | "other";
+// "inline_image" is a picture placed between two blocks of the body text, as
+// opposed to "image"/"thumbnail", which supply the article's single header
+// picture. The distinction matters: the reading page picks the hero from the
+// first image/thumbnail row, so an inline diagram filed as "image" would be
+// shown twice — once in the header and once where it belongs.
+export type ArticleAssetType = "image" | "inline_image" | "thumbnail" | "pdf" | "source_file" | "audio" | "other";
 
 export const ADMIN_CONTENT_KINDS: Array<{ value: ContentKind; label: string; family: ContentFamily }> = [
   { value: "daily_current_affairs", label: "Daily News", family: "prelims" },

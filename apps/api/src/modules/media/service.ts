@@ -5,6 +5,7 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve, sep } from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import sharp from "sharp";
 import { one, query } from "../../db.js";
 import type { ListMediaAssetsQuery } from "./schemas.js";
 import { buildMediaUrl, getMediaUploadRoot, MEDIA_MAX_FILE_SIZE_BYTES } from "./storage.js";
@@ -26,6 +27,83 @@ const EXTENSION_BY_MIME = new Map([
 ]);
 
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"]);
+
+/**
+ * Longest edge an uploaded picture is kept at. Article images are displayed at
+ * roughly 800 CSS pixels at most, so 1600 still covers a 2x retina screen with
+ * room to spare — anything beyond that is bytes nobody ever sees. Phone
+ * cameras routinely produce 4000px+ images, which is where the savings come
+ * from.
+ */
+const IMAGE_MAX_EDGE_PX = 1600;
+
+/** WebP quality. 82 is visually indistinguishable from source for photographs. */
+const IMAGE_WEBP_QUALITY = 82;
+
+export type CompressedImage = {
+  buffer: Buffer;
+  mime_type: string;
+  original_bytes: number;
+  compressed_bytes: number;
+};
+
+/**
+ * Shrinks an uploaded picture before it is ever written to disk.
+ *
+ * Every image upload in the app funnels through here, so a 6MB phone photo
+ * becomes a ~150KB WebP whether it arrived from the editor's Image button, the
+ * posting agent, or an inline body insert. Three things happen: the longest
+ * edge is capped at IMAGE_MAX_EDGE_PX (never upscaled), the result is re-encoded
+ * as WebP, and EXIF is dropped — sharp discards metadata unless asked to keep
+ * it, which also removes the GPS coordinates phone cameras embed.
+ *
+ * Two deliberate pass-throughs:
+ *  - Animated GIFs. Re-encoding one to a still WebP would silently destroy the
+ *    animation, and a wrong picture is worse than a large one.
+ *  - Anything sharp cannot decode. A file we cannot parse is stored exactly as
+ *    it arrived rather than rejected, so a format sharp does not know about
+ *    never becomes a failed upload.
+ */
+export async function compressImageBuffer(buffer: Buffer, mimeType: string): Promise<CompressedImage> {
+  const unchanged: CompressedImage = {
+    buffer,
+    mime_type: mimeType,
+    original_bytes: buffer.byteLength,
+    compressed_bytes: buffer.byteLength
+  };
+
+  if (!mimeType.startsWith("image/")) return unchanged;
+
+  try {
+    const image = sharp(buffer, { animated: mimeType === "image/gif" });
+    const metadata = await image.metadata();
+
+    // `pages` > 1 means an animated GIF.
+    if (mimeType === "image/gif" && (metadata.pages ?? 1) > 1) return unchanged;
+
+    const longestEdge = Math.max(metadata.width ?? 0, metadata.height ?? 0);
+    const pipelineForImage =
+      longestEdge > IMAGE_MAX_EDGE_PX
+        ? image.resize({ width: IMAGE_MAX_EDGE_PX, height: IMAGE_MAX_EDGE_PX, fit: "inside", withoutEnlargement: true })
+        : image;
+
+    const output = await pipelineForImage.webp({ quality: IMAGE_WEBP_QUALITY }).toBuffer();
+
+    // A small, already-optimised PNG can come out of WebP larger than it went
+    // in. Keep whichever is smaller — compression that inflates is not
+    // compression.
+    if (output.byteLength >= buffer.byteLength) return unchanged;
+
+    return {
+      buffer: output,
+      mime_type: "image/webp",
+      original_bytes: buffer.byteLength,
+      compressed_bytes: output.byteLength
+    };
+  } catch {
+    return unchanged;
+  }
+}
 
 export type MediaAsset = {
   id: number;
@@ -74,9 +152,11 @@ function sanitizeFileName(fileName: string): string {
 
 function buildStoredFileName(originalFileName: string, mimeType: string): string {
   const originalExtension = extname(originalFileName).toLowerCase();
-  const extension = ALLOWED_EXTENSIONS.has(originalExtension)
-    ? originalExtension
-    : EXTENSION_BY_MIME.get(mimeType) ?? "";
+  // The mime wins when we know it. Compression re-encodes to WebP, and keeping
+  // the source's ".jpg" on those bytes would leave the extension lying about
+  // the file — browsers cope, but anything reading the name would not.
+  const mimeExtension = EXTENSION_BY_MIME.get(mimeType);
+  const extension = mimeExtension ?? (ALLOWED_EXTENSIONS.has(originalExtension) ? originalExtension : "");
   const baseName = sanitizeFileName(originalFileName.replace(/\.[^.]+$/g, "") || "upload");
 
   return `${randomUUID()}-${baseName}${extension}`;
@@ -112,37 +192,80 @@ export async function saveUploadedMedia(
   assertAllowedUpload(file);
 
   const originalFileName = sanitizeFileName(file.filename || "upload");
-  const fileName = buildStoredFileName(originalFileName, file.mimetype);
   const relativeDirectory = utcUploadDirectory(new Date());
   const uploadRoot = getMediaUploadRoot();
   const absoluteDirectory = join(uploadRoot, relativeDirectory);
-  const storagePath = `${relativeDirectory}/${fileName}`;
-  const absolutePath = join(absoluteDirectory, fileName);
-  let sizeBytes = 0;
 
   await mkdir(absoluteDirectory, { recursive: true });
 
-  const byteCounter = new Transform({
-    transform(chunk: Buffer, _encoding, callback) {
-      sizeBytes += chunk.length;
-      if (sizeBytes > MEDIA_MAX_FILE_SIZE_BYTES) {
-        callback(httpError(413, "File is too large."));
-        return;
-      }
-      callback(null, chunk);
+  /*
+   * Images are buffered rather than streamed straight to disk, because they are
+   * compressed before being written and that needs the whole picture in hand.
+   * The MEDIA_MAX_FILE_SIZE_BYTES ceiling is enforced while reading, so a
+   * hostile upload still cannot grow the buffer without bound — it is refused
+   * at the same threshold the streaming path used.
+   *
+   * PDFs keep streaming: there is nothing to compress, and a large document
+   * should not have to fit in memory.
+   */
+  const isImage = file.mimetype.startsWith("image/");
+
+  let storedMimeType = file.mimetype;
+  let fileName: string;
+  let storagePath: string;
+  let absolutePath: string;
+  let sizeBytes = 0;
+
+  if (isImage) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of file.file) {
+      sizeBytes += (chunk as Buffer).length;
+      if (sizeBytes > MEDIA_MAX_FILE_SIZE_BYTES) throw httpError(413, "File is too large.");
+      chunks.push(chunk as Buffer);
     }
-  });
+    if (file.file.truncated) throw httpError(413, "File is too large.");
 
-  try {
-    await pipeline(file.file, byteCounter, createWriteStream(absolutePath, { flags: "wx" }));
-  } catch (error) {
-    await unlink(absolutePath).catch(() => undefined);
-    throw error;
-  }
+    const compressed = await compressImageBuffer(Buffer.concat(chunks), file.mimetype);
+    storedMimeType = compressed.mime_type;
+    sizeBytes = compressed.compressed_bytes;
 
-  if (file.file.truncated) {
-    await unlink(absolutePath).catch(() => undefined);
-    throw httpError(413, "File is too large.");
+    fileName = buildStoredFileName(originalFileName, storedMimeType);
+    storagePath = `${relativeDirectory}/${fileName}`;
+    absolutePath = join(absoluteDirectory, fileName);
+
+    try {
+      await writeFile(absolutePath, compressed.buffer, { flag: "wx" });
+    } catch (error) {
+      await unlink(absolutePath).catch(() => undefined);
+      throw error;
+    }
+  } else {
+    fileName = buildStoredFileName(originalFileName, file.mimetype);
+    storagePath = `${relativeDirectory}/${fileName}`;
+    absolutePath = join(absoluteDirectory, fileName);
+
+    const byteCounter = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        sizeBytes += chunk.length;
+        if (sizeBytes > MEDIA_MAX_FILE_SIZE_BYTES) {
+          callback(httpError(413, "File is too large."));
+          return;
+        }
+        callback(null, chunk);
+      }
+    });
+
+    try {
+      await pipeline(file.file, byteCounter, createWriteStream(absolutePath, { flags: "wx" }));
+    } catch (error) {
+      await unlink(absolutePath).catch(() => undefined);
+      throw error;
+    }
+
+    if (file.file.truncated) {
+      await unlink(absolutePath).catch(() => undefined);
+      throw httpError(413, "File is too large.");
+    }
   }
 
   const insertParams = [
@@ -150,7 +273,7 @@ export async function saveUploadedMedia(
     fileName,
     buildMediaUrl(storagePath),
     storagePath,
-    file.mimetype,
+    storedMimeType,
     sizeBytes,
     normalizeOptionalText(metadata.usage_scope),
     normalizeOptionalText(metadata.alt_text),
@@ -232,8 +355,12 @@ export async function saveImageBuffer(
     throw httpError(413, "File is too large.");
   }
 
+  const compressed = await compressImageBuffer(buffer, mimeType);
+
   const sanitizedOriginalName = sanitizeFileName(originalFileName || "upload");
-  const fileName = buildStoredFileName(sanitizedOriginalName, mimeType);
+  // Named from the *compressed* mime, so a JPEG that came out as WebP is stored
+  // as .webp rather than a .jpg that is not one.
+  const fileName = buildStoredFileName(sanitizedOriginalName, compressed.mime_type);
   const relativeDirectory = utcUploadDirectory(new Date());
   const uploadRoot = getMediaUploadRoot();
   const absoluteDirectory = join(uploadRoot, relativeDirectory);
@@ -241,14 +368,14 @@ export async function saveImageBuffer(
   const absolutePath = join(absoluteDirectory, fileName);
 
   await mkdir(absoluteDirectory, { recursive: true });
-  await writeFile(absolutePath, buffer);
+  await writeFile(absolutePath, compressed.buffer);
 
   return {
     file_url: buildMediaUrl(storagePath),
     storage_path: storagePath,
     file_name: sanitizedOriginalName,
-    mime_type: mimeType,
-    size_bytes: buffer.byteLength
+    mime_type: compressed.mime_type,
+    size_bytes: compressed.compressed_bytes
   };
 }
 

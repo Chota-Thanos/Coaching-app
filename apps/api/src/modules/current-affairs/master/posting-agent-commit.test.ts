@@ -137,3 +137,75 @@ test("auto mode is unchanged — still creates a real published article directly
   );
   assert.equal(row[0]!.status, "published");
 });
+
+/**
+ * The AI writer describes the picture it would like far more often than it
+ * produces one. That intent used to be stored as an asset row with an empty
+ * `file_url`, which nothing ever read and which the admin editor could only
+ * draw as a broken image — on the live site every single asset row was one of
+ * these, and not one carried a real file. An article with no picture is now
+ * an article with no asset row.
+ */
+test("an image the model only described, without a file, creates no asset row", async () => {
+  const userId = await anyAdminUserId();
+
+  const result = await commitPostingAgent(
+    {
+      content_kind: "daily_current_affairs",
+      publish_mode: "auto",
+      articles: [
+        {
+          title: `Image intent check ${Date.now()}`,
+          body: "Body text for the image-intent check.",
+          image: {
+            alt_text: "Illustration showing industrial sectors feeding into an output index.",
+            search_query: "clean educational illustration of the Index of Industrial Production"
+          }
+        }
+      ]
+    } as never,
+    userId
+  );
+
+  const articleId = result.published[0]!.id;
+  createdArticleIds.push(articleId);
+
+  const assets = await query<{ id: number }>(
+    `select id from current_affairs.master_article_assets where article_id = $1`,
+    [articleId]
+  );
+  assert.equal(assets.length, 0, "a description of an image is not an image");
+});
+
+test("an image with a real url is still attached", async () => {
+  const userId = await anyAdminUserId();
+
+  const result = await commitPostingAgent(
+    {
+      content_kind: "daily_current_affairs",
+      publish_mode: "auto",
+      articles: [
+        {
+          title: `Image url check ${Date.now()}`,
+          body: "Body text for the image-url check.",
+          image: {
+            url: "https://waytoias.com/logo.png",
+            alt_text: "WayToIAS logo"
+          }
+        }
+      ]
+    } as never,
+    userId
+  );
+
+  const articleId = result.published[0]!.id;
+  createdArticleIds.push(articleId);
+
+  const assets = await query<{ file_url: string; alt_text: string | null }>(
+    `select file_url, alt_text from current_affairs.master_article_assets where article_id = $1`,
+    [articleId]
+  );
+  assert.equal(assets.length, 1);
+  assert.equal(assets[0]!.file_url, "https://waytoias.com/logo.png");
+  assert.equal(assets[0]!.alt_text, "WayToIAS logo");
+});

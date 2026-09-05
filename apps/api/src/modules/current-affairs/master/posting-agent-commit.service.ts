@@ -85,13 +85,20 @@ export interface CommitResult {
  * does with its own review mode.
  */
 /**
- * Records the image the generator specified.
+ * Records the image the generator specified — but only when there is a real
+ * file behind it.
  *
- * Usually there is no file yet — the model describes the picture it wants
- * rather than producing one — so the search query and alt text are kept in
- * `metadata` and a placeholder `file_url` is stored. That way the intent
- * survives to whoever sources the image, instead of being discarded at commit
- * and silently lost.
+ * This used to store the model's *intent* as well: when the generator described
+ * a picture it wanted without producing one, a row went in with an empty
+ * `file_url` and `metadata.pending_upload`. Nothing in the system ever read
+ * that flag, so the rows were not a queue, they were litter — and because an
+ * empty `file_url` renders as `<img src="">`, the admin editor drew every one
+ * of them as a broken image. An article is now simply an article without a
+ * picture until someone attaches one.
+ *
+ * To attach a real file after the fact, POST to
+ * `/api/v1/current-affairs/admin/agent/attach-image` (the `ca_attach_image`
+ * MCP tool), which writes actual bytes via `attachImageBytes()` below.
  *
  * Never fails the commit: an article without its picture is still an article.
  */
@@ -101,7 +108,10 @@ async function attachImage(
   userId: number
 ): Promise<void> {
   if (!image) return;
-  if (!image.url && !image.search_query && !image.alt_text) return;
+  // No file, no row. `search_query`/`alt_text` on their own describe a picture
+  // that does not exist, and storing that produced an asset the UI could only
+  // render as broken.
+  if (!image.url?.trim()) return;
 
   try {
     await query(
@@ -110,13 +120,12 @@ async function attachImage(
        values ($1, 'image', $2, $3, $4, $5, $6, $7)`,
       [
         articleId,
-        image.search_query?.slice(0, 120) || image.alt_text?.slice(0, 120) || "ai-suggested-image",
-        image.url ?? "",
+        image.alt_text?.slice(0, 120) || image.search_query?.slice(0, 120) || "ai-suggested-image",
+        image.url,
         image.alt_text ?? null,
         image.caption ?? null,
         JSON.stringify({
           source: "ai_generated",
-          pending_upload: !image.url,
           search_query: image.search_query ?? null
         }),
         userId

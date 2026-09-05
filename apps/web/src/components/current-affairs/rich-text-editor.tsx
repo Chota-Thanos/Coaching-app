@@ -552,14 +552,21 @@ export function RichTextMarkdownEditor({
               ref={imageInputRef}
               type="file"
             />
+            {/*
+              Labelled, not icon-only. Putting a picture between two paragraphs
+              has worked for a while, but as a bare icon in a row of other bare
+              icons nobody could find it, and the feature was reported missing.
+              The word is the fix.
+            */}
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
               disabled={uploadingImage}
-              className="p-1.5 text-ink/70 hover:text-civic hover:bg-civic/5 rounded-md transition-all disabled:opacity-50"
-              title={uploadingImage ? "Uploading..." : "Insert image"}
+              className="inline-flex items-center gap-1.5 px-2 py-1.5 text-ink/70 hover:text-civic hover:bg-civic/5 rounded-md transition-all disabled:opacity-50"
+              title={uploadingImage ? "Uploading..." : "Insert an image at the cursor"}
             >
               <ImageIcon className="h-4 w-4" />
+              <span className="text-xs font-bold">{uploadingImage ? "Uploading…" : "Image"}</span>
             </button>
 
             {/* Table insert */}

@@ -102,6 +102,24 @@ export const attachImageBytesSchema = z.object({
   caption: z.string().trim().optional()
 });
 
+// ── Put an image inside an article's body text ──────────────────────────────
+// (`attachImageBytes` above files a picture as the article's hero asset and
+// leaves the text alone; this one places it between two blocks of the body.)
+
+export const insertBodyImageSchema = z.object({
+  article_id: idSchema,
+  file_name: z.string().trim().min(1),
+  base64_data: z.string().trim().min(1),
+  mime_type: z.string().trim().min(1),
+  alt_text: z.string().trim().optional(),
+  caption: z.string().trim().optional(),
+  // Which top-level block to place the picture after: 0 puts it above
+  // everything, omitted appends it to the end. Out-of-range values are clamped
+  // rather than rejected — asking for block 40 of a 12-block article plainly
+  // means "at the end", and failing the upload over it would be unhelpful.
+  after_block: z.number().int().min(0).max(500).optional()
+});
+
 // ── Editor rewording (Phase 6) ───────────────────────────────────────────────
 
 const rewordModeEnum = z.enum(["concise", "expand", "simplify", "exam_tone", "grammar"]);
@@ -127,4 +145,5 @@ export type ExtractSourceInput = z.output<typeof extractSourceSchema>;
 export type ParsePostingAgentInput = z.output<typeof parsePostingAgentSchema>;
 export type CommitPostingAgentInput = z.output<typeof commitPostingAgentSchema>;
 export type AttachImageBytesInput = z.output<typeof attachImageBytesSchema>;
+export type InsertBodyImageInput = z.output<typeof insertBodyImageSchema>;
 export type RewordInput = z.output<typeof rewordSchema>;

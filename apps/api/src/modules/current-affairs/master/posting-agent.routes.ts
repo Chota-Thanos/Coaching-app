@@ -3,6 +3,7 @@ import { parse, withValidation } from "../../../common/http.js";
 import { requireAdminOrEditor } from "../../auth/guards.js";
 import {
   attachImageBytesSchema,
+  insertBodyImageSchema,
   commitPostingAgentSchema,
   extractSourceSchema,
   parsePostingAgentSchema,
@@ -11,6 +12,7 @@ import {
 import { extractFromDocument, extractFromUrl } from "./extraction.service.js";
 import { parsePostingAgent } from "./posting-agent.service.js";
 import { attachImageBytes, commitPostingAgent } from "./posting-agent-commit.service.js";
+import { insertBodyImage } from "./body-image.service.js";
 import { rewordText } from "./reword.service.js";
 
 export async function registerCurrentAffairsPostingAgentRoutes(server: FastifyInstance): Promise<void> {
@@ -56,6 +58,17 @@ export async function registerCurrentAffairsPostingAgentRoutes(server: FastifyIn
     return withValidation(reply, async () => {
       const body = parse(attachImageBytesSchema, request.body);
       const record = await attachImageBytes(body, user.id);
+      return reply.status(201).send(record);
+    });
+  });
+
+  // Place an image *inside* an article's body, between two blocks — the
+  // counterpart to attach-image, which only sets the article's hero picture.
+  server.post("/api/v1/current-affairs/admin/agent/insert-body-image", async (request, reply) => {
+    const user = await requireAdminOrEditor(request);
+    return withValidation(reply, async () => {
+      const body = parse(insertBodyImageSchema, request.body);
+      const record = await insertBodyImage(body, user.id);
       return reply.status(201).send(record);
     });
   });

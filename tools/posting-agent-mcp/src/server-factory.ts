@@ -83,6 +83,7 @@ const MIME_BY_EXT: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
+  '.gif': 'image/gif',
 };
 
 /** Reads a local file into the base64 source contract both agents share. */
@@ -333,7 +334,9 @@ server.registerTool(
                 search_query: z.string().optional(),
               })
               .optional()
-              .describe('The picture to accompany the article. A search_query without a url is normal — the file is sourced later.'),
+              .describe(
+                'The picture to accompany the article. ONLY a real, publicly reachable `url` is stored — a search_query or alt_text on its own is ignored, because it describes an image that does not exist. To put an actual image file on an article, commit first and then call ca_attach_image with the file path.',
+              ),
           }),
         )
         .min(1)
@@ -621,7 +624,7 @@ server.registerTool(
   {
     title: 'Attach an image to a posted article',
     description:
-      'Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Accepts .png, .jpg, .jpeg, .webp.',
+      'THE way to put a real picture on an article — the ca_commit `image` field records only a URL, never a file. Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
     inputSchema: {
       article_id: z.number().int().positive().describe('From ca_commit\'s result, or ca_find_articles.'),
       file_path: z.string().min(1).describe('Local path to the image file to upload.'),
@@ -637,6 +640,43 @@ server.registerTool(
         file_name: file.filename,
         base64_data: file.base64_data,
         mime_type: file.mime_type,
+        alt_text,
+        caption,
+      });
+    }),
+);
+
+server.registerTool(
+  'ca_insert_body_image',
+  {
+    title: 'Put an image inside the article text',
+    description:
+      'Uploads a local image and places it BETWEEN two blocks of the article body — a diagram after the paragraph it explains, a chart in the middle of the analysis. Use this for pictures that belong in the text; use ca_attach_image for the single header picture. Works on drafts and published articles alike, and because adding a picture is not a factual correction it needs no confirm_change gate. Call ca_get_article first to count the blocks and pick a position. Images are resized and re-encoded server-side, so upload the original — do not shrink it yourself. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
+    inputSchema: {
+      article_id: z.number().int().positive().describe('From the ca_commit result, or ca_find_articles.'),
+      file_path: z.string().min(1).describe('Local path to the image file to upload.'),
+      after_block: z
+        .number()
+        .int()
+        .min(0)
+        .max(500)
+        .optional()
+        .describe(
+          'Which top-level block of the body to place the picture after. 0 puts it above everything; omit to append at the end. Blocks are the top-level elements of the body (each <p>, <h2>, <ul>, <table>), counted in order — so after_block: 3 sits between the third and fourth. Out-of-range values are clamped, not rejected.',
+        ),
+      alt_text: z.string().trim().optional().describe('What the picture shows, for screen readers and search engines.'),
+      caption: z.string().trim().optional().describe('Visible caption rendered under the image.'),
+    },
+  },
+  async ({ article_id, file_path, after_block, alt_text, caption }) =>
+    run(async () => {
+      const file = await fileSource(file_path);
+      return api.post('/api/v1/current-affairs/admin/agent/insert-body-image', {
+        article_id,
+        file_name: file.filename,
+        base64_data: file.base64_data,
+        mime_type: file.mime_type,
+        after_block,
         alt_text,
         caption,
       });
