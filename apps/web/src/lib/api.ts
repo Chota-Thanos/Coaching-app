@@ -206,6 +206,55 @@ export function getArticles(params: ArticleListParams): Promise<ArticleListRespo
   return apiFetch<ArticleListResponse>(`/api/v1/current-affairs/frontend/articles?${search}`);
 }
 
+/**
+ * The three server-side reads behind the signed-out home page.
+ *
+ * These were `useEffect` + `fetch` calls inside the home page component, which
+ * meant the article and mentor cards existed only after JavaScript ran — search
+ * engines saw empty sections, and the home page carried no crawlable links into
+ * the ~180 articles it is supposed to feed. Fetched on the server they land in
+ * the HTML. Cached for an hour to match the page's own `revalidate`, since none
+ * of this changes minute to minute.
+ */
+const HOMEPAGE_CACHE = { cache: "force-cache" as RequestCache, next: { revalidate: 3600 } };
+
+export function getHomepageArticles(limit = 5): Promise<ArticleListResponse> {
+  const search = new URLSearchParams({
+    // Required by this endpoint — it has no default, and omitting it returns a
+    // 400 rather than an unfiltered list.
+    content_kind: "daily_current_affairs",
+    page: "1",
+    limit: String(limit)
+  });
+  return apiFetch<ArticleListResponse>(
+    `/api/v1/current-affairs/frontend/articles?${search}`,
+    HOMEPAGE_CACHE
+  );
+}
+
+export function getHomepageMentors(): Promise<any[]> {
+  return apiFetch<any[]>("/api/v1/mentorship/profiles", HOMEPAGE_CACHE);
+}
+
+/**
+ * The admin-curated free diagnostic test the hero CTA points at, if one has
+ * been published. Null sends the CTA to the general GK hub instead.
+ */
+export async function getFreeDiagnosticTestId(): Promise<number | null> {
+  const search = new URLSearchParams({
+    test_type: "diagnostic_test",
+    access_type: "free",
+    status: "published",
+    limit: "1"
+  });
+  const list = await apiFetch<Array<{ id: number }>>(
+    `/api/v1/assessment/test-templates?${search}`,
+    HOMEPAGE_CACHE
+  );
+  const first = Array.isArray(list) ? list[0] : null;
+  return first?.id ?? null;
+}
+
 export function getArticleFilters(contentKind: ContentKind, contentFamily: ContentFamily): Promise<ArticleFiltersResponse> {
   const search = new URLSearchParams({ content_kind: contentKind, content_family: contentFamily });
   return apiFetch<ArticleFiltersResponse>(`/api/v1/current-affairs/frontend/filters?${search}`);

@@ -1293,3 +1293,17 @@ html.dark .tiptap-prosemirror div[data-type="details"] > div > summary::after {
 .ProseMirror a:hover {
   color: #1d4ed8 !important;
 }
+
+/*
+ * Signed-in flash guard for the home page.
+ *
+ * `/` server-renders the signed-out marketing page for everyone, because that
+ * is the only way its content reaches search engines — the page cannot know who
+ * is visiting until localStorage is read in the browser. For a visitor who is
+ * already signed in, the blocking script in the root layout sets data-auth
+ * before first paint so the marketing block never becomes visible on the way to
+ * the dashboard. HomeGate keeps the attribute honest after auth resolves.
+ */
+html[data-auth="1"] [data-home-marketing] {
+  display: none;
+}
