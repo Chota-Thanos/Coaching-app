@@ -86,6 +86,16 @@ const MIME_BY_EXT: Record<string, string> = {
   '.gif': 'image/gif',
 };
 
+/** What the media endpoints will actually store. */
+const IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+
+const EXT_BY_IMAGE_MIME: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
 /** Reads a local file into the base64 source contract both agents share. */
 async function fileSource(filePath: string) {
   const absolute = path.resolve(filePath);
@@ -103,6 +113,45 @@ async function fileSource(filePath: string) {
     mime_type: mime,
     filename: path.basename(absolute),
   };
+}
+
+/**
+ * Accepts an image the caller already holds in memory.
+ *
+ * fileSource() reads from disk and image_url makes the server download from
+ * somewhere public. Neither helps an assistant that has just *generated* a
+ * picture: it has bytes, no file on this machine and nowhere to host them.
+ * This is the direct path for that case.
+ *
+ * Takes raw base64 or a full data: URI, since models produce both.
+ */
+function base64Source(imageBase64: string, fileName?: string) {
+  let data = imageBase64.trim();
+  let mime = '';
+
+  const dataUri = data.match(/^data:([a-z]+\/[a-z0-9.+-]+);base64,(.*)$/is);
+  if (dataUri) {
+    mime = dataUri[1]!.toLowerCase();
+    data = dataUri[2]!;
+  }
+
+  // Whitespace and newlines are common in wrapped base64 and would corrupt the
+  // decode on the server.
+  data = data.replace(/\s+/g, '');
+
+  if (!mime && fileName) {
+    mime = MIME_BY_EXT[path.extname(fileName).toLowerCase()] ?? '';
+  }
+  if (!mime) mime = 'image/png';
+
+  if (!IMAGE_MIME_TYPES.has(mime)) {
+    throw new Error(`Unsupported image type "${mime}". Supported: ${[...IMAGE_MIME_TYPES].join(', ')}`);
+  }
+
+  const extension = EXT_BY_IMAGE_MIME[mime] ?? '.png';
+  const named = fileName && path.extname(fileName) ? fileName : `${fileName || 'upload'}${extension}`;
+
+  return { file_name: path.basename(named), base64_data: data, mime_type: mime };
 }
 
 // ─── Connection / discovery ──────────────────────────────────────────────────
@@ -624,7 +673,7 @@ server.registerTool(
   {
     title: 'Attach an image to a posted article',
     description:
-      'THE way to put a real picture on an article — the ca_commit `image` field records only a URL, never a file. Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Pass EITHER a local file_path OR a public image_url \u2014 use image_url when this connection is remote, since file_path is read on the server, not on your machine. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
+      'THE way to put a real picture on an article — the ca_commit `image` field records only a URL, never a file. Uploads a local image file and attaches it to an already-committed article (e.g. the source image after annotate_image.py has drawn on it). This is purely additive — it adds a picture, it does not touch the article\'s text — so it does not need the confirm_change gate ca_update_article requires. Three ways to supply the picture, in order of preference: image_base64 (the image itself — works from anywhere, needs no file and no hosting), image_url (a public URL the server downloads), or file_path (only when this MCP server runs on the same machine as the file). Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
     inputSchema: {
       article_id: z.number().int().positive().describe('From ca_commit\'s result, or ca_find_articles.'),
       file_path: z
@@ -632,7 +681,7 @@ server.registerTool(
         .min(1)
         .optional()
         .describe(
-          'Local path to an image file. This is read by the MCP server process, so it only works when that process runs on the same machine as the file \u2014 over a remote connection use image_url instead.',
+          'Local path to an image file. This is read by the MCP server process, so it only works when that process runs on the same machine as the file — over a remote connection use image_url instead.',
         ),
       image_url: z
         .string()
@@ -641,19 +690,34 @@ server.registerTool(
         .describe(
           'Public http/https URL of the image; the server downloads it. Use this whenever you are not running on the same machine as the file.',
         ),
+      image_base64: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'The image itself, as base64 (raw, or a full "data:image/png;base64,..." URI). Use this when you HAVE the picture but it is not on this machine and not published anywhere — e.g. one you just generated. This is the direct upload path; no file and no hosting needed.',
+        ),
+      file_name: z
+        .string()
+        .optional()
+        .describe('Name for the stored file, used with image_base64. The extension sets the format; defaults to .png.'),
       alt_text: z.string().trim().optional(),
       caption: z.string().trim().optional(),
     },
   },
-  async ({ article_id, file_path, image_url, alt_text, caption }) =>
+  async ({ article_id, file_path, image_url, image_base64, file_name, alt_text, caption }) =>
     run(async () => {
-      if (!file_path && !image_url) throw new Error('Provide either file_path or image_url.');
-      const source = image_url
-        ? { source_url: image_url }
-        : await (async () => {
-            const file = await fileSource(file_path!);
-            return { file_name: file.filename, base64_data: file.base64_data, mime_type: file.mime_type };
-          })();
+      if (!file_path && !image_url && !image_base64) {
+        throw new Error('Provide one of image_base64 (the picture itself), image_url, or file_path.');
+      }
+      const source = image_base64
+        ? base64Source(image_base64, file_name)
+        : image_url
+          ? { source_url: image_url }
+          : await (async () => {
+              const file = await fileSource(file_path!);
+              return { file_name: file.filename, base64_data: file.base64_data, mime_type: file.mime_type };
+            })();
       return api.post('/api/v1/current-affairs/admin/agent/attach-image', {
         article_id,
         ...source,
@@ -668,7 +732,7 @@ server.registerTool(
   {
     title: 'Put an image inside the article text',
     description:
-      'Uploads a local image and places it BETWEEN two blocks of the article body — a diagram after the paragraph it explains, a chart in the middle of the analysis. Use this for pictures that belong in the text; use ca_attach_image for the single header picture. Works on drafts and published articles alike, and because adding a picture is not a factual correction it needs no confirm_change gate. Call ca_get_article first to count the blocks and pick a position. Images are resized and re-encoded server-side, so upload the original — do not shrink it yourself. Pass EITHER a local file_path OR a public image_url \u2014 use image_url when this connection is remote, since file_path is read on the server, not on your machine. Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
+      'Uploads a local image and places it BETWEEN two blocks of the article body — a diagram after the paragraph it explains, a chart in the middle of the analysis. Use this for pictures that belong in the text; use ca_attach_image for the single header picture. Works on drafts and published articles alike, and because adding a picture is not a factual correction it needs no confirm_change gate. Call ca_get_article first to count the blocks and pick a position. Images are resized and re-encoded server-side, so upload the original — do not shrink it yourself. Three ways to supply the picture, in order of preference: image_base64 (the image itself — works from anywhere, needs no file and no hosting), image_url (a public URL the server downloads), or file_path (only when this MCP server runs on the same machine as the file). Accepts .png, .jpg, .jpeg, .webp, .gif, up to 10MB.',
     inputSchema: {
       article_id: z.number().int().positive().describe('From the ca_commit result, or ca_find_articles.'),
       file_path: z
@@ -676,7 +740,7 @@ server.registerTool(
         .min(1)
         .optional()
         .describe(
-          'Local path to an image file. This is read by the MCP server process, so it only works when that process runs on the same machine as the file \u2014 over a remote connection use image_url instead.',
+          'Local path to an image file. This is read by the MCP server process, so it only works when that process runs on the same machine as the file — over a remote connection use image_url instead.',
         ),
       image_url: z
         .string()
@@ -685,6 +749,17 @@ server.registerTool(
         .describe(
           'Public http/https URL of the image; the server downloads it. Use this whenever you are not running on the same machine as the file.',
         ),
+      image_base64: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'The image itself, as base64 (raw, or a full "data:image/png;base64,..." URI). Use this when you HAVE the picture but it is not on this machine and not published anywhere — e.g. one you just generated. This is the direct upload path; no file and no hosting needed.',
+        ),
+      file_name: z
+        .string()
+        .optional()
+        .describe('Name for the stored file, used with image_base64. The extension sets the format; defaults to .png.'),
       after_block: z
         .number()
         .int()
@@ -698,15 +773,19 @@ server.registerTool(
       caption: z.string().trim().optional().describe('Visible caption rendered under the image.'),
     },
   },
-  async ({ article_id, file_path, image_url, after_block, alt_text, caption }) =>
+  async ({ article_id, file_path, image_url, image_base64, file_name, after_block, alt_text, caption }) =>
     run(async () => {
-      if (!file_path && !image_url) throw new Error('Provide either file_path or image_url.');
-      const source = image_url
-        ? { source_url: image_url }
-        : await (async () => {
-            const file = await fileSource(file_path!);
-            return { file_name: file.filename, base64_data: file.base64_data, mime_type: file.mime_type };
-          })();
+      if (!file_path && !image_url && !image_base64) {
+        throw new Error('Provide one of image_base64 (the picture itself), image_url, or file_path.');
+      }
+      const source = image_base64
+        ? base64Source(image_base64, file_name)
+        : image_url
+          ? { source_url: image_url }
+          : await (async () => {
+              const file = await fileSource(file_path!);
+              return { file_name: file.filename, base64_data: file.base64_data, mime_type: file.mime_type };
+            })();
       return api.post('/api/v1/current-affairs/admin/agent/insert-body-image', {
         article_id,
         ...source,
