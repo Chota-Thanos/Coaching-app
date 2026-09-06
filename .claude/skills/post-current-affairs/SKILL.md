@@ -84,7 +84,45 @@ Commit in batches of ≤ 50 articles so a single failure doesn't lose the run.
 After committing, report the returned ids and the admin URL
 (`/admin/current-affairs`) so the user can see the result.
 
-## Annotating a source image (Editorial Summaries only)
+## Pictures
+
+Two separate things, and they are not interchangeable:
+
+- **`ca_attach_image`** sets the article's single header picture — the one that
+  shows in listings and as the social preview.
+- **`ca_insert_body_image`** puts a picture *between two blocks of the body* — a
+  diagram after the paragraph it explains. `after_block: 0` places it above
+  everything, omitting it appends at the end; count blocks with `ca_get_article`
+  first. Adding a picture is not a factual correction, so unlike
+  `ca_update_article` this needs no `confirm_change`.
+
+Both work on any content kind and on drafts as well as published articles.
+
+### Supplying the image
+
+Three ways, and picking the wrong one is the usual reason an upload "does
+nothing". Prefer them in this order:
+
+1. **`image_base64`** — the image itself, raw base64 or a full
+   `data:image/png;base64,...` URI. Works from anywhere. Use this whenever you
+   are holding a picture you generated or were handed, with nowhere to put it.
+2. **`image_url`** — a public http/https URL the server downloads. Private
+   addresses are refused, so a `localhost` or `192.168.*` URL will not work.
+3. **`file_path`** — read *by the MCP server process*, not by you. Only use it
+   when that process runs on the same machine as the file. Over a remote
+   connection it cannot see your disk, and this is the option that silently
+   fails.
+
+Uploads are resized and re-encoded server-side (longest edge 1600px, WebP),
+so send the original — do not shrink it yourself. Max 10MB; .png, .jpg,
+.jpeg, .webp, .gif.
+
+`ca_commit`'s `image` field is **not** an upload path. It records only a real
+`url`; an `alt_text` or `search_query` on its own describes a picture that does
+not exist and is now discarded rather than stored. To put a real picture on an
+article, commit it first and then call one of the two tools above.
+
+### Annotating a source image (Editorial Summaries only)
 
 If the user hands you a photo/diagram alongside an Editorial Summary
 (`daily_editorial_summary`) and asks for it to be annotated, draw the
@@ -115,7 +153,9 @@ from this skill's directory.
    legible and say what you meant, not truncated or misassigned. Re-run with
    adjusted points if not.
 5. Once the article is committed (`ca_commit`), attach the annotated image
-   with `ca_attach_image` using the article id from the commit result.
+   using the article id from the commit result — `ca_attach_image` if it is the
+   article's header picture, `ca_insert_body_image` with an `after_block` if it
+   belongs beside the points it illustrates.
 6. Report back what was attached the same way a commit is reported — id and
    admin URL.
 
@@ -131,3 +171,9 @@ tighten or re-tone copy — never silently, and never on a whole batch.
 - Don't publish (`auto`) on the user's behalf to "save a step".
 - Don't retry a failed commit unchanged — read the error; a 400 is a schema
   problem in what you sent, a 401/403 is the key.
+- Don't report that a picture was attached because a tool returned without an
+  error — check the result carries a `file_url`, and say so with the id. An
+  asset row is not the same thing as an image.
+- Don't reach for `file_path` first. If the MCP server is remote it cannot see
+  your disk, and the failure looks like the tool being missing rather than the
+  path being wrong.
