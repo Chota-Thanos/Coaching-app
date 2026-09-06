@@ -57,6 +57,23 @@ const BEARER_TOKEN = process.env.MCP_HTTP_BEARER_TOKEN ?? "";
 const PUBLIC_URL = process.env.MCP_PUBLIC_URL ?? "https://waytoias.com";
 const API_URL = process.env.COACHING_API_URL ?? "http://localhost:4000";
 
+/** Read once at boot, so /health reports the build this process actually loaded. */
+const SERVER_VERSION: string = await (async () => {
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, join } = await import("node:path");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(await readFile(join(here, "..", "package.json"), "utf8"));
+    return String(pkg.version ?? "unknown");
+  } catch {
+    return "unknown";
+  }
+})();
+
+/** When this process started — an uptime older than a deploy means it never restarted. */
+const STARTED_AT = new Date().toISOString();
+
 /**
  * The MCP SDK's Express helper includes DNS-rebinding protection: it checks
  * the incoming `Host:` header against an allowlist, and defaults that list to
@@ -130,11 +147,41 @@ async function requireAuth(req: Request, res: Response, next: NextFunction): Pro
 
 const app = createMcpExpressApp({ host: HOST, allowedHosts: ALLOWED_HOSTS });
 
-// Unauthenticated on purpose: lets a deploy be verified (and an uptime
-// monitor configured) without handing out any credential to do it. Reveals
-// only that the process is up — no tool names, no account info.
+/*
+ * Unauthenticated on purpose: lets a deploy be verified (and an uptime monitor
+ * configured) without handing out any credential to do it.
+ *
+ * `tool_count` and `has_image_tools` are here because "the process is up" was
+ * not enough to answer the question that actually kept coming up: is the
+ * process serving the build we just deployed? PM2's `restart <ecosystem-file>`
+ * only restarts processes already in its list, so a rebuilt dist/ and a stale
+ * process in memory look identical from outside — and the only symptom a
+ * client sees is a tool it expected being absent, which reads as the tool
+ * never having existed.
+ *
+ * Still no tool NAMES and no account info: a count and a version answer
+ * "is this current?" without publishing the capability surface.
+ */
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", server: "coaching-posting-agent-mcp" });
+  let toolCount = 0;
+  let hasImageTools = false;
+  try {
+    const probe = createServer() as unknown as { _registeredTools?: Record<string, unknown> };
+    const names = Object.keys(probe._registeredTools ?? {});
+    toolCount = names.length;
+    hasImageTools = names.includes("ca_attach_image") && names.includes("ca_insert_body_image");
+  } catch {
+    // A health check must never be the thing that breaks.
+  }
+
+  res.json({
+    status: "ok",
+    server: "coaching-posting-agent-mcp",
+    version: SERVER_VERSION,
+    tool_count: toolCount,
+    has_image_tools: hasImageTools,
+    started_at: STARTED_AT
+  });
 });
 
 // ─── OAuth authorization server ─────────────────────────────────────────────
