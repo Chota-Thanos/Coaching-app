@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getArticles } from "../lib/api";
 import { CURRENT_AFFAIRS_HUBS, articleHref, hubHref } from "../lib/current-affairs";
+import { getStudyPlans } from "../lib/study-plans-api";
+import { getAssessmentTests } from "../lib/assessment-api";
 
 export const revalidate = 3600;
 
@@ -30,14 +32,17 @@ async function articlesForHub(
   do {
     let response;
     try {
-      response = await getArticles({
-        contentKind: hub.contentKind,
-        // Concepts are a separate role and are excluded by default, which is
-        // why every concept page was missing even when the request worked.
-        articleRole: hub.articleRole,
-        page,
-        limit: PAGE_SIZE,
-      });
+      response = await getArticles(
+        {
+          contentKind: hub.contentKind,
+          // Concepts are a separate role and are excluded by default, which is
+          // why every concept page was missing even when the request worked.
+          articleRole: hub.articleRole,
+          page,
+          limit: PAGE_SIZE,
+        },
+        { next: { revalidate: 3600 } }
+      );
     } catch (error) {
       // Log rather than swallow — a silently empty sitemap is the bug this
       // rewrite exists to fix.
@@ -63,6 +68,36 @@ async function articlesForHub(
   return entries;
 }
 
+async function studyPlanRoutes(baseUrl: string): Promise<SitemapEntry[]> {
+  try {
+    const plans = await getStudyPlans({ limit: 100 }, { next: { revalidate: 3600 } });
+    return plans.map((plan) => ({
+      url: `${baseUrl}/study-plans/${plan.id}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7
+    }));
+  } catch (error) {
+    console.error("Sitemap: study plans failed", error);
+    return [];
+  }
+}
+
+async function assessmentTestRoutes(baseUrl: string): Promise<SitemapEntry[]> {
+  try {
+    const tests = await getAssessmentTests({ limit: 100, status: "published" }, { next: { revalidate: 3600 } });
+    return tests.map((test) => ({
+      url: `${baseUrl}/assessment/tests/${test.id}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7
+    }));
+  } catch (error) {
+    console.error("Sitemap: assessment tests failed", error);
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com";
 
@@ -71,7 +106,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/study-plans`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: `${baseUrl}/mentors`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: `${baseUrl}/pricing`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/become-mentor`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${baseUrl}/assessment/gk`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    { url: `${baseUrl}/assessment/csat`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    { url: `${baseUrl}/assessment/tests`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
   ];
 
   const hubRoutes: MetadataRoute.Sitemap = CURRENT_AFFAIRS_HUBS.map((hub) => ({
@@ -85,7 +123,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // every section the site actually publishes is covered — daily news,
   // concepts, editorial summaries, mains notes and both PYQ libraries — and a
   // new hub is included automatically.
-  const perHub = await Promise.all(CURRENT_AFFAIRS_HUBS.map((hub) => articlesForHub(hub, baseUrl)));
+  const [perHub, dynamicStudyPlans, dynamicTests] = await Promise.all([
+    Promise.all(CURRENT_AFFAIRS_HUBS.map((hub) => articlesForHub(hub, baseUrl))),
+    studyPlanRoutes(baseUrl),
+    assessmentTestRoutes(baseUrl)
+  ]);
 
   // Two hubs share a content kind (news and concepts), so de-duplicate by URL.
   const seen = new Set<string>();
@@ -95,5 +137,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return true;
   });
 
-  return [...staticRoutes, ...hubRoutes, ...articleRoutes];
+  return [...staticRoutes, ...hubRoutes, ...articleRoutes, ...dynamicStudyPlans, ...dynamicTests];
 }

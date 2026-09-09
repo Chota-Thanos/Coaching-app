@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Layers3, Loader2, Sparkles, Star } from "lucide-react";
+import { BookOpen, Layers3, Sparkles, Star } from "lucide-react";
 import { useAuth } from "../auth/auth-context";
-import { PremiumLockOverlay } from "../billing/premium-lock-overlay";
 import { StudentArticleActions } from "./student-article-actions";
 import { InteractivePrelimsPyq, InteractiveMainsPyq } from "./interactive-pyq";
 import { RenderedContent } from "./rendered-content";
@@ -16,96 +14,9 @@ type Props = {
   hub: any;
 };
 
-
-/** Articles a signed-out visitor may read per day before being asked to log in. */
-const SIGNED_OUT_DAILY_LIMIT = 5;
-
 export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   const { token, isInitialized } = useAuth();
-  const [isDailyLimitReached, setIsDailyLimitReached] = useState(false);
-  const [checkingLimit, setCheckingLimit] = useState(true);
-  const [readCount, setReadCount] = useState<number | null>(null);
-
   const isSignedIn = Boolean(token);
-
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    // Signed-in readers get everything, every content type, no counting.
-    //
-    // Subscription entitlements (`current_affairs.editorial_access`,
-    // `current_affairs.daily_reads`) are deliberately NOT consulted here for
-    // now — the plans and entitlements still exist server-side, so restoring
-    // paid gating later means re-adding the check, not rebuilding it.
-    if (isSignedIn) {
-      setIsDailyLimitReached(false);
-      setReadCount(null);
-      setCheckingLimit(false);
-      return;
-    }
-
-    // Signed-out visitors: a few free reads, then an invitation to log in.
-    try {
-      const todayStr = new Date().toDateString();
-      const rawData = localStorage.getItem("coaching_hub_reads");
-      let readData = rawData
-        ? JSON.parse(rawData)
-        : { date: todayStr, count: 0, readSlugs: [] };
-
-      // Reset tracker if it's a new day
-      if (readData.date !== todayStr) {
-        readData = { date: todayStr, count: 0, readSlugs: [] };
-      }
-
-      if (readData.readSlugs.includes(article.slug)) {
-        // Already read this article today — re-reading it is always allowed,
-        // so a refresh or a back-navigation never costs another read.
-        setIsDailyLimitReached(false);
-        setReadCount(readData.count);
-      } else if (readData.count >= SIGNED_OUT_DAILY_LIMIT) {
-        setIsDailyLimitReached(true);
-      } else {
-        readData.count += 1;
-        readData.readSlugs.push(article.slug);
-        localStorage.setItem("coaching_hub_reads", JSON.stringify(readData));
-        setIsDailyLimitReached(false);
-        setReadCount(readData.count);
-      }
-    } catch (e) {
-      // A blocked or full localStorage must not cost a reader the article.
-      console.error("Failed to check daily read limit", e);
-      setIsDailyLimitReached(false);
-    } finally {
-      setCheckingLimit(false);
-    }
-  }, [article.slug, isInitialized, isSignedIn]);
-
-  if (!isInitialized || checkingLimit) {
-    return (
-      <div className="flex justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
-
-  // Signed-out reader who has used their free reads: ask them to sign in,
-  // not to pay — an account is all that is required right now.
-  if (isDailyLimitReached) {
-    const next = encodeURIComponent(`/current-affairs/articles/${article.slug}`);
-    return (
-      <div className="mt-6">
-        <PremiumLockOverlay
-          title="Log in to keep reading"
-          description={`You have read your ${SIGNED_OUT_DAILY_LIMIT} free articles for today. Log in — it is free — for unlimited access to current affairs, editorial summaries, mains notes and the notes workspace.`}
-          planName="Free account"
-          ctaText="Log in to continue"
-          ctaHref={`/login?next=${next}`}
-          secondaryCtaText="Create a free account"
-          secondaryCtaHref={`/register?next=${next}`}
-        />
-      </div>
-    );
-  }
 
   // User is authorized, show the full article body and tools
   // 1. CONCEPTS: ONLY target articles with article_role === 'concept' or relation_type === 'prerequisite'
@@ -150,18 +61,19 @@ export function GatedArticleBody({ article, heroAsset, hub }: Props) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] mt-5">
       <div className="min-w-0">
-        {readCount !== null && (
-          <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-800">
-            <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
-            <span>
-              Article {readCount} of {SIGNED_OUT_DAILY_LIMIT} free reads today. Log in — free — for
-              unlimited access.
-            </span>
+        {!isSignedIn && isInitialized && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-civic/20 bg-civic/5 px-4 py-3 text-xs text-ink/80">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-civic shrink-0" />
+              <span>
+                <strong>Free UPSC Preparation:</strong> Create a free account to highlight text, save notes, and track reading progress.
+              </span>
+            </div>
             <Link
-              href={`/login?next=${encodeURIComponent(`/current-affairs/articles/${article.slug}`)}`}
-              className="ml-auto text-xs font-black text-amber-700 hover:text-amber-900 underline uppercase tracking-wider shrink-0"
+              href={`/register?next=${encodeURIComponent(`/current-affairs/articles/${article.slug}`)}`}
+              className="font-bold text-civic hover:underline shrink-0"
             >
-              Log in
+              Sign up free →
             </Link>
           </div>
         )}

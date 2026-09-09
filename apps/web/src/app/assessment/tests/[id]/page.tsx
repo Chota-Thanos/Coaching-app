@@ -52,7 +52,7 @@ export default async function TestDetailPage({ params }: TestDetailPageProps) {
     "@type": "Course",
     name: test.title,
     description: test.description,
-    provider: { "@type": "Organization", name: "Coaching App" }
+    provider: { "@type": "Organization", name: "WayToIAS", url: "https://waytoias.com" }
   };
 
   return (

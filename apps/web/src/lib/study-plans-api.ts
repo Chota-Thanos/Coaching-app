@@ -7,13 +7,18 @@ import type {
 
 const serverBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
-async function studyPlanFetch<T>(path: string, token?: string): Promise<T> {
+async function studyPlanFetch<T>(
+  path: string,
+  token?: string,
+  options?: { cache?: RequestCache; next?: NextFetchRequestConfig }
+): Promise<T> {
   const headers: HeadersInit = { accept: "application/json" };
   if (token) headers.authorization = `Bearer ${token}`;
 
   const response = await fetch(`${serverBaseUrl}${path}`, {
     headers,
-    cache: "no-store"
+    cache: options?.cache ?? "no-store",
+    next: options?.next
   });
 
   if (!response.ok) {
@@ -23,7 +28,10 @@ async function studyPlanFetch<T>(path: string, token?: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function getStudyPlans(params: { examId?: string; page?: number; limit?: number } = {}): Promise<StudyPlanSummary[]> {
+export function getStudyPlans(
+  params: { examId?: string; page?: number; limit?: number } = {},
+  options?: { cache?: RequestCache; next?: NextFetchRequestConfig }
+): Promise<StudyPlanSummary[]> {
   const limit = params.limit ?? 20;
   const offset = ((params.page ?? 1) - 1) * limit;
   const search = new URLSearchParams({
@@ -32,7 +40,7 @@ export function getStudyPlans(params: { examId?: string; page?: number; limit?: 
     status: "published"
   });
   if (params.examId) search.set("exam_id", params.examId);
-  return studyPlanFetch<StudyPlanSummary[]>(`/api/v1/study-plans?${search}`);
+  return studyPlanFetch<StudyPlanSummary[]>(`/api/v1/study-plans?${search}`, undefined, options);
 }
 
 export function getStudyPlan(id: string, token?: string): Promise<StudyPlanDetail> {

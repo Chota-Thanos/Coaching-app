@@ -17,7 +17,7 @@ test("hubHref omits empty filter values and preserves page", () => {
   const hub = getHub("prelims-pyq");
   assert.ok(hub);
   assert.equal(hubHref(hub, { category: "polity", year: "2025", page: 2 }), "/current-affairs/prelims-pyq?category=polity&year=2025&page=2");
-  assert.equal(hubHref(hub, { category: "all", year: "", page: 1 }), "/current-affairs/prelims-pyq?page=1");
+  assert.equal(hubHref(hub, { category: "all", year: "", page: 1 }), "/current-affairs/prelims-pyq");
 });
 
 test("month labels and page normalization are stable", () => {

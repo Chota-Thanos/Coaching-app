@@ -17,7 +17,18 @@ export const metadata: Metadata = {
   // real URL is not the one it crawled -- pages got indexed and then dropped.
   // robots.ts and sitemap.ts already default to the live origin; this matches
   // them, so a missing env var can never de-index the site again.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com")
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://waytoias.com"),
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1
+    }
+  }
 };
 
 export const viewport: Viewport = {

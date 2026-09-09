@@ -193,7 +193,7 @@ export type ArticleListParams = {
   limit?: number;
 };
 
-export function getArticles(params: ArticleListParams): Promise<ArticleListResponse> {
+export function getArticles(params: ArticleListParams, options?: { cache?: RequestCache; next?: NextFetchRequestConfig }): Promise<ArticleListResponse> {
   const search = new URLSearchParams({
     content_kind: params.contentKind,
     page: String(params.page),
@@ -203,7 +203,7 @@ export function getArticles(params: ArticleListParams): Promise<ArticleListRespo
   if (params.category) search.set("category", params.category);
   if (params.month) search.set("month", params.month);
   if (params.year) search.set("year", params.year);
-  return apiFetch<ArticleListResponse>(`/api/v1/current-affairs/frontend/articles?${search}`);
+  return apiFetch<ArticleListResponse>(`/api/v1/current-affairs/frontend/articles?${search}`, options);
 }
 
 /**

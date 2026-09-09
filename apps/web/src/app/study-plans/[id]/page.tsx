@@ -17,6 +17,13 @@ export async function generateMetadata({ params }: StudyPlanPageProps): Promise<
     return {
       title: plan.title,
       description: plan.subtitle ?? plan.description ?? "Structured UPSC study plan.",
+      alternates: { canonical: `/study-plans/${id}` },
+      openGraph: {
+        title: plan.title,
+        description: plan.subtitle ?? plan.description ?? "Structured UPSC study plan.",
+        url: `/study-plans/${id}`,
+        type: "website"
+      },
       robots: plan.status === "published" ? undefined : { index: false, follow: false }
     };
   } catch {

@@ -12,10 +12,14 @@ import type {
 
 const serverBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
-async function assessmentFetch<T>(path: string): Promise<T> {
+async function assessmentFetch<T>(
+  path: string,
+  options?: { cache?: RequestCache; next?: NextFetchRequestConfig }
+): Promise<T> {
   const response = await fetch(`${serverBaseUrl}${path}`, {
     headers: { accept: "application/json" },
-    cache: "no-store"
+    cache: options?.cache ?? "no-store",
+    next: options?.next
   });
 
   if (!response.ok) {
@@ -34,7 +38,10 @@ export type AssessmentTestListParams = {
   limit?: number;
 };
 
-export function getAssessmentTests(params: AssessmentTestListParams = {}): Promise<AssessmentTestTemplate[]> {
+export function getAssessmentTests(
+  params: AssessmentTestListParams = {},
+  options?: { cache?: RequestCache; next?: NextFetchRequestConfig }
+): Promise<AssessmentTestTemplate[]> {
   const limit = params.limit ?? 24;
   const offset = ((params.page ?? 1) - 1) * limit;
   const search = new URLSearchParams({
@@ -45,7 +52,7 @@ export function getAssessmentTests(params: AssessmentTestListParams = {}): Promi
   if (params.examId) search.set("exam_id", params.examId);
   if (params.examLevelId) search.set("exam_level_id", params.examLevelId);
   if (params.accessType) search.set("access_type", params.accessType);
-  return assessmentFetch<AssessmentTestTemplate[]>(`/api/v1/assessment/test-templates?${search}`);
+  return assessmentFetch<AssessmentTestTemplate[]>(`/api/v1/assessment/test-templates?${search}`, options);
 }
 
 export function getAssessmentTestPaper(id: string): Promise<TestPaper> {

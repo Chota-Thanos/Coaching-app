@@ -90,6 +90,7 @@ export function hubHref(hub: CurrentAffairsHub, params: Record<string, string | 
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== "" && value !== "all") {
+      if (key === "page" && (value === 1 || value === "1")) continue;
       search.set(key, String(value));
     }
   }

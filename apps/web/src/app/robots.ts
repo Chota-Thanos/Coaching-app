@@ -18,7 +18,10 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",
           "/verify-email",
           "/forgot-password",
-          "/reset-password"
+          "/reset-password",
+          "/assessment/attempts/",
+          "/assessment/results/",
+          "/mentorship/session/"
         ]
       }
     ],
